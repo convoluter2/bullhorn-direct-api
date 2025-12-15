@@ -62,6 +62,14 @@ export interface CSVMapping {
   transform?: string
 }
 
+export interface CSVImportConfig {
+  entity: string
+  mappings: CSVMapping[]
+  lookupField?: string
+  updateExisting: boolean
+  createNew: boolean
+}
+
 export interface StackOperation {
   id: string
   type: 'create' | 'update' | 'delete' | 'query'
