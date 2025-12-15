@@ -40,7 +40,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       
       const initialMappings = parsed.headers.map(header => ({
         csvColumn: header,
-        bullhornField: ''
+        bullhornField: '__skip__'
       }))
       setMappings(initialMappings)
       setResults([])
@@ -61,7 +61,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       return
     }
 
-    const validMappings = mappings.filter(m => m.bullhornField)
+    const validMappings = mappings.filter(m => m.bullhornField && m.bullhornField !== '__skip__')
     if (validMappings.length === 0) {
       toast.error('Please map at least one field')
       return
@@ -183,7 +183,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                             <SelectValue placeholder="Select Bullhorn field" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Skip</SelectItem>
+                            <SelectItem value="__skip__">Skip</SelectItem>
                             {availableFields.map((field) => (
                               <SelectItem key={field} value={field}>
                                 {field}
@@ -228,7 +228,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               <div className="flex gap-2 pt-2">
                 <Button
                   onClick={executeImport}
-                  disabled={loading || mappings.filter(m => m.bullhornField).length === 0}
+                  disabled={loading || mappings.filter(m => m.bullhornField && m.bullhornField !== '__skip__').length === 0}
                   className="flex-1"
                 >
                   <Lightning />

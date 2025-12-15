@@ -71,7 +71,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
         fields: selectedFields,
         filters: filters.filter(f => f.field && f.value),
         count,
-        orderBy: orderBy || undefined
+        orderBy: orderBy && orderBy !== '__none__' ? orderBy : undefined
       }
 
       const result = await bullhornAPI.search(config)
@@ -244,7 +244,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                     <SelectValue placeholder="Select field" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {availableFields.map((field) => (
                       <SelectItem key={field} value={field}>
                         {field}
