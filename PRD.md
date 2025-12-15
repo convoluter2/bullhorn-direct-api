@@ -13,11 +13,11 @@ This is a sophisticated enterprise data management tool with multiple modules (Q
 ## Essential Features
 
 ### Authentication & Authorization
-- **Functionality**: OAuth2 authorization flow with Bullhorn REST API
-- **Purpose**: Secure access to Bullhorn tenant data
-- **Trigger**: User clicks "Connect to Bullhorn" and enters credentials
-- **Progression**: Enter client credentials → OAuth authorization → Token exchange → Store session → Enable features
-- **Success criteria**: Valid BhRestToken obtained and stored, API calls authenticated successfully
+- **Functionality**: OAuth2 authorization code flow with Bullhorn REST API, including automatic token refresh
+- **Purpose**: Secure access to Bullhorn tenant data with persistent session management
+- **Trigger**: User clicks "Connect to Bullhorn" and enters credentials or authorization code
+- **Progression**: Enter client credentials + username/password OR get authorization code → Exchange code for access token → Get REST session token → Store session with refresh token → Auto-refresh before expiry → Enable features
+- **Success criteria**: Valid BhRestToken obtained and stored, refresh token maintained, automatic token refresh works, API calls authenticated successfully
 
 ### QueryBlast (Advanced Search)
 - **Functionality**: Build and execute complex queries against Bullhorn entities with field selection
@@ -59,7 +59,8 @@ This is a sophisticated enterprise data management tool with multiple modules (Q
 - **Large Datasets**: Pagination support with configurable page sizes, streaming for exports
 - **Network Failures**: Retry logic with user notification, operation resumption where possible
 - **Invalid Data**: Pre-validation before API calls, clear error messages with field-level feedback
-- **Session Expiration**: Token refresh flow, graceful re-authentication prompts
+- **Session Expiration**: Automatic token refresh using refresh token, graceful re-authentication prompts if refresh fails
+- **Token Expiry**: Proactive refresh 60 seconds before expiration, background refresh every 30 seconds
 - **Concurrent Operations**: Queue management to prevent conflicting updates
 - **Malformed CSV**: Robust parsing with error reporting, skip invalid rows option
 

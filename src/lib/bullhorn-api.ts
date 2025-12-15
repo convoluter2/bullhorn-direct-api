@@ -7,11 +7,127 @@ const BULLHORN_ATS_URL = 'https://cls43.bullhornstaffing.com'
 export class BullhornAPI {
   private session: BullhornSession | null = null
 
+  getAuthorizationUrl(clientId: string, redirectUri: string, state: string): string {
+    const params = new URLSearchParams({
+      client_id: clientId,
+      response_type: 'code',
+      redirect_uri: redirectUri,
+      state: state
+    })
+    return `${BULLHORN_AUTH_URL}/authorize?${params.toString()}`
+  }
+
+  async exchangeCodeForToken(
+    code: string,
+    clientId: string,
+    clientSecret: string,
+    redirectUri?: string
+  ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
+    const params = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code: code,
+      client_id: clientId,
+      client_secret: clientSecret
+    })
+
+    if (redirectUri) {
+      params.append('redirect_uri', redirectUri)
+    }
+
+    const response = await fetch(`${BULLHORN_AUTH_URL}/token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: params.toString()
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Failed to exchange code for token: ${errorText}`)
+    }
+
+    const data = await response.json()
+    
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresIn: data.expires_in || 600
+    }
+  }
+
+  async refreshAccessToken(
+    refreshToken: string,
+    clientId: string,
+    clientSecret: string
+  ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
+    const params = new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      client_id: clientId,
+      client_secret: clientSecret
+    })
+
+    const response = await fetch(`${BULLHORN_AUTH_URL}/token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: params.toString()
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Failed to refresh access token: ${errorText}`)
+    }
+
+    const data = await response.json()
+    
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token || refreshToken,
+      expiresIn: data.expires_in || 600
+    }
+  }
+
+  async login(accessToken: string): Promise<BullhornSession> {
+    const params = new URLSearchParams({
+      version: '*',
+      access_token: accessToken
+    })
+
+    const response = await fetch(`${BULLHORN_LOGIN_URL}?${params.toString()}`, {
+      method: 'POST'
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Failed to login with access token: ${errorText}`)
+    }
+
+    const data = await response.json()
+    
+    return {
+      BhRestToken: data.BhRestToken,
+      restUrl: data.restUrl,
+      corporationId: data.corporationId,
+      userId: data.userId,
+      accessToken: accessToken
+    }
+  }
+
   async authenticate(credentials: BullhornCredentials): Promise<BullhornSession> {
     try {
       const authCode = await this.getAuthorizationCode(credentials)
-      const accessToken = await this.getAccessToken(credentials, authCode)
-      const session = await this.login(accessToken)
+      const tokenData = await this.exchangeCodeForToken(
+        authCode,
+        credentials.clientId,
+        credentials.clientSecret
+      )
+      const session = await this.login(tokenData.accessToken)
+      
+      session.refreshToken = tokenData.refreshToken
+      session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
       
       this.session = session
       return session
@@ -29,66 +145,35 @@ export class BullhornAPI {
       action: 'Login'
     })
 
-    const response = await fetch(`${BULLHORN_AUTH_URL}/authorize?${params}`, {
-      method: 'POST'
+    const response = await fetch(`${BULLHORN_AUTH_URL}/authorize?${params.toString()}`, {
+      method: 'POST',
+      redirect: 'manual'
     })
 
-    if (!response.ok) {
-      throw new Error('Failed to get authorization code')
+    const locationHeader = response.headers.get('location')
+    if (locationHeader) {
+      const url = new URL(locationHeader, window.location.origin)
+      const code = url.searchParams.get('code')
+      if (code) {
+        return code
+      }
     }
 
-    const url = new URL(response.url)
-    const code = url.searchParams.get('code')
-    
-    if (!code) {
-      throw new Error('No authorization code received')
+    if (response.redirected) {
+      const url = new URL(response.url)
+      const code = url.searchParams.get('code')
+      if (code) {
+        return code
+      }
     }
 
-    return code
-  }
-
-  private async getAccessToken(credentials: BullhornCredentials, code: string): Promise<string> {
-    const params = new URLSearchParams({
-      grant_type: 'authorization_code',
-      code: code,
-      client_id: credentials.clientId,
-      client_secret: credentials.clientSecret
-    })
-
-    const response = await fetch(`${BULLHORN_AUTH_URL}/token?${params}`, {
-      method: 'POST'
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to get access token')
+    const responseText = await response.text()
+    const codeMatch = responseText.match(/code=([^&"']+)/)
+    if (codeMatch) {
+      return codeMatch[1]
     }
 
-    const data = await response.json()
-    return data.access_token
-  }
-
-  private async login(accessToken: string): Promise<BullhornSession> {
-    const params = new URLSearchParams({
-      version: '*',
-      access_token: accessToken
-    })
-
-    const response = await fetch(`${BULLHORN_LOGIN_URL}?${params}`, {
-      method: 'POST'
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to login')
-    }
-
-    const data = await response.json()
-    
-    return {
-      BhRestToken: data.BhRestToken,
-      restUrl: data.restUrl,
-      corporationId: data.corporationId,
-      userId: data.userId
-    }
+    throw new Error('No authorization code received. Please check your credentials.')
   }
 
   setSession(session: BullhornSession) {

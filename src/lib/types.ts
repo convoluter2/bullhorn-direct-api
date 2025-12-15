@@ -12,6 +12,9 @@ export interface BullhornSession {
   restUrl: string
   corporationId?: number
   userId?: number
+  refreshToken?: string
+  accessToken?: string
+  expiresAt?: number
 }
 
 export interface BullhornEntity {

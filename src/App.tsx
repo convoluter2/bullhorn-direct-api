@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Toaster } from '@/components/ui/sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -11,6 +11,7 @@ import { CSVLoader } from '@/components/CSVLoader'
 import { SmartStack } from '@/components/SmartStack'
 import { AuditLogs } from '@/components/AuditLogs'
 import { bullhornAPI } from '@/lib/bullhorn-api'
+import { toast } from 'sonner'
 import type { BullhornSession, AuditLog } from '@/lib/types'
 
 function App() {
@@ -18,6 +19,44 @@ function App() {
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const [logs, setLogs] = useKV<AuditLog[]>('audit-logs', [])
   const [activeTab, setActiveTab] = useState('queryblast')
+  const [credentials, setCredentials] = useKV<{ clientId: string; clientSecret: string } | null>('bullhorn-credentials', null)
+
+  useEffect(() => {
+    if (!session || !session.refreshToken || !session.expiresAt || !credentials) {
+      return
+    }
+
+    const checkTokenExpiry = async () => {
+      const now = Date.now()
+      const timeUntilExpiry = session.expiresAt! - now
+
+      if (timeUntilExpiry < 60000) {
+        try {
+          const tokenData = await bullhornAPI.refreshAccessToken(
+            session.refreshToken!,
+            credentials.clientId,
+            credentials.clientSecret
+          )
+          const newSession = await bullhornAPI.login(tokenData.accessToken)
+          newSession.refreshToken = tokenData.refreshToken
+          newSession.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
+          
+          setSession(() => newSession)
+          bullhornAPI.setSession(newSession)
+          
+          addLog('Token Refresh', 'success', 'Access token refreshed automatically')
+        } catch (error) {
+          toast.error('Failed to refresh access token. Please reconnect.')
+          setSession(() => null)
+        }
+      }
+    }
+
+    const interval = setInterval(checkTokenExpiry, 30000)
+    checkTokenExpiry()
+
+    return () => clearInterval(interval)
+  }, [session, credentials])
 
   const handleAuthenticated = (newSession: BullhornSession) => {
     setSession(() => newSession)
