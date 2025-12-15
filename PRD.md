@@ -13,11 +13,14 @@ This is a sophisticated enterprise data management tool with multiple modules (Q
 ## Essential Features
 
 ### Authentication & Authorization
-- **Functionality**: OAuth2 authorization code flow with Bullhorn REST API, including automatic token refresh
+- **Functionality**: OAuth2 authorization code flow with Bullhorn REST API, including automatic token refresh and automatic callback handling
 - **Purpose**: Secure access to Bullhorn tenant data with persistent session management
-- **Trigger**: User clicks "Connect to Bullhorn" and enters credentials or authorization code
-- **Progression**: Enter client credentials + username/password OR get authorization code → Exchange code for access token → Get REST session token → Store session with refresh token → Auto-refresh before expiry → Enable features
-- **Success criteria**: Valid BhRestToken obtained and stored, refresh token maintained, automatic token refresh works, API calls authenticated successfully
+- **Trigger**: User clicks "Connect to Bullhorn" and chooses authentication method (credentials or authorization code with optional redirect)
+- **Progression**: 
+  - **Method 1 (Username/Password)**: Enter client credentials + username/password → Auto-exchange for auth code → Exchange code for access token → Get REST session token → Store session with refresh token → Auto-refresh before expiry → Enable features
+  - **Method 2 (Authorization Code - Manual)**: Enter client credentials → Open authorization URL → Copy authorization code from redirect → Paste code → Exchange for access token → Get REST session token → Store session with refresh token → Enable features
+  - **Method 3 (Authorization Code - Automatic Redirect)**: Enter client credentials → Enable redirect URI → Click "Start OAuth Flow" → Redirect to Bullhorn → Authorize → Automatic redirect back to app → Auto-capture code from URL → Exchange for access token → Get REST session token → Store session with refresh token → Enable features
+- **Success criteria**: Valid BhRestToken obtained and stored, refresh token maintained, automatic token refresh works, API calls authenticated successfully, OAuth callback auto-detected and processed
 
 ### QueryBlast (Advanced Search)
 - **Functionality**: Build and execute complex queries against Bullhorn entities with field selection

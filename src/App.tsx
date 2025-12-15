@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
+import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
 import { CSVLoader } from '@/components/CSVLoader'
 import { SmartStack } from '@/components/SmartStack'
@@ -20,6 +21,17 @@ function App() {
   const [logs, setLogs] = useKV<AuditLog[]>('audit-logs', [])
   const [activeTab, setActiveTab] = useState('queryblast')
   const [credentials, setCredentials] = useKV<{ clientId: string; clientSecret: string } | null>('bullhorn-credentials', null)
+  const [isOAuthCallback, setIsOAuthCallback] = useState(false)
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const code = urlParams.get('code')
+    const errorParam = urlParams.get('error')
+    
+    if (code || errorParam) {
+      setIsOAuthCallback(true)
+    }
+  }, [])
 
   useEffect(() => {
     if (!session || !session.refreshToken || !session.expiresAt || !credentials) {
@@ -61,6 +73,16 @@ function App() {
   const handleAuthenticated = (newSession: BullhornSession) => {
     setSession(() => newSession)
     bullhornAPI.setSession(newSession)
+    setIsOAuthCallback(false)
+  }
+
+  const handleCancelOAuth = () => {
+    setIsOAuthCallback(false)
+    window.history.replaceState({}, document.title, window.location.pathname)
+  }
+
+  const handleSaveCredentials = (clientId: string, clientSecret: string) => {
+    setCredentials(() => ({ clientId, clientSecret } as { clientId: string; clientSecret: string }))
   }
 
   const handleDisconnect = () => {
@@ -89,6 +111,20 @@ function App() {
 
   if (session) {
     bullhornAPI.setSession(session)
+  }
+
+  if (isOAuthCallback) {
+    return (
+      <>
+        <Toaster position="top-right" />
+        <OAuthCallback 
+          onAuthenticated={handleAuthenticated} 
+          onCancel={handleCancelOAuth}
+          storedCredentials={credentials || null}
+          onSaveCredentials={handleSaveCredentials}
+        />
+      </>
+    )
   }
 
   return (
