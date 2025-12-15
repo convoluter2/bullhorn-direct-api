@@ -236,7 +236,17 @@ export class BullhornAPI {
 
     const conditions = config.filters.map(filter => {
       const operator = this.mapOperator(filter.operator)
-      return `${filter.field}${operator}${filter.value}`
+      
+      if (filter.operator === 'is_null' || filter.operator === 'is_not_null') {
+        return `${filter.field}${operator}`
+      }
+      
+      let value = filter.value
+      if (value.includes(' ') || value.includes(',')) {
+        value = `"${value}"`
+      }
+      
+      return `${filter.field}${operator}${value}`
     })
 
     return conditions.join(' AND ')
