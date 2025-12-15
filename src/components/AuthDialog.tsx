@@ -29,7 +29,9 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
   const [manualAuth, setManualAuth] = useState({
     clientId: '',
     clientSecret: '',
-    authCode: ''
+    authCode: '',
+    useRedirectUri: false,
+    redirectUri: ''
   })
   const [, setStoredCredentials] = useKV<{ clientId: string; clientSecret: string } | null>('bullhorn-credentials', null)
 
@@ -66,10 +68,15 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
     setLoading(true)
 
     try {
+      const redirectUri = manualAuth.useRedirectUri && manualAuth.redirectUri 
+        ? manualAuth.redirectUri 
+        : undefined
+        
       const tokenData = await bullhornAPI.exchangeCodeForToken(
         manualAuth.authCode,
         manualAuth.clientId,
-        manualAuth.clientSecret
+        manualAuth.clientSecret,
+        redirectUri
       )
       const session = await bullhornAPI.login(tokenData.accessToken)
       session.refreshToken = tokenData.refreshToken
@@ -83,7 +90,13 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
       toast.success('Successfully authenticated with Bullhorn')
       onAuthenticated(session)
       onOpenChange(false)
-      setManualAuth({ clientId: '', clientSecret: '', authCode: '' })
+      setManualAuth({ 
+        clientId: '', 
+        clientSecret: '', 
+        authCode: '', 
+        useRedirectUri: false, 
+        redirectUri: '' 
+      })
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Authentication failed')
     } finally {
@@ -93,8 +106,12 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
 
   const getAuthUrl = () => {
     const state = Math.random().toString(36).substring(7)
-    const redirectUri = `${window.location.origin}/oauth-callback`
-    return bullhornAPI.getAuthorizationUrl(manualAuth.clientId || 'YOUR_CLIENT_ID', redirectUri, state)
+    const clientId = manualAuth.clientId || 'YOUR_CLIENT_ID'
+    const redirectUri = manualAuth.useRedirectUri && manualAuth.redirectUri 
+      ? manualAuth.redirectUri 
+      : undefined
+    
+    return bullhornAPI.getAuthorizationUrl(clientId, redirectUri, state)
   }
 
   const copyAuthUrl = () => {
@@ -190,8 +207,13 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
           <TabsContent value="code" className="space-y-4">
             <Alert>
               <Info className="h-4 w-4" />
-              <AlertDescription>
-                Get an authorization code from Bullhorn OAuth, then paste it here along with your client credentials.
+              <AlertDescription className="space-y-2">
+                <p className="font-medium">Manual OAuth Authorization</p>
+                <p className="text-xs">
+                  This method generates a Bullhorn OAuth URL that you visit to get an authorization code. 
+                  If you're seeing a "Invalid Redirect URI" error, make sure the redirect URI setting below 
+                  matches your Bullhorn OAuth app configuration.
+                </p>
               </AlertDescription>
             </Alert>
 
@@ -205,8 +227,11 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
                   onChange={(e) => setManualAuth({ ...manualAuth, clientId: e.target.value })}
                   required
                   disabled={loading}
-                  placeholder="Your Bullhorn OAuth Client ID"
+                  placeholder="a6a33789-1490-4888-994e-345f22808e41"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Your Bullhorn OAuth Client ID
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="manual-clientSecret">Client Secret</Label>
@@ -219,6 +244,43 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
                   disabled={loading}
                   placeholder="Your Bullhorn OAuth Client Secret"
                 />
+              </div>
+
+              <div className="space-y-3 p-4 bg-muted/50 rounded-lg border border-border">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Redirect URI Configuration</Label>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="useRedirectUri" className="text-xs text-muted-foreground cursor-pointer">
+                      Use Redirect URI
+                    </Label>
+                    <input
+                      id="useRedirectUri"
+                      type="checkbox"
+                      checked={manualAuth.useRedirectUri}
+                      onChange={(e) => setManualAuth({ ...manualAuth, useRedirectUri: e.target.checked })}
+                      className="cursor-pointer"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <strong>Important:</strong> Only enable this if your Bullhorn OAuth app has a redirect URI configured. 
+                  If you're getting "Invalid Redirect URI: null" errors, leave this <strong>unchecked</strong>.
+                </p>
+                {manualAuth.useRedirectUri && (
+                  <div className="space-y-1">
+                    <Input
+                      id="redirectUri"
+                      type="text"
+                      value={manualAuth.redirectUri}
+                      onChange={(e) => setManualAuth({ ...manualAuth, redirectUri: e.target.value })}
+                      placeholder="https://your-domain.com/oauth-callback"
+                      className="mt-2"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      This must exactly match the redirect URI configured in your Bullhorn OAuth app
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2 p-3 bg-muted rounded-lg">
@@ -265,7 +327,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
                   placeholder="Paste the authorization code from the redirect URL"
                 />
                 <p className="text-xs text-muted-foreground">
-                  After authorizing, copy the 'code' parameter from the redirect URL
+                  After authorizing, copy the 'code' parameter from the redirect URL or browser address bar
                 </p>
               </div>
 

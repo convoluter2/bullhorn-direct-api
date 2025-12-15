@@ -7,13 +7,17 @@ const BULLHORN_ATS_URL = 'https://cls43.bullhornstaffing.com'
 export class BullhornAPI {
   private session: BullhornSession | null = null
 
-  getAuthorizationUrl(clientId: string, redirectUri: string, state: string): string {
+  getAuthorizationUrl(clientId: string, redirectUri: string | undefined, state: string): string {
     const params = new URLSearchParams({
       client_id: clientId,
       response_type: 'code',
-      redirect_uri: redirectUri,
       state: state
     })
+    
+    if (redirectUri) {
+      params.append('redirect_uri', redirectUri)
+    }
+    
     return `${BULLHORN_AUTH_URL}/authorize?${params.toString()}`
   }
 
@@ -173,7 +177,7 @@ export class BullhornAPI {
       return codeMatch[1]
     }
 
-    throw new Error('No authorization code received. Please check your credentials.')
+    throw new Error('No authorization code received. Please check your credentials or use the Authorization Code tab to authenticate manually.')
   }
 
   setSession(session: BullhornSession) {
