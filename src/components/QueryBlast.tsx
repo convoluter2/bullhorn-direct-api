@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { MagnifyingGlass, Plus, Trash, Lightning, DownloadSimple, X } from '@phosphor-icons/react'
+import { MagnifyingGlass, Plus, Trash, Lightning, DownloadSimple, X, CaretLeft, CaretRight, ArrowsClockwise } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { BULLHORN_ENTITIES, getEntityFields } from '@/lib/entities'
@@ -26,6 +26,10 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
   const [loading, setLoading] = useState(false)
   const [count, setCount] = useState(500)
   const [orderBy, setOrderBy] = useState('')
+  const [totalCount, setTotalCount] = useState<number>(0)
+  const [currentStart, setCurrentStart] = useState(0)
+  const [allResults, setAllResults] = useState<any[]>([])
+  const [loadingAll, setLoadingAll] = useState(false)
 
   const availableFields = entity ? getEntityFields(entity) : []
 
@@ -51,7 +55,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
     }
   }
 
-  const executeQuery = async () => {
+  const executeQuery = async (start = 0) => {
     if (!entity) {
       toast.error('Please select an entity')
       return
@@ -71,20 +75,23 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
         fields: selectedFields,
         filters: filters.filter(f => f.field && f.value),
         count,
+        start,
         orderBy: orderBy && orderBy !== '__none__' ? orderBy : undefined
       }
 
       const result = await bullhornAPI.search(config)
       setResults(result.data)
+      setTotalCount(result.total)
+      setCurrentStart(start)
       
       const duration = Date.now() - startTime
-      toast.success(`Query completed: ${result.data.length} records in ${duration}ms`)
+      toast.success(`Query completed: ${result.data.length} of ${result.total} records in ${duration}ms`)
       
       onLog(
         'QueryBlast',
         'success',
-        `Queried ${entity}: ${result.data.length} records`,
-        { entity, fields: selectedFields, filters, count: result.data.length }
+        `Queried ${entity}: ${result.data.length} of ${result.total} records`,
+        { entity, fields: selectedFields, filters, count: result.data.length, total: result.total }
       )
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Query failed'
@@ -95,24 +102,96 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
     }
   }
 
+  const loadAllResults = async () => {
+    if (!entity || selectedFields.length === 0) {
+      toast.error('Please execute a query first')
+      return
+    }
+
+    if (totalCount === 0) {
+      toast.error('No results to load')
+      return
+    }
+
+    const confirmLoad = confirm(`This will fetch all ${totalCount} records. This may take some time. Continue?`)
+    if (!confirmLoad) return
+
+    setLoadingAll(true)
+    const startTime = Date.now()
+    const batchSize = 500
+    const allData: any[] = []
+
+    try {
+      const totalBatches = Math.ceil(totalCount / batchSize)
+      
+      for (let i = 0; i < totalBatches; i++) {
+        const start = i * batchSize
+        const config: QueryConfig = {
+          entity,
+          fields: selectedFields,
+          filters: filters.filter(f => f.field && f.value),
+          count: batchSize,
+          start,
+          orderBy: orderBy && orderBy !== '__none__' ? orderBy : undefined
+        }
+
+        const result = await bullhornAPI.search(config)
+        allData.push(...result.data)
+        
+        toast.loading(`Loading batch ${i + 1} of ${totalBatches}...`, { id: 'batch-load' })
+      }
+
+      setAllResults(allData)
+      const duration = Date.now() - startTime
+      toast.success(`Loaded all ${allData.length} records in ${duration}ms`, { id: 'batch-load' })
+      
+      onLog(
+        'QueryBlast - Load All',
+        'success',
+        `Loaded all ${allData.length} records`,
+        { entity, total: allData.length }
+      )
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load all results'
+      toast.error(errorMessage, { id: 'batch-load' })
+      onLog('QueryBlast - Load All', 'error', errorMessage, { entity })
+    } finally {
+      setLoadingAll(false)
+    }
+  }
+
+  const handlePrevPage = () => {
+    const newStart = Math.max(0, currentStart - count)
+    executeQuery(newStart)
+  }
+
+  const handleNextPage = () => {
+    const newStart = currentStart + count
+    if (newStart < totalCount) {
+      executeQuery(newStart)
+    }
+  }
+
   const handleExportCSV = () => {
-    if (results.length === 0) {
+    const dataToExport = allResults.length > 0 ? allResults : results
+    if (dataToExport.length === 0) {
       toast.error('No results to export')
       return
     }
-    exportToCSV(results, `${entity}_export_${Date.now()}.csv`)
-    toast.success('Exported to CSV')
-    onLog('Export', 'success', `Exported ${results.length} records to CSV`, { entity, count: results.length })
+    exportToCSV(dataToExport, `${entity}_export_${Date.now()}.csv`)
+    toast.success(`Exported ${dataToExport.length} records to CSV`)
+    onLog('Export', 'success', `Exported ${dataToExport.length} records to CSV`, { entity, count: dataToExport.length })
   }
 
   const handleExportJSON = () => {
-    if (results.length === 0) {
+    const dataToExport = allResults.length > 0 ? allResults : results
+    if (dataToExport.length === 0) {
       toast.error('No results to export')
       return
     }
-    exportToJSON(results, `${entity}_export_${Date.now()}.json`)
-    toast.success('Exported to JSON')
-    onLog('Export', 'success', `Exported ${results.length} records to JSON`, { entity, count: results.length })
+    exportToJSON(dataToExport, `${entity}_export_${Date.now()}.json`)
+    toast.success(`Exported ${dataToExport.length} records to JSON`)
+    onLog('Export', 'success', `Exported ${dataToExport.length} records to JSON`, { entity, count: dataToExport.length })
   }
 
   return (
@@ -255,7 +334,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
               </div>
 
               <div className="flex gap-2 pt-2">
-                <Button onClick={executeQuery} disabled={loading || selectedFields.length === 0} className="flex-1">
+                <Button onClick={() => executeQuery(0)} disabled={loading || selectedFields.length === 0} className="flex-1">
                   <Lightning />
                   {loading ? 'Executing...' : 'Execute Query'}
                 </Button>
@@ -268,24 +347,73 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
       {results.length > 0 && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Results</CardTitle>
-                <CardDescription>{results.length} records found</CardDescription>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Results</CardTitle>
+                  <CardDescription>
+                    Showing {currentStart + 1}-{Math.min(currentStart + results.length, totalCount)} of {totalCount} records
+                    {allResults.length > 0 && (
+                      <Badge variant="secondary" className="ml-2">
+                        {allResults.length} records loaded for export
+                      </Badge>
+                    )}
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={loadAllResults}
+                    disabled={loadingAll || allResults.length === totalCount}
+                  >
+                    <ArrowsClockwise className={loadingAll ? 'animate-spin' : ''} />
+                    {loadingAll ? 'Loading...' : 'Load All'}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handleExportCSV}>
+                    <DownloadSimple />
+                    Export CSV {allResults.length > 0 && `(${allResults.length})`}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handleExportJSON}>
+                    <DownloadSimple />
+                    Export JSON {allResults.length > 0 && `(${allResults.length})`}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => {
+                    setResults([])
+                    setAllResults([])
+                    setTotalCount(0)
+                    setCurrentStart(0)
+                  }}>
+                    <X />
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={handleExportCSV}>
-                  <DownloadSimple />
-                  Export CSV
-                </Button>
-                <Button size="sm" variant="outline" onClick={handleExportJSON}>
-                  <DownloadSimple />
-                  Export JSON
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setResults([])}>
-                  <X />
-                </Button>
-              </div>
+
+              {totalCount > count && (
+                <div className="flex items-center justify-between border-t pt-4">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handlePrevPage}
+                    disabled={loading || currentStart === 0}
+                  >
+                    <CaretLeft />
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Page {Math.floor(currentStart / count) + 1} of {Math.ceil(totalCount / count)}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleNextPage}
+                    disabled={loading || currentStart + count >= totalCount}
+                  >
+                    Next
+                    <CaretRight />
+                  </Button>
+                </div>
+              )}
             </div>
           </CardHeader>
           <CardContent>
