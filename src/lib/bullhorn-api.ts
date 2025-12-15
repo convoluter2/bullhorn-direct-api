@@ -1,7 +1,8 @@
 import type { BullhornCredentials, BullhornSession, QueryConfig, QueryResult } from './types'
 
-const BULLHORN_AUTH_URL = 'https://auth.bullhornstaffing.com/oauth'
+const BULLHORN_AUTH_URL = 'https://auth-east.bullhornstaffing.com/oauth'
 const BULLHORN_LOGIN_URL = 'https://rest.bullhornstaffing.com/rest-services/login'
+const BULLHORN_ATS_URL = 'https://cls43.bullhornstaffing.com'
 
 export class BullhornAPI {
   private session: BullhornSession | null = null
