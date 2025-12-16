@@ -208,7 +208,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Entity Type</Label>
-              <Select value={entity} onValueChange={setEntity}>
+              <Select value={entity || undefined} onValueChange={setEntity}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select entity" />
                 </SelectTrigger>
@@ -265,7 +265,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                     <div key={index} className="flex gap-2 items-end">
                       <div className="flex-1 space-y-1">
                         <Label className="text-xs">Field</Label>
-                        <Select value={filter.field} onValueChange={(v) => updateFilter(index, 'field', v)}>
+                        <Select value={filter.field || undefined} onValueChange={(v) => updateFilter(index, 'field', v)}>
                           <SelectTrigger>
                             <SelectValue placeholder="Field" />
                           </SelectTrigger>
@@ -318,7 +318,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
 
               <div className="space-y-2">
                 <Label>Order By (optional)</Label>
-                <Select value={orderBy} onValueChange={setOrderBy}>
+                <Select value={orderBy || undefined} onValueChange={setOrderBy}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select field" />
                   </SelectTrigger>

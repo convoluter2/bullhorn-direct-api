@@ -101,7 +101,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       return
     }
 
-    if (lookupField && !validMappings.find(m => m.bullhornField === lookupField)) {
+    if (lookupField && lookupField !== '__none__' && !validMappings.find(m => m.bullhornField === lookupField)) {
       toast.error('Lookup field must be included in the field mappings')
       return
     }
@@ -135,7 +135,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
             const transformedValue = transformValue(rawValue, mapping.transform)
             data[mapping.bullhornField] = transformedValue
 
-            if (lookupField && mapping.bullhornField === lookupField) {
+            if (lookupField && lookupField !== '__none__' && mapping.bullhornField === lookupField) {
               lookupValue = transformedValue
             }
           }
@@ -143,7 +143,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
 
         let existingRecord: any = null
 
-        if (lookupField && lookupValue) {
+        if (lookupField && lookupField !== '__none__' && lookupValue) {
           try {
             const searchResult = await bullhornAPI.search({
               entity,
@@ -250,7 +250,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Entity Type</Label>
-              <Select value={entity} onValueChange={setEntity}>
+              <Select value={entity || undefined} onValueChange={setEntity}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select entity" />
                 </SelectTrigger>
@@ -284,12 +284,12 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                     <MagnifyingGlass size={16} />
                     Lookup Field (for updates)
                   </Label>
-                  <Select value={lookupField} onValueChange={setLookupField}>
+                  <Select value={lookupField || undefined} onValueChange={setLookupField}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a field to lookup existing records" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None (Create only)</SelectItem>
+                      <SelectItem value="__none__">None (Create only)</SelectItem>
                       {availableFields.map((field) => (
                         <SelectItem key={field} value={field}>
                           {field}
@@ -311,7 +311,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                     <Switch
                       checked={updateExisting}
                       onCheckedChange={setUpdateExisting}
-                      disabled={!lookupField}
+                      disabled={!lookupField || lookupField === '__none__'}
                     />
                   </div>
 
@@ -419,7 +419,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                   className="flex-1"
                 >
                   <Lightning />
-                  {loading ? 'Importing...' : lookupField ? 'Start Import/Update' : 'Start Import'}
+                  {loading ? 'Importing...' : (lookupField && lookupField !== '__none__') ? 'Start Import/Update' : 'Start Import'}
                 </Button>
               </div>
 

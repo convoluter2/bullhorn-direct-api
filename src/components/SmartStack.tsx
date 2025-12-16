@@ -252,7 +252,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
                         <div className="space-y-1">
                           <Label className="text-xs">Entity</Label>
                           <Select
-                            value={op.entity}
+                            value={op.entity || undefined}
                             onValueChange={(v) => updateOperation(op.id, { entity: v })}
                             disabled={loading || op.status !== 'pending'}
                           >
