@@ -217,7 +217,7 @@ export class BullhornAPI {
     }
 
     const response = await fetch(
-      `${this.session.restUrl}search/${config.entity}?${params}`
+      `${this.session.restUrl}search/${config.entity}?${params.toString()}`
     )
 
     if (!response.ok) {
@@ -294,7 +294,7 @@ export class BullhornAPI {
     }
 
     const response = await fetch(
-      `${this.session.restUrl}query/${entity}?${queryParams}`
+      `${this.session.restUrl}query/${entity}?${queryParams.toString()}`
     )
 
     if (!response.ok) {
@@ -316,7 +316,7 @@ export class BullhornAPI {
     })
 
     const response = await fetch(
-      `${this.session.restUrl}entity/${entity}/${id}?${params}`
+      `${this.session.restUrl}entity/${entity}/${id}?${params.toString()}`
     )
 
     if (!response.ok) {
@@ -337,7 +337,7 @@ export class BullhornAPI {
     })
 
     const response = await fetch(
-      `${this.session.restUrl}entity/${entity}?${params}`,
+      `${this.session.restUrl}entity/${entity}?${params.toString()}`,
       {
         method: 'PUT',
         headers: {
@@ -365,7 +365,7 @@ export class BullhornAPI {
     })
 
     const response = await fetch(
-      `${this.session.restUrl}entity/${entity}/${id}?${params}`,
+      `${this.session.restUrl}entity/${entity}/${id}?${params.toString()}`,
       {
         method: 'POST',
         headers: {
@@ -393,7 +393,7 @@ export class BullhornAPI {
     })
 
     const response = await fetch(
-      `${this.session.restUrl}entity/${entity}/${id}?${params}`,
+      `${this.session.restUrl}entity/${entity}/${id}?${params.toString()}`,
       {
         method: 'DELETE'
       }
@@ -414,11 +414,12 @@ export class BullhornAPI {
 
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken,
+      meta: 'full',
       fields: '*'
     })
 
     const response = await fetch(
-      `${this.session.restUrl}meta/${entity}?${params}`
+      `${this.session.restUrl}meta/${entity}?${params.toString()}`
     )
 
     if (!response.ok) {
@@ -428,11 +429,35 @@ export class BullhornAPI {
 
     const data = await response.json()
     
-    if (data && typeof data === 'object' && data[entity]) {
-      return data[entity]
+    return data
+  }
+
+  async getFieldOptions(entity: string, field: string): Promise<any[]> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const params = new URLSearchParams({
+      BhRestToken: this.session.BhRestToken,
+      count: '500'
+    })
+
+    const response = await fetch(
+      `${this.session.restUrl}options/${entity}/${field}?${params.toString()}`
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Get field options failed: ${error}`)
+    }
+
+    const data = await response.json()
+    
+    if (Array.isArray(data.data)) {
+      return data.data
     }
     
-    return data
+    return []
   }
 
   async getAllEntities(): Promise<string[]> {
@@ -445,7 +470,7 @@ export class BullhornAPI {
     })
 
     const response = await fetch(
-      `${this.session.restUrl}options/allEntities?${params}`
+      `${this.session.restUrl}options/allEntities?${params.toString()}`
     )
 
     if (!response.ok) {
@@ -455,12 +480,8 @@ export class BullhornAPI {
 
     const data = await response.json()
     
-    console.log('All entities response:', data)
-    
     if (Array.isArray(data.data)) {
-      const entities = data.data.sort()
-      console.log('Parsed entities:', entities)
-      return entities
+      return data.data.sort()
     }
     
     return []
