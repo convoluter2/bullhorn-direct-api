@@ -236,26 +236,54 @@ export class BullhornAPI {
   }
 
   private buildQuery(config: QueryConfig): string {
+    if (config.filterGroups && config.filterGroups.length > 0) {
+      const groupConditions = config.filterGroups
+        .filter(group => group.filters.length > 0)
+        .map(group => {
+          const groupFilters = group.filters
+            .filter(f => f.field && (f.value || f.operator === 'is_null' || f.operator === 'is_not_null'))
+            .map(filter => this.buildFilterCondition(filter))
+          
+          if (groupFilters.length === 0) return ''
+          if (groupFilters.length === 1) return groupFilters[0]
+          
+          return `(${groupFilters.join(` ${group.logic} `)})`
+        })
+        .filter(condition => condition !== '')
+
+      if (groupConditions.length === 0) return '*'
+      if (groupConditions.length === 1) return groupConditions[0]
+      
+      const groupLogic = config.groupLogic || 'AND'
+      return groupConditions.join(` ${groupLogic} `)
+    }
+
     if (config.filters.length === 0) {
       return '*'
     }
 
-    const conditions = config.filters.map(filter => {
-      const operator = this.mapOperator(filter.operator)
-      
-      if (filter.operator === 'is_null' || filter.operator === 'is_not_null') {
-        return `${filter.field}${operator}`
-      }
-      
-      let value = filter.value
-      if (value.includes(' ') || value.includes(',')) {
-        value = `"${value}"`
-      }
-      
-      return `${filter.field}${operator}${value}`
-    })
+    const conditions = config.filters
+      .filter(f => f.field && (f.value || f.operator === 'is_null' || f.operator === 'is_not_null'))
+      .map(filter => this.buildFilterCondition(filter))
 
+    if (conditions.length === 0) return '*'
+    
     return conditions.join(' AND ')
+  }
+
+  private buildFilterCondition(filter: any): string {
+    const operator = this.mapOperator(filter.operator)
+    
+    if (filter.operator === 'is_null' || filter.operator === 'is_not_null') {
+      return `${filter.field}${operator}`
+    }
+    
+    let value = filter.value
+    if (value.includes(' ') || value.includes(',')) {
+      value = `"${value}"`
+    }
+    
+    return `${filter.field}${operator}${value}`
   }
 
   private mapOperator(operator: string): string {

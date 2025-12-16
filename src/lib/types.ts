@@ -29,10 +29,18 @@ export interface QueryFilter {
   value: string
 }
 
+export interface FilterGroup {
+  id: string
+  logic: 'AND' | 'OR'
+  filters: QueryFilter[]
+}
+
 export interface QueryConfig {
   entity: string
   fields: string[]
   filters: QueryFilter[]
+  filterGroups?: FilterGroup[]
+  groupLogic?: 'AND' | 'OR'
   orderBy?: string
   count?: number
   start?: number

@@ -23,11 +23,13 @@ This is a sophisticated enterprise data management tool with multiple modules (Q
 - **Success criteria**: Valid BhRestToken obtained and stored, refresh token maintained, automatic token refresh works, API calls authenticated successfully, OAuth callback auto-detected and processed
 
 ### QueryBlast (Advanced Search)
-- **Functionality**: Build and execute complex queries against Bullhorn entities with field selection
-- **Purpose**: Power users need flexible data retrieval beyond standard UI search
+- **Functionality**: Build and execute complex queries against Bullhorn entities with field selection, supporting both simple filters and advanced grouped filters with AND/OR logic
+- **Purpose**: Power users need flexible data retrieval beyond standard UI search, including complex logical combinations
 - **Trigger**: User selects entity type, adds filters, and clicks Execute
-- **Progression**: Select entity → Choose fields → Add filters/conditions → Set parameters → Execute → Display results table → Export option
-- **Success criteria**: Query returns accurate data, supports pagination, handles errors gracefully
+- **Progression**: 
+  - **Simple Mode**: Select entity → Choose fields → Add filters (combined with AND) → Set parameters → Execute → Display results table → Export option
+  - **Grouped Mode**: Select entity → Choose fields → Create filter groups → Add filters to groups with AND/OR logic → Configure between-group logic (AND/OR) → Set parameters → Execute → Display results table → Export option
+- **Success criteria**: Query returns accurate data, supports pagination, handles errors gracefully, grouped filters generate correct query syntax with proper logical operators
 
 ### CSV Data Loader
 - **Functionality**: Bulk import records via CSV with field mapping and validation
@@ -141,6 +143,10 @@ Animations should emphasize state changes and provide feedback without delaying 
   - DownloadSimple for exports
   - Lightning for execute/run
   - Gear for settings
+  - ListBullets for simple filter mode
+  - TreeStructure for grouped filter mode
+  - Unite for OR logic
+  - Intersect for AND logic
 - **Spacing**: 
   - Section padding: p-6
   - Card padding: p-4

@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
-import { MagnifyingGlass, Plus, Trash, Lightning, DownloadSimple, X, CaretLeft, CaretRight, ArrowsClockwise } from '@phosphor-icons/react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { MagnifyingGlass, Plus, Trash, Lightning, DownloadSimple, X, CaretLeft, CaretRight, ArrowsClockwise, ListBullets, TreeStructure } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
@@ -17,7 +18,8 @@ import { useEntities } from '@/hooks/use-entities'
 import { FieldSelector } from '@/components/FieldSelector'
 import { SmartFieldInput } from '@/components/SmartFieldInput'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
-import type { QueryFilter, QueryConfig } from '@/lib/types'
+import { FilterGroupBuilder } from '@/components/FilterGroupBuilder'
+import type { QueryFilter, QueryConfig, FilterGroup } from '@/lib/types'
 
 interface QueryBlastProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -27,6 +29,9 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
   const [entity, setEntity] = useState('')
   const [selectedFields, setSelectedFields] = useState<string[]>([])
   const [filters, setFilters] = useState<QueryFilter[]>([])
+  const [filterGroups, setFilterGroups] = useState<FilterGroup[]>([])
+  const [groupLogic, setGroupLogic] = useState<'AND' | 'OR'>('AND')
+  const [filterMode, setFilterMode] = useState<'simple' | 'grouped'>('simple')
   const [results, setResults] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [count, setCount] = useState(500)
@@ -83,7 +88,9 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
       const config: QueryConfig = {
         entity,
         fields: selectedFields,
-        filters: filters.filter(f => f.field && f.value),
+        filters: filterMode === 'simple' ? filters.filter(f => f.field && f.value) : [],
+        filterGroups: filterMode === 'grouped' ? filterGroups : undefined,
+        groupLogic: filterMode === 'grouped' ? groupLogic : undefined,
         count,
         start,
         orderBy: orderBy && orderBy !== '__none__' ? orderBy : undefined
@@ -101,7 +108,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
         'QueryBlast',
         'success',
         `Queried ${entity}: ${result.data.length} of ${result.total} records`,
-        { entity, fields: selectedFields, filters, count: result.data.length, total: result.total }
+        { entity, fields: selectedFields, filterMode, filters: filterMode === 'simple' ? filters : filterGroups, count: result.data.length, total: result.total }
       )
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Query failed'
@@ -139,7 +146,9 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
         const config: QueryConfig = {
           entity,
           fields: selectedFields,
-          filters: filters.filter(f => f.field && f.value),
+          filters: filterMode === 'simple' ? filters.filter(f => f.field && f.value) : [],
+          filterGroups: filterMode === 'grouped' ? filterGroups : undefined,
+          groupLogic: filterMode === 'grouped' ? groupLogic : undefined,
           count: batchSize,
           start,
           orderBy: orderBy && orderBy !== '__none__' ? orderBy : undefined
@@ -309,70 +318,99 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                     onToggleField={toggleField}
                   />
 
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <Label>Filters</Label>
-                      <Button size="sm" variant="outline" onClick={addFilter}>
-                        <Plus size={16} />
-                        Add Filter
-                      </Button>
+                      <Label className="text-base">Filters</Label>
+                      <Tabs value={filterMode} onValueChange={(v) => setFilterMode(v as 'simple' | 'grouped')} className="w-auto">
+                        <TabsList className="h-8">
+                          <TabsTrigger value="simple" className="gap-1.5 text-xs px-3">
+                            <ListBullets size={14} />
+                            Simple
+                          </TabsTrigger>
+                          <TabsTrigger value="grouped" className="gap-1.5 text-xs px-3">
+                            <TreeStructure size={14} />
+                            Grouped
+                          </TabsTrigger>
+                        </TabsList>
+                      </Tabs>
                     </div>
-                    <div className="space-y-2">
-                      {filters.map((filter, index) => (
-                        <div key={index} className="flex gap-2 items-end">
-                          <div className="flex-1 space-y-1">
-                            <Label className="text-xs">Field</Label>
-                            <Select value={filter.field || undefined} onValueChange={(v) => updateFilter(index, 'field', v)}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Field" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableFields.map((field) => (
-                                  <SelectItem key={field.name} value={field.name}>
-                                    {field.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="w-32 space-y-1">
-                            <Label className="text-xs">Operator</Label>
-                            <Select value={filter.operator} onValueChange={(v) => updateFilter(index, 'operator', v)}>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="equals">Equals</SelectItem>
-                                <SelectItem value="not_equals">Not Equals</SelectItem>
-                                <SelectItem value="contains">Contains</SelectItem>
-                                <SelectItem value="greater_than">Greater Than</SelectItem>
-                                <SelectItem value="less_than">Less Than</SelectItem>
-                                <SelectItem value="is_null">Is Null</SelectItem>
-                                <SelectItem value="is_not_null">Is Not Null</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="flex-1 space-y-1">
-                            <Label className="text-xs">Value</Label>
-                            <SmartFieldInput
-                              field={fieldsMap[filter.field] || null}
-                              value={filter.value}
-                              onChange={(v) => updateFilter(index, 'value', v)}
-                              disabled={filter.operator === 'is_null' || filter.operator === 'is_not_null'}
-                              placeholder="Value"
-                            />
-                          </div>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => removeFilter(index)}
-                            className="text-destructive"
-                          >
-                            <Trash size={18} />
+
+                    {filterMode === 'simple' ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">All filters combined with AND</p>
+                          <Button size="sm" variant="outline" onClick={addFilter}>
+                            <Plus size={16} />
+                            Add Filter
                           </Button>
                         </div>
-                      ))}
-                    </div>
+                        <div className="space-y-2">
+                          {filters.map((filter, index) => (
+                            <div key={index} className="flex gap-2 items-end">
+                              <div className="flex-1 space-y-1">
+                                <Label className="text-xs">Field</Label>
+                                <Select value={filter.field || undefined} onValueChange={(v) => updateFilter(index, 'field', v)}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Field" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {availableFields.map((field) => (
+                                      <SelectItem key={field.name} value={field.name}>
+                                        {field.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="w-32 space-y-1">
+                                <Label className="text-xs">Operator</Label>
+                                <Select value={filter.operator} onValueChange={(v) => updateFilter(index, 'operator', v)}>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="equals">Equals</SelectItem>
+                                    <SelectItem value="not_equals">Not Equals</SelectItem>
+                                    <SelectItem value="contains">Contains</SelectItem>
+                                    <SelectItem value="greater_than">Greater Than</SelectItem>
+                                    <SelectItem value="less_than">Less Than</SelectItem>
+                                    <SelectItem value="is_null">Is Null</SelectItem>
+                                    <SelectItem value="is_not_null">Is Not Null</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex-1 space-y-1">
+                                <Label className="text-xs">Value</Label>
+                                <SmartFieldInput
+                                  field={fieldsMap[filter.field] || null}
+                                  value={filter.value}
+                                  onChange={(v) => updateFilter(index, 'value', v)}
+                                  disabled={filter.operator === 'is_null' || filter.operator === 'is_not_null'}
+                                  placeholder="Value"
+                                />
+                              </div>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => removeFilter(index)}
+                                className="text-destructive"
+                              >
+                                <Trash size={18} />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <FilterGroupBuilder
+                        groups={filterGroups}
+                        onGroupsChange={setFilterGroups}
+                        groupLogic={groupLogic}
+                        onGroupLogicChange={setGroupLogic}
+                        availableFields={availableFields}
+                        fieldsMap={fieldsMap}
+                      />
+                    )}
                   </div>
 
                   <div className="space-y-2">
