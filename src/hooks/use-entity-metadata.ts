@@ -1,19 +1,18 @@
-import { useState, useEffect, useRef } from
-import { bullhornAPI } from '@/lib/bullhorn
+import { useState, useEffect } from 'react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 
+export interface EntityField {
+  name: string
+  label: string
+  type: string
   dataType: string
-  confidential
-  optionsType?:
-  options?: Ar
-  dataType: string
-  }
-
-  entity: string
-  fields: EntityField[
-  lastUpdated: number
-
-
+  dataSpecialization?: string
+  confidential?: boolean
+  optional?: boolean
+  optionsType?: string
+  optionsUrl?: string
+  options?: Array<{ value: any; label: string }>
+  associatedEntity?: {
     entity: string
     entityMetaUrl: string
   }
@@ -29,39 +28,42 @@ export interface EntityMetadata {
 
 const CACHE_DURATION = 1000 * 60 * 60
 
+const metadataCache: Record<string, EntityMetadata> = {}
+
 export function useEntityMetadata(entity: string | undefined) {
-          loadingRef.current = false
-        }
-        const response = await bullhornAPI.getMetadata(en
-        console.log('Metadata response for', entity, ':', response)
+  const [metadata, setMetadata] = useState<EntityMetadata | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    if (!entity) {
+      setMetadata(null)
+      setLoading(false)
+      setError(null)
+      return
+    }
 
-        
-        
-          const fiel
-            
-     
+    const cached = metadataCache[entity]
+    if (cached && Date.now() - cached.lastUpdated < CACHE_DURATION) {
+      setMetadata(cached)
+      setLoading(false)
+      setError(null)
+      return
+    }
 
-            optionsType: field.options
-          }
-          if (field.
+    const loadMetadata = async () => {
+      setLoading(true)
+      setError(null)
 
-           
+      try {
+        const response = await bullhornAPI.getMetadata(entity)
 
-            fieldInfo.options = field.options.map((opt: any) => ({
-              label: opt.labe
-          }
-          fields
-        }
+        const fields: EntityField[] = []
+        const fieldsMap: Record<string, EntityField> = {}
 
-        const newMetadata: EntityMetadata = {
-        
-          fieldsMap,
-        }
-
-        setMetadataCache((curr
-          [entity]: newMetadata
-      } catch (err) {
+        if (response.fields && Array.isArray(response.fields)) {
+          for (const field of response.fields) {
+            const fieldInfo: EntityField = {
               name: field.name,
               label: field.label || field.name,
               type: field.type,
@@ -101,11 +103,7 @@ export function useEntityMetadata(entity: string | undefined) {
         }
 
         setMetadata(newMetadata)
-        
-        setMetadataCache((current) => ({
-          ...current,
-          [entity]: newMetadata
-        }))
+        metadataCache[entity] = newMetadata
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load metadata'
         setError(errorMessage)
