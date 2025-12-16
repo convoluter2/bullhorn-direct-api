@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,9 +15,10 @@ interface AuthDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onAuthenticated: (session: BullhornSession) => void
+  preselectedConnection?: SavedConnection | null
 }
 
-export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogProps) {
+export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedConnection }: AuthDialogProps) {
   const [loading, setLoading] = useState(false)
   const [showConnectionManager, setShowConnectionManager] = useState(false)
   const [manualAuth, setManualAuth] = useState({
@@ -31,6 +32,20 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
   })
   const [, setStoredCredentials] = useKV<{ clientId: string; clientSecret: string } | null>('bullhorn-credentials', null)
   const [savedConnections, setSavedConnections] = useKV<SavedConnection[]>('saved-connections', [])
+
+  useEffect(() => {
+    if (open && preselectedConnection) {
+      setManualAuth({
+        clientId: preselectedConnection.clientId,
+        clientSecret: preselectedConnection.clientSecret,
+        username: preselectedConnection.username,
+        password: preselectedConnection.password,
+        authCode: '',
+        useRedirectUri: false,
+        redirectUri: ''
+      })
+    }
+  }, [open, preselectedConnection])
   
   const currentUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : ''
 

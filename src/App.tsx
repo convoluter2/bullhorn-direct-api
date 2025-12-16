@@ -28,6 +28,7 @@ function App() {
   const [savedConnections, setSavedConnections] = useKV<SavedConnection[]>('saved-connections', [])
   const [isOAuthCallback, setIsOAuthCallback] = useState(false)
   const [currentConnectionId, setCurrentConnectionId] = useKV<string | null>('current-connection-id', null)
+  const [preselectedConnection, setPreselectedConnection] = useState<SavedConnection | null>(null)
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -168,6 +169,7 @@ function App() {
     )
     
     setConnectionManagerOpen(false)
+    setPreselectedConnection(connection)
     setAuthDialogOpen(true)
     toast.success(`Loaded connection: ${connection.name}`)
   }
@@ -344,8 +346,14 @@ function App() {
 
       <AuthDialog
         open={authDialogOpen}
-        onOpenChange={setAuthDialogOpen}
+        onOpenChange={(open) => {
+          setAuthDialogOpen(open)
+          if (!open) {
+            setPreselectedConnection(null)
+          }
+        }}
         onAuthenticated={handleAuthenticated}
+        preselectedConnection={preselectedConnection}
       />
 
       <ConnectionManager
