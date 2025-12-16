@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 
@@ -34,15 +34,25 @@ export function useEntityMetadata(entity: string | undefined) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [metadataCache, setMetadataCache] = useKV<Record<string, EntityMetadata>>('entity-metadata-cache', {})
+  const currentEntityRef = useRef<string | undefined>(undefined)
+  const loadingRef = useRef(false)
 
   useEffect(() => {
     if (!entity) {
       setMetadata(null)
       setError(null)
+      setLoading(false)
+      currentEntityRef.current = undefined
+      return
+    }
+
+    if (currentEntityRef.current === entity || loadingRef.current) {
       return
     }
 
     const loadMetadata = async () => {
+      loadingRef.current = true
+      currentEntityRef.current = entity
       setLoading(true)
       setError(null)
 
@@ -52,6 +62,7 @@ export function useEntityMetadata(entity: string | undefined) {
         if (cached && Date.now() - cached.lastUpdated < CACHE_DURATION) {
           setMetadata(cached)
           setLoading(false)
+          loadingRef.current = false
           return
         }
 
@@ -117,8 +128,10 @@ export function useEntityMetadata(entity: string | undefined) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load metadata'
         setError(errorMessage)
         setMetadata(null)
+        currentEntityRef.current = undefined
       } finally {
         setLoading(false)
+        loadingRef.current = false
       }
     }
 

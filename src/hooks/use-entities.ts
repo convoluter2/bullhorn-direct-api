@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 
@@ -15,32 +15,39 @@ export function useEntities() {
   const [error, setError] = useState<string | null>(null)
   const [entitiesCache, setEntitiesCache] = useKV<EntitiesCache | null>('entities-cache', null)
   const [triggerRefresh, setTriggerRefresh] = useState(0)
+  const loadingRef = useRef(false)
 
   useEffect(() => {
+    if (loadingRef.current) {
+      return
+    }
+
     const loadEntities = async () => {
+      loadingRef.current = true
       setLoading(true)
       setError(null)
 
       try {
-        const currentCache = entitiesCache
         const session = bullhornAPI.getSession()
         
         console.log('=== Entity Loading Debug ===')
         console.log('Has session:', !!session)
-        console.log('Current cache:', currentCache)
+        console.log('Current cache:', entitiesCache)
         console.log('Trigger refresh:', triggerRefresh)
         
         if (!session) {
           console.warn('No Bullhorn session available - waiting for authentication')
           setEntities([])
           setLoading(false)
+          loadingRef.current = false
           return
         }
 
-        if (triggerRefresh === 0 && currentCache && currentCache.entities && currentCache.entities.length > 0 && Date.now() - currentCache.lastUpdated < CACHE_DURATION) {
-          console.log('Using cached entities:', currentCache.entities.length, 'entities')
-          setEntities(currentCache.entities)
+        if (triggerRefresh === 0 && entitiesCache && entitiesCache.entities && entitiesCache.entities.length > 0 && Date.now() - entitiesCache.lastUpdated < CACHE_DURATION) {
+          console.log('Using cached entities:', entitiesCache.entities.length, 'entities')
+          setEntities(entitiesCache.entities)
           setLoading(false)
+          loadingRef.current = false
           return
         }
 
@@ -66,6 +73,7 @@ export function useEntities() {
         setEntities([])
       } finally {
         setLoading(false)
+        loadingRef.current = false
       }
     }
 
@@ -74,6 +82,7 @@ export function useEntities() {
 
   const refresh = () => {
     console.log('Manually refreshing entities...')
+    loadingRef.current = false
     setTriggerRefresh(prev => prev + 1)
   }
 
