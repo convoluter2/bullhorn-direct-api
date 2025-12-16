@@ -4,12 +4,13 @@ import { Toaster } from '@/components/ui/sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
 import { CSVLoader } from '@/components/CSVLoader'
 import { SmartStack } from '@/components/SmartStack'
+import { QueryStack } from '@/components/QueryStack'
 import { AuditLogs } from '@/components/AuditLogs'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { toast } from 'sonner'
@@ -170,7 +171,7 @@ function App() {
             <h2 className="text-3xl font-bold mb-3">Welcome to Bullhorn Data Manager</h2>
             <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
               Connect to your Bullhorn instance to access QueryBlast, CSV Loader, SmartStack v2, 
-              and comprehensive audit logging features.
+              QueryStack, and comprehensive audit logging features.
             </p>
             <Button size="lg" onClick={() => setAuthDialogOpen(true)}>
               <Database />
@@ -179,7 +180,7 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -191,6 +192,10 @@ function App() {
               <TabsTrigger value="smartstack" className="gap-2">
                 <Stack size={18} />
                 <span className="hidden sm:inline">SmartStack</span>
+              </TabsTrigger>
+              <TabsTrigger value="querystack" className="gap-2">
+                <ChartLineUp size={18} />
+                <span className="hidden sm:inline">QueryStack</span>
               </TabsTrigger>
               <TabsTrigger value="logs" className="gap-2">
                 <ClockCounterClockwise size={18} />
@@ -213,6 +218,10 @@ function App() {
 
             <TabsContent value="smartstack" className="space-y-6">
               <SmartStack onLog={addLog} />
+            </TabsContent>
+
+            <TabsContent value="querystack" className="space-y-6">
+              <QueryStack onLog={addLog} />
             </TabsContent>
 
             <TabsContent value="logs" className="space-y-6">
