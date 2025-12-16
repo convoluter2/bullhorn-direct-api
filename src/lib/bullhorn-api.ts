@@ -424,4 +424,3 @@ export class BullhornAPI {
 }
 
 export const bullhornAPI = new BullhornAPI()
-          }
