@@ -488,7 +488,7 @@ export class BullhornAPI {
           BhRestToken: this.session.BhRestToken
         })
 
-        const response = await fetch(
+        let response = await fetch(
           `${this.session.restUrl}entity/${owningEntity}/${owningId}?${params.toString()}`,
           {
             method: 'POST',
@@ -501,7 +501,37 @@ export class BullhornAPI {
 
         if (!response.ok) {
           const error = await response.text()
-          errors.push({ id: owningId, error })
+          
+          try {
+            const errorData = JSON.parse(error)
+            if (errorData.errorCode === 400 && errorData.errorMessage?.includes('Operation UPDATE not allowed')) {
+              console.warn(`UPDATE not allowed on ${owningEntity}, trying PUT instead...`)
+              toast.info(`Switching to PUT operation for ${owningEntity}...`)
+              
+              response = await fetch(
+                `${this.session.restUrl}entity/${owningEntity}/${owningId}?${params.toString()}`,
+                {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify(updateData)
+                }
+              )
+              
+              if (!response.ok) {
+                const putError = await response.text()
+                errors.push({ id: owningId, error: putError })
+              } else {
+                const result = await response.json()
+                results.push({ id: owningId, result })
+              }
+            } else {
+              errors.push({ id: owningId, error })
+            }
+          } catch (parseError) {
+            errors.push({ id: owningId, error })
+          }
         } else {
           const result = await response.json()
           results.push({ id: owningId, result })
@@ -594,7 +624,7 @@ export class BullhornAPI {
           BhRestToken: this.session.BhRestToken
         })
 
-        const response = await fetch(
+        let response = await fetch(
           `${this.session.restUrl}entity/${owningEntity}/${owningId}?${params.toString()}`,
           {
             method: 'POST',
@@ -607,7 +637,37 @@ export class BullhornAPI {
 
         if (!response.ok) {
           const error = await response.text()
-          errors.push({ id: owningId, error })
+          
+          try {
+            const errorData = JSON.parse(error)
+            if (errorData.errorCode === 400 && errorData.errorMessage?.includes('Operation UPDATE not allowed')) {
+              console.warn(`UPDATE not allowed on ${owningEntity}, trying PUT instead...`)
+              toast.info(`Switching to PUT operation for ${owningEntity}...`)
+              
+              response = await fetch(
+                `${this.session.restUrl}entity/${owningEntity}/${owningId}?${params.toString()}`,
+                {
+                  method: 'PUT',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify(updateData)
+                }
+              )
+              
+              if (!response.ok) {
+                const putError = await response.text()
+                errors.push({ id: owningId, error: putError })
+              } else {
+                const result = await response.json()
+                results.push({ id: owningId, result })
+              }
+            } else {
+              errors.push({ id: owningId, error })
+            }
+          } catch (parseError) {
+            errors.push({ id: owningId, error })
+          }
         } else {
           const result = await response.json()
           results.push({ id: owningId, result })
