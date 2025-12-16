@@ -414,7 +414,7 @@ export class BullhornAPI {
 
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken,
-      meta: 'full'
+      fields: '*'
     })
 
     console.log(`Fetching metadata for entity: ${entity}`)
