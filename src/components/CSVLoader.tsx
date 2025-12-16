@@ -9,11 +9,13 @@ import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { BULLHORN_ENTITIES, getEntityFields } from '@/lib/entities'
 import { parseCSV } from '@/lib/csv-utils'
+import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import type { CSVMapping } from '@/lib/types'
 
 interface CSVLoaderProps {
@@ -31,7 +33,9 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [progress, setProgress] = useState(0)
   const [results, setResults] = useState<Array<{ row: number; status: 'success' | 'error'; message: string; action?: string }>>([])
 
-  const availableFields = entity ? getEntityFields(entity) : []
+  const { metadata, loading: metadataLoading } = useEntityMetadata(entity || undefined)
+  
+  const availableFields = metadata?.fields || []
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -284,19 +288,23 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                     <MagnifyingGlass size={16} />
                     Lookup Field (for updates)
                   </Label>
-                  <Select value={lookupField || undefined} onValueChange={setLookupField}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a field to lookup existing records" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">None (Create only)</SelectItem>
-                      {availableFields.map((field) => (
-                        <SelectItem key={field} value={field}>
-                          {field}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {metadataLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : (
+                    <Select value={lookupField || undefined} onValueChange={setLookupField}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a field to lookup existing records" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">None (Create only)</SelectItem>
+                        {availableFields.map((field) => (
+                          <SelectItem key={field.name} value={field.name}>
+                            {field.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     If specified, the loader will search for existing records using this field and update them
                   </p>
@@ -338,27 +346,31 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                       </div>
                       <div className="text-muted-foreground">→</div>
                       <div className="flex-1">
-                        <Select
-                          value={mapping.bullhornField}
-                          onValueChange={(v) => updateMapping(mapping.csvColumn, v)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Bullhorn field" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__skip__">Skip</SelectItem>
-                            {availableFields.map((field) => (
-                              <SelectItem key={field} value={field}>
-                                {field}
-                                {lookupField === field && (
-                                  <span className="ml-2 text-xs text-accent">
-                                    (Lookup)
-                                  </span>
-                                )}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {metadataLoading ? (
+                          <Skeleton className="h-10 w-full" />
+                        ) : (
+                          <Select
+                            value={mapping.bullhornField}
+                            onValueChange={(v) => updateMapping(mapping.csvColumn, v)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Bullhorn field" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__skip__">Skip</SelectItem>
+                              {availableFields.map((field) => (
+                                <SelectItem key={field.name} value={field.name}>
+                                  {field.label}
+                                  {lookupField === field.name && (
+                                    <span className="ml-2 text-xs text-accent">
+                                      (Lookup)
+                                    </span>
+                                  )}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </div>
                       <div className="w-32">
                         <Select

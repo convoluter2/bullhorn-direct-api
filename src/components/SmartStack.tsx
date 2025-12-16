@@ -8,11 +8,14 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { BULLHORN_ENTITIES } from '@/lib/entities'
 import { parseCSV } from '@/lib/csv-utils'
+import { useEntityMetadata } from '@/hooks/use-entity-metadata'
+import { SmartFieldInput } from '@/components/SmartFieldInput'
 import type { QueryFilter } from '@/lib/types'
 
 interface SmartStackProps {
@@ -39,6 +42,11 @@ export function SmartStack({ onLog }: SmartStackProps) {
     failed: 0,
     errors: []
   })
+
+  const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(selectedEntity || undefined)
+  
+  const availableFields = metadata?.fields || []
+  const fieldsMap = metadata?.fieldsMap || {}
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -347,13 +355,15 @@ export function SmartStack({ onLog }: SmartStackProps) {
                   size="sm"
                   variant="outline"
                   onClick={addFilter}
-                  disabled={loading}
+                  disabled={loading || !selectedEntity || metadataLoading}
                 >
                   <Plus size={16} />
                   Add Filter
                 </Button>
               </div>
-              {filters.length === 0 ? (
+              {metadataLoading && selectedEntity ? (
+                <Skeleton className="h-20 w-full" />
+              ) : filters.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No filters - all IDs from CSV will be updated
                 </p>
@@ -362,13 +372,22 @@ export function SmartStack({ onLog }: SmartStackProps) {
                   {filters.map((filter, index) => (
                     <Card key={index} className="p-3">
                       <div className="flex gap-2">
-                        <Input
-                          placeholder="Field name"
-                          value={filter.field}
-                          onChange={(e) => updateFilter(index, { field: e.target.value })}
+                        <Select
+                          value={filter.field || undefined}
+                          onValueChange={(v) => updateFilter(index, { field: v })}
                           disabled={loading}
-                          className="flex-1"
-                        />
+                        >
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Field name" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableFields.map((field) => (
+                              <SelectItem key={field.name} value={field.name}>
+                                {field.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <Select
                           value={filter.operator}
                           onValueChange={(v) => updateFilter(index, { operator: v })}
@@ -387,11 +406,12 @@ export function SmartStack({ onLog }: SmartStackProps) {
                             <SelectItem value="is_not_null">Is Not Null</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Input
-                          placeholder="Value"
+                        <SmartFieldInput
+                          field={fieldsMap[filter.field] || null}
                           value={filter.value}
-                          onChange={(e) => updateFilter(index, { value: e.target.value })}
+                          onChange={(v) => updateFilter(index, { value: v })}
                           disabled={loading || filter.operator === 'is_null' || filter.operator === 'is_not_null'}
+                          placeholder="Value"
                           className="flex-1"
                         />
                         <Button
@@ -419,13 +439,15 @@ export function SmartStack({ onLog }: SmartStackProps) {
                   size="sm"
                   variant="outline"
                   onClick={addFieldUpdate}
-                  disabled={loading}
+                  disabled={loading || !selectedEntity || metadataLoading}
                 >
                   <Plus size={16} />
                   Add Field
                 </Button>
               </div>
-              {fieldUpdates.length === 0 ? (
+              {metadataLoading && selectedEntity ? (
+                <Skeleton className="h-20 w-full" />
+              ) : fieldUpdates.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   Add fields to update
                 </p>
@@ -434,18 +456,28 @@ export function SmartStack({ onLog }: SmartStackProps) {
                   {fieldUpdates.map((update) => (
                     <Card key={update.id} className="p-3">
                       <div className="flex gap-2">
-                        <Input
-                          placeholder="Field name (e.g., status)"
-                          value={update.field}
-                          onChange={(e) => updateFieldUpdate(update.id, { field: e.target.value })}
+                        <Select
+                          value={update.field || undefined}
+                          onValueChange={(v) => updateFieldUpdate(update.id, { field: v })}
                           disabled={loading}
-                          className="flex-1"
-                        />
-                        <Input
-                          placeholder="New value"
+                        >
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Field name (e.g., status)" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableFields.map((field) => (
+                              <SelectItem key={field.name} value={field.name}>
+                                {field.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <SmartFieldInput
+                          field={fieldsMap[update.field] || null}
                           value={update.value}
-                          onChange={(e) => updateFieldUpdate(update.id, { value: e.target.value })}
+                          onChange={(v) => updateFieldUpdate(update.id, { value: v })}
                           disabled={loading}
+                          placeholder="New value"
                           className="flex-1"
                         />
                         <Button

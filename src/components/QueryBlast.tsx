@@ -7,11 +7,15 @@ import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Skeleton } from '@/components/ui/skeleton'
 import { MagnifyingGlass, Plus, Trash, Lightning, DownloadSimple, X, CaretLeft, CaretRight, ArrowsClockwise } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { BULLHORN_ENTITIES, getEntityFields } from '@/lib/entities'
 import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
+import { useEntityMetadata } from '@/hooks/use-entity-metadata'
+import { FieldSelector } from '@/components/FieldSelector'
+import { SmartFieldInput } from '@/components/SmartFieldInput'
 import type { QueryFilter, QueryConfig } from '@/lib/types'
 
 interface QueryBlastProps {
@@ -31,7 +35,10 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
   const [allResults, setAllResults] = useState<any[]>([])
   const [loadingAll, setLoadingAll] = useState(false)
 
-  const availableFields = entity ? getEntityFields(entity) : []
+  const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
+
+  const availableFields = metadata?.fields || []
+  const fieldsMap = metadata?.fieldsMap || {}
 
   const addFilter = () => {
     setFilters([...filters, { field: '', operator: 'equals', value: '' }])
@@ -236,109 +243,114 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
 
           {entity && (
             <>
-              <div className="space-y-2">
-                <Label>Select Fields</Label>
-                <div className="flex flex-wrap gap-2 p-3 border rounded-md bg-muted/30">
-                  {availableFields.map((field) => (
-                    <Badge
-                      key={field}
-                      variant={selectedFields.includes(field) ? 'default' : 'outline'}
-                      className="cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
-                      onClick={() => toggleField(field)}
-                    >
-                      {field}
-                    </Badge>
-                  ))}
+              {metadataLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-32 w-full" />
                 </div>
-              </div>
+              ) : metadataError ? (
+                <div className="text-destructive text-sm">
+                  Failed to load entity metadata: {metadataError}
+                </div>
+              ) : (
+                <>
+                  <FieldSelector
+                    fields={availableFields}
+                    selectedFields={selectedFields}
+                    onToggleField={toggleField}
+                  />
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Filters</Label>
-                  <Button size="sm" variant="outline" onClick={addFilter}>
-                    <Plus size={16} />
-                    Add Filter
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  {filters.map((filter, index) => (
-                    <div key={index} className="flex gap-2 items-end">
-                      <div className="flex-1 space-y-1">
-                        <Label className="text-xs">Field</Label>
-                        <Select value={filter.field || undefined} onValueChange={(v) => updateFilter(index, 'field', v)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Field" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableFields.map((field) => (
-                              <SelectItem key={field} value={field}>
-                                {field}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="w-32 space-y-1">
-                        <Label className="text-xs">Operator</Label>
-                        <Select value={filter.operator} onValueChange={(v) => updateFilter(index, 'operator', v)}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="equals">Equals</SelectItem>
-                            <SelectItem value="not_equals">Not Equals</SelectItem>
-                            <SelectItem value="contains">Contains</SelectItem>
-                            <SelectItem value="greater_than">Greater Than</SelectItem>
-                            <SelectItem value="less_than">Less Than</SelectItem>
-                            <SelectItem value="is_null">Is Null</SelectItem>
-                            <SelectItem value="is_not_null">Is Not Null</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <Label className="text-xs">Value</Label>
-                        <Input
-                          value={filter.value}
-                          onChange={(e) => updateFilter(index, 'value', e.target.value)}
-                          placeholder="Value"
-                        />
-                      </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => removeFilter(index)}
-                        className="text-destructive"
-                      >
-                        <Trash size={18} />
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Filters</Label>
+                      <Button size="sm" variant="outline" onClick={addFilter}>
+                        <Plus size={16} />
+                        Add Filter
                       </Button>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    <div className="space-y-2">
+                      {filters.map((filter, index) => (
+                        <div key={index} className="flex gap-2 items-end">
+                          <div className="flex-1 space-y-1">
+                            <Label className="text-xs">Field</Label>
+                            <Select value={filter.field || undefined} onValueChange={(v) => updateFilter(index, 'field', v)}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Field" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableFields.map((field) => (
+                                  <SelectItem key={field.name} value={field.name}>
+                                    {field.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="w-32 space-y-1">
+                            <Label className="text-xs">Operator</Label>
+                            <Select value={filter.operator} onValueChange={(v) => updateFilter(index, 'operator', v)}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="equals">Equals</SelectItem>
+                                <SelectItem value="not_equals">Not Equals</SelectItem>
+                                <SelectItem value="contains">Contains</SelectItem>
+                                <SelectItem value="greater_than">Greater Than</SelectItem>
+                                <SelectItem value="less_than">Less Than</SelectItem>
+                                <SelectItem value="is_null">Is Null</SelectItem>
+                                <SelectItem value="is_not_null">Is Not Null</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex-1 space-y-1">
+                            <Label className="text-xs">Value</Label>
+                            <SmartFieldInput
+                              field={fieldsMap[filter.field] || null}
+                              value={filter.value}
+                              onChange={(v) => updateFilter(index, 'value', v)}
+                              disabled={filter.operator === 'is_null' || filter.operator === 'is_not_null'}
+                              placeholder="Value"
+                            />
+                          </div>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => removeFilter(index)}
+                            className="text-destructive"
+                          >
+                            <Trash size={18} />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
-              <div className="space-y-2">
-                <Label>Order By (optional)</Label>
-                <Select value={orderBy || undefined} onValueChange={setOrderBy}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select field" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">None</SelectItem>
-                    {availableFields.map((field) => (
-                      <SelectItem key={field} value={field}>
-                        {field}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  <div className="space-y-2">
+                    <Label>Order By (optional)</Label>
+                    <Select value={orderBy || undefined} onValueChange={setOrderBy}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select field" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">None</SelectItem>
+                        {availableFields.map((field) => (
+                          <SelectItem key={field.name} value={field.name}>
+                            {field.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div className="flex gap-2 pt-2">
-                <Button onClick={() => executeQuery(0)} disabled={loading || selectedFields.length === 0} className="flex-1">
-                  <Lightning />
-                  {loading ? 'Executing...' : 'Execute Query'}
-                </Button>
-              </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button onClick={() => executeQuery(0)} disabled={loading || selectedFields.length === 0} className="flex-1">
+                      <Lightning />
+                      {loading ? 'Executing...' : 'Execute Query'}
+                    </Button>
+                  </div>
+                </>
+              )}
             </>
           )}
         </CardContent>
