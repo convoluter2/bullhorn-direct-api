@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Toaster } from '@/components/ui/sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -30,6 +30,33 @@ function App() {
   const [currentConnectionId, setCurrentConnectionId] = useKV<string | null>('current-connection-id', null)
   const [preselectedConnection, setPreselectedConnection] = useState<SavedConnection | null>(null)
 
+  const addLog = useCallback((operation: string, status: 'success' | 'error', message: string, details?: any) => {
+    const newLog: AuditLog = {
+      id: `log-${Date.now()}-${Math.random()}`,
+      timestamp: Date.now(),
+      operation,
+      status,
+      message,
+      details,
+      entity: details?.entity,
+      recordCount: details?.successCount || details?.updatedCount || details?.recordCount,
+      rollbackData: details?.rollbackData
+    }
+    setLogs((currentLogs) => [newLog, ...(currentLogs || [])])
+  }, [setLogs])
+
+  const clearLogs = useCallback(() => {
+    setLogs(() => [])
+  }, [setLogs])
+
+  const updateLog = useCallback((logId: string, updates: Partial<AuditLog>) => {
+    setLogs((currentLogs) => 
+      (currentLogs || []).map(log => 
+        log.id === logId ? { ...log, ...updates } : log
+      )
+    )
+  }, [setLogs])
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const code = urlParams.get('code')
@@ -49,7 +76,7 @@ function App() {
       const now = Date.now()
       const timeUntilExpiry = session.expiresAt! - now
 
-      if (timeUntilExpiry < 60000) {
+      if (timeUntilExpiry < 60000 && timeUntilExpiry > 0) {
         try {
           const tokenData = await bullhornAPI.refreshAccessToken(
             session.refreshToken!,
@@ -72,10 +99,8 @@ function App() {
     }
 
     const interval = setInterval(checkTokenExpiry, 30000)
-    checkTokenExpiry()
-
     return () => clearInterval(interval)
-  }, [session, credentials])
+  }, [session?.expiresAt, session?.refreshToken, credentials, addLog])
 
   const handleAuthenticated = (newSession: BullhornSession) => {
     setSession(() => newSession)
@@ -111,33 +136,6 @@ function App() {
       setSession(() => null)
       setCurrentConnectionId(() => null)
     }
-  }
-
-  const addLog = (operation: string, status: 'success' | 'error', message: string, details?: any) => {
-    const newLog: AuditLog = {
-      id: `log-${Date.now()}-${Math.random()}`,
-      timestamp: Date.now(),
-      operation,
-      status,
-      message,
-      details,
-      entity: details?.entity,
-      recordCount: details?.successCount || details?.updatedCount || details?.recordCount,
-      rollbackData: details?.rollbackData
-    }
-    setLogs((currentLogs) => [newLog, ...(currentLogs || [])])
-  }
-
-  const clearLogs = () => {
-    setLogs(() => [])
-  }
-
-  const updateLog = (logId: string, updates: Partial<AuditLog>) => {
-    setLogs((currentLogs) => 
-      (currentLogs || []).map(log => 
-        log.id === logId ? { ...log, ...updates } : log
-      )
-    )
   }
 
   const handleSaveConnection = (connection: Omit<SavedConnection, 'id' | 'createdAt'>) => {
