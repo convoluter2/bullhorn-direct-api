@@ -62,6 +62,13 @@ export interface AuditLog {
   message: string
   details?: any
   recordCount?: number
+  rollbackData?: {
+    updates: Array<{
+      entityId: number
+      previousValues: Record<string, any>
+    }>
+  }
+  rolledBack?: boolean
 }
 
 export interface CSVMapping {

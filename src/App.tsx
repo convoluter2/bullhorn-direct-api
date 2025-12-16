@@ -99,13 +99,24 @@ function App() {
       operation,
       status,
       message,
-      details
+      details,
+      entity: details?.entity,
+      recordCount: details?.successCount || details?.updatedCount || details?.recordCount,
+      rollbackData: details?.rollbackData
     }
     setLogs((currentLogs) => [newLog, ...(currentLogs || [])])
   }
 
   const clearLogs = () => {
     setLogs(() => [])
+  }
+
+  const updateLog = (logId: string, updates: Partial<AuditLog>) => {
+    setLogs((currentLogs) => 
+      (currentLogs || []).map(log => 
+        log.id === logId ? { ...log, ...updates } : log
+      )
+    )
   }
 
   const currentLogs = logs || []
@@ -225,7 +236,7 @@ function App() {
             </TabsContent>
 
             <TabsContent value="logs" className="space-y-6">
-              <AuditLogs logs={currentLogs} onClearLogs={clearLogs} />
+              <AuditLogs logs={currentLogs} onClearLogs={clearLogs} onUpdateLog={updateLog} />
             </TabsContent>
           </Tabs>
         )}

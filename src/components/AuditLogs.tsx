@@ -5,19 +5,36 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { ClockCounterClockwise, DownloadSimple, MagnifyingGlass, Trash } from '@phosphor-icons/react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { ClockCounterClockwise, DownloadSimple, MagnifyingGlass, Trash, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
+import { bullhornAPI } from '@/lib/bullhorn-api'
 import type { AuditLog } from '@/lib/types'
 
 interface AuditLogsProps {
   logs: AuditLog[]
   onClearLogs: () => void
+  onUpdateLog: (logId: string, updates: Partial<AuditLog>) => void
 }
 
-export function AuditLogs({ logs, onClearLogs }: AuditLogsProps) {
+export function AuditLogs({ logs, onClearLogs, onUpdateLog }: AuditLogsProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [rollbackDialog, setRollbackDialog] = useState<{ open: boolean; log: AuditLog | null }>({
+    open: false,
+    log: null
+  })
+  const [isRollingBack, setIsRollingBack] = useState(false)
 
   const filteredLogs = logs.filter(log => {
     const matchesSearch = log.operation.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -56,6 +73,57 @@ export function AuditLogs({ logs, onClearLogs }: AuditLogsProps) {
     if (confirm('Are you sure you want to clear all logs?')) {
       onClearLogs()
       toast.success('Logs cleared')
+    }
+  }
+
+  const handleRollbackClick = (log: AuditLog) => {
+    setRollbackDialog({ open: true, log })
+  }
+
+  const handleRollbackConfirm = async () => {
+    const log = rollbackDialog.log
+    if (!log || !log.rollbackData || !log.entity) {
+      return
+    }
+
+    setIsRollingBack(true)
+    const toastId = toast.loading(`Rolling back ${log.recordCount} record(s)...`)
+
+    try {
+      let successCount = 0
+      let errorCount = 0
+      const errors: string[] = []
+
+      for (const update of log.rollbackData.updates) {
+        try {
+          await bullhornAPI.updateEntity(log.entity, update.entityId, update.previousValues)
+          successCount++
+        } catch (error) {
+          errorCount++
+          errors.push(`ID ${update.entityId}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
+      }
+
+      if (errorCount === 0) {
+        toast.success(`Successfully rolled back ${successCount} record(s)`, { id: toastId })
+        onUpdateLog(log.id, { rolledBack: true })
+      } else if (successCount > 0) {
+        toast.warning(`Rolled back ${successCount} record(s), ${errorCount} failed`, { id: toastId })
+        onUpdateLog(log.id, { 
+          details: { 
+            ...log.details, 
+            rollbackErrors: errors,
+            partialRollback: true 
+          } 
+        })
+      } else {
+        toast.error(`Rollback failed for all ${errorCount} record(s)`, { id: toastId })
+      }
+    } catch (error) {
+      toast.error(`Rollback failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { id: toastId })
+    } finally {
+      setIsRollingBack(false)
+      setRollbackDialog({ open: false, log: null })
     }
   }
 
@@ -134,6 +202,12 @@ export function AuditLogs({ logs, onClearLogs }: AuditLogsProps) {
                         }>
                           {log.status}
                         </Badge>
+                        {log.rolledBack && (
+                          <Badge variant="secondary" className="gap-1">
+                            <ArrowCounterClockwise size={12} />
+                            Rolled Back
+                          </Badge>
+                        )}
                         <span className="font-semibold text-sm">{log.operation}</span>
                         {log.entity && (
                           <span className="text-xs text-muted-foreground">
@@ -158,8 +232,21 @@ export function AuditLogs({ logs, onClearLogs }: AuditLogsProps) {
                         </details>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground whitespace-nowrap">
-                      {new Date(log.timestamp).toLocaleString()}
+                    <div className="flex flex-col items-end gap-2">
+                      <div className="text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(log.timestamp).toLocaleString()}
+                      </div>
+                      {log.rollbackData && !log.rolledBack && log.status === 'success' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRollbackClick(log)}
+                          className="gap-1"
+                        >
+                          <ArrowCounterClockwise size={14} />
+                          Rollback
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -168,6 +255,35 @@ export function AuditLogs({ logs, onClearLogs }: AuditLogsProps) {
           )}
         </ScrollArea>
       </CardContent>
+
+      <AlertDialog open={rollbackDialog.open} onOpenChange={(open) => !isRollingBack && setRollbackDialog({ open, log: null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Rollback</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                This will restore the previous values for <strong>{rollbackDialog.log?.recordCount || 0} record(s)</strong> in the <strong>{rollbackDialog.log?.entity}</strong> entity.
+              </p>
+              <p className="text-destructive font-medium">
+                This action cannot be undone. Are you sure you want to proceed?
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRollingBack}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                handleRollbackConfirm()
+              }}
+              disabled={isRollingBack}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isRollingBack ? 'Rolling back...' : 'Rollback'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   )
 }

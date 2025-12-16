@@ -309,7 +309,23 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       dryRun 
         ? `Dry run: ${createdCount} would create, ${updatedCount} would update, ${errorCount} errors`
         : `Processed ${csvData.rows.length} records: ${createdCount} created, ${updatedCount} updated, ${errorCount} errors`,
-      { entity, successCount, errorCount, createdCount, updatedCount, skippedCount, mappings: validMappings, lookupField, dryRun }
+      { 
+        entity, 
+        successCount, 
+        errorCount, 
+        createdCount, 
+        updatedCount, 
+        skippedCount, 
+        mappings: validMappings, 
+        lookupField, 
+        dryRun,
+        rollbackData: !dryRun && snapshotUpdates.length > 0 ? {
+          updates: snapshotUpdates.map(u => ({
+            entityId: u.entityId,
+            previousValues: u.previousValues
+          }))
+        } : undefined
+      }
     )
   }
 

@@ -357,7 +357,13 @@ export function SmartStack({ onLog }: SmartStackProps) {
             failed: failedCount,
             filters: filters,
             updates: fieldUpdates,
-            errors: errors.slice(0, 10)
+            errors: errors.slice(0, 10),
+            rollbackData: snapshotUpdates.length > 0 ? {
+              updates: snapshotUpdates.map(u => ({
+                entityId: u.entityId,
+                previousValues: u.previousValues
+              }))
+            } : undefined
           }
         )
 
