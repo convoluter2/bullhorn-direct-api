@@ -13,9 +13,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import { BULLHORN_ENTITIES, getEntityFields } from '@/lib/entities'
 import { parseCSV } from '@/lib/csv-utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
+import { useEntities } from '@/hooks/use-entities'
 import type { CSVMapping } from '@/lib/types'
 
 interface CSVLoaderProps {
@@ -42,6 +42,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [results, setResults] = useState<ImportResult[]>([])
   const [dryRun, setDryRun] = useState(false)
 
+  const { entities, loading: entitiesLoading } = useEntities()
   const { metadata, loading: metadataLoading } = useEntityMetadata(entity || undefined)
   
   const availableFields = metadata?.fields || []
@@ -297,18 +298,22 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Entity Type</Label>
-              <Select value={entity || undefined} onValueChange={setEntity}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select entity" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BULLHORN_ENTITIES.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
-                      {e.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {entitiesLoading ? (
+                <Skeleton className="h-10 w-full" />
+              ) : (
+                <Select value={entity || undefined} onValueChange={setEntity}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select entity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {entities.map((e) => (
+                      <SelectItem key={e} value={e}>
+                        {e}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <div className="space-y-2">

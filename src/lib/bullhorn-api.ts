@@ -413,7 +413,8 @@ export class BullhornAPI {
     }
 
     const params = new URLSearchParams({
-      BhRestToken: this.session.BhRestToken
+      BhRestToken: this.session.BhRestToken,
+      fields: '*'
     })
 
     const response = await fetch(
@@ -426,6 +427,33 @@ export class BullhornAPI {
     }
 
     return await response.json()
+  }
+
+  async getAllEntities(): Promise<string[]> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const params = new URLSearchParams({
+      BhRestToken: this.session.BhRestToken
+    })
+
+    const response = await fetch(
+      `${this.session.restUrl}meta?${params}`
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Get entities list failed: ${error}`)
+    }
+
+    const data = await response.json()
+    
+    if (data && typeof data === 'object') {
+      return Object.keys(data).sort()
+    }
+    
+    return []
   }
 }
 

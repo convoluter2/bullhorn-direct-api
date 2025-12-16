@@ -11,9 +11,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { MagnifyingGlass, Plus, Trash, Lightning, DownloadSimple, X, CaretLeft, CaretRight, ArrowsClockwise } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import { BULLHORN_ENTITIES, getEntityFields } from '@/lib/entities'
 import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
+import { useEntities } from '@/hooks/use-entities'
 import { FieldSelector } from '@/components/FieldSelector'
 import { SmartFieldInput } from '@/components/SmartFieldInput'
 import type { QueryFilter, QueryConfig } from '@/lib/types'
@@ -35,6 +35,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
   const [allResults, setAllResults] = useState<any[]>([])
   const [loadingAll, setLoadingAll] = useState(false)
 
+  const { entities, loading: entitiesLoading, error: entitiesError } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
 
   const availableFields = metadata?.fields || []
@@ -215,18 +216,24 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Entity Type</Label>
-              <Select value={entity || undefined} onValueChange={setEntity}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select entity" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BULLHORN_ENTITIES.map((e) => (
-                    <SelectItem key={e.id} value={e.id}>
-                      {e.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {entitiesLoading ? (
+                <Skeleton className="h-10 w-full" />
+              ) : entitiesError ? (
+                <div className="text-sm text-destructive">{entitiesError}</div>
+              ) : (
+                <Select value={entity || undefined} onValueChange={setEntity}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select entity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {entities.map((e) => (
+                      <SelectItem key={e} value={e}>
+                        {e}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <div className="space-y-2">

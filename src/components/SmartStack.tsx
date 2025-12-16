@@ -14,9 +14,9 @@ import { Switch } from '@/components/ui/switch'
 import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Eye } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import { BULLHORN_ENTITIES } from '@/lib/entities'
 import { parseCSV } from '@/lib/csv-utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
+import { useEntities } from '@/hooks/use-entities'
 import { SmartFieldInput } from '@/components/SmartFieldInput'
 import type { QueryFilter } from '@/lib/types'
 
@@ -56,6 +56,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
   const [previewData, setPreviewData] = useState<PreviewRecord[]>([])
   const [showPreview, setShowPreview] = useState(false)
 
+  const { entities, loading: entitiesLoading } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(selectedEntity || undefined)
   
   const availableFields = metadata?.fields || []
@@ -417,18 +418,22 @@ export function SmartStack({ onLog }: SmartStackProps) {
 
             <div className="space-y-2">
               <Label>Step 2: Select Entity Type</Label>
-              <Select value={selectedEntity} onValueChange={setSelectedEntity} disabled={loading}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select entity type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BULLHORN_ENTITIES.map((entity) => (
-                    <SelectItem key={entity.id} value={entity.id}>
-                      {entity.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {entitiesLoading ? (
+                <Skeleton className="h-10 w-full" />
+              ) : (
+                <Select value={selectedEntity} onValueChange={setSelectedEntity} disabled={loading}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select entity type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {entities.map((entity) => (
+                      <SelectItem key={entity} value={entity}>
+                        {entity}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <Separator />

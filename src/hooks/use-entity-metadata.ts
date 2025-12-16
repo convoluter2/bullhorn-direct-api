@@ -57,41 +57,47 @@ export function useEntityMetadata(entity: string | undefined) {
 
         const response = await bullhornAPI.getMetadata(entity)
         
+        console.log('Metadata response for', entity, ':', response)
+        
         const fields: EntityField[] = []
         const fieldsMap: Record<string, EntityField> = {}
 
-        if (response.fields) {
-          for (const field of response.fields) {
-            const fieldInfo: EntityField = {
-              name: field.name,
-              label: field.label || field.name,
-              type: field.type,
-              dataType: field.dataType,
-              dataSpecialization: field.dataSpecialization,
-              confidential: field.confidential,
-              optional: field.optional,
-              optionsType: field.optionsType,
-              optionsUrl: field.optionsUrl
-            }
-
-            if (field.associatedEntity) {
-              fieldInfo.associatedEntity = {
-                entity: field.associatedEntity.entity,
-                entityMetaUrl: field.associatedEntity.entityMetaUrl
-              }
-            }
-
-            if (field.options && Array.isArray(field.options)) {
-              fieldInfo.options = field.options.map((opt: any) => ({
-                value: opt.value,
-                label: opt.label || String(opt.value)
-              }))
-            }
-
-            fields.push(fieldInfo)
-            fieldsMap[field.name] = fieldInfo
+        const fieldsArray = response.fields || []
+        
+        console.log('Fields array length:', fieldsArray.length)
+        
+        for (const field of fieldsArray) {
+          const fieldInfo: EntityField = {
+            name: field.name,
+            label: field.label || field.name,
+            type: field.type,
+            dataType: field.dataType,
+            dataSpecialization: field.dataSpecialization,
+            confidential: field.confidential,
+            optional: field.optional,
+            optionsType: field.optionsType,
+            optionsUrl: field.optionsUrl
           }
+
+          if (field.associatedEntity) {
+            fieldInfo.associatedEntity = {
+              entity: field.associatedEntity.entity,
+              entityMetaUrl: field.associatedEntity.entityMetaUrl
+            }
+          }
+
+          if (field.options && Array.isArray(field.options)) {
+            fieldInfo.options = field.options.map((opt: any) => ({
+              value: opt.value,
+              label: opt.label || String(opt.value)
+            }))
+          }
+
+          fields.push(fieldInfo)
+          fieldsMap[field.name] = fieldInfo
         }
+        
+        console.log('Processed fields:', fields.length, 'first few:', fields.slice(0, 5))
 
         const newMetadata: EntityMetadata = {
           entity,
