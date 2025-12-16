@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -12,6 +12,7 @@ import { CSVLoader } from '@/components/CSVLoader'
 import { SmartStack } from '@/components/SmartStack'
 import { QueryStack } from '@/components/QueryStack'
 import { AuditLogs } from '@/components/AuditLogs'
+import { ConnectionManager, type SavedConnection } from '@/components/ConnectionManager'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { toast } from 'sonner'
 import type { BullhornSession, AuditLog } from '@/lib/types'
@@ -19,9 +20,11 @@ import type { BullhornSession, AuditLog } from '@/lib/types'
 function App() {
   const [session, setSession] = useKV<BullhornSession | null>('bullhorn-session', null)
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
+  const [connectionManagerOpen, setConnectionManagerOpen] = useState(false)
   const [logs, setLogs] = useKV<AuditLog[]>('audit-logs', [])
   const [activeTab, setActiveTab] = useState('queryblast')
   const [credentials, setCredentials] = useKV<{ clientId: string; clientSecret: string } | null>('bullhorn-credentials', null)
+  const [savedConnections, setSavedConnections] = useKV<SavedConnection[]>('saved-connections', [])
   const [isOAuthCallback, setIsOAuthCallback] = useState(false)
 
   useEffect(() => {
@@ -119,6 +122,39 @@ function App() {
     )
   }
 
+  const handleSaveConnection = (connection: Omit<SavedConnection, 'id' | 'createdAt'>) => {
+    const newConnection: SavedConnection = {
+      ...connection,
+      id: `conn-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+      createdAt: Date.now()
+    }
+    setSavedConnections((current) => [...(current || []), newConnection])
+  }
+
+  const handleDeleteConnection = (id: string) => {
+    setSavedConnections((current) => (current || []).filter(conn => conn.id !== id))
+  }
+
+  const handleUpdateConnection = (id: string, updates: Partial<SavedConnection>) => {
+    setSavedConnections((current) => 
+      (current || []).map(conn => 
+        conn.id === id ? { ...conn, ...updates } : conn
+      )
+    )
+  }
+
+  const handleSelectConnectionFromManager = async (connection: SavedConnection) => {
+    setSavedConnections((current) => 
+      (current || []).map(conn => 
+        conn.id === connection.id ? { ...conn, lastUsed: Date.now() } : conn
+      )
+    )
+    
+    setConnectionManagerOpen(false)
+    setAuthDialogOpen(true)
+    toast.success(`Loaded connection: ${connection.name}`)
+  }
+
   const currentLogs = logs || []
 
   if (session) {
@@ -165,10 +201,16 @@ function App() {
                   </Button>
                 </>
               ) : (
-                <Button onClick={() => setAuthDialogOpen(true)}>
-                  <Database />
-                  Connect to Bullhorn
-                </Button>
+                <>
+                  <Button variant="outline" onClick={() => setConnectionManagerOpen(true)}>
+                    <Faders />
+                    Saved Connections
+                  </Button>
+                  <Button onClick={() => setAuthDialogOpen(true)}>
+                    <Database />
+                    Connect to Bullhorn
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -246,6 +288,16 @@ function App() {
         open={authDialogOpen}
         onOpenChange={setAuthDialogOpen}
         onAuthenticated={handleAuthenticated}
+      />
+
+      <ConnectionManager
+        open={connectionManagerOpen}
+        onOpenChange={setConnectionManagerOpen}
+        connections={savedConnections || []}
+        onSaveConnection={handleSaveConnection}
+        onDeleteConnection={handleDeleteConnection}
+        onSelectConnection={handleSelectConnectionFromManager}
+        onUpdateConnection={handleUpdateConnection}
       />
     </div>
   )

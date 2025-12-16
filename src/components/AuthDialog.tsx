@@ -7,7 +7,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { useKV } from '@github/spark/hooks'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import { Copy, Info } from '@phosphor-icons/react'
+import { Copy, Info, Database } from '@phosphor-icons/react'
+import { ConnectionManager, type SavedConnection } from '@/components/ConnectionManager'
 import type { BullhornSession } from '@/lib/types'
 
 interface AuthDialogProps {
@@ -18,6 +19,7 @@ interface AuthDialogProps {
 
 export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogProps) {
   const [loading, setLoading] = useState(false)
+  const [showConnectionManager, setShowConnectionManager] = useState(false)
   const [manualAuth, setManualAuth] = useState({
     clientId: '',
     clientSecret: '',
@@ -28,6 +30,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
     redirectUri: ''
   })
   const [, setStoredCredentials] = useKV<{ clientId: string; clientSecret: string } | null>('bullhorn-credentials', null)
+  const [savedConnections, setSavedConnections] = useKV<SavedConnection[]>('saved-connections', [])
   
   const currentUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : ''
 
@@ -105,28 +108,82 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
     toast.success('Authorization URL copied to clipboard')
   }
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle className="text-2xl">Connect to Bullhorn</DialogTitle>
-          <DialogDescription>
-            Authenticate using OAuth authorization code flow
-          </DialogDescription>
-        </DialogHeader>
+  const handleSaveConnection = (connection: Omit<SavedConnection, 'id' | 'createdAt'>) => {
+    const newConnection: SavedConnection = {
+      ...connection,
+      id: `conn-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+      createdAt: Date.now()
+    }
+    setSavedConnections((current) => [...(current || []), newConnection])
+  }
 
-        <div className="space-y-4">
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertDescription className="space-y-2">
-              <p className="font-medium">OAuth Authorization</p>
-              <p className="text-xs">
-                This method generates a Bullhorn OAuth URL that you visit to get an authorization code. 
-                If you're seeing a "Invalid Redirect URI" error, make sure the redirect URI setting below 
-                matches your Bullhorn OAuth app configuration.
-              </p>
-            </AlertDescription>
-          </Alert>
+  const handleDeleteConnection = (id: string) => {
+    setSavedConnections((current) => (current || []).filter(conn => conn.id !== id))
+  }
+
+  const handleUpdateConnection = (id: string, updates: Partial<SavedConnection>) => {
+    setSavedConnections((current) => 
+      (current || []).map(conn => 
+        conn.id === id ? { ...conn, ...updates } : conn
+      )
+    )
+  }
+
+  const handleSelectConnection = (connection: SavedConnection) => {
+    setManualAuth({
+      clientId: connection.clientId,
+      clientSecret: connection.clientSecret,
+      username: connection.username,
+      password: connection.password,
+      authCode: '',
+      useRedirectUri: false,
+      redirectUri: ''
+    })
+    
+    setSavedConnections((current) => 
+      (current || []).map(conn => 
+        conn.id === connection.id ? { ...conn, lastUsed: Date.now() } : conn
+      )
+    )
+    
+    setShowConnectionManager(false)
+    toast.success(`Loaded connection: ${connection.name}`)
+  }
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Connect to Bullhorn</DialogTitle>
+            <DialogDescription>
+              Authenticate using OAuth authorization code flow
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => setShowConnectionManager(true)}
+              >
+                <Database />
+                Saved Connections
+              </Button>
+            </div>
+
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription className="space-y-2">
+                <p className="font-medium">OAuth Authorization</p>
+                <p className="text-xs">
+                  This method generates a Bullhorn OAuth URL that you visit to get an authorization code. 
+                  If you're seeing a "Invalid Redirect URI" error, make sure the redirect URI setting below 
+                  matches your Bullhorn OAuth app configuration.
+                </p>
+              </AlertDescription>
+            </Alert>
 
           <form onSubmit={handleCodeSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -322,5 +379,16 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
         </div>
       </DialogContent>
     </Dialog>
+
+    <ConnectionManager
+      open={showConnectionManager}
+      onOpenChange={setShowConnectionManager}
+      connections={savedConnections || []}
+      onSaveConnection={handleSaveConnection}
+      onDeleteConnection={handleDeleteConnection}
+      onSelectConnection={handleSelectConnection}
+      onUpdateConnection={handleUpdateConnection}
+    />
+  </>
   )
 }
