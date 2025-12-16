@@ -37,11 +37,13 @@ This is a sophisticated enterprise data management tool with multiple modules (Q
 - **Success criteria**: Successfully imports valid records, reports errors clearly, maintains data integrity
 
 ### SmartStack v2
-- **Functionality**: Intelligent batch processing with dependencies and error handling
-- **Purpose**: Complex multi-step operations that require ordering and rollback capability
-- **Trigger**: User configures operation stack and initiates processing
-- **Progression**: Define operations → Set dependencies → Configure rules → Execute stack → Monitor progress → Handle failures → Complete or rollback
-- **Success criteria**: Executes operations in correct order, handles failures gracefully, provides detailed status
+- **Functionality**: AI-powered batch processing with natural language operation generation, or manual operation configuration with dependencies and error handling
+- **Purpose**: Complex multi-step operations that require ordering and rollback capability, made simple through AI assistance
+- **Trigger**: User describes operations in natural language OR manually configures operation stack
+- **Progression**: 
+  - **AI Method**: Describe task in natural language → AI generates operations → Review/edit operations → Execute stack → Monitor progress → Handle failures → Complete
+  - **Manual Method**: Add operations → Define operation type/entity/data → Configure rules → Execute stack → Monitor progress → Handle failures → Complete or rollback
+- **Success criteria**: AI generates accurate operations from natural language, executes operations in correct order, handles failures gracefully, provides detailed status with descriptions
 
 ### Audit & Logging
 - **Functionality**: Comprehensive tracking of all operations with timestamps and results

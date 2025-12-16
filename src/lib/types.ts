@@ -79,4 +79,5 @@ export interface StackOperation {
   status: 'pending' | 'running' | 'completed' | 'failed'
   result?: any
   error?: string
+  description?: string
 }

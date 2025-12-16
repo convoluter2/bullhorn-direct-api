@@ -2,12 +2,12 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Stack, Plus, Trash, Lightning, CheckCircle, XCircle, Clock } from '@phosphor-icons/react'
+import { Separator } from '@/components/ui/separator'
+import { Stack, Plus, Trash, Lightning, CheckCircle, XCircle, Clock, Sparkle, ArrowsClockwise } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { BULLHORN_ENTITIES } from '@/lib/entities'
@@ -20,6 +20,97 @@ interface SmartStackProps {
 export function SmartStack({ onLog }: SmartStackProps) {
   const [operations, setOperations] = useState<StackOperation[]>([])
   const [loading, setLoading] = useState(false)
+  const [generatingStack, setGeneratingStack] = useState(false)
+  const [naturalLanguageInput, setNaturalLanguageInput] = useState('')
+
+  const generateStackFromNaturalLanguage = async () => {
+    if (!naturalLanguageInput.trim()) {
+      toast.error('Please describe the operations you want to perform')
+      return
+    }
+
+    setGeneratingStack(true)
+
+    try {
+      const entityList = BULLHORN_ENTITIES.map(e => `${e.id} (${e.label})`).join(', ')
+      
+      const promptText = `You are a Bullhorn API operations planner. Given a natural language description, generate a sequence of operations to accomplish the task.
+
+Available Bullhorn entities: ${entityList}
+
+Common entity fields to know:
+- Candidate: firstName, lastName, email, phone, status, owner
+- ClientContact: firstName, lastName, email, phone, clientCorporation
+- ClientCorporation: name, phone, status
+- JobOrder: title, status, clientCorporation, owner, dateAdded
+- Placement: candidate, jobOrder, status, dateBegin, employmentType
+- Note: comments, action, personReference
+
+User's request: ${naturalLanguageInput}
+
+Generate a JSON array of operations. Each operation should have:
+- type: "create" | "update" | "delete" | "query"
+- entity: the Bullhorn entity name (e.g., "Candidate", "JobOrder")
+- data: object containing the fields/values for the operation
+- description: brief human-readable description of what this operation does
+
+For CREATE operations, include all necessary fields.
+For UPDATE operations, include an "id" field (you can use placeholder like 999 if not specified).
+For DELETE operations, include only the "id" field in data.
+For QUERY operations, data can include search filters.
+
+Return ONLY valid JSON. Return as a JSON object with a single property "operations" containing the array.
+
+Example format:
+{
+  "operations": [
+    {
+      "type": "create",
+      "entity": "Candidate",
+      "data": {"firstName": "John", "lastName": "Doe", "email": "john@example.com", "status": "Active"},
+      "description": "Create candidate John Doe"
+    }
+  ]
+}`
+
+      const response = await window.spark.llm(promptText, 'gpt-4o', true)
+      const result = JSON.parse(response)
+      
+      if (!result.operations || !Array.isArray(result.operations)) {
+        throw new Error('Invalid response format from LLM')
+      }
+
+      const newOperations: StackOperation[] = result.operations.map((op: any, index: number) => ({
+        id: `op-${Date.now()}-${index}`,
+        type: op.type || 'create',
+        entity: op.entity || '',
+        data: op.data || {},
+        description: op.description,
+        status: 'pending' as const
+      }))
+
+      setOperations(newOperations)
+      toast.success(`Generated ${newOperations.length} operations from your request`)
+      
+      onLog(
+        'SmartStack AI Generation',
+        'success',
+        `Generated ${newOperations.length} operations`,
+        { input: naturalLanguageInput, operations: newOperations }
+      )
+    } catch (error) {
+      console.error('Stack generation error:', error)
+      toast.error('Failed to generate operations. Please try rephrasing your request.')
+      onLog(
+        'SmartStack AI Generation',
+        'error',
+        error instanceof Error ? error.message : 'Generation failed',
+        { input: naturalLanguageInput }
+      )
+    } finally {
+      setGeneratingStack(false)
+    }
+  }
 
   const addOperation = () => {
     const newOp: StackOperation = {
@@ -160,14 +251,56 @@ export function SmartStack({ onLog }: SmartStackProps) {
             SmartStack v2
           </CardTitle>
           <CardDescription>
-            Execute batch operations with dependency management and error handling
+            Use AI to generate operation sequences from natural language, or build operations manually
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="natural-language-input" className="flex items-center gap-2">
+                <Sparkle className="text-accent" size={16} />
+                Describe what you want to do (AI-powered)
+              </Label>
+              <Textarea
+                id="natural-language-input"
+                value={naturalLanguageInput}
+                onChange={(e) => setNaturalLanguageInput(e.target.value)}
+                placeholder="Example: Create 3 test candidates with random names and emails, then create a job order for a Software Engineer position"
+                rows={3}
+                disabled={generatingStack || loading}
+                className="resize-none"
+              />
+            </div>
+            <Button
+              onClick={generateStackFromNaturalLanguage}
+              disabled={generatingStack || loading || !naturalLanguageInput.trim()}
+              className="w-full"
+              size="lg"
+            >
+              {generatingStack ? (
+                <>
+                  <ArrowsClockwise className="animate-spin" />
+                  Generating Operations...
+                </>
+              ) : (
+                <>
+                  <Sparkle />
+                  Generate Operations with AI
+                </>
+              )}
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <Separator className="flex-1" />
+            <span className="text-sm text-muted-foreground">OR</span>
+            <Separator className="flex-1" />
+          </div>
+
           <div className="flex gap-2">
             <Button onClick={addOperation} variant="outline" className="flex-1">
               <Plus />
-              Add Operation
+              Add Manual Operation
             </Button>
             <Button 
               onClick={executeStack} 
@@ -190,7 +323,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
             <div className="text-center py-12 text-muted-foreground">
               <Stack size={48} className="mx-auto mb-4 opacity-50" />
               <p>No operations defined</p>
-              <p className="text-sm">Click "Add Operation" to get started</p>
+              <p className="text-sm">Describe your task above or add operations manually</p>
             </div>
           ) : (
             <ScrollArea className="h-[500px]">
@@ -217,6 +350,9 @@ export function SmartStack({ onLog }: SmartStackProps) {
                             {op.status === 'running' && <Clock size={14} />}
                             {op.status}
                           </Badge>
+                          {op.description && (
+                            <span className="text-sm text-muted-foreground">{op.description}</span>
+                          )}
                         </div>
                         <Button
                           size="icon"
@@ -290,7 +426,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
 
                       {op.result && (
                         <div className="p-2 bg-green-500/10 border border-green-500/20 rounded">
-                          <pre className="text-xs font-mono overflow-auto">
+                          <pre className="text-xs font-mono overflow-auto max-h-40">
                             {JSON.stringify(op.result, null, 2)}
                           </pre>
                         </div>
