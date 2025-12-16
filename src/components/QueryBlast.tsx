@@ -35,7 +35,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
   const [allResults, setAllResults] = useState<any[]>([])
   const [loadingAll, setLoadingAll] = useState(false)
 
-  const { entities, loading: entitiesLoading, error: entitiesError } = useEntities()
+  const { entities, loading: entitiesLoading, error: entitiesError, refresh: refreshEntities } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
 
   const availableFields = metadata?.fields || []
@@ -215,11 +215,40 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Entity Type</Label>
+              <div className="flex items-center justify-between">
+                <Label>Entity Type</Label>
+                {!entitiesLoading && entities.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">{entities.length} entities</Badge>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={refreshEntities}
+                      className="h-6 px-2"
+                    >
+                      <ArrowsClockwise size={14} />
+                    </Button>
+                  </div>
+                )}
+              </div>
               {entitiesLoading ? (
                 <Skeleton className="h-10 w-full" />
               ) : entitiesError ? (
-                <div className="text-sm text-destructive">{entitiesError}</div>
+                <div className="space-y-2">
+                  <div className="text-sm text-destructive">{entitiesError}</div>
+                  <Button size="sm" variant="outline" onClick={refreshEntities}>
+                    <ArrowsClockwise size={16} />
+                    Retry
+                  </Button>
+                </div>
+              ) : entities.length === 0 ? (
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">No entities available</div>
+                  <Button size="sm" variant="outline" onClick={refreshEntities}>
+                    <ArrowsClockwise size={16} />
+                    Load Entities
+                  </Button>
+                </div>
               ) : (
                 <Select value={entity || undefined} onValueChange={setEntity}>
                   <SelectTrigger>

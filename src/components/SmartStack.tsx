@@ -56,7 +56,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
   const [previewData, setPreviewData] = useState<PreviewRecord[]>([])
   const [showPreview, setShowPreview] = useState(false)
 
-  const { entities, loading: entitiesLoading } = useEntities()
+  const { entities, loading: entitiesLoading, refresh: refreshEntities } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(selectedEntity || undefined)
   
   const availableFields = metadata?.fields || []
@@ -417,9 +417,32 @@ export function SmartStack({ onLog }: SmartStackProps) {
             <Separator />
 
             <div className="space-y-2">
-              <Label>Step 2: Select Entity Type</Label>
+              <div className="flex items-center justify-between">
+                <Label>Step 2: Select Entity Type</Label>
+                {!entitiesLoading && entities.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">{entities.length} entities</Badge>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={refreshEntities}
+                      className="h-6 px-2"
+                    >
+                      <ArrowsClockwise size={14} />
+                    </Button>
+                  </div>
+                )}
+              </div>
               {entitiesLoading ? (
                 <Skeleton className="h-10 w-full" />
+              ) : entities.length === 0 ? (
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">No entities available</div>
+                  <Button size="sm" variant="outline" onClick={refreshEntities}>
+                    <ArrowsClockwise size={14} />
+                    Load Entities
+                  </Button>
+                </div>
               ) : (
                 <Select value={selectedEntity} onValueChange={setSelectedEntity} disabled={loading}>
                   <SelectTrigger>

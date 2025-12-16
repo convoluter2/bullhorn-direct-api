@@ -414,9 +414,11 @@ export class BullhornAPI {
 
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken,
-      meta: 'full',
-      fields: '*'
+      meta: 'full'
     })
+
+    console.log(`Fetching metadata for entity: ${entity}`)
+    console.log(`URL: ${this.session.restUrl}meta/${entity}?${params.toString()}`)
 
     const response = await fetch(
       `${this.session.restUrl}meta/${entity}?${params.toString()}`
@@ -424,10 +426,17 @@ export class BullhornAPI {
 
     if (!response.ok) {
       const error = await response.text()
+      console.error(`Get metadata failed for ${entity}:`, error)
       throw new Error(`Get metadata failed: ${error}`)
     }
 
     const data = await response.json()
+    
+    console.log(`Metadata response for ${entity}:`, {
+      entity: data.entity,
+      label: data.label,
+      fieldCount: data.fields ? data.fields.length : 0
+    })
     
     return data
   }
@@ -475,16 +484,102 @@ export class BullhornAPI {
 
     if (!response.ok) {
       const error = await response.text()
-      throw new Error(`Get entities list failed: ${error}`)
+      console.error('Settings endpoint failed:', error)
+      
+      const fallbackEntities = [
+        'Appointment',
+        'AppointmentAttendee',
+        'BusinessSector',
+        'Candidate',
+        'CandidateCertification',
+        'CandidateEducation',
+        'CandidateReference',
+        'CandidateWorkHistory',
+        'Category',
+        'Certification',
+        'ClientContact',
+        'ClientCorporation',
+        'CorporateUser',
+        'CorporationDepartment',
+        'Country',
+        'CustomAction',
+        'DistributionList',
+        'HousingComplex',
+        'JobOrder',
+        'JobSubmission',
+        'Lead',
+        'Note',
+        'NoteEntity',
+        'Opportunity',
+        'Placement',
+        'PlacementCertification',
+        'PlacementChangeRequest',
+        'PlacementCommission',
+        'Sendout',
+        'Skill',
+        'Specialty',
+        'State',
+        'Task',
+        'Tearsheet',
+        'TimeUnit',
+        'UserType'
+      ]
+      
+      return fallbackEntities.sort()
     }
 
     const data = await response.json()
+    
+    console.log('Settings response:', data)
     
     if (data.settings && Array.isArray(data.settings.allEntities)) {
       return data.settings.allEntities.sort()
     }
     
-    return []
+    if (Array.isArray(data.allEntities)) {
+      return data.allEntities.sort()
+    }
+
+    const fallbackEntities = [
+      'Appointment',
+      'AppointmentAttendee',
+      'BusinessSector',
+      'Candidate',
+      'CandidateCertification',
+      'CandidateEducation',
+      'CandidateReference',
+      'CandidateWorkHistory',
+      'Category',
+      'Certification',
+      'ClientContact',
+      'ClientCorporation',
+      'CorporateUser',
+      'CorporationDepartment',
+      'Country',
+      'CustomAction',
+      'DistributionList',
+      'HousingComplex',
+      'JobOrder',
+      'JobSubmission',
+      'Lead',
+      'Note',
+      'NoteEntity',
+      'Opportunity',
+      'Placement',
+      'PlacementCertification',
+      'PlacementChangeRequest',
+      'PlacementCommission',
+      'Sendout',
+      'Skill',
+      'Specialty',
+      'State',
+      'Task',
+      'Tearsheet',
+      'TimeUnit',
+      'UserType'
+    ]
+    
+    return fallbackEntities.sort()
   }
 }
 
