@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -11,7 +12,7 @@ import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Switch } from '@/components/ui/switch'
-import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Eye } from '@phosphor-icons/react'
+import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Eye, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV } from '@/lib/csv-utils'
@@ -19,7 +20,7 @@ import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { SmartFieldInput } from '@/components/SmartFieldInput'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
-import type { QueryFilter } from '@/lib/types'
+import type { QueryFilter, UpdateSnapshot } from '@/lib/types'
 
 interface SmartStackProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -53,10 +54,12 @@ export function SmartStack({ onLog }: SmartStackProps) {
     failed: 0,
     errors: []
   })
-  const [dryRun, setDryRun] = useState(false)
+  const [dryRun, setDryRun] = useState(true)
   const [previewData, setPreviewData] = useState<PreviewRecord[]>([])
   const [showPreview, setShowPreview] = useState(false)
   const [manualEntityDialogOpen, setManualEntityDialogOpen] = useState(false)
+  const [snapshots, setSnapshots] = useKV<UpdateSnapshot[]>('smartstack-snapshots', [])
+  const [lastSnapshotId, setLastSnapshotId] = useState<string | null>(null)
 
   const { entities, loading: entitiesLoading, refresh: refreshEntities, addEntity } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(selectedEntity || undefined)
@@ -177,6 +180,11 @@ export function SmartStack({ onLog }: SmartStackProps) {
     let failedCount = 0
     const errors: string[] = []
     const preview: PreviewRecord[] = []
+    const snapshotUpdates: Array<{
+      entityId: number
+      previousValues: Record<string, any>
+      newValues: Record<string, any>
+    }> = []
 
     try {
       const fieldsToFetch = Array.from(new Set([
@@ -278,6 +286,11 @@ export function SmartStack({ onLog }: SmartStackProps) {
             })
             successCount++
           } else {
+            snapshotUpdates.push({
+              entityId: numericId,
+              previousValues: entity.data,
+              newValues: updateData
+            })
             await bullhornAPI.updateEntity(selectedEntity, numericId, updateData)
             successCount++
           }
@@ -320,6 +333,19 @@ export function SmartStack({ onLog }: SmartStackProps) {
           }
         )
       } else {
+        if (snapshotUpdates.length > 0) {
+          const snapshot: UpdateSnapshot = {
+            id: `snapshot-${Date.now()}`,
+            timestamp: Date.now(),
+            operation: 'smartstack',
+            entity: selectedEntity,
+            description: `SmartStack: ${successCount} updated records`,
+            updates: snapshotUpdates
+          }
+          setSnapshots((current) => [snapshot, ...(current || [])].slice(0, 50))
+          setLastSnapshotId(snapshot.id)
+        }
+
         onLog(
           'SmartStack Execution',
           successCount > 0 ? 'success' : 'error',
@@ -353,6 +379,67 @@ export function SmartStack({ onLog }: SmartStackProps) {
       )
     } finally {
       setLoading(false)
+    }
+  }
+
+  const rollbackSnapshot = async (snapshotId: string) => {
+    const snapshot = snapshots?.find(s => s.id === snapshotId)
+    if (!snapshot) {
+      toast.error('Snapshot not found')
+      return
+    }
+
+    if (!confirm(`Are you sure you want to rollback ${snapshot.updates.length} updates? This will restore previous values.`)) {
+      return
+    }
+
+    setLoading(true)
+    setProgress(0)
+    let successCount = 0
+    let errorCount = 0
+
+    for (let i = 0; i < snapshot.updates.length; i++) {
+      const update = snapshot.updates[i]
+      try {
+        const restoreData: any = {}
+        Object.keys(update.newValues).forEach(key => {
+          if (key !== 'id') {
+            restoreData[key] = update.previousValues[key]
+          }
+        })
+        
+        await bullhornAPI.updateEntity(snapshot.entity, update.entityId, restoreData)
+        successCount++
+      } catch (error) {
+        console.error(`Failed to rollback entity ${update.entityId}:`, error)
+        errorCount++
+      }
+      setProgress(((i + 1) / snapshot.updates.length) * 100)
+    }
+
+    setLoading(false)
+    setProgress(0)
+
+    if (errorCount === 0) {
+      toast.success(`Rollback complete: ${successCount} records restored`)
+      setSnapshots((current) => (current || []).filter(s => s.id !== snapshotId))
+      if (lastSnapshotId === snapshotId) {
+        setLastSnapshotId(null)
+      }
+      onLog(
+        'SmartStack Rollback',
+        'success',
+        `Rolled back ${successCount} records`,
+        { snapshotId, entity: snapshot.entity }
+      )
+    } else {
+      toast.error(`Rollback completed with ${errorCount} errors. ${successCount} records restored.`)
+      onLog(
+        'SmartStack Rollback',
+        'error',
+        `Partial rollback: ${successCount} success, ${errorCount} errors`,
+        { snapshotId, entity: snapshot.entity }
+      )
     }
   }
 
@@ -722,6 +809,17 @@ export function SmartStack({ onLog }: SmartStackProps) {
                       </ScrollArea>
                     </div>
                   )}
+                  {!dryRun && lastSnapshotId && results.success > 0 && (
+                    <Button
+                      onClick={() => rollbackSnapshot(lastSnapshotId)}
+                      disabled={loading}
+                      variant="destructive"
+                      className="w-full"
+                    >
+                      <ArrowCounterClockwise />
+                      Rollback Last Execution
+                    </Button>
+                  )}
                 </div>
               </Card>
             )}
@@ -816,6 +914,55 @@ export function SmartStack({ onLog }: SmartStackProps) {
           </div>
         </CardContent>
       </Card>
+
+      {snapshots && snapshots.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ArrowCounterClockwise className="text-accent" size={20} />
+              Rollback History
+            </CardTitle>
+            <CardDescription>
+              Previous executions that can be rolled back (last 50 shown)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[200px]">
+              <div className="space-y-2">
+                {snapshots.map((snapshot) => (
+                  <Card key={snapshot.id} className="p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {snapshot.entity}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(snapshot.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                        <p className="text-sm">{snapshot.description}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {snapshot.updates.length} record{snapshot.updates.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => rollbackSnapshot(snapshot.id)}
+                        disabled={loading}
+                      >
+                        <ArrowCounterClockwise size={16} />
+                        Rollback
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
 
       <ManualEntityDialog
         open={manualEntityDialogOpen}

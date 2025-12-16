@@ -81,3 +81,16 @@ export interface StackOperation {
   error?: string
   description?: string
 }
+
+export interface UpdateSnapshot {
+  id: string
+  timestamp: number
+  operation: 'csv-import' | 'smartstack'
+  entity: string
+  description: string
+  updates: Array<{
+    entityId: number
+    previousValues: Record<string, any>
+    newValues: Record<string, any>
+  }>
+}

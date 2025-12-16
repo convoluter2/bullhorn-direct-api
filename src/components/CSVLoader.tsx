@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -10,14 +11,14 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye, ArrowsClockwise } from '@phosphor-icons/react'
+import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye, ArrowsClockwise, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV } from '@/lib/csv-utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
-import type { CSVMapping } from '@/lib/types'
+import type { CSVMapping, UpdateSnapshot } from '@/lib/types'
 
 interface CSVLoaderProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -41,8 +42,10 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [results, setResults] = useState<ImportResult[]>([])
-  const [dryRun, setDryRun] = useState(false)
+  const [dryRun, setDryRun] = useState(true)
   const [manualEntityDialogOpen, setManualEntityDialogOpen] = useState(false)
+  const [snapshots, setSnapshots] = useKV<UpdateSnapshot[]>('csv-import-snapshots', [])
+  const [lastSnapshotId, setLastSnapshotId] = useState<string | null>(null)
 
   const { entities, loading: entitiesLoading, refresh: refreshEntities, addEntity } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
@@ -140,6 +143,12 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     let updatedCount = 0
     let skippedCount = 0
 
+    const snapshotUpdates: Array<{
+      entityId: number
+      previousValues: Record<string, any>
+      newValues: Record<string, any>
+    }> = []
+
     for (let i = 0; i < csvData.rows.length; i++) {
       const row = csvData.rows[i]
       
@@ -198,6 +207,11 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         if (existingRecord) {
           if (updateExisting) {
             if (!dryRun) {
+              snapshotUpdates.push({
+                entityId: existingRecord.id,
+                previousValues: { ...existingRecord },
+                newValues: data
+              })
               await bullhornAPI.updateEntity(entity, existingRecord.id, data)
             }
             importResults.push({
@@ -266,6 +280,19 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     setResults(importResults)
     setLoading(false)
 
+    if (!dryRun && snapshotUpdates.length > 0) {
+      const snapshot: UpdateSnapshot = {
+        id: `snapshot-${Date.now()}`,
+        timestamp: Date.now(),
+        operation: 'csv-import',
+        entity,
+        description: `CSV Import: ${updatedCount} updated records`,
+        updates: snapshotUpdates
+      }
+      setSnapshots((current) => [snapshot, ...(current || [])].slice(0, 50))
+      setLastSnapshotId(snapshot.id)
+    }
+
     if (dryRun) {
       toast.success(`Dry run complete: ${createdCount} would create, ${updatedCount} would update, ${skippedCount} would skip`)
     } else {
@@ -284,6 +311,67 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         : `Processed ${csvData.rows.length} records: ${createdCount} created, ${updatedCount} updated, ${errorCount} errors`,
       { entity, successCount, errorCount, createdCount, updatedCount, skippedCount, mappings: validMappings, lookupField, dryRun }
     )
+  }
+
+  const rollbackSnapshot = async (snapshotId: string) => {
+    const snapshot = snapshots?.find(s => s.id === snapshotId)
+    if (!snapshot) {
+      toast.error('Snapshot not found')
+      return
+    }
+
+    if (!confirm(`Are you sure you want to rollback ${snapshot.updates.length} updates? This will restore previous values.`)) {
+      return
+    }
+
+    setLoading(true)
+    setProgress(0)
+    let successCount = 0
+    let errorCount = 0
+
+    for (let i = 0; i < snapshot.updates.length; i++) {
+      const update = snapshot.updates[i]
+      try {
+        const restoreData: any = {}
+        Object.keys(update.newValues).forEach(key => {
+          if (key !== 'id') {
+            restoreData[key] = update.previousValues[key]
+          }
+        })
+        
+        await bullhornAPI.updateEntity(snapshot.entity, update.entityId, restoreData)
+        successCount++
+      } catch (error) {
+        console.error(`Failed to rollback entity ${update.entityId}:`, error)
+        errorCount++
+      }
+      setProgress(((i + 1) / snapshot.updates.length) * 100)
+    }
+
+    setLoading(false)
+    setProgress(0)
+
+    if (errorCount === 0) {
+      toast.success(`Rollback complete: ${successCount} records restored`)
+      setSnapshots((current) => (current || []).filter(s => s.id !== snapshotId))
+      if (lastSnapshotId === snapshotId) {
+        setLastSnapshotId(null)
+      }
+      onLog(
+        'CSV Import Rollback',
+        'success',
+        `Rolled back ${successCount} records`,
+        { snapshotId, entity: snapshot.entity }
+      )
+    } else {
+      toast.error(`Rollback completed with ${errorCount} errors. ${successCount} records restored.`)
+      onLog(
+        'CSV Import Rollback',
+        'error',
+        `Partial rollback: ${successCount} success, ${errorCount} errors`,
+        { snapshotId, entity: snapshot.entity }
+      )
+    }
   }
 
   return (
@@ -639,6 +727,66 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                 Execute Import Now
               </Button>
             )}
+            {!dryRun && lastSnapshotId && results.filter(r => r.action === 'updated').length > 0 && (
+              <Button
+                onClick={() => rollbackSnapshot(lastSnapshotId)}
+                disabled={loading}
+                variant="destructive"
+                className="w-full"
+              >
+                <ArrowCounterClockwise />
+                Rollback Last Import
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {snapshots && snapshots.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ArrowCounterClockwise className="text-accent" size={20} />
+              Rollback History
+            </CardTitle>
+            <CardDescription>
+              Previous imports that can be rolled back (last 50 shown)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[200px]">
+              <div className="space-y-2">
+                {snapshots.map((snapshot) => (
+                  <Card key={snapshot.id} className="p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {snapshot.entity}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(snapshot.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                        <p className="text-sm">{snapshot.description}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {snapshot.updates.length} record{snapshot.updates.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => rollbackSnapshot(snapshot.id)}
+                        disabled={loading}
+                      >
+                        <ArrowCounterClockwise size={16} />
+                        Rollback
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </ScrollArea>
           </CardContent>
         </Card>
       )}
