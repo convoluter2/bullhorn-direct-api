@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus } from '@phosphor-icons/react'
+import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { BULLHORN_ENTITIES, getEntityFields } from '@/lib/entities'
@@ -22,6 +22,14 @@ interface CSVLoaderProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
 }
 
+interface ImportResult {
+  row: number
+  status: 'success' | 'error'
+  message: string
+  action?: string
+  data?: any
+}
+
 export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [entity, setEntity] = useState('')
   const [csvData, setCsvData] = useState<{ headers: string[]; rows: string[][] } | null>(null)
@@ -31,7 +39,8 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [createNew, setCreateNew] = useState(true)
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [results, setResults] = useState<Array<{ row: number; status: 'success' | 'error'; message: string; action?: string }>>([])
+  const [results, setResults] = useState<ImportResult[]>([])
+  const [dryRun, setDryRun] = useState(false)
 
   const { metadata, loading: metadataLoading } = useEntityMetadata(entity || undefined)
   
@@ -120,7 +129,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
 
     setLoading(true)
     setProgress(0)
-    const importResults: Array<{ row: number; status: 'success' | 'error'; message: string; action?: string }> = []
+    const importResults: ImportResult[] = []
 
     let successCount = 0
     let errorCount = 0
@@ -185,12 +194,15 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
 
         if (existingRecord) {
           if (updateExisting) {
-            await bullhornAPI.updateEntity(entity, existingRecord.id, data)
+            if (!dryRun) {
+              await bullhornAPI.updateEntity(entity, existingRecord.id, data)
+            }
             importResults.push({
               row: i + 1,
               status: 'success',
-              message: `Updated existing record (ID: ${existingRecord.id})`,
-              action: 'updated'
+              message: dryRun ? `Would update existing record (ID: ${existingRecord.id})` : `Updated existing record (ID: ${existingRecord.id})`,
+              action: 'updated',
+              data: dryRun ? { existing: existingRecord, changes: data } : undefined
             })
             updatedCount++
             successCount++
@@ -205,13 +217,23 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           }
         } else {
           if (createNew) {
-            const result = await bullhornAPI.createEntity(entity, data)
-            importResults.push({
-              row: i + 1,
-              status: 'success',
-              message: `Created new record (ID: ${result.changedEntityId})`,
-              action: 'created'
-            })
+            if (!dryRun) {
+              const result = await bullhornAPI.createEntity(entity, data)
+              importResults.push({
+                row: i + 1,
+                status: 'success',
+                message: `Created new record (ID: ${result.changedEntityId})`,
+                action: 'created'
+              })
+            } else {
+              importResults.push({
+                row: i + 1,
+                status: 'success',
+                message: 'Would create new record',
+                action: 'created',
+                data
+              })
+            }
             createdCount++
             successCount++
           } else {
@@ -241,17 +263,23 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     setResults(importResults)
     setLoading(false)
 
-    if (errorCount === 0) {
-      toast.success(`Import complete: ${createdCount} created, ${updatedCount} updated, ${skippedCount} skipped`)
+    if (dryRun) {
+      toast.success(`Dry run complete: ${createdCount} would create, ${updatedCount} would update, ${skippedCount} would skip`)
     } else {
-      toast.warning(`Import completed: ${successCount} success, ${errorCount} errors`)
+      if (errorCount === 0) {
+        toast.success(`Import complete: ${createdCount} created, ${updatedCount} updated, ${skippedCount} skipped`)
+      } else {
+        toast.warning(`Import completed: ${successCount} success, ${errorCount} errors`)
+      }
     }
 
     onLog(
-      'CSV Import',
+      dryRun ? 'CSV Import Dry Run' : 'CSV Import',
       errorCount === 0 ? 'success' : 'error',
-      `Processed ${csvData.rows.length} records: ${createdCount} created, ${updatedCount} updated, ${errorCount} errors`,
-      { entity, successCount, errorCount, createdCount, updatedCount, skippedCount, mappings: validMappings, lookupField }
+      dryRun 
+        ? `Dry run: ${createdCount} would create, ${updatedCount} would update, ${errorCount} errors`
+        : `Processed ${csvData.rows.length} records: ${createdCount} created, ${updatedCount} updated, ${errorCount} errors`,
+      { entity, successCount, errorCount, createdCount, updatedCount, skippedCount, mappings: validMappings, lookupField, dryRun }
     )
   }
 
@@ -349,6 +377,23 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                     />
                   </div>
                 </div>
+
+                <div className="flex items-center justify-between space-x-2 p-3 rounded-md border bg-accent/10">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <Eye size={16} />
+                      Dry Run Mode
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Preview what will be imported/updated without making changes
+                    </p>
+                  </div>
+                  <Switch
+                    checked={dryRun}
+                    onCheckedChange={setDryRun}
+                    disabled={loading}
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -444,9 +489,10 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                   onClick={executeImport}
                   disabled={loading || mappings.filter(m => m.bullhornField && m.bullhornField !== '__skip__').length === 0}
                   className="flex-1"
+                  variant={dryRun ? "secondary" : "default"}
                 >
-                  <Lightning />
-                  {loading ? 'Importing...' : (lookupField && lookupField !== '__none__') ? 'Start Import/Update' : 'Start Import'}
+                  {dryRun ? <Eye /> : <Lightning />}
+                  {loading ? (dryRun ? 'Previewing...' : 'Importing...') : dryRun ? 'Preview Import' : (lookupField && lookupField !== '__none__') ? 'Start Import/Update' : 'Start Import'}
                 </Button>
               </div>
 
@@ -465,46 +511,88 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       {results.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Import Results</CardTitle>
+            <CardTitle>{dryRun ? 'Preview Results' : 'Import Results'}</CardTitle>
             <CardDescription>
-              {results.filter(r => r.action === 'created').length} created, 
-              {' '}{results.filter(r => r.action === 'updated').length} updated,
-              {' '}{results.filter(r => r.action === 'skipped').length} skipped,
+              {results.filter(r => r.action === 'created').length} {dryRun ? 'would create' : 'created'}, 
+              {' '}{results.filter(r => r.action === 'updated').length} {dryRun ? 'would update' : 'updated'},
+              {' '}{results.filter(r => r.action === 'skipped').length} {dryRun ? 'would skip' : 'skipped'},
               {' '}{results.filter(r => r.status === 'error').length} errors
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <ScrollArea className="h-[300px]">
               <div className="space-y-2">
                 {results.map((result) => (
-                  <div key={result.row} className="flex items-center gap-2 p-2 rounded border">
-                    {result.status === 'success' ? (
-                      result.action === 'updated' ? (
-                        <CheckCircle className="text-blue-500" size={20} />
-                      ) : result.action === 'created' ? (
-                        <Plus className="text-green-500" size={20} />
+                  <div key={result.row} className="space-y-2">
+                    <div className="flex items-center gap-2 p-2 rounded border">
+                      {result.status === 'success' ? (
+                        result.action === 'updated' ? (
+                          <CheckCircle className="text-blue-500" size={20} />
+                        ) : result.action === 'created' ? (
+                          <Plus className="text-green-500" size={20} />
+                        ) : (
+                          <CheckCircle className="text-muted-foreground" size={20} />
+                        )
                       ) : (
-                        <CheckCircle className="text-muted-foreground" size={20} />
-                      )
-                    ) : (
-                      <XCircle className="text-destructive" size={20} />
+                        <XCircle className="text-destructive" size={20} />
+                      )}
+                      <span className="font-mono text-sm">Row {result.row}:</span>
+                      <span className="text-sm flex-1">{result.message}</span>
+                      <Badge 
+                        variant={
+                          result.action === 'created' ? 'default' : 
+                          result.action === 'updated' ? 'secondary' : 
+                          result.status === 'error' ? 'destructive' : 
+                          'outline'
+                        }
+                      >
+                        {result.action || result.status}
+                      </Badge>
+                    </div>
+                    {dryRun && result.data && (
+                      <div className="ml-8 p-2 bg-muted/50 rounded text-xs font-mono">
+                        {result.action === 'updated' && result.data.existing && result.data.changes ? (
+                          <div className="space-y-1">
+                            <div className="font-semibold text-muted-foreground">Changes:</div>
+                            {Object.entries(result.data.changes).map(([key, value]) => (
+                              <div key={key}>
+                                <span className="text-muted-foreground">{key}:</span>{' '}
+                                <span className="text-destructive line-through">{JSON.stringify(result.data.existing[key])}</span>
+                                {' → '}
+                                <span className="text-accent font-semibold">{JSON.stringify(value)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <div className="font-semibold text-muted-foreground">New record data:</div>
+                            {Object.entries(result.data).map(([key, value]) => (
+                              <div key={key}>
+                                <span className="text-muted-foreground">{key}:</span>{' '}
+                                <span className="text-accent">{JSON.stringify(value)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
-                    <span className="font-mono text-sm">Row {result.row}:</span>
-                    <span className="text-sm flex-1">{result.message}</span>
-                    <Badge 
-                      variant={
-                        result.action === 'created' ? 'default' : 
-                        result.action === 'updated' ? 'secondary' : 
-                        result.status === 'error' ? 'destructive' : 
-                        'outline'
-                      }
-                    >
-                      {result.action || result.status}
-                    </Badge>
                   </div>
                 ))}
               </div>
             </ScrollArea>
+            {dryRun && results.length > 0 && (
+              <Button
+                onClick={() => {
+                  setDryRun(false)
+                  executeImport()
+                }}
+                disabled={loading}
+                className="w-full"
+              >
+                <Lightning />
+                Execute Import Now
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}

@@ -9,7 +9,9 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise } from '@phosphor-icons/react'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Switch } from '@/components/ui/switch'
+import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Eye } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { BULLHORN_ENTITIES } from '@/lib/entities'
@@ -28,6 +30,14 @@ interface FieldUpdate {
   value: string
 }
 
+interface PreviewRecord {
+  id: string
+  willUpdate: boolean
+  reason?: string
+  currentValues: Record<string, any>
+  newValues: Record<string, any>
+}
+
 export function SmartStack({ onLog }: SmartStackProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [csvIds, setCsvIds] = useState<string[]>([])
@@ -42,6 +52,9 @@ export function SmartStack({ onLog }: SmartStackProps) {
     failed: 0,
     errors: []
   })
+  const [dryRun, setDryRun] = useState(false)
+  const [previewData, setPreviewData] = useState<PreviewRecord[]>([])
+  const [showPreview, setShowPreview] = useState(false)
 
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(selectedEntity || undefined)
   
@@ -153,13 +166,22 @@ export function SmartStack({ onLog }: SmartStackProps) {
     setLoading(true)
     setProgress(0)
     setResults({ success: 0, failed: 0, errors: [] })
+    setPreviewData([])
+    setShowPreview(false)
 
     const startTime = Date.now()
     let successCount = 0
     let failedCount = 0
     const errors: string[] = []
+    const preview: PreviewRecord[] = []
 
     try {
+      const fieldsToFetch = Array.from(new Set([
+        'id',
+        ...filters.filter(f => f.field).map(f => f.field),
+        ...fieldUpdates.map(u => u.field)
+      ]))
+
       for (let i = 0; i < csvIds.length; i++) {
         const id = csvIds[i]
         const numericId = parseInt(id)
@@ -167,28 +189,42 @@ export function SmartStack({ onLog }: SmartStackProps) {
         if (isNaN(numericId)) {
           errors.push(`Invalid ID: ${id}`)
           failedCount++
+          if (dryRun) {
+            preview.push({
+              id,
+              willUpdate: false,
+              reason: 'Invalid ID',
+              currentValues: {},
+              newValues: {}
+            })
+          }
           continue
         }
 
         try {
-          const entity = await bullhornAPI.getEntity(selectedEntity, numericId, ['id'])
+          const entity = await bullhornAPI.getEntity(selectedEntity, numericId, fieldsToFetch)
           
           if (!entity || !entity.data) {
             errors.push(`Entity not found: ${id}`)
             failedCount++
+            if (dryRun) {
+              preview.push({
+                id,
+                willUpdate: false,
+                reason: 'Entity not found',
+                currentValues: {},
+                newValues: {}
+              })
+            }
             continue
           }
 
           const validFilters = filters.filter(f => f.field && f.value)
+          let passesFilters = true
+          
           if (validFilters.length > 0) {
-            const entityData = await bullhornAPI.getEntity(
-              selectedEntity, 
-              numericId, 
-              validFilters.map(f => f.field)
-            )
-
-            const passesFilters = validFilters.every(filter => {
-              const fieldValue = entityData.data[filter.field]
+            passesFilters = validFilters.every(filter => {
+              const fieldValue = entity.data[filter.field]
               const filterValue = filter.value
 
               switch (filter.operator) {
@@ -212,6 +248,15 @@ export function SmartStack({ onLog }: SmartStackProps) {
             })
 
             if (!passesFilters) {
+              if (dryRun) {
+                preview.push({
+                  id,
+                  willUpdate: false,
+                  reason: 'Does not match filters',
+                  currentValues: entity.data,
+                  newValues: {}
+                })
+              }
               continue
             }
           }
@@ -221,12 +266,31 @@ export function SmartStack({ onLog }: SmartStackProps) {
             updateData[update.field] = update.value
           })
 
-          await bullhornAPI.updateEntity(selectedEntity, numericId, updateData)
-          successCount++
+          if (dryRun) {
+            preview.push({
+              id,
+              willUpdate: true,
+              currentValues: entity.data,
+              newValues: updateData
+            })
+            successCount++
+          } else {
+            await bullhornAPI.updateEntity(selectedEntity, numericId, updateData)
+            successCount++
+          }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Update failed'
           errors.push(`ID ${id}: ${errorMessage}`)
           failedCount++
+          if (dryRun) {
+            preview.push({
+              id,
+              willUpdate: false,
+              reason: errorMessage,
+              currentValues: {},
+              newValues: {}
+            })
+          }
         }
 
         setProgress(((i + 1) / csvIds.length) * 100)
@@ -235,26 +299,45 @@ export function SmartStack({ onLog }: SmartStackProps) {
 
       const duration = Date.now() - startTime
 
-      onLog(
-        'SmartStack Execution',
-        successCount > 0 ? 'success' : 'error',
-        `Completed: ${successCount} success, ${failedCount} failed in ${duration}ms`,
-        {
-          entity: selectedEntity,
-          totalIds: csvIds.length,
-          success: successCount,
-          failed: failedCount,
-          filters: filters,
-          updates: fieldUpdates,
-          errors: errors.slice(0, 10)
-        }
-      )
+      if (dryRun) {
+        setPreviewData(preview)
+        setShowPreview(true)
+        toast.success(`Dry run complete: ${successCount} records would be updated`)
+        onLog(
+          'SmartStack Dry Run',
+          'success',
+          `Preview complete: ${successCount} would update, ${failedCount} would fail/skip in ${duration}ms`,
+          {
+            entity: selectedEntity,
+            totalIds: csvIds.length,
+            wouldUpdate: successCount,
+            wouldSkip: failedCount,
+            filters,
+            updates: fieldUpdates
+          }
+        )
+      } else {
+        onLog(
+          'SmartStack Execution',
+          successCount > 0 ? 'success' : 'error',
+          `Completed: ${successCount} success, ${failedCount} failed in ${duration}ms`,
+          {
+            entity: selectedEntity,
+            totalIds: csvIds.length,
+            success: successCount,
+            failed: failedCount,
+            filters: filters,
+            updates: fieldUpdates,
+            errors: errors.slice(0, 10)
+          }
+        )
 
-      if (successCount > 0) {
-        toast.success(`Updated ${successCount} records successfully`)
-      }
-      if (failedCount > 0) {
-        toast.error(`${failedCount} updates failed`)
+        if (successCount > 0) {
+          toast.success(`Updated ${successCount} records successfully`)
+        }
+        if (failedCount > 0) {
+          toast.error(`${failedCount} updates failed`)
+        }
       }
 
     } catch (error) {
@@ -278,6 +361,8 @@ export function SmartStack({ onLog }: SmartStackProps) {
     setFieldUpdates([])
     setProgress(0)
     setResults({ success: 0, failed: 0, errors: [] })
+    setPreviewData([])
+    setShowPreview(false)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -498,17 +583,44 @@ export function SmartStack({ onLog }: SmartStackProps) {
 
             <Separator />
 
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 rounded-md border bg-card">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Eye size={16} />
+                    Dry Run Mode
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Preview what will be updated without making changes
+                  </p>
+                </div>
+                <Switch
+                  checked={dryRun}
+                  onCheckedChange={setDryRun}
+                  disabled={loading}
+                />
+              </div>
+            </div>
+
+            <Separator />
+
             <div className="flex gap-2">
               <Button
                 onClick={executeSmartStack}
                 disabled={loading || csvIds.length === 0 || !selectedEntity || fieldUpdates.length === 0}
                 className="flex-1"
                 size="lg"
+                variant={dryRun ? "secondary" : "default"}
               >
                 {loading ? (
                   <>
                     <ArrowsClockwise className="animate-spin" />
-                    Processing...
+                    {dryRun ? 'Previewing...' : 'Processing...'}
+                  </>
+                ) : dryRun ? (
+                  <>
+                    <Eye />
+                    Preview Changes
                   </>
                 ) : (
                   <>
@@ -546,10 +658,10 @@ export function SmartStack({ onLog }: SmartStackProps) {
                 <div className="space-y-3">
                   <div className="flex gap-4">
                     <Badge variant="default" className="bg-green-600">
-                      Success: {results.success}
+                      {dryRun ? 'Would Update' : 'Success'}: {results.success}
                     </Badge>
                     <Badge variant="destructive">
-                      Failed: {results.failed}
+                      {dryRun ? 'Would Skip/Fail' : 'Failed'}: {results.failed}
                     </Badge>
                   </div>
                   {results.errors.length > 0 && (
@@ -565,6 +677,94 @@ export function SmartStack({ onLog }: SmartStackProps) {
                     </div>
                   )}
                 </div>
+              </Card>
+            )}
+
+            {showPreview && previewData.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Preview Results</CardTitle>
+                  <CardDescription>
+                    Showing what would change if executed
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[400px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-24">ID</TableHead>
+                          <TableHead className="w-32">Status</TableHead>
+                          <TableHead>Current Values</TableHead>
+                          <TableHead>New Values</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {previewData.map((record) => (
+                          <TableRow key={record.id}>
+                            <TableCell className="font-mono text-xs">{record.id}</TableCell>
+                            <TableCell>
+                              {record.willUpdate ? (
+                                <Badge variant="default" className="bg-green-600">
+                                  Will Update
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline">
+                                  Skip
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="max-w-xs">
+                              {record.willUpdate ? (
+                                <div className="space-y-1">
+                                  {Object.keys(record.newValues).map(field => (
+                                    <div key={field} className="text-xs">
+                                      <span className="font-mono text-muted-foreground">{field}:</span>{' '}
+                                      <span className="font-mono">{JSON.stringify(record.currentValues[field])}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">{record.reason}</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="max-w-xs">
+                              {record.willUpdate && (
+                                <div className="space-y-1">
+                                  {Object.entries(record.newValues).map(([field, value]) => (
+                                    <div key={field} className="text-xs">
+                                      <span className="font-mono text-muted-foreground">{field}:</span>{' '}
+                                      <span className="font-mono text-accent font-semibold">{JSON.stringify(value)}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                  <div className="mt-4 flex gap-2">
+                    <Button
+                      onClick={() => {
+                        setDryRun(false)
+                        executeSmartStack()
+                      }}
+                      disabled={loading}
+                      className="flex-1"
+                    >
+                      <Lightning />
+                      Execute Now
+                    </Button>
+                    <Button
+                      onClick={() => setShowPreview(false)}
+                      variant="outline"
+                    >
+                      Close Preview
+                    </Button>
+                  </div>
+                </CardContent>
               </Card>
             )}
           </div>
