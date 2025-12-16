@@ -47,7 +47,8 @@ export function useEntityMetadata(entity: string | undefined) {
       setError(null)
 
       try {
-        const cached = metadataCache?.[entity]
+        const currentCache = metadataCache || {}
+        const cached = currentCache[entity]
         if (cached && Date.now() - cached.lastUpdated < CACHE_DURATION) {
           setMetadata(cached)
           setLoading(false)
@@ -103,7 +104,7 @@ export function useEntityMetadata(entity: string | undefined) {
         setMetadata(newMetadata)
         
         setMetadataCache((current) => ({
-          ...current,
+          ...(current || {}),
           [entity]: newMetadata
         }))
       } catch (err) {
