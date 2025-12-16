@@ -30,6 +30,27 @@ export function OAuthCallback({
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    const handleAutoAuthenticate = async (code: string, cId: string, cSecret: string) => {
+      setLoading(true)
+      try {
+        const tokenData = await bullhornAPI.exchangeCodeForToken(code, cId, cSecret)
+        const session = await bullhornAPI.login(tokenData.accessToken)
+        session.refreshToken = tokenData.refreshToken
+        session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
+
+        window.history.replaceState({}, document.title, window.location.pathname)
+        
+        toast.success('Successfully authenticated with Bullhorn')
+        onAuthenticated(session)
+      } catch (err) {
+        setStatus('manual')
+        setError(err instanceof Error ? err.message : 'Authentication failed')
+        toast.error('Auto-authentication failed. Please enter credentials manually.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
     const urlParams = new URLSearchParams(window.location.search)
     const code = urlParams.get('code')
     const errorParam = urlParams.get('error')
@@ -51,28 +72,7 @@ export function OAuthCallback({
     } else {
       setStatus('manual')
     }
-  }, [storedCredentials])
-
-  const handleAutoAuthenticate = async (code: string, cId: string, cSecret: string) => {
-    setLoading(true)
-    try {
-      const tokenData = await bullhornAPI.exchangeCodeForToken(code, cId, cSecret)
-      const session = await bullhornAPI.login(tokenData.accessToken)
-      session.refreshToken = tokenData.refreshToken
-      session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
-
-      window.history.replaceState({}, document.title, window.location.pathname)
-      
-      toast.success('Successfully authenticated with Bullhorn')
-      onAuthenticated(session)
-    } catch (err) {
-      setStatus('manual')
-      setError(err instanceof Error ? err.message : 'Authentication failed')
-      toast.error('Auto-authentication failed. Please enter credentials manually.')
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [storedCredentials, onAuthenticated])
 
   const handleManualAuthenticate = async (e: React.FormEvent) => {
     e.preventDefault()
