@@ -18,6 +18,7 @@ import { parseCSV } from '@/lib/csv-utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { SmartFieldInput } from '@/components/SmartFieldInput'
+import { ManualEntityDialog } from '@/components/ManualEntityDialog'
 import type { QueryFilter } from '@/lib/types'
 
 interface SmartStackProps {
@@ -55,8 +56,9 @@ export function SmartStack({ onLog }: SmartStackProps) {
   const [dryRun, setDryRun] = useState(false)
   const [previewData, setPreviewData] = useState<PreviewRecord[]>([])
   const [showPreview, setShowPreview] = useState(false)
+  const [manualEntityDialogOpen, setManualEntityDialogOpen] = useState(false)
 
-  const { entities, loading: entitiesLoading, refresh: refreshEntities } = useEntities()
+  const { entities, loading: entitiesLoading, refresh: refreshEntities, addEntity } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(selectedEntity || undefined)
   
   const availableFields = metadata?.fields || []
@@ -427,8 +429,19 @@ export function SmartStack({ onLog }: SmartStackProps) {
                       variant="ghost" 
                       onClick={refreshEntities}
                       className="h-6 px-2"
+                      title="Refresh entity list"
                     >
                       <ArrowsClockwise size={14} />
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => setManualEntityDialogOpen(true)}
+                      className="h-6 px-2 gap-1"
+                      title="Add manual entity"
+                    >
+                      <Plus size={14} />
+                      Add
                     </Button>
                   </div>
                 )}
@@ -803,6 +816,16 @@ export function SmartStack({ onLog }: SmartStackProps) {
           </div>
         </CardContent>
       </Card>
+
+      <ManualEntityDialog
+        open={manualEntityDialogOpen}
+        onOpenChange={setManualEntityDialogOpen}
+        onEntityAdded={(entityName) => {
+          addEntity(entityName)
+          setSelectedEntity(entityName)
+        }}
+        existingEntities={entities}
+      />
     </div>
   )
 }

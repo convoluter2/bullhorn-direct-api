@@ -86,5 +86,25 @@ export function useEntities() {
     setTriggerRefresh(prev => prev + 1)
   }
 
-  return { entities, loading, error, refresh }
+  const addEntity = (entityName: string) => {
+    const trimmedName = entityName.trim()
+    if (!trimmedName) {
+      return false
+    }
+    
+    if (entities.includes(trimmedName)) {
+      return false
+    }
+    
+    const newEntities = [...entities, trimmedName].sort()
+    setEntities(newEntities)
+    setEntitiesCache(() => ({
+      entities: newEntities,
+      lastUpdated: Date.now()
+    }))
+    
+    return true
+  }
+
+  return { entities, loading, error, refresh, addEntity }
 }

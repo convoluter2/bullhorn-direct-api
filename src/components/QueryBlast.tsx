@@ -16,6 +16,7 @@ import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { FieldSelector } from '@/components/FieldSelector'
 import { SmartFieldInput } from '@/components/SmartFieldInput'
+import { ManualEntityDialog } from '@/components/ManualEntityDialog'
 import type { QueryFilter, QueryConfig } from '@/lib/types'
 
 interface QueryBlastProps {
@@ -34,8 +35,9 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
   const [currentStart, setCurrentStart] = useState(0)
   const [allResults, setAllResults] = useState<any[]>([])
   const [loadingAll, setLoadingAll] = useState(false)
+  const [manualEntityDialogOpen, setManualEntityDialogOpen] = useState(false)
 
-  const { entities, loading: entitiesLoading, error: entitiesError, refresh: refreshEntities } = useEntities()
+  const { entities, loading: entitiesLoading, error: entitiesError, refresh: refreshEntities, addEntity } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
 
   const availableFields = metadata?.fields || []
@@ -225,8 +227,19 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                       variant="ghost" 
                       onClick={refreshEntities}
                       className="h-6 px-2"
+                      title="Refresh entity list"
                     >
                       <ArrowsClockwise size={14} />
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => setManualEntityDialogOpen(true)}
+                      className="h-6 px-2 gap-1"
+                      title="Add manual entity"
+                    >
+                      <Plus size={14} />
+                      Add
                     </Button>
                   </div>
                 )}
@@ -490,6 +503,16 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
           </CardContent>
         </Card>
       )}
+
+      <ManualEntityDialog
+        open={manualEntityDialogOpen}
+        onOpenChange={setManualEntityDialogOpen}
+        onEntityAdded={(entityName) => {
+          addEntity(entityName)
+          setEntity(entityName)
+        }}
+        existingEntities={entities}
+      />
     </div>
   )
 }

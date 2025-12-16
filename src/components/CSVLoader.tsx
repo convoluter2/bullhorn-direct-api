@@ -16,6 +16,7 @@ import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV } from '@/lib/csv-utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
+import { ManualEntityDialog } from '@/components/ManualEntityDialog'
 import type { CSVMapping } from '@/lib/types'
 
 interface CSVLoaderProps {
@@ -41,8 +42,9 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [progress, setProgress] = useState(0)
   const [results, setResults] = useState<ImportResult[]>([])
   const [dryRun, setDryRun] = useState(false)
+  const [manualEntityDialogOpen, setManualEntityDialogOpen] = useState(false)
 
-  const { entities, loading: entitiesLoading, refresh: refreshEntities } = useEntities()
+  const { entities, loading: entitiesLoading, refresh: refreshEntities, addEntity } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
   
   const availableFields = metadata?.fields || []
@@ -307,8 +309,19 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                       variant="ghost" 
                       onClick={refreshEntities}
                       className="h-6 px-2"
+                      title="Refresh entity list"
                     >
                       <ArrowsClockwise size={14} />
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => setManualEntityDialogOpen(true)}
+                      className="h-6 px-2 gap-1"
+                      title="Add manual entity"
+                    >
+                      <Plus size={14} />
+                      Add
                     </Button>
                   </div>
                 )}
@@ -629,6 +642,16 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           </CardContent>
         </Card>
       )}
+
+      <ManualEntityDialog
+        open={manualEntityDialogOpen}
+        onOpenChange={setManualEntityDialogOpen}
+        onEntityAdded={(entityName) => {
+          addEntity(entityName)
+          setEntity(entityName)
+        }}
+        existingEntities={entities}
+      />
     </div>
   )
 }

@@ -414,7 +414,8 @@ export class BullhornAPI {
 
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken,
-      fields: '*'
+      fields: '*',
+      meta: 'full'
     })
 
     console.log(`Fetching metadata for entity: ${entity}`)
@@ -435,8 +436,35 @@ export class BullhornAPI {
     console.log(`Metadata response for ${entity}:`, {
       entity: data.entity,
       label: data.label,
-      fieldCount: data.fields ? data.fields.length : 0
+      fieldCount: data.fields ? data.fields.length : 0,
+      hasFields: !!data.fields,
+      firstFewFields: data.fields ? data.fields.slice(0, 3).map((f: any) => f.name) : []
     })
+    
+    if (!data.fields || data.fields.length === 0) {
+      console.warn(`No fields returned for ${entity}, trying alternative approach...`)
+      
+      const altParams = new URLSearchParams({
+        BhRestToken: this.session.BhRestToken
+      })
+      
+      const altResponse = await fetch(
+        `${this.session.restUrl}meta/${entity}?${altParams.toString()}`
+      )
+      
+      if (altResponse.ok) {
+        const altData = await altResponse.json()
+        console.log(`Alternative metadata response for ${entity}:`, {
+          entity: altData.entity,
+          label: altData.label,
+          fieldCount: altData.fields ? altData.fields.length : 0
+        })
+        
+        if (altData.fields && altData.fields.length > 0) {
+          return altData
+        }
+      }
+    }
     
     return data
   }
