@@ -56,8 +56,11 @@ export function ToManyFieldInput({
       operation,
       ids
     }
-    onChange(JSON.stringify(toManyValue))
-  }, [operation, ids, onChange])
+    const newValue = JSON.stringify(toManyValue)
+    if (newValue !== value) {
+      onChange(newValue)
+    }
+  }, [operation, ids])
 
   const handleAddId = () => {
     const parsedIds = inputValue

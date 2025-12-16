@@ -73,7 +73,7 @@ export function useEntities() {
     }
 
     loadEntities()
-  }, [entitiesCache, setEntitiesCache])
+  }, [])
 
   const refresh = useCallback(() => {
     initializedRef.current = false
