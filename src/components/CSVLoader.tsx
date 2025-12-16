@@ -43,7 +43,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [dryRun, setDryRun] = useState(false)
 
   const { entities, loading: entitiesLoading } = useEntities()
-  const { metadata, loading: metadataLoading } = useEntityMetadata(entity || undefined)
+  const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
   
   const availableFields = metadata?.fields || []
 
@@ -330,6 +330,11 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
 
           {csvData && (
             <>
+              {metadataError && entity && (
+                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md border border-destructive/20">
+                  Failed to load entity metadata: {metadataError}
+                </div>
+              )}
               <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border">
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">

@@ -434,6 +434,11 @@ export function SmartStack({ onLog }: SmartStackProps) {
                   </SelectContent>
                 </Select>
               )}
+              {metadataError && selectedEntity && (
+                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md border border-destructive/20">
+                  Failed to load entity metadata: {metadataError}
+                </div>
+              )}
             </div>
 
             <Separator />

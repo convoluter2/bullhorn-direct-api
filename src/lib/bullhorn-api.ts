@@ -455,8 +455,28 @@ export class BullhornAPI {
 
     const data = await response.json()
     
+    console.log('getAllEntities response keys:', data ? Object.keys(data).slice(0, 10) : 'no data')
+    
     if (data && typeof data === 'object') {
-      return Object.keys(data).sort()
+      const entities: string[] = []
+      
+      for (const key of Object.keys(data)) {
+        if (/^\d+$/.test(key)) {
+          continue
+        }
+        
+        if (typeof data[key] === 'object' && data[key] !== null) {
+          const entityName = data[key].entity || data[key].name || key
+          if (entityName && typeof entityName === 'string' && !entities.includes(entityName)) {
+            entities.push(entityName)
+          }
+        } else {
+          entities.push(key)
+        }
+      }
+      
+      console.log('Parsed entities (first 10):', entities.slice(0, 10))
+      return entities.sort()
     }
     
     return []
