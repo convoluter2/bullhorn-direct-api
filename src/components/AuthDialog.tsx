@@ -3,13 +3,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { useKV } from '@github/spark/hooks'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { Copy, Info } from '@phosphor-icons/react'
-import type { BullhornCredentials, BullhornSession } from '@/lib/types'
+import type { BullhornSession } from '@/lib/types'
 
 interface AuthDialogProps {
   open: boolean
@@ -19,16 +18,11 @@ interface AuthDialogProps {
 
 export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogProps) {
   const [loading, setLoading] = useState(false)
-  const [mode, setMode] = useState<'credentials' | 'code'>('credentials')
-  const [credentials, setCredentials] = useState<BullhornCredentials>({
-    clientId: '',
-    clientSecret: '',
-    username: '',
-    password: ''
-  })
   const [manualAuth, setManualAuth] = useState({
     clientId: '',
     clientSecret: '',
+    username: '',
+    password: '',
     authCode: '',
     useRedirectUri: false,
     redirectUri: ''
@@ -36,34 +30,6 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
   const [, setStoredCredentials] = useKV<{ clientId: string; clientSecret: string } | null>('bullhorn-credentials', null)
   
   const currentUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : ''
-
-  const handleCredentialsSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-
-    try {
-      const session = await bullhornAPI.authenticate(credentials)
-      
-      setStoredCredentials(() => ({
-        clientId: credentials.clientId,
-        clientSecret: credentials.clientSecret
-      }))
-      
-      toast.success('Successfully authenticated with Bullhorn')
-      onAuthenticated(session)
-      onOpenChange(false)
-      setCredentials({
-        clientId: '',
-        clientSecret: '',
-        username: '',
-        password: ''
-      })
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Authentication failed')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -94,7 +60,9 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
       onOpenChange(false)
       setManualAuth({ 
         clientId: '', 
-        clientSecret: '', 
+        clientSecret: '',
+        username: '',
+        password: '', 
         authCode: '', 
         useRedirectUri: false, 
         redirectUri: '' 
@@ -113,7 +81,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
       ? manualAuth.redirectUri 
       : undefined
     
-    return bullhornAPI.getAuthorizationUrl(clientId, redirectUri, state)
+    return bullhornAPI.getAuthorizationUrl(clientId, redirectUri, state, manualAuth.username, manualAuth.password)
   }
   
   const handleStartOAuthFlow = () => {
@@ -143,259 +111,215 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated }: AuthDialogPr
         <DialogHeader>
           <DialogTitle className="text-2xl">Connect to Bullhorn</DialogTitle>
           <DialogDescription>
-            Choose your authentication method
+            Authenticate using OAuth authorization code flow
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={mode} onValueChange={(v) => setMode(v as 'credentials' | 'code')}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="credentials">Username & Password</TabsTrigger>
-            <TabsTrigger value="code">Authorization Code</TabsTrigger>
-          </TabsList>
+        <div className="space-y-4">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription className="space-y-2">
+              <p className="font-medium">OAuth Authorization</p>
+              <p className="text-xs">
+                This method generates a Bullhorn OAuth URL that you visit to get an authorization code. 
+                If you're seeing a "Invalid Redirect URI" error, make sure the redirect URI setting below 
+                matches your Bullhorn OAuth app configuration.
+              </p>
+            </AlertDescription>
+          </Alert>
 
-          <TabsContent value="credentials" className="space-y-4">
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                Enter your Bullhorn credentials to authenticate automatically via OAuth flow.
-              </AlertDescription>
-            </Alert>
+          <form onSubmit={handleCodeSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="manual-clientId">Client ID</Label>
+              <Input
+                id="manual-clientId"
+                type="text"
+                value={manualAuth.clientId}
+                onChange={(e) => setManualAuth({ ...manualAuth, clientId: e.target.value })}
+                required
+                disabled={loading}
+                placeholder="a6a33789-1490-4888-994e-345f22808e41"
+              />
+              <p className="text-xs text-muted-foreground">
+                Your Bullhorn OAuth Client ID
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="manual-clientSecret">Client Secret</Label>
+              <Input
+                id="manual-clientSecret"
+                type="password"
+                value={manualAuth.clientSecret}
+                onChange={(e) => setManualAuth({ ...manualAuth, clientSecret: e.target.value })}
+                required
+                disabled={loading}
+                placeholder="Your Bullhorn OAuth Client Secret"
+              />
+            </div>
 
-            <form onSubmit={handleCredentialsSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                type="text"
+                value={manualAuth.username}
+                onChange={(e) => setManualAuth({ ...manualAuth, username: e.target.value })}
+                required
+                disabled={loading}
+                placeholder="Your Bullhorn username"
+              />
+              <p className="text-xs text-muted-foreground">
+                Added to authorization URL for automatic login
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={manualAuth.password}
+                onChange={(e) => setManualAuth({ ...manualAuth, password: e.target.value })}
+                required
+                disabled={loading}
+                placeholder="Your Bullhorn password"
+              />
+              <p className="text-xs text-muted-foreground">
+                Added to authorization URL for automatic login
+              </p>
+            </div>
+
+            <div className="space-y-3 p-4 bg-muted/50 rounded-lg border border-border">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Redirect URI Configuration</Label>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="useRedirectUri" className="text-xs text-muted-foreground cursor-pointer">
+                    Use Redirect URI
+                  </Label>
+                  <input
+                    id="useRedirectUri"
+                    type="checkbox"
+                    checked={manualAuth.useRedirectUri}
+                    onChange={(e) => setManualAuth({ 
+                      ...manualAuth, 
+                      useRedirectUri: e.target.checked,
+                      redirectUri: e.target.checked && !manualAuth.redirectUri ? currentUrl : manualAuth.redirectUri
+                    })}
+                    className="cursor-pointer"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                <strong>Important:</strong> Only enable this if your Bullhorn OAuth app has a redirect URI configured. 
+                If you're getting "Invalid Redirect URI: null" errors, leave this <strong>unchecked</strong>.
+              </p>
+              {manualAuth.useRedirectUri && (
+                <div className="space-y-1">
+                  <Input
+                    id="redirectUri"
+                    type="text"
+                    value={manualAuth.redirectUri}
+                    onChange={(e) => setManualAuth({ ...manualAuth, redirectUri: e.target.value })}
+                    placeholder={currentUrl}
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This must exactly match the redirect URI configured in your Bullhorn OAuth app.
+                    Current URL pre-filled: <code className="text-xs">{currentUrl}</code>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2 p-3 bg-muted rounded-lg">
+              <Label className="text-sm font-medium">Step 1: Get Authorization Code</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                {manualAuth.useRedirectUri 
+                  ? 'Click to authorize and automatically return to this app:'
+                  : 'Visit the authorization URL to get your code:'
+                }
+              </p>
+              {!manualAuth.useRedirectUri && (
+                <div className="flex gap-2">
+                  <Input
+                    value={getAuthUrl()}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={copyAuthUrl}
+                  >
+                    <Copy size={16} />
+                  </Button>
+                </div>
+              )}
+              <Button
+                type="button"
+                size="sm"
+                variant={manualAuth.useRedirectUri ? "default" : "secondary"}
+                onClick={manualAuth.useRedirectUri ? handleStartOAuthFlow : () => window.open(getAuthUrl(), '_blank')}
+                className="w-full mt-2"
+                disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password}
+              >
+                {manualAuth.useRedirectUri ? 'Start OAuth Flow' : 'Open Authorization URL'}
+              </Button>
+              {manualAuth.useRedirectUri && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  You'll be redirected to Bullhorn to authorize, then automatically returned here.
+                </p>
+              )}
+            </div>
+
+            {!manualAuth.useRedirectUri && (
               <div className="space-y-2">
-                <Label htmlFor="clientId">Client ID</Label>
+                <Label htmlFor="authCode">Step 2: Authorization Code</Label>
                 <Input
-                  id="clientId"
+                  id="authCode"
                   type="text"
-                  value={credentials.clientId}
-                  onChange={(e) => setCredentials({ ...credentials, clientId: e.target.value })}
+                  value={manualAuth.authCode}
+                  onChange={(e) => setManualAuth({ ...manualAuth, authCode: e.target.value })}
                   required
                   disabled={loading}
-                  placeholder="Your Bullhorn OAuth Client ID"
+                  placeholder="Paste the authorization code from the redirect URL"
                 />
+                <p className="text-xs text-muted-foreground">
+                  After authorizing, copy the 'code' parameter from the redirect URL or browser address bar
+                </p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="clientSecret">Client Secret</Label>
-                <Input
-                  id="clientSecret"
-                  type="password"
-                  value={credentials.clientSecret}
-                  onChange={(e) => setCredentials({ ...credentials, clientSecret: e.target.value })}
-                  required
-                  disabled={loading}
-                  placeholder="Your Bullhorn OAuth Client Secret"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  value={credentials.username}
-                  onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
-                  required
-                  disabled={loading}
-                  placeholder="Your Bullhorn username"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={credentials.password}
-                  onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
-                  required
-                  disabled={loading}
-                  placeholder="Your Bullhorn password"
-                />
-              </div>
+            )}
+            
+            {manualAuth.useRedirectUri && (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  When using redirect URI, the app will automatically capture the authorization code. 
+                  You won't need to manually paste it.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {!manualAuth.useRedirectUri && (
               <div className="flex gap-3 pt-2">
                 <Button type="submit" className="flex-1" disabled={loading}>
-                  {loading ? 'Authenticating...' : 'Connect'}
+                  {loading ? 'Authenticating...' : 'Connect with Code'}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
                   Cancel
                 </Button>
               </div>
-            </form>
-          </TabsContent>
-
-          <TabsContent value="code" className="space-y-4">
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription className="space-y-2">
-                <p className="font-medium">Manual OAuth Authorization</p>
-                <p className="text-xs">
-                  This method generates a Bullhorn OAuth URL that you visit to get an authorization code. 
-                  If you're seeing a "Invalid Redirect URI" error, make sure the redirect URI setting below 
-                  matches your Bullhorn OAuth app configuration.
-                </p>
-              </AlertDescription>
-            </Alert>
-
-            <form onSubmit={handleCodeSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="manual-clientId">Client ID</Label>
-                <Input
-                  id="manual-clientId"
-                  type="text"
-                  value={manualAuth.clientId}
-                  onChange={(e) => setManualAuth({ ...manualAuth, clientId: e.target.value })}
-                  required
-                  disabled={loading}
-                  placeholder="a6a33789-1490-4888-994e-345f22808e41"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Your Bullhorn OAuth Client ID
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="manual-clientSecret">Client Secret</Label>
-                <Input
-                  id="manual-clientSecret"
-                  type="password"
-                  value={manualAuth.clientSecret}
-                  onChange={(e) => setManualAuth({ ...manualAuth, clientSecret: e.target.value })}
-                  required
-                  disabled={loading}
-                  placeholder="Your Bullhorn OAuth Client Secret"
-                />
-              </div>
-
-              <div className="space-y-3 p-4 bg-muted/50 rounded-lg border border-border">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Redirect URI Configuration</Label>
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="useRedirectUri" className="text-xs text-muted-foreground cursor-pointer">
-                      Use Redirect URI
-                    </Label>
-                    <input
-                      id="useRedirectUri"
-                      type="checkbox"
-                      checked={manualAuth.useRedirectUri}
-                      onChange={(e) => setManualAuth({ 
-                        ...manualAuth, 
-                        useRedirectUri: e.target.checked,
-                        redirectUri: e.target.checked && !manualAuth.redirectUri ? currentUrl : manualAuth.redirectUri
-                      })}
-                      className="cursor-pointer"
-                    />
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  <strong>Important:</strong> Only enable this if your Bullhorn OAuth app has a redirect URI configured. 
-                  If you're getting "Invalid Redirect URI: null" errors, leave this <strong>unchecked</strong>.
-                </p>
-                {manualAuth.useRedirectUri && (
-                  <div className="space-y-1">
-                    <Input
-                      id="redirectUri"
-                      type="text"
-                      value={manualAuth.redirectUri}
-                      onChange={(e) => setManualAuth({ ...manualAuth, redirectUri: e.target.value })}
-                      placeholder={currentUrl}
-                      className="mt-2"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      This must exactly match the redirect URI configured in your Bullhorn OAuth app.
-                      Current URL pre-filled: <code className="text-xs">{currentUrl}</code>
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2 p-3 bg-muted rounded-lg">
-                <Label className="text-sm font-medium">Step 1: Get Authorization Code</Label>
-                <p className="text-xs text-muted-foreground mb-2">
-                  {manualAuth.useRedirectUri 
-                    ? 'Click to authorize and automatically return to this app:'
-                    : 'Visit the authorization URL to get your code:'
-                  }
-                </p>
-                {!manualAuth.useRedirectUri && (
-                  <div className="flex gap-2">
-                    <Input
-                      value={getAuthUrl()}
-                      readOnly
-                      className="font-mono text-xs"
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={copyAuthUrl}
-                    >
-                      <Copy size={16} />
-                    </Button>
-                  </div>
-                )}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={manualAuth.useRedirectUri ? "default" : "secondary"}
-                  onClick={manualAuth.useRedirectUri ? handleStartOAuthFlow : () => window.open(getAuthUrl(), '_blank')}
-                  className="w-full mt-2"
-                  disabled={!manualAuth.clientId || !manualAuth.clientSecret}
-                >
-                  {manualAuth.useRedirectUri ? 'Start OAuth Flow' : 'Open Authorization URL'}
+            )}
+            
+            {manualAuth.useRedirectUri && (
+              <div className="flex gap-3 pt-2">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full">
+                  Cancel
                 </Button>
-                {manualAuth.useRedirectUri && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    You'll be redirected to Bullhorn to authorize, then automatically returned here.
-                  </p>
-                )}
               </div>
-
-              {!manualAuth.useRedirectUri && (
-                <div className="space-y-2">
-                  <Label htmlFor="authCode">Step 2: Authorization Code</Label>
-                  <Input
-                    id="authCode"
-                    type="text"
-                    value={manualAuth.authCode}
-                    onChange={(e) => setManualAuth({ ...manualAuth, authCode: e.target.value })}
-                    required
-                    disabled={loading}
-                    placeholder="Paste the authorization code from the redirect URL"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    After authorizing, copy the 'code' parameter from the redirect URL or browser address bar
-                  </p>
-                </div>
-              )}
-              
-              {manualAuth.useRedirectUri && (
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription className="text-xs">
-                    When using redirect URI, the app will automatically capture the authorization code. 
-                    You won't need to manually paste it.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {!manualAuth.useRedirectUri && (
-                <div className="flex gap-3 pt-2">
-                  <Button type="submit" className="flex-1" disabled={loading}>
-                    {loading ? 'Authenticating...' : 'Connect with Code'}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-                    Cancel
-                  </Button>
-                </div>
-              )}
-              
-              {manualAuth.useRedirectUri && (
-                <div className="flex gap-3 pt-2">
-                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full">
-                    Cancel
-                  </Button>
-                </div>
-              )}
-            </form>
-          </TabsContent>
-        </Tabs>
+            )}
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   )

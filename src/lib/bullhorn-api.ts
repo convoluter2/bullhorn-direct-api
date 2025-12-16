@@ -7,7 +7,7 @@ const BULLHORN_ATS_URL = 'https://cls43.bullhornstaffing.com'
 export class BullhornAPI {
   private session: BullhornSession | null = null
 
-  getAuthorizationUrl(clientId: string, redirectUri: string | undefined, state: string): string {
+  getAuthorizationUrl(clientId: string, redirectUri: string | undefined, state: string, username?: string, password?: string): string {
     const params = new URLSearchParams({
       client_id: clientId,
       response_type: 'code',
@@ -16,6 +16,12 @@ export class BullhornAPI {
     
     if (redirectUri) {
       params.append('redirect_uri', redirectUri)
+    }
+    
+    if (username && password) {
+      params.append('action', 'Login')
+      params.append('username', username)
+      params.append('password', password)
     }
     
     return `${BULLHORN_AUTH_URL}/authorize?${params.toString()}`
