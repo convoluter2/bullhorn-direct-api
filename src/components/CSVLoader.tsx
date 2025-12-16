@@ -254,13 +254,17 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               }
               
               for (const toManyUpdate of toManyUpdates) {
-                await bullhornAPI.updateToManyAssociation(
+                const result = await bullhornAPI.updateToManyAssociation(
                   entity,
                   existingRecord.id,
                   toManyUpdate.field,
                   toManyUpdate.ids,
                   toManyUpdate.operation as 'add' | 'remove' | 'replace'
                 )
+                
+                if (result?.changeType === 'ASSOCIATE_INVERSE' || result?.changeType === 'DISASSOCIATE_INVERSE') {
+                  toast.success(result.message)
+                }
               }
             }
             importResults.push({
@@ -307,13 +311,17 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               const newEntityId = result.changedEntityId
               
               for (const toManyUpdate of toManyUpdates) {
-                await bullhornAPI.updateToManyAssociation(
+                const toManyResult = await bullhornAPI.updateToManyAssociation(
                   entity,
                   newEntityId,
                   toManyUpdate.field,
                   toManyUpdate.ids,
                   toManyUpdate.operation as 'add' | 'remove' | 'replace'
                 )
+                
+                if (toManyResult?.changeType === 'ASSOCIATE_INVERSE' || toManyResult?.changeType === 'DISASSOCIATE_INVERSE') {
+                  toast.success(toManyResult.message)
+                }
               }
               
               importResults.push({

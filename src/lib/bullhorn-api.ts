@@ -1,4 +1,5 @@
 import type { BullhornCredentials, BullhornSession, QueryConfig, QueryResult } from './types'
+import { toast } from 'sonner'
 
 const BULLHORN_AUTH_URL = 'https://auth-east.bullhornstaffing.com/oauth'
 const BULLHORN_LOGIN_URL = 'https://rest.bullhornstaffing.com/rest-services/login'
@@ -435,6 +436,98 @@ export class BullhornAPI {
     return await response.json()
   }
 
+  private extractOwningEntity(errorText: string, entity: string, association: string): { owningEntity: string; inverseField: string } | null {
+    try {
+      const errorData = JSON.parse(errorText)
+      const errorMessage = errorData.errorMessage || ''
+      
+      const ownershipPattern = /association between (\w+) and (\w+) is owned by (\w+)/i
+      const match = errorMessage.match(ownershipPattern)
+      
+      if (match) {
+        const [, entity1, entity2, owningEntity] = match
+        
+        if (owningEntity === entity2) {
+          return {
+            owningEntity: entity2,
+            inverseField: entity1.charAt(0).toLowerCase() + entity1.slice(1)
+          }
+        } else if (owningEntity === entity1) {
+          return {
+            owningEntity: entity1,
+            inverseField: entity2.charAt(0).toLowerCase() + entity2.slice(1)
+          }
+        }
+      }
+    } catch (e) {
+    }
+    
+    return null
+  }
+
+  private async associateToManyInverse(
+    owningEntity: string,
+    owningEntityIds: number[],
+    inverseFieldName: string,
+    targetEntityId: number
+  ): Promise<any> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const results: Array<{ id: number; result: any }> = []
+    const errors: Array<{ id: number; error: string }> = []
+
+    for (const owningId of owningEntityIds) {
+      try {
+        const updateData = {
+          [inverseFieldName]: { id: targetEntityId }
+        }
+
+        const params = new URLSearchParams({
+          BhRestToken: this.session.BhRestToken
+        })
+
+        const response = await fetch(
+          `${this.session.restUrl}entity/${owningEntity}/${owningId}?${params.toString()}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+          }
+        )
+
+        if (!response.ok) {
+          const error = await response.text()
+          errors.push({ id: owningId, error })
+        } else {
+          const result = await response.json()
+          results.push({ id: owningId, result })
+        }
+      } catch (error) {
+        errors.push({ 
+          id: owningId, 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        })
+      }
+    }
+
+    if (errors.length > 0 && results.length === 0) {
+      throw new Error(`All inverse associations failed: ${JSON.stringify(errors)}`)
+    }
+
+    return {
+      changedEntityType: owningEntity,
+      changedEntityId: targetEntityId,
+      changeType: 'ASSOCIATE_INVERSE',
+      message: `Successfully associated ${results.length} ${owningEntity} records${errors.length > 0 ? `, ${errors.length} failed` : ''}`,
+      results,
+      errors
+    }
+  }
+
   async associateToMany(
     entity: string,
     entityId: number,
@@ -459,11 +552,85 @@ export class BullhornAPI {
     )
 
     if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Associate to-many failed: ${error}`)
+      const errorText = await response.text()
+      
+      const ownershipError = this.extractOwningEntity(errorText, entity, association)
+      if (ownershipError) {
+        console.warn(`Association owned by ${ownershipError.owningEntity}, attempting inverse operation...`)
+        toast.info(`Redirecting: Association is owned by ${ownershipError.owningEntity}. Updating those records instead...`)
+        return await this.associateToManyInverse(
+          ownershipError.owningEntity,
+          associationIds,
+          ownershipError.inverseField,
+          entityId
+        )
+      }
+      
+      throw new Error(`Associate to-many failed: ${errorText}`)
     }
 
     return await response.json()
+  }
+
+  private async disassociateToManyInverse(
+    owningEntity: string,
+    owningEntityIds: number[],
+    inverseFieldName: string
+  ): Promise<any> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const results: Array<{ id: number; result: any }> = []
+    const errors: Array<{ id: number; error: string }> = []
+
+    for (const owningId of owningEntityIds) {
+      try {
+        const updateData = {
+          [inverseFieldName]: null
+        }
+
+        const params = new URLSearchParams({
+          BhRestToken: this.session.BhRestToken
+        })
+
+        const response = await fetch(
+          `${this.session.restUrl}entity/${owningEntity}/${owningId}?${params.toString()}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+          }
+        )
+
+        if (!response.ok) {
+          const error = await response.text()
+          errors.push({ id: owningId, error })
+        } else {
+          const result = await response.json()
+          results.push({ id: owningId, result })
+        }
+      } catch (error) {
+        errors.push({ 
+          id: owningId, 
+          error: error instanceof Error ? error.message : 'Unknown error' 
+        })
+      }
+    }
+
+    if (errors.length > 0 && results.length === 0) {
+      throw new Error(`All inverse disassociations failed: ${JSON.stringify(errors)}`)
+    }
+
+    return {
+      changedEntityType: owningEntity,
+      changeType: 'DISASSOCIATE_INVERSE',
+      message: `Successfully disassociated ${results.length} ${owningEntity} records${errors.length > 0 ? `, ${errors.length} failed` : ''}`,
+      results,
+      errors
+    }
   }
 
   async disassociateToMany(
@@ -490,8 +657,20 @@ export class BullhornAPI {
     )
 
     if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Disassociate to-many failed: ${error}`)
+      const errorText = await response.text()
+      
+      const ownershipError = this.extractOwningEntity(errorText, entity, association)
+      if (ownershipError) {
+        console.warn(`Association owned by ${ownershipError.owningEntity}, attempting inverse disassociation...`)
+        toast.info(`Redirecting: Association is owned by ${ownershipError.owningEntity}. Updating those records instead...`)
+        return await this.disassociateToManyInverse(
+          ownershipError.owningEntity,
+          associationIds,
+          ownershipError.inverseField
+        )
+      }
+      
+      throw new Error(`Disassociate to-many failed: ${errorText}`)
     }
 
     return await response.json()

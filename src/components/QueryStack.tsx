@@ -386,13 +386,17 @@ export function QueryStack({ onLog }: QueryStackProps) {
             }
             
             for (const toManyUpdate of toManyUpdates) {
-              await bullhornAPI.updateToManyAssociation(
+              const result = await bullhornAPI.updateToManyAssociation(
                 effectiveEntity,
                 numericId,
                 toManyUpdate.field,
                 toManyUpdate.ids,
                 toManyUpdate.operation as 'add' | 'remove' | 'replace'
               )
+              
+              if (result?.changeType === 'ASSOCIATE_INVERSE' || result?.changeType === 'DISASSOCIATE_INVERSE') {
+                toast.success(result.message)
+              }
             }
             
             successCount++

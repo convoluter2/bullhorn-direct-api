@@ -322,13 +322,17 @@ export function SmartStack({ onLog }: SmartStackProps) {
             }
             
             for (const toManyUpdate of toManyUpdates) {
-              await bullhornAPI.updateToManyAssociation(
+              const result = await bullhornAPI.updateToManyAssociation(
                 selectedEntity,
                 numericId,
                 toManyUpdate.field,
                 toManyUpdate.ids,
                 toManyUpdate.operation as 'add' | 'remove' | 'replace'
               )
+              
+              if (result?.changeType === 'ASSOCIATE_INVERSE' || result?.changeType === 'DISASSOCIATE_INVERSE') {
+                toast.success(result.message)
+              }
             }
             
             successCount++
