@@ -69,6 +69,13 @@ export interface AuditLog {
     }>
   }
   rolledBack?: boolean
+  rollbackHistory?: Array<{
+    timestamp: number
+    successCount: number
+    errorCount: number
+    errors?: string[]
+  }>
+  originalLogId?: string
 }
 
 export interface CSVMapping {

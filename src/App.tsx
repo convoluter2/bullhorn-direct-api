@@ -236,7 +236,7 @@ function App() {
             </TabsContent>
 
             <TabsContent value="logs" className="space-y-6">
-              <AuditLogs logs={currentLogs} onClearLogs={clearLogs} onUpdateLog={updateLog} />
+              <AuditLogs logs={currentLogs} onClearLogs={clearLogs} onUpdateLog={updateLog} onLog={addLog} />
             </TabsContent>
           </Tabs>
         )}

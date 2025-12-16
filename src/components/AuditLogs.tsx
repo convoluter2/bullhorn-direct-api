@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { ClockCounterClockwise, DownloadSimple, MagnifyingGlass, Trash, ArrowCounterClockwise } from '@phosphor-icons/react'
+import { ClockCounterClockwise, DownloadSimple, MagnifyingGlass, Trash, ArrowCounterClockwise, ArrowBendUpLeft } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
 import { bullhornAPI } from '@/lib/bullhorn-api'
@@ -25,11 +25,13 @@ interface AuditLogsProps {
   logs: AuditLog[]
   onClearLogs: () => void
   onUpdateLog: (logId: string, updates: Partial<AuditLog>) => void
+  onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
 }
 
-export function AuditLogs({ logs, onClearLogs, onUpdateLog }: AuditLogsProps) {
+export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [highlightedLogId, setHighlightedLogId] = useState<string | null>(null)
   const [rollbackDialog, setRollbackDialog] = useState<{ open: boolean; log: AuditLog | null }>({
     open: false,
     log: null
@@ -80,6 +82,15 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog }: AuditLogsProps) {
     setRollbackDialog({ open: true, log })
   }
 
+  const handleScrollToLog = (logId: string) => {
+    setHighlightedLogId(logId)
+    const element = document.getElementById(`log-${logId}`)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      setTimeout(() => setHighlightedLogId(null), 2000)
+    }
+  }
+
   const handleRollbackConfirm = async () => {
     const log = rollbackDialog.log
     if (!log || !log.rollbackData || !log.entity) {
@@ -93,10 +104,23 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog }: AuditLogsProps) {
       let successCount = 0
       let errorCount = 0
       const errors: string[] = []
+      const newRollbackData: Array<{
+        entityId: number
+        previousValues: Record<string, any>
+      }> = []
 
       for (const update of log.rollbackData.updates) {
         try {
+          const currentResponse = await bullhornAPI.getEntity(log.entity, update.entityId, Object.keys(update.previousValues))
+          const currentValues = currentResponse.data || currentResponse
+          
           await bullhornAPI.updateEntity(log.entity, update.entityId, update.previousValues)
+          
+          newRollbackData.push({
+            entityId: update.entityId,
+            previousValues: currentValues
+          })
+          
           successCount++
         } catch (error) {
           errorCount++
@@ -104,23 +128,99 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog }: AuditLogsProps) {
         }
       }
 
+      const rollbackHistoryEntry = {
+        timestamp: Date.now(),
+        successCount,
+        errorCount,
+        errors: errorCount > 0 ? errors : undefined
+      }
+
+      const existingHistory = log.rollbackHistory || []
+      const updatedHistory = [...existingHistory, rollbackHistoryEntry]
+
       if (errorCount === 0) {
         toast.success(`Successfully rolled back ${successCount} record(s)`, { id: toastId })
-        onUpdateLog(log.id, { rolledBack: true })
+        
+        onUpdateLog(log.id, { 
+          rolledBack: true,
+          rollbackHistory: updatedHistory
+        })
+
+        onLog(
+          'Rollback',
+          'success',
+          `Rolled back ${successCount} record(s) from "${log.operation}"`,
+          {
+            originalOperation: log.operation,
+            originalLogId: log.id,
+            entity: log.entity,
+            successCount,
+            recordCount: successCount,
+            rollbackData: newRollbackData.length > 0 ? { updates: newRollbackData } : undefined
+          }
+        )
       } else if (successCount > 0) {
         toast.warning(`Rolled back ${successCount} record(s), ${errorCount} failed`, { id: toastId })
+        
         onUpdateLog(log.id, { 
           details: { 
             ...log.details, 
             rollbackErrors: errors,
             partialRollback: true 
-          } 
+          },
+          rollbackHistory: updatedHistory
         })
+
+        onLog(
+          'Rollback (Partial)',
+          'error',
+          `Partially rolled back ${successCount} of ${successCount + errorCount} record(s) from "${log.operation}"`,
+          {
+            originalOperation: log.operation,
+            originalLogId: log.id,
+            entity: log.entity,
+            successCount,
+            errorCount,
+            errors,
+            recordCount: successCount,
+            rollbackData: newRollbackData.length > 0 ? { updates: newRollbackData } : undefined
+          }
+        )
       } else {
         toast.error(`Rollback failed for all ${errorCount} record(s)`, { id: toastId })
+        
+        onUpdateLog(log.id, { 
+          rollbackHistory: updatedHistory
+        })
+
+        onLog(
+          'Rollback Failed',
+          'error',
+          `Failed to rollback ${errorCount} record(s) from "${log.operation}"`,
+          {
+            originalOperation: log.operation,
+            originalLogId: log.id,
+            entity: log.entity,
+            errorCount,
+            errors,
+            recordCount: 0
+          }
+        )
       }
     } catch (error) {
       toast.error(`Rollback failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { id: toastId })
+      
+      onLog(
+        'Rollback Failed',
+        'error',
+        `Rollback operation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        {
+          originalOperation: log.operation,
+          originalLogId: log.id,
+          entity: log.entity,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      )
     } finally {
       setIsRollingBack(false)
       setRollbackDialog({ open: false, log: null })
@@ -187,70 +287,124 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog }: AuditLogsProps) {
             </div>
           ) : (
             <div className="space-y-2">
-              {filteredLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className="p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={
-                          log.status === 'success' ? 'default' :
-                          log.status === 'error' ? 'destructive' :
-                          'outline'
-                        }>
-                          {log.status}
-                        </Badge>
-                        {log.rolledBack && (
-                          <Badge variant="secondary" className="gap-1">
-                            <ArrowCounterClockwise size={12} />
-                            Rolled Back
+              {filteredLogs.map((log) => {
+                const isRollbackLog = log.details?.originalLogId
+                const originalLog = isRollbackLog ? logs.find(l => l.id === log.details.originalLogId) : null
+                
+                return (
+                  <div
+                    key={log.id}
+                    id={`log-${log.id}`}
+                    className={`p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors ${
+                      highlightedLogId === log.id ? 'ring-2 ring-accent' : ''
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant={
+                            log.status === 'success' ? 'default' :
+                            log.status === 'error' ? 'destructive' :
+                            'outline'
+                          }>
+                            {log.status}
                           </Badge>
+                          {log.rolledBack && (
+                            <Badge variant="secondary" className="gap-1">
+                              <ArrowCounterClockwise size={12} />
+                              Rolled Back
+                            </Badge>
+                          )}
+                          {isRollbackLog && (
+                            <Badge variant="outline" className="gap-1 bg-accent/10 text-accent border-accent/30">
+                              <ArrowBendUpLeft size={12} />
+                              Rollback Operation
+                            </Badge>
+                          )}
+                          <span className="font-semibold text-sm">{log.operation}</span>
+                          {log.entity && (
+                            <span className="text-xs text-muted-foreground">
+                              • {log.entity}
+                            </span>
+                          )}
+                          {log.recordCount !== undefined && (
+                            <span className="text-xs text-muted-foreground">
+                              • {log.recordCount} records
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{log.message}</p>
+                        {isRollbackLog && originalLog && (
+                          <div className="mt-2 p-2 bg-muted/50 rounded border border-accent/30">
+                            <div className="flex items-center gap-2">
+                              <ArrowBendUpLeft size={14} className="text-accent" />
+                              <span className="text-xs text-muted-foreground">
+                                Rolled back from:
+                              </span>
+                              <button
+                                onClick={() => handleScrollToLog(originalLog.id)}
+                                className="text-xs text-accent hover:underline font-medium"
+                              >
+                                {originalLog.operation} ({new Date(originalLog.timestamp).toLocaleString()})
+                              </button>
+                            </div>
+                          </div>
                         )}
-                        <span className="font-semibold text-sm">{log.operation}</span>
-                        {log.entity && (
-                          <span className="text-xs text-muted-foreground">
-                            • {log.entity}
-                          </span>
+                        {log.rollbackHistory && log.rollbackHistory.length > 0 && (
+                          <div className="mt-2 p-2 bg-muted/50 rounded border border-border/50">
+                            <p className="text-xs font-semibold text-muted-foreground mb-1">
+                              Rollback History ({log.rollbackHistory.length})
+                            </p>
+                            <div className="space-y-1">
+                              {log.rollbackHistory.map((history, idx) => (
+                                <div key={idx} className="text-xs flex items-center gap-2">
+                                  <span className="text-muted-foreground">
+                                    {new Date(history.timestamp).toLocaleString()}
+                                  </span>
+                                  <span className="text-accent">
+                                    ✓ {history.successCount} success
+                                  </span>
+                                  {history.errorCount > 0 && (
+                                    <span className="text-destructive">
+                                      ✗ {history.errorCount} failed
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         )}
-                        {log.recordCount !== undefined && (
-                          <span className="text-xs text-muted-foreground">
-                            • {log.recordCount} records
-                          </span>
+                        {log.details && (
+                          <details className="mt-2">
+                            <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                              View details
+                            </summary>
+                            <pre className="mt-2 p-2 bg-muted rounded text-xs font-mono overflow-auto">
+                              {JSON.stringify(log.details, null, 2)}
+                            </pre>
+                          </details>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground">{log.message}</p>
-                      {log.details && (
-                        <details className="mt-2">
-                          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-                            View details
-                          </summary>
-                          <pre className="mt-2 p-2 bg-muted rounded text-xs font-mono overflow-auto">
-                            {JSON.stringify(log.details, null, 2)}
-                          </pre>
-                        </details>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <div className="text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(log.timestamp).toLocaleString()}
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </div>
+                        {log.rollbackData && !log.rolledBack && log.status === 'success' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRollbackClick(log)}
+                            className="gap-1"
+                          >
+                            <ArrowCounterClockwise size={14} />
+                            Rollback
+                          </Button>
+                        )}
                       </div>
-                      {log.rollbackData && !log.rolledBack && log.status === 'success' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleRollbackClick(log)}
-                          className="gap-1"
-                        >
-                          <ArrowCounterClockwise size={14} />
-                          Rollback
-                        </Button>
-                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </ScrollArea>
