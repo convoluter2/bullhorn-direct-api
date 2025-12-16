@@ -435,6 +435,278 @@ export class BullhornAPI {
     return await response.json()
   }
 
+  async associateToMany(
+    entity: string,
+    entityId: number,
+    association: string,
+    associationIds: number[]
+  ): Promise<any> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const params = new URLSearchParams({
+      BhRestToken: this.session.BhRestToken
+    })
+
+    const idsParam = associationIds.join(',')
+
+    const response = await fetch(
+      `${this.session.restUrl}entity/${entity}/${entityId}/${association}/${idsParam}?${params.toString()}`,
+      {
+        method: 'PUT'
+      }
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Associate to-many failed: ${error}`)
+    }
+
+    return await response.json()
+  }
+
+  async disassociateToMany(
+    entity: string,
+    entityId: number,
+    association: string,
+    associationIds: number[]
+  ): Promise<any> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const params = new URLSearchParams({
+      BhRestToken: this.session.BhRestToken
+    })
+
+    const idsParam = associationIds.join(',')
+
+    const response = await fetch(
+      `${this.session.restUrl}entity/${entity}/${entityId}/${association}/${idsParam}?${params.toString()}`,
+      {
+        method: 'DELETE'
+      }
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Disassociate to-many failed: ${error}`)
+    }
+
+    return await response.json()
+  }
+
+  async updateToManyAssociation(
+    entity: string,
+    entityId: number,
+    association: string,
+    associationIds: number[],
+    operation: 'add' | 'remove' | 'replace' = 'add'
+  ): Promise<any> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    switch (operation) {
+      case 'add':
+        return this.associateToMany(entity, entityId, association, associationIds)
+      
+      case 'remove':
+        return this.disassociateToMany(entity, entityId, association, associationIds)
+      
+      case 'replace':
+        const currentAssociations = await this.getToManyAssociation(entity, entityId, association)
+        const currentIds = currentAssociations.data?.map((item: any) => item.id) || []
+        
+        if (currentIds.length > 0) {
+          await this.disassociateToMany(entity, entityId, association, currentIds)
+        }
+        
+        if (associationIds.length > 0) {
+          return this.associateToMany(entity, entityId, association, associationIds)
+        }
+        
+        return { success: true, message: 'Association replaced successfully' }
+      
+      default:
+        throw new Error(`Invalid operation: ${operation}`)
+    }
+  }
+
+  async getToManyAssociation(
+    entity: string,
+    entityId: number,
+    association: string,
+    fields?: string[],
+    start?: number,
+    count?: number
+  ): Promise<any> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const params = new URLSearchParams({
+      BhRestToken: this.session.BhRestToken
+    })
+
+    if (fields && fields.length > 0) {
+      params.append('fields', fields.join(','))
+    }
+
+    if (start !== undefined) {
+      params.append('start', start.toString())
+    }
+
+    if (count !== undefined) {
+      params.append('count', count.toString())
+    }
+
+    const response = await fetch(
+      `${this.session.restUrl}entity/${entity}/${entityId}/${association}?${params.toString()}`
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Get to-many association failed: ${error}`)
+    }
+
+    return await response.json()
+  }
+
+  async updateMultipleEntities(
+    entity: string,
+    updates: Array<{ id: number; data: any }>
+  ): Promise<any> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const results: Array<{ id: number; success: boolean; result: any }> = []
+    const errors: Array<{ id: number; success: boolean; error: string }> = []
+
+    for (const update of updates) {
+      try {
+        const result = await this.updateEntity(entity, update.id, update.data)
+        results.push({ id: update.id, success: true, result })
+      } catch (error) {
+        errors.push({
+          id: update.id,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        })
+      }
+    }
+
+    return {
+      successCount: results.length,
+      errorCount: errors.length,
+      results,
+      errors
+    }
+  }
+
+  async createEffectiveDateEntity(
+    entity: string,
+    parentEntityId: number,
+    effectiveDate: number,
+    data: any
+  ): Promise<any> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const params = new URLSearchParams({
+      BhRestToken: this.session.BhRestToken
+    })
+
+    const payload = {
+      ...data,
+      effectiveDate: effectiveDate
+    }
+
+    const response = await fetch(
+      `${this.session.restUrl}entity/${entity}?${params.toString()}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      }
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Create effective date entity failed: ${error}`)
+    }
+
+    return await response.json()
+  }
+
+  async updateEffectiveDateEntity(
+    entity: string,
+    entityId: number,
+    effectiveDate: number,
+    data: any
+  ): Promise<any> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const params = new URLSearchParams({
+      BhRestToken: this.session.BhRestToken,
+      effectiveDate: effectiveDate.toString()
+    })
+
+    const response = await fetch(
+      `${this.session.restUrl}entity/${entity}/${entityId}?${params.toString()}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      }
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Update effective date entity failed: ${error}`)
+    }
+
+    return await response.json()
+  }
+
+  async deleteEffectiveDateEntity(
+    entity: string,
+    entityId: number,
+    effectiveDate: number
+  ): Promise<any> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const params = new URLSearchParams({
+      BhRestToken: this.session.BhRestToken,
+      effectiveDate: effectiveDate.toString()
+    })
+
+    const response = await fetch(
+      `${this.session.restUrl}entity/${entity}/${entityId}?${params.toString()}`,
+      {
+        method: 'DELETE'
+      }
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(`Delete effective date entity failed: ${error}`)
+    }
+
+    return await response.json()
+  }
+
   async getMetadata(entity: string): Promise<any> {
     if (!this.session) {
       throw new Error('Not authenticated')

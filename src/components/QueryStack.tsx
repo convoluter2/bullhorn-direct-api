@@ -23,6 +23,7 @@ import { bullhornAPI } from '@/lib/bullhorn-api'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { SmartFieldInput } from '@/components/SmartFieldInput'
+import { ToManyFieldInput } from '@/components/ToManyFieldInput'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
 import { FieldSelector } from '@/components/FieldSelector'
 import { FilterGroupBuilder } from '@/components/FilterGroupBuilder'
@@ -337,16 +338,40 @@ export function QueryStack({ onLog }: QueryStackProps) {
           }
 
           const updateData: any = {}
+          const toManyUpdates: Array<{ field: string; operation: string; ids: number[] }> = []
+          
           fieldUpdates.forEach(update => {
-            updateData[update.field] = update.value
+            const fieldMeta = targetMetadata?.fieldsMap[update.field]
+            
+            if (fieldMeta?.associationType === 'TO_MANY') {
+              try {
+                const toManyValue = JSON.parse(update.value)
+                if (toManyValue.operation && toManyValue.ids) {
+                  toManyUpdates.push({
+                    field: update.field,
+                    operation: toManyValue.operation,
+                    ids: toManyValue.ids
+                  })
+                }
+              } catch {
+                updateData[update.field] = update.value
+              }
+            } else {
+              updateData[update.field] = update.value
+            }
           })
 
           if (dryRun) {
+            const previewNewValues: any = { ...updateData }
+            toManyUpdates.forEach(tmu => {
+              previewNewValues[tmu.field] = `${tmu.operation}: [${tmu.ids.join(', ')}]`
+            })
+            
             preview.push({
               id,
               willUpdate: true,
               currentValues: entityData.data,
-              newValues: updateData
+              newValues: previewNewValues
             })
             successCount++
           } else {
@@ -355,7 +380,21 @@ export function QueryStack({ onLog }: QueryStackProps) {
               previousValues: entityData.data,
               newValues: updateData
             })
-            await bullhornAPI.updateEntity(effectiveEntity, numericId, updateData)
+            
+            if (Object.keys(updateData).length > 0) {
+              await bullhornAPI.updateEntity(effectiveEntity, numericId, updateData)
+            }
+            
+            for (const toManyUpdate of toManyUpdates) {
+              await bullhornAPI.updateToManyAssociation(
+                effectiveEntity,
+                numericId,
+                toManyUpdate.field,
+                toManyUpdate.ids,
+                toManyUpdate.operation as 'add' | 'remove' | 'replace'
+              )
+            }
+            
             successCount++
           }
         } catch (error) {
@@ -999,45 +1038,60 @@ export function QueryStack({ onLog }: QueryStackProps) {
                     </p>
                   ) : (
                     <div className="space-y-2">
-                      {fieldUpdates.map((update) => (
-                        <Card key={update.id} className="p-3">
-                          <div className="flex gap-2">
-                            <Select
-                              value={update.field || undefined}
-                              onValueChange={(v) => updateFieldUpdate(update.id, { field: v })}
-                              disabled={loading}
-                            >
-                              <SelectTrigger className="flex-1">
-                                <SelectValue placeholder="Field name" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {(targetEntity ? targetAvailableFields : availableFields).map((field) => (
-                                  <SelectItem key={field.name} value={field.name}>
-                                    {field.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <SmartFieldInput
-                              field={(targetEntity ? targetFieldsMap : fieldsMap)[update.field] || null}
-                              value={update.value}
-                              onChange={(v) => updateFieldUpdate(update.id, { value: v })}
-                              disabled={loading}
-                              placeholder="New value"
-                              className="flex-1"
-                            />
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={() => removeFieldUpdate(update.id)}
-                              disabled={loading}
-                              className="text-destructive"
-                            >
-                              <Trash size={18} />
-                            </Button>
-                          </div>
-                        </Card>
-                      ))}
+                      {fieldUpdates.map((update) => {
+                        const fieldMeta = (targetEntity ? targetFieldsMap : fieldsMap)[update.field]
+                        const isToMany = fieldMeta?.associationType === 'TO_MANY'
+                        
+                        return (
+                          <Card key={update.id} className="p-3">
+                            <div className="space-y-3">
+                              <div className="flex gap-2">
+                                <Select
+                                  value={update.field || undefined}
+                                  onValueChange={(v) => updateFieldUpdate(update.id, { field: v })}
+                                  disabled={loading}
+                                >
+                                  <SelectTrigger className="flex-1">
+                                    <SelectValue placeholder="Field name" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {(targetEntity ? targetAvailableFields : availableFields).map((field) => (
+                                      <SelectItem key={field.name} value={field.name}>
+                                        {field.label} {field.associationType === 'TO_MANY' ? '(To-Many)' : ''}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  onClick={() => removeFieldUpdate(update.id)}
+                                  disabled={loading}
+                                  className="text-destructive"
+                                >
+                                  <Trash size={18} />
+                                </Button>
+                              </div>
+                              {isToMany ? (
+                                <ToManyFieldInput
+                                  field={fieldMeta}
+                                  value={update.value}
+                                  onChange={(v) => updateFieldUpdate(update.id, { value: v })}
+                                  disabled={loading}
+                                />
+                              ) : (
+                                <SmartFieldInput
+                                  field={fieldMeta || null}
+                                  value={update.value}
+                                  onChange={(v) => updateFieldUpdate(update.id, { value: v })}
+                                  disabled={loading}
+                                  placeholder="New value"
+                                />
+                              )}
+                            </div>
+                          </Card>
+                        )
+                      })}
                     </div>
                   )}
                 </div>

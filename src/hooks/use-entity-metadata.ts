@@ -16,6 +16,7 @@ export interface EntityField {
     entity: string
     entityMetaUrl: string
   }
+  associationType?: 'TO_ONE' | 'TO_MANY'
 }
 
 export interface EntityMetadata {
@@ -80,6 +81,12 @@ export function useEntityMetadata(entity: string | undefined) {
                 entity: field.associatedEntity.entity,
                 entityMetaUrl: field.associatedEntity.entityMetaUrl
               }
+            }
+
+            if (field.type === 'TO_MANY') {
+              fieldInfo.associationType = 'TO_MANY'
+            } else if (field.type === 'TO_ONE') {
+              fieldInfo.associationType = 'TO_ONE'
             }
 
             if (field.options && Array.isArray(field.options)) {

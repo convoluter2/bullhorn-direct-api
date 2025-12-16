@@ -177,7 +177,24 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           if (csvIndex !== -1) {
             const rawValue = row[csvIndex]
             const transformedValue = transformValue(rawValue, mapping.transform)
-            data[mapping.bullhornField] = transformedValue
+            
+            const fieldMeta = metadata?.fieldsMap[mapping.bullhornField]
+            if (fieldMeta?.associationType === 'TO_MANY') {
+              try {
+                const parsed = JSON.parse(transformedValue)
+                data[`__tomany_${mapping.bullhornField}`] = parsed
+              } catch {
+                const ids = transformedValue.split(/[,\s]+/).map((id: string) => parseInt(id.trim(), 10)).filter((id: number) => !isNaN(id))
+                if (ids.length > 0) {
+                  data[`__tomany_${mapping.bullhornField}`] = {
+                    operation: 'add',
+                    ids: ids
+                  }
+                }
+              }
+            } else {
+              data[mapping.bullhornField] = transformedValue
+            }
           }
         })
 
@@ -207,12 +224,44 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         if (existingRecord) {
           if (updateExisting) {
             if (!dryRun) {
+              const regularData: any = {}
+              const toManyUpdates: Array<{ field: string; operation: string; ids: number[] }> = []
+              
+              Object.keys(data).forEach(key => {
+                if (key.startsWith('__tomany_')) {
+                  const fieldName = key.replace('__tomany_', '')
+                  const toManyValue = data[key]
+                  if (toManyValue.operation && toManyValue.ids) {
+                    toManyUpdates.push({
+                      field: fieldName,
+                      operation: toManyValue.operation,
+                      ids: toManyValue.ids
+                    })
+                  }
+                } else {
+                  regularData[key] = data[key]
+                }
+              })
+              
               snapshotUpdates.push({
                 entityId: existingRecord.id,
                 previousValues: { ...existingRecord },
-                newValues: data
+                newValues: regularData
               })
-              await bullhornAPI.updateEntity(entity, existingRecord.id, data)
+              
+              if (Object.keys(regularData).length > 0) {
+                await bullhornAPI.updateEntity(entity, existingRecord.id, regularData)
+              }
+              
+              for (const toManyUpdate of toManyUpdates) {
+                await bullhornAPI.updateToManyAssociation(
+                  entity,
+                  existingRecord.id,
+                  toManyUpdate.field,
+                  toManyUpdate.ids,
+                  toManyUpdate.operation as 'add' | 'remove' | 'replace'
+                )
+              }
             }
             importResults.push({
               row: i + 1,
@@ -235,11 +284,42 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         } else {
           if (createNew) {
             if (!dryRun) {
-              const result = await bullhornAPI.createEntity(entity, data)
+              const regularData: any = {}
+              const toManyUpdates: Array<{ field: string; operation: string; ids: number[] }> = []
+              
+              Object.keys(data).forEach(key => {
+                if (key.startsWith('__tomany_')) {
+                  const fieldName = key.replace('__tomany_', '')
+                  const toManyValue = data[key]
+                  if (toManyValue.operation && toManyValue.ids) {
+                    toManyUpdates.push({
+                      field: fieldName,
+                      operation: toManyValue.operation,
+                      ids: toManyValue.ids
+                    })
+                  }
+                } else {
+                  regularData[key] = data[key]
+                }
+              })
+              
+              const result = await bullhornAPI.createEntity(entity, regularData)
+              const newEntityId = result.changedEntityId
+              
+              for (const toManyUpdate of toManyUpdates) {
+                await bullhornAPI.updateToManyAssociation(
+                  entity,
+                  newEntityId,
+                  toManyUpdate.field,
+                  toManyUpdate.ids,
+                  toManyUpdate.operation as 'add' | 'remove' | 'replace'
+                )
+              }
+              
               importResults.push({
                 row: i + 1,
                 status: 'success',
-                message: `Created new record (ID: ${result.changedEntityId})`,
+                message: `Created new record (ID: ${newEntityId})`,
                 action: 'created'
               })
             } else {
