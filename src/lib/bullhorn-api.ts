@@ -426,7 +426,13 @@ export class BullhornAPI {
       throw new Error(`Get metadata failed: ${error}`)
     }
 
-    return await response.json()
+    const data = await response.json()
+    
+    if (data && typeof data === 'object' && data[entity]) {
+      return data[entity]
+    }
+    
+    return data
   }
 
   async getAllEntities(): Promise<string[]> {
