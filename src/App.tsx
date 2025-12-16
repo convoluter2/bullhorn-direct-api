@@ -210,9 +210,11 @@ function App() {
 
   const currentLogs = logs || []
 
-  if (session) {
-    bullhornAPI.setSession(session)
-  }
+  useEffect(() => {
+    if (session) {
+      bullhornAPI.setSession(session)
+    }
+  }, [session])
 
   if (isOAuthCallback) {
     return (
