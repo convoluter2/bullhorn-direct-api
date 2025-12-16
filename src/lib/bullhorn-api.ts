@@ -470,7 +470,7 @@ export class BullhornAPI {
     })
 
     const response = await fetch(
-      `${this.session.restUrl}options/allEntities?${params.toString()}`
+      `${this.session.restUrl}settings?${params.toString()}`
     )
 
     if (!response.ok) {
@@ -480,8 +480,8 @@ export class BullhornAPI {
 
     const data = await response.json()
     
-    if (Array.isArray(data.data)) {
-      return data.data.sort()
+    if (data.settings && Array.isArray(data.settings.allEntities)) {
+      return data.settings.allEntities.sort()
     }
     
     return []
