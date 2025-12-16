@@ -22,12 +22,15 @@ export function useEntities() {
 
       try {
         if (entitiesCache && Date.now() - entitiesCache.lastUpdated < CACHE_DURATION) {
+          console.log('Using cached entities:', entitiesCache.entities)
           setEntities(entitiesCache.entities)
           setLoading(false)
           return
         }
 
+        console.log('Fetching entities from API...')
         const fetchedEntities = await bullhornAPI.getAllEntities()
+        console.log('Fetched entities:', fetchedEntities)
         
         setEntities(fetchedEntities)
         setEntitiesCache(() => ({
@@ -36,6 +39,7 @@ export function useEntities() {
         }))
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load entities'
+        console.error('Failed to load entities:', err)
         setError(errorMessage)
         setEntities([])
       } finally {

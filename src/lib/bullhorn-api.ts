@@ -445,7 +445,7 @@ export class BullhornAPI {
     })
 
     const response = await fetch(
-      `${this.session.restUrl}meta?${params}`
+      `${this.session.restUrl}options/allEntities?${params}`
     )
 
     if (!response.ok) {
@@ -455,14 +455,12 @@ export class BullhornAPI {
 
     const data = await response.json()
     
-    if (data && typeof data === 'object') {
-      const entities = Object.keys(data).filter(key => {
-        return typeof data[key] === 'object' && 
-               data[key] !== null && 
-               'fields' in data[key]
-      })
-      
-      return entities.sort()
+    console.log('All entities response:', data)
+    
+    if (Array.isArray(data.data)) {
+      const entities = data.data.sort()
+      console.log('Parsed entities:', entities)
+      return entities
     }
     
     return []
