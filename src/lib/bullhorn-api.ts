@@ -480,13 +480,18 @@ export class BullhornAPI {
 
     for (const owningId of owningEntityIds) {
       try {
-        const updateData = {
-          [inverseFieldName]: { id: targetEntityId }
-        }
-
         const params = new URLSearchParams({
           BhRestToken: this.session.BhRestToken
         })
+
+        const firstData = {
+          [inverseFieldName]: { id: targetEntityId }
+        }
+        const secondFieldName = this.inferSecondField(owningEntity, inverseFieldName)
+        const createData = {
+          [inverseFieldName]: { id: targetEntityId },
+          [secondFieldName]: { id: owningId }
+        }
 
         let response = await fetch(
           `${this.session.restUrl}entity/${owningEntity}/${owningId}?${params.toString()}`,
@@ -495,7 +500,7 @@ export class BullhornAPI {
             headers: {
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify(updateData)
+            body: JSON.stringify(firstData)
           }
         )
 
@@ -505,17 +510,17 @@ export class BullhornAPI {
           try {
             const errorData = JSON.parse(error)
             if (errorData.errorCode === 400 && errorData.errorMessage?.includes('Operation UPDATE not allowed')) {
-              console.warn(`UPDATE not allowed on ${owningEntity}, trying PUT instead...`)
-              toast.info(`Switching to PUT operation for ${owningEntity}...`)
+              console.warn(`UPDATE not allowed on ${owningEntity} id ${owningId}, creating new association record instead...`)
+              toast.info(`Creating new ${owningEntity} association record...`)
               
               response = await fetch(
-                `${this.session.restUrl}entity/${owningEntity}/${owningId}?${params.toString()}`,
+                `${this.session.restUrl}entity/${owningEntity}?${params.toString()}`,
                 {
                   method: 'PUT',
                   headers: {
                     'Content-Type': 'application/json'
                   },
-                  body: JSON.stringify(updateData)
+                  body: JSON.stringify(createData)
                 }
               )
               
@@ -556,6 +561,28 @@ export class BullhornAPI {
       results,
       errors
     }
+  }
+
+  private inferSecondField(owningEntity: string, inverseFieldName: string): string {
+    const entityLower = owningEntity.toLowerCase()
+    
+    if (entityLower.includes('certification')) {
+      if (inverseFieldName === 'clientCorporation') {
+        return 'certification'
+      }
+      if (inverseFieldName === 'candidate') {
+        return 'certification'
+      }
+      if (inverseFieldName === 'placement') {
+        return 'certification'
+      }
+    }
+    
+    if (entityLower.endsWith('s')) {
+      return entityLower.slice(0, -1)
+    }
+    
+    return 'entity'
   }
 
   async associateToMany(
@@ -616,58 +643,23 @@ export class BullhornAPI {
 
     for (const owningId of owningEntityIds) {
       try {
-        const updateData = {
-          [inverseFieldName]: null
-        }
-
         const params = new URLSearchParams({
           BhRestToken: this.session.BhRestToken
         })
 
-        let response = await fetch(
+        console.warn(`Attempting to delete ${owningEntity} association record id ${owningId}...`)
+        toast.info(`Deleting ${owningEntity} association record...`)
+        
+        const response = await fetch(
           `${this.session.restUrl}entity/${owningEntity}/${owningId}?${params.toString()}`,
           {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(updateData)
+            method: 'DELETE'
           }
         )
 
         if (!response.ok) {
           const error = await response.text()
-          
-          try {
-            const errorData = JSON.parse(error)
-            if (errorData.errorCode === 400 && errorData.errorMessage?.includes('Operation UPDATE not allowed')) {
-              console.warn(`UPDATE not allowed on ${owningEntity}, trying PUT instead...`)
-              toast.info(`Switching to PUT operation for ${owningEntity}...`)
-              
-              response = await fetch(
-                `${this.session.restUrl}entity/${owningEntity}/${owningId}?${params.toString()}`,
-                {
-                  method: 'PUT',
-                  headers: {
-                    'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify(updateData)
-                }
-              )
-              
-              if (!response.ok) {
-                const putError = await response.text()
-                errors.push({ id: owningId, error: putError })
-              } else {
-                const result = await response.json()
-                results.push({ id: owningId, result })
-              }
-            } else {
-              errors.push({ id: owningId, error })
-            }
-          } catch (parseError) {
-            errors.push({ id: owningId, error })
-          }
+          errors.push({ id: owningId, error })
         } else {
           const result = await response.json()
           results.push({ id: owningId, result })
