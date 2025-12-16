@@ -105,9 +105,12 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       return
     }
 
-    if (lookupField && lookupField !== '__none__' && !validMappings.find(m => m.bullhornField === lookupField)) {
-      toast.error('Lookup field must be included in the field mappings')
-      return
+    if (lookupField && lookupField !== '__none__') {
+      const lookupMapping = mappings.find(m => m.bullhornField === lookupField || m.csvColumn.toLowerCase() === lookupField.toLowerCase())
+      if (!lookupMapping) {
+        toast.error('Lookup field must have a corresponding CSV column')
+        return
+      }
     }
 
     if (!updateExisting && !createNew) {
@@ -132,16 +135,28 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         const data: any = {}
         let lookupValue: string | null = null
 
+        if (lookupField && lookupField !== '__none__') {
+          const lookupMapping = mappings.find(m => m.bullhornField === lookupField)
+          if (lookupMapping) {
+            const csvIndex = csvData.headers.indexOf(lookupMapping.csvColumn)
+            if (csvIndex !== -1) {
+              const rawValue = row[csvIndex]
+              lookupValue = transformValue(rawValue, lookupMapping.transform)
+            }
+          } else {
+            const csvIndex = csvData.headers.findIndex(h => h.toLowerCase() === lookupField.toLowerCase())
+            if (csvIndex !== -1) {
+              lookupValue = row[csvIndex]
+            }
+          }
+        }
+
         validMappings.forEach(mapping => {
           const csvIndex = csvData.headers.indexOf(mapping.csvColumn)
           if (csvIndex !== -1) {
             const rawValue = row[csvIndex]
             const transformedValue = transformValue(rawValue, mapping.transform)
             data[mapping.bullhornField] = transformedValue
-
-            if (lookupField && lookupField !== '__none__' && mapping.bullhornField === lookupField) {
-              lookupValue = transformedValue
-            }
           }
         })
 
