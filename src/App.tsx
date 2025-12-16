@@ -43,11 +43,11 @@ function App() {
       rollbackData: details?.rollbackData
     }
     setLogs((currentLogs) => [newLog, ...(currentLogs || [])])
-  }, [setLogs])
+  }, [])
 
   const clearLogs = useCallback(() => {
     setLogs(() => [])
-  }, [setLogs])
+  }, [])
 
   const updateLog = useCallback((logId: string, updates: Partial<AuditLog>) => {
     setLogs((currentLogs) => 
@@ -55,7 +55,7 @@ function App() {
         log.id === logId ? { ...log, ...updates } : log
       )
     )
-  }, [setLogs])
+  }, [])
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)

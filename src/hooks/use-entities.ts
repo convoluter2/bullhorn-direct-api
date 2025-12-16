@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 
@@ -14,21 +14,17 @@ export function useEntities() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [entitiesCache, setEntitiesCache] = useKV<EntitiesCache | null>('entities-cache', null)
-  const [triggerRefresh, setTriggerRefresh] = useState(0)
   const loadingRef = useRef(false)
   const hasLoadedRef = useRef(false)
-  const cacheRef = useRef<EntitiesCache | null>(null)
+  const initializedRef = useRef(false)
 
   useEffect(() => {
-    cacheRef.current = entitiesCache || null
-  }, [entitiesCache])
-
-  useEffect(() => {
-    if (loadingRef.current) {
+    if (initializedRef.current || loadingRef.current) {
       return
     }
 
     const loadEntities = async () => {
+      initializedRef.current = true
       loadingRef.current = true
       setLoading(true)
       setError(null)
@@ -36,43 +32,24 @@ export function useEntities() {
       try {
         const session = bullhornAPI.getSession()
         
-        console.log('=== Entity Loading Debug ===')
-        console.log('Has session:', !!session)
-        console.log('Trigger refresh:', triggerRefresh)
-        console.log('Has loaded ref:', hasLoadedRef.current)
-        
         if (!session) {
-          console.warn('No Bullhorn session available - waiting for authentication')
           setEntities([])
           setLoading(false)
           loadingRef.current = false
           return
         }
 
-        const cachedData = cacheRef.current
-        if (!hasLoadedRef.current && cachedData && cachedData.entities && cachedData.entities.length > 0 && Date.now() - cachedData.lastUpdated < CACHE_DURATION) {
-          console.log('Using cached entities:', cachedData.entities.length, 'entities')
-          setEntities(cachedData.entities)
+        if (entitiesCache && entitiesCache.entities && entitiesCache.entities.length > 0 && Date.now() - entitiesCache.lastUpdated < CACHE_DURATION) {
+          setEntities(entitiesCache.entities)
           setLoading(false)
           loadingRef.current = false
           hasLoadedRef.current = true
           return
         }
 
-        if (hasLoadedRef.current && triggerRefresh === 0) {
-          console.log('Already loaded, skipping...')
-          setLoading(false)
-          loadingRef.current = false
-          return
-        }
-
-        console.log('Fetching entities from Bullhorn API...')
         const fetchedEntities = await bullhornAPI.getAllEntities()
-        console.log('Fetched entities count:', fetchedEntities.length)
-        console.log('First 10 entities:', fetchedEntities.slice(0, 10))
         
         if (fetchedEntities.length === 0) {
-          console.warn('No entities returned from API')
           setError('No entities available')
         }
         
@@ -96,15 +73,56 @@ export function useEntities() {
     }
 
     loadEntities()
-  }, [triggerRefresh])
+  }, [entitiesCache, setEntitiesCache])
 
-  const refresh = () => {
-    console.log('Manually refreshing entities...')
+  const refresh = useCallback(() => {
+    initializedRef.current = false
     loadingRef.current = false
-    setTriggerRefresh(prev => prev + 1)
-  }
+    hasLoadedRef.current = false
+    setLoading(true)
+    
+    const loadEntities = async () => {
+      loadingRef.current = true
 
-  const addEntity = (entityName: string) => {
+      try {
+        const session = bullhornAPI.getSession()
+        
+        if (!session) {
+          setEntities([])
+          setLoading(false)
+          loadingRef.current = false
+          return
+        }
+
+        const fetchedEntities = await bullhornAPI.getAllEntities()
+        
+        if (fetchedEntities.length === 0) {
+          setError('No entities available')
+        }
+        
+        setEntities(fetchedEntities)
+        hasLoadedRef.current = true
+        
+        const newCache = {
+          entities: fetchedEntities,
+          lastUpdated: Date.now()
+        }
+        setEntitiesCache(() => newCache)
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load entities'
+        console.error('Failed to load entities:', err)
+        setError(errorMessage)
+        setEntities([])
+      } finally {
+        setLoading(false)
+        loadingRef.current = false
+      }
+    }
+
+    loadEntities()
+  }, [setEntitiesCache])
+
+  const addEntity = useCallback((entityName: string) => {
     const trimmedName = entityName.trim()
     if (!trimmedName) {
       return false
@@ -122,7 +140,7 @@ export function useEntities() {
     }))
     
     return true
-  }
+  }, [entities, setEntitiesCache])
 
   return { entities, loading, error, refresh, addEntity }
 }
