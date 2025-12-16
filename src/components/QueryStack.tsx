@@ -58,7 +58,9 @@ export function QueryStack({ onLog }: QueryStackProps) {
   const [queryResults, setQueryResults] = useState<any[]>([])
   const [queryLoading, setQueryLoading] = useState(false)
   const [totalCount, setTotalCount] = useState<number>(0)
+  const [showQueryPreview, setShowQueryPreview] = useState(false)
   
+  const [targetEntity, setTargetEntity] = useState('')
   const [updateFilters, setUpdateFilters] = useState<QueryFilter[]>([])
   const [fieldUpdates, setFieldUpdates] = useState<FieldUpdate[]>([])
   const [loading, setLoading] = useState(false)
@@ -77,9 +79,12 @@ export function QueryStack({ onLog }: QueryStackProps) {
 
   const { entities, loading: entitiesLoading, error: entitiesError, refresh: refreshEntities, addEntity } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
+  const { metadata: targetMetadata, loading: targetMetadataLoading, error: targetMetadataError } = useEntityMetadata(targetEntity || undefined)
 
   const availableFields = metadata?.fields || []
   const fieldsMap = metadata?.fieldsMap || {}
+  const targetAvailableFields = targetMetadata?.fields || []
+  const targetFieldsMap = targetMetadata?.fieldsMap || {}
 
   const addQueryFilter = () => {
     setQueryFilters([...queryFilters, { field: '', operator: 'equals', value: '' }])
@@ -210,8 +215,9 @@ export function QueryStack({ onLog }: QueryStackProps) {
       return
     }
 
-    if (!entity) {
-      toast.error('Please select an entity type')
+    const effectiveEntity = targetEntity || entity
+    if (!effectiveEntity) {
+      toast.error('Please select a target entity type')
       return
     }
 
@@ -271,7 +277,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
         }
 
         try {
-          const entityData = await bullhornAPI.getEntity(entity, numericId, fieldsToFetch)
+          const entityData = await bullhornAPI.getEntity(effectiveEntity, numericId, fieldsToFetch)
           
           if (!entityData || !entityData.data) {
             errors.push(`Entity not found: ${id}`)
@@ -349,7 +355,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
               previousValues: entityData.data,
               newValues: updateData
             })
-            await bullhornAPI.updateEntity(entity, numericId, updateData)
+            await bullhornAPI.updateEntity(effectiveEntity, numericId, updateData)
             successCount++
           }
         } catch (error) {
@@ -382,7 +388,8 @@ export function QueryStack({ onLog }: QueryStackProps) {
           'success',
           `Preview complete: ${successCount} would update, ${failedCount} would fail/skip in ${duration}ms`,
           {
-            entity,
+            queryEntity: entity,
+            targetEntity: effectiveEntity,
             totalRecords: queryResults.length,
             wouldUpdate: successCount,
             wouldSkip: failedCount,
@@ -396,7 +403,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
             id: `snapshot-${Date.now()}`,
             timestamp: Date.now(),
             operation: 'smartstack',
-            entity,
+            entity: effectiveEntity,
             description: `QueryStack: ${successCount} updated records`,
             updates: snapshotUpdates
           }
@@ -409,7 +416,8 @@ export function QueryStack({ onLog }: QueryStackProps) {
           successCount > 0 ? 'success' : 'error',
           `Completed: ${successCount} success, ${failedCount} failed in ${duration}ms`,
           {
-            entity,
+            queryEntity: entity,
+            targetEntity: effectiveEntity,
             totalRecords: queryResults.length,
             success: successCount,
             failed: failedCount,
@@ -432,7 +440,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
         'QueryStack Execution',
         'error',
         error instanceof Error ? error.message : 'Execution failed',
-        { entity }
+        { queryEntity: entity, targetEntity: effectiveEntity }
       )
     } finally {
       setLoading(false)
@@ -503,6 +511,8 @@ export function QueryStack({ onLog }: QueryStackProps) {
   const resetStack = () => {
     setQueryResults([])
     setTotalCount(0)
+    setShowQueryPreview(false)
+    setTargetEntity('')
     setUpdateFilters([])
     setFieldUpdates([])
     setProgress(0)
@@ -750,28 +760,83 @@ export function QueryStack({ onLog }: QueryStackProps) {
                     </div>
 
                     {queryResults.length > 0 && (
-                      <Card className="bg-muted/50 border-accent">
-                        <CardContent className="pt-6">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="default" className="bg-green-600 text-base px-3 py-1">
-                                {totalCount} records loaded
-                              </Badge>
-                              <span className="text-sm text-muted-foreground">Ready for updates</span>
+                      <>
+                        <Card className="bg-muted/50 border-accent">
+                          <CardContent className="pt-6 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="default" className="bg-green-600 text-base px-3 py-1">
+                                  {totalCount} records loaded
+                                </Badge>
+                                <span className="text-sm text-muted-foreground">Ready for updates</span>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setShowQueryPreview(!showQueryPreview)}
+                                >
+                                  <Eye size={16} />
+                                  {showQueryPreview ? 'Hide' : 'Show'} Preview
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setQueryResults([])
+                                    setTotalCount(0)
+                                    setShowQueryPreview(false)
+                                  }}
+                                >
+                                  Clear
+                                </Button>
+                              </div>
                             </div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setQueryResults([])
-                                setTotalCount(0)
-                              }}
-                            >
-                              Clear
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
+                            
+                            {showQueryPreview && (
+                              <div className="border rounded-lg bg-background">
+                                <ScrollArea className="h-[300px]">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead className="w-20">ID</TableHead>
+                                        {selectedFields.slice(0, 5).map(field => (
+                                          <TableHead key={field}>{field}</TableHead>
+                                        ))}
+                                        {selectedFields.length > 5 && (
+                                          <TableHead className="text-muted-foreground">
+                                            +{selectedFields.length - 5} more
+                                          </TableHead>
+                                        )}
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {queryResults.slice(0, 100).map((record) => (
+                                        <TableRow key={record.id}>
+                                          <TableCell className="font-mono text-xs">{record.id}</TableCell>
+                                          {selectedFields.slice(0, 5).map(field => (
+                                            <TableCell key={field} className="text-xs max-w-[200px] truncate">
+                                              {JSON.stringify(record[field]) || '-'}
+                                            </TableCell>
+                                          ))}
+                                          {selectedFields.length > 5 && (
+                                            <TableCell className="text-xs text-muted-foreground">...</TableCell>
+                                          )}
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </ScrollArea>
+                                {queryResults.length > 100 && (
+                                  <div className="p-2 text-xs text-center text-muted-foreground border-t">
+                                    Showing first 100 of {queryResults.length} records
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </>
                     )}
                   </>
                 )}
@@ -787,12 +852,54 @@ export function QueryStack({ onLog }: QueryStackProps) {
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
+                    <Label>Target Entity for Updates</Label>
+                    {targetEntity && targetEntity !== entity && (
+                      <Badge variant="outline" className="gap-1">
+                        Cross-entity update
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Select value={targetEntity || entity} onValueChange={setTargetEntity}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select target entity" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {entities.map((e) => (
+                          <SelectItem key={e} value={e}>
+                            {e}
+                            {e === entity && ' (same as query)'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {targetEntity && targetEntity !== entity && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setTargetEntity('')}
+                      >
+                        Reset
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {targetEntity && targetEntity !== entity
+                      ? `Updates will be applied to ${targetEntity} entities using IDs from ${entity} query results`
+                      : 'Updates will be applied to the same entity type as the query'}
+                  </p>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
                     <Label>Additional Update Filters (Optional)</Label>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={addUpdateFilter}
-                      disabled={loading || !entity || metadataLoading}
+                      disabled={loading || !targetEntity && !entity || (targetEntity ? targetMetadataLoading : metadataLoading)}
                     >
                       <Plus size={16} />
                       Add Filter
@@ -816,7 +923,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
                                 <SelectValue placeholder="Field name" />
                               </SelectTrigger>
                               <SelectContent>
-                                {availableFields.map((field) => (
+                                {(targetEntity ? targetAvailableFields : availableFields).map((field) => (
                                   <SelectItem key={field.name} value={field.name}>
                                     {field.label}
                                   </SelectItem>
@@ -842,7 +949,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
                               </SelectContent>
                             </Select>
                             <SmartFieldInput
-                              field={fieldsMap[filter.field] || null}
+                              field={(targetEntity ? targetFieldsMap : fieldsMap)[filter.field] || null}
                               value={filter.value}
                               onChange={(v) => updateUpdateFilter(index, { value: v })}
                               disabled={loading || filter.operator === 'is_null' || filter.operator === 'is_not_null'}
@@ -874,7 +981,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
                       size="sm"
                       variant="outline"
                       onClick={addFieldUpdate}
-                      disabled={loading || !entity || metadataLoading}
+                      disabled={loading || !targetEntity && !entity || (targetEntity ? targetMetadataLoading : metadataLoading)}
                     >
                       <Plus size={16} />
                       Add Field
@@ -898,7 +1005,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
                                 <SelectValue placeholder="Field name" />
                               </SelectTrigger>
                               <SelectContent>
-                                {availableFields.map((field) => (
+                                {(targetEntity ? targetAvailableFields : availableFields).map((field) => (
                                   <SelectItem key={field.name} value={field.name}>
                                     {field.label}
                                   </SelectItem>
@@ -906,7 +1013,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
                               </SelectContent>
                             </Select>
                             <SmartFieldInput
-                              field={fieldsMap[update.field] || null}
+                              field={(targetEntity ? targetFieldsMap : fieldsMap)[update.field] || null}
                               value={update.value}
                               onChange={(v) => updateFieldUpdate(update.id, { value: v })}
                               disabled={loading}
