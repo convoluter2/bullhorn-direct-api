@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Swap } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -13,6 +13,7 @@ import { SmartStack } from '@/components/SmartStack'
 import { QueryStack } from '@/components/QueryStack'
 import { AuditLogs } from '@/components/AuditLogs'
 import { ConnectionManager, type SavedConnection } from '@/components/ConnectionManager'
+import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { toast } from 'sonner'
 import type { BullhornSession, AuditLog } from '@/lib/types'
@@ -26,6 +27,7 @@ function App() {
   const [credentials, setCredentials] = useKV<{ clientId: string; clientSecret: string } | null>('bullhorn-credentials', null)
   const [savedConnections, setSavedConnections] = useKV<SavedConnection[]>('saved-connections', [])
   const [isOAuthCallback, setIsOAuthCallback] = useState(false)
+  const [currentConnectionId, setCurrentConnectionId] = useKV<string | null>('current-connection-id', null)
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -78,6 +80,20 @@ function App() {
     setSession(() => newSession)
     bullhornAPI.setSession(newSession)
     setIsOAuthCallback(false)
+    
+    if (credentials) {
+      const matchingConnection = savedConnections?.find(
+        conn => conn.clientId === credentials.clientId
+      )
+      if (matchingConnection) {
+        setCurrentConnectionId(() => matchingConnection.id)
+        setSavedConnections((current) => 
+          (current || []).map(conn => 
+            conn.id === matchingConnection.id ? { ...conn, lastUsed: Date.now() } : conn
+          )
+        )
+      }
+    }
   }
 
   const handleCancelOAuth = () => {
@@ -92,6 +108,7 @@ function App() {
   const handleDisconnect = () => {
     if (confirm('Are you sure you want to disconnect?')) {
       setSession(() => null)
+      setCurrentConnectionId(() => null)
     }
   }
 
@@ -155,6 +172,40 @@ function App() {
     toast.success(`Loaded connection: ${connection.name}`)
   }
 
+  const handleQuickSwitchConnection = async (connection: SavedConnection) => {
+    try {
+      toast.loading('Switching connection...', { id: 'switch-connection' })
+
+      setCredentials(() => ({ 
+        clientId: connection.clientId, 
+        clientSecret: connection.clientSecret 
+      }))
+
+      const newSession = await bullhornAPI.authenticate({
+        clientId: connection.clientId,
+        clientSecret: connection.clientSecret,
+        username: connection.username,
+        password: connection.password
+      })
+
+      setSession(() => newSession)
+      bullhornAPI.setSession(newSession)
+      
+      setCurrentConnectionId(() => connection.id)
+      setSavedConnections((current) => 
+        (current || []).map(conn => 
+          conn.id === connection.id ? { ...conn, lastUsed: Date.now() } : conn
+        )
+      )
+
+      toast.success(`Switched to ${connection.name}`, { id: 'switch-connection' })
+      addLog('Connection Switch', 'success', `Switched to connection: ${connection.name}`)
+    } catch (error) {
+      toast.error('Failed to switch connection. Please try again.', { id: 'switch-connection' })
+      addLog('Connection Switch', 'error', `Failed to switch to ${connection.name}`, { error: String(error) })
+    }
+  }
+
   const currentLogs = logs || []
 
   if (session) {
@@ -192,6 +243,13 @@ function App() {
             <div className="flex items-center gap-3">
               {session ? (
                 <>
+                  <ConnectionSwitcher
+                    connections={savedConnections || []}
+                    currentConnectionId={currentConnectionId || undefined}
+                    onSelectConnection={handleQuickSwitchConnection}
+                    onManageConnections={() => setConnectionManagerOpen(true)}
+                    onNewConnection={() => setAuthDialogOpen(true)}
+                  />
                   <Badge variant="outline" className="font-mono">
                     Connected
                   </Badge>
