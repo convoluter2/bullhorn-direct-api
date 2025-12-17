@@ -108,7 +108,8 @@ function App() {
           const tokenData = await bullhornAPI.refreshAccessToken(
             session.refreshToken!,
             credentials.clientId,
-            credentials.clientSecret
+            credentials.clientSecret,
+            credentials.username
           )
           const newSession = await bullhornAPI.login(tokenData.accessToken)
           newSession.refreshToken = tokenData.refreshToken

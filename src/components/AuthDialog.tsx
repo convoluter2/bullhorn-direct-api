@@ -105,7 +105,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         const tokenData = await bullhornAPI.exchangeCodeForToken(
           codeToUse,
           manualAuth.clientId,
-          manualAuth.clientSecret
+          manualAuth.clientSecret,
+          manualAuth.username
         )
         const session = await bullhornAPI.login(tokenData.accessToken)
         session.refreshToken = tokenData.refreshToken
@@ -151,12 +152,12 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     }
   }
 
-  const getAuthUrl = () => {
+  const getAuthUrl = (): string => {
     const state = Math.random().toString(36).substring(7)
     const clientId = manualAuth.clientId || 'YOUR_CLIENT_ID'
     
     console.log('🔗 Generating auth URL (NO redirect_uri)')
-    return bullhornAPI.getAuthorizationUrl(clientId, state, manualAuth.username, manualAuth.password)
+    return bullhornAPI.getAuthorizationUrl(manualAuth.username, clientId, state, manualAuth.password)
   }
   
   const handleStartIframeFlow = async () => {
@@ -173,6 +174,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     await window.spark.kv.set('pending-oauth-auth', {
       clientId: manualAuth.clientId,
       clientSecret: manualAuth.clientSecret,
+      username: manualAuth.username,
       connectionId: preselectedConnection?.id,
       timestamp: Date.now()
     })
@@ -237,10 +239,14 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       await window.spark.kv.set('pending-oauth-auth', {
         clientId: manualAuth.clientId,
         clientSecret: manualAuth.clientSecret,
+        username: manualAuth.username,
         connectionId: preselectedConnection?.id,
         timestamp: Date.now()
       })
 
+      console.log('🔍 Fetching loginInfo to determine OAuth URL...')
+      await bullhornAPI.prepareForAuth(manualAuth.username)
+      
       const authUrl = getAuthUrl()
       console.log('🔗 Generated auth URL (length:', authUrl.length + '):', authUrl.substring(0, 150) + '...')
       
@@ -461,7 +467,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       const tokenData = await bullhornAPI.exchangeCodeForToken(
         codeToUse,
         manualAuth.clientId,
-        manualAuth.clientSecret
+        manualAuth.clientSecret,
+        manualAuth.username
       )
       
       console.log('✅ Token received:', {
@@ -518,12 +525,14 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
   }
 
   const copyAuthUrl = async () => {
+    await bullhornAPI.prepareForAuth(manualAuth.username)
     const url = getAuthUrl()
     navigator.clipboard.writeText(url)
 
     await window.spark.kv.set('pending-oauth-auth', {
       clientId: manualAuth.clientId,
       clientSecret: manualAuth.clientSecret,
+      username: manualAuth.username,
       connectionId: preselectedConnection?.id,
       timestamp: Date.now()
     })
@@ -535,6 +544,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     await window.spark.kv.set('pending-oauth-auth', {
       clientId: manualAuth.clientId,
       clientSecret: manualAuth.clientSecret,
+      username: manualAuth.username,
       connectionId: preselectedConnection?.id,
       timestamp: Date.now()
     })

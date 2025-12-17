@@ -2,33 +2,115 @@ import type { BullhornCredentials, BullhornSession, QueryConfig, QueryResult } f
 import { toast } from 'sonner'
 import { fetchWithCorsProxy } from './cors-proxy'
 
-const BULLHORN_AUTH_URL = 'https://auth-east.bullhornstaffing.com/oauth'
+const BULLHORN_LOGIN_INFO_URL = 'https://rest.bullhornstaffing.com/rest-services/loginInfo'
 const BULLHORN_LOGIN_URL = 'https://rest.bullhornstaffing.com/rest-services/login'
-const BULLHORN_ATS_URL = 'https://cls43.bullhornstaffing.com'
+
+interface LoginInfo {
+  atsUrl: string
+  billingSyncUrl: string
+  coreUrl: string
+  documentEditorUrl: string
+  mobileUrl: string
+  oauthUrl: string
+  restUrl: string
+  samlUrl: string
+  novoUrl: string
+  pulseInboxUrl: string
+  canvasUrl: string
+  npsSurveyUrl: string
+  ulUrl: string
+  dataCenterId: number
+  superClusterId: number
+}
 
 export class BullhornAPI {
   private session: BullhornSession | null = null
+  private loginInfoCache: Map<string, LoginInfo> = new Map()
+  private currentUsername: string | null = null
 
-  getAuthorizationUrl(clientId: string, state: string, username?: string, password?: string): string {
+  async getLoginInfo(username: string): Promise<LoginInfo> {
+    if (this.loginInfoCache.has(username)) {
+      console.log('📦 Using cached loginInfo for:', username)
+      return this.loginInfoCache.get(username)!
+    }
+
+    console.log('🔍 Fetching loginInfo for username:', username)
+    
+    const url = `${BULLHORN_LOGIN_INFO_URL}?username=${encodeURIComponent(username)}`
+    
+    let response: Response
+    try {
+      response = await fetch(url)
+    } catch (error) {
+      console.log('❌ Direct loginInfo request failed (CORS), using proxy...', error)
+      response = await fetchWithCorsProxy(url)
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ Failed to fetch loginInfo:', errorText)
+      throw new Error(`Failed to fetch loginInfo: ${errorText}`)
+    }
+
+    const data = await response.json() as LoginInfo
+    
+    console.log('✅ LoginInfo fetched successfully:', {
+      username,
+      oauthUrl: data.oauthUrl,
+      restUrl: data.restUrl,
+      dataCenterId: data.dataCenterId,
+      superClusterId: data.superClusterId
+    })
+
+    this.loginInfoCache.set(username, data)
+    this.currentUsername = username
+    return data
+  }
+
+  private getOAuthUrlSync(): string {
+    if (this.currentUsername && this.loginInfoCache.has(this.currentUsername)) {
+      return this.loginInfoCache.get(this.currentUsername)!.oauthUrl
+    }
+    console.warn('⚠️ No loginInfo cached, using default east OAuth URL')
+    return 'https://auth-east.bullhornstaffing.com/oauth'
+  }
+
+  async prepareForAuth(username: string): Promise<void> {
+    await this.getLoginInfo(username)
+  }
+
+  getAuthorizationUrl(username: string, clientId: string, state: string, password?: string): string {
+    const oauthUrl = this.currentUsername === username && this.loginInfoCache.has(username)
+      ? this.loginInfoCache.get(username)!.oauthUrl
+      : 'https://auth-east.bullhornstaffing.com/oauth'
+    
     const params = new URLSearchParams({
       client_id: clientId,
       response_type: 'code',
       state: state
     })
     
-    if (username && password) {
+    if (password) {
       params.append('action', 'Login')
       params.append('username', username)
       params.append('password', password)
     }
     
-    return `${BULLHORN_AUTH_URL}/authorize?${params.toString()}`
+    const authUrl = `${oauthUrl}/authorize?${params.toString()}`
+    console.log('🔗 Generated authorization URL:', {
+      oauthUrl,
+      usedCache: this.loginInfoCache.has(username),
+      authUrlPreview: authUrl.substring(0, 100) + '...'
+    })
+    
+    return authUrl
   }
 
   async exchangeCodeForToken(
     code: string,
     clientId: string,
-    clientSecret: string
+    clientSecret: string,
+    username: string
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
     let finalCode = code
     
@@ -36,6 +118,8 @@ export class BullhornAPI {
       finalCode = decodeURIComponent(code)
       console.log('Code was URL-encoded, decoded it:', { original: code.substring(0, 40), decoded: finalCode.substring(0, 40) })
     }
+    
+    const loginInfo = await this.getLoginInfo(username)
     
     const params = new URLSearchParams({
       grant_type: 'authorization_code',
@@ -46,12 +130,15 @@ export class BullhornAPI {
 
     console.log('🔑 Exchanging code for token (NO redirect_uri):', {
       codeLength: finalCode.length,
-      clientIdPreview: clientId.substring(0, 10) + '...'
+      clientIdPreview: clientId.substring(0, 10) + '...',
+      oauthUrl: loginInfo.oauthUrl
     })
+
+    const tokenUrl = `${loginInfo.oauthUrl}/token`
 
     let response: Response
     try {
-      response = await fetch(`${BULLHORN_AUTH_URL}/token`, {
+      response = await fetch(tokenUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
@@ -60,7 +147,7 @@ export class BullhornAPI {
       })
     } catch (error) {
       console.log('❌ Direct token exchange failed (CORS), using proxy...', error)
-      response = await fetchWithCorsProxy(`${BULLHORN_AUTH_URL}/token`, {
+      response = await fetchWithCorsProxy(tokenUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
@@ -88,8 +175,11 @@ export class BullhornAPI {
   async refreshAccessToken(
     refreshToken: string,
     clientId: string,
-    clientSecret: string
+    clientSecret: string,
+    username: string
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
+    const loginInfo = await this.getLoginInfo(username)
+    
     const params = new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: refreshToken,
@@ -97,11 +187,15 @@ export class BullhornAPI {
       client_secret: clientSecret
     })
 
-    console.log('🔄 Refreshing access token...')
+    console.log('🔄 Refreshing access token...', {
+      oauthUrl: loginInfo.oauthUrl
+    })
+
+    const tokenUrl = `${loginInfo.oauthUrl}/token`
 
     let response: Response
     try {
-      response = await fetch(`${BULLHORN_AUTH_URL}/token`, {
+      response = await fetch(tokenUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
@@ -110,7 +204,7 @@ export class BullhornAPI {
       })
     } catch (error) {
       console.log('❌ Direct token refresh failed (CORS), using proxy...', error)
-      response = await fetchWithCorsProxy(`${BULLHORN_AUTH_URL}/token`, {
+      response = await fetchWithCorsProxy(tokenUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
@@ -182,7 +276,8 @@ export class BullhornAPI {
       const tokenData = await this.exchangeCodeForToken(
         authCode,
         credentials.clientId,
-        credentials.clientSecret
+        credentials.clientSecret,
+        credentials.username
       )
       console.log('Got access token, logging in...')
       
@@ -202,6 +297,7 @@ export class BullhornAPI {
 
   private async getAuthorizationCode(credentials: BullhornCredentials): Promise<string> {
     const state = 'auto-' + Math.random().toString(36).substring(7)
+    const loginInfo = await this.getLoginInfo(credentials.username)
     
     const params = new URLSearchParams({
       client_id: credentials.clientId,
@@ -212,7 +308,7 @@ export class BullhornAPI {
       state: state
     })
 
-    const authUrl = `${BULLHORN_AUTH_URL}/authorize?${params.toString()}`
+    const authUrl = `${loginInfo.oauthUrl}/authorize?${params.toString()}`
 
     try {
       console.log('🔐 Starting programmatic authorization code flow with CORS proxy...')

@@ -94,6 +94,7 @@ export function OAuthCallback({
         const pendingAuth = await window.spark.kv.get<{
           clientId: string
           clientSecret: string
+          username: string
           connectionId?: string
           timestamp: number
         }>('pending-oauth-auth')
@@ -101,11 +102,12 @@ export function OAuthCallback({
         console.log('OAuth Callback - Pending auth:', { 
           found: !!pendingAuth, 
           hasClientId: !!pendingAuth?.clientId,
+          hasUsername: !!pendingAuth?.username,
           timestamp: pendingAuth?.timestamp,
           age: pendingAuth ? Date.now() - pendingAuth.timestamp : 0
         })
 
-        if (!pendingAuth) {
+        if (!pendingAuth || !pendingAuth.username) {
           if (isMounted) {
             setStatus('error')
             setError('OAuth session data not found. Please restart the authentication process.')
@@ -136,7 +138,7 @@ export function OAuthCallback({
 
         if (isMounted) setProgress(prev => [...prev, 'Retrieving stored credentials'])
 
-        const { clientId, clientSecret, connectionId } = pendingAuth
+        const { clientId, clientSecret, username, connectionId } = pendingAuth
 
         if (isMounted) setProgress(prev => [...prev, 'Exchanging code for access token'])
 
@@ -145,7 +147,8 @@ export function OAuthCallback({
         const tokenData = await bullhornAPI.exchangeCodeForToken(
           codeToUse,
           clientId,
-          clientSecret
+          clientSecret,
+          username
         )
 
         console.log('OAuth Callback - Token received, logging in...')
