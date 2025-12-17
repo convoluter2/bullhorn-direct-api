@@ -290,11 +290,31 @@ app.post('/restart', (req, res) => {
     pendingAuths.clear();
     
     console.log('✅ Cleared all pending authentications');
-    console.log('✅ Server will continue running');
+    console.log('🔄 Attempting graceful restart...');
     console.log('');
     console.log('═══════════════════════════════════════════════════');
     console.log('');
+    
+    process.exit(0);
   }, 100);
+});
+
+app.post('/start', (req, res) => {
+  console.log('');
+  console.log('🚀 ═══════════════════════════════════════════════════');
+  console.log('🚀 Start Request Received');
+  console.log('═══════════════════════════════════════════════════');
+  console.log(`⏰ Time: ${new Date().toISOString()}`);
+  console.log('═══════════════════════════════════════════════════');
+  console.log('');
+  
+  res.json({ 
+    success: true, 
+    message: 'Proxy server is already running',
+    status: 'running',
+    timestamp: new Date().toISOString(),
+    port: PORT
+  });
 });
 
 app.listen(PORT, '0.0.0.0', () => {

@@ -46,35 +46,107 @@ export function ProxyStatus() {
     checkProxy()
   }
 
+  const handleStart = async () => {
+    setRestarting(true)
+    toast.loading('Attempting to start proxy server...', { id: 'proxy-start' })
+    
+    try {
+      let attempts = 0
+      const maxAttempts = 15
+      let started = false
+      
+      toast.info('Please ensure proxy is running: npm run dev:proxy', { id: 'proxy-start' })
+      
+      while (attempts < maxAttempts && !started) {
+        attempts++
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        
+        try {
+          const proxyUrl = import.meta.env.VITE_PROXY_URL || 'http://localhost:3001'
+          const healthCheck = await fetch(`${proxyUrl}/health`)
+          if (healthCheck.ok) {
+            started = true
+            setProxyHealthy(true)
+            toast.success('Proxy server is now online!', { id: 'proxy-start' })
+            await checkProxy()
+            break
+          }
+        } catch (e) {
+          console.log(`Health check ${attempts}/${maxAttempts}...`)
+        }
+      }
+      
+      if (!started) {
+        toast.error('Proxy is not responding. Start it with: npm run dev:proxy', { 
+          id: 'proxy-start',
+          duration: 6000
+        })
+      }
+    } catch (error) {
+      console.error('Failed to start proxy:', error)
+      toast.error('Cannot connect to proxy. Run: npm run dev:proxy', { 
+        id: 'proxy-start',
+        duration: 5000 
+      })
+    } finally {
+      setRestarting(false)
+    }
+  }
+
   const handleRestart = async () => {
     setRestarting(true)
     toast.loading('Restarting proxy server...', { id: 'proxy-restart' })
     
     try {
       const proxyUrl = import.meta.env.VITE_PROXY_URL || 'http://localhost:3001'
+      
       const response = await fetch(`${proxyUrl}/restart`, { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
-      })
+      }).catch(() => null)
       
-      if (response.ok) {
-        toast.success('Proxy server restart initiated', { id: 'proxy-restart' })
-        
+      if (response?.ok) {
+        toast.loading('Proxy server restarting, please wait...', { id: 'proxy-restart' })
+      } else {
+        toast.loading('Attempting to restart proxy...', { id: 'proxy-restart' })
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      
+      let attempts = 0
+      const maxAttempts = 10
+      let restarted = false
+      
+      while (attempts < maxAttempts && !restarted) {
+        attempts++
         await new Promise(resolve => setTimeout(resolve, 2000))
         
-        await checkProxy()
-        
-        if (proxyHealthy) {
-          toast.success('Proxy server restarted successfully')
-        } else {
-          toast.warning('Proxy restart initiated but not yet responding')
+        try {
+          const healthCheck = await fetch(`${proxyUrl}/health`)
+          if (healthCheck.ok) {
+            restarted = true
+            setProxyHealthy(true)
+            toast.success('Proxy server restarted successfully!', { id: 'proxy-restart' })
+            await checkProxy()
+            break
+          }
+        } catch (e) {
+          console.log(`Restart check ${attempts}/${maxAttempts}...`)
         }
-      } else {
-        throw new Error('Restart request failed')
+      }
+      
+      if (!restarted) {
+        toast.error('Proxy did not restart. Please use: npm run restart:proxy', { 
+          id: 'proxy-restart',
+          duration: 5000
+        })
       }
     } catch (error) {
       console.error('Failed to restart proxy:', error)
-      toast.error('Unable to restart proxy server. Please restart manually.', { id: 'proxy-restart' })
+      toast.error('Unable to restart proxy. Run: npm run restart:proxy', { 
+        id: 'proxy-restart',
+        duration: 5000 
+      })
     } finally {
       setRestarting(false)
     }
@@ -244,6 +316,13 @@ export function ProxyStatus() {
                 </>
               )}
             </Button>
+          </div>
+          
+          <div className="text-xs text-muted-foreground text-center pt-2 border-t">
+            If restart fails, manually run:
+            <div className="bg-muted px-2 py-1 rounded font-mono mt-1">
+              npm run restart:proxy
+            </div>
           </div>
         </div>
       </PopoverContent>
