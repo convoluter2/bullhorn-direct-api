@@ -38,6 +38,42 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
             console.log('🔄 Iframe navigated to:', iframeUrl.substring(0, 100))
           }
 
+          if (iframeUrl.includes('welcome.bullhornstaffing.com')) {
+            console.log('🎉 WELCOME PAGE DETECTED! Extracting code immediately...')
+            
+            try {
+              const url = new URL(iframeUrl)
+              const code = url.searchParams.get('code')
+              const error = url.searchParams.get('error')
+
+              console.log('✅ Welcome page code extraction:', {
+                hasCode: !!code,
+                hasError: !!error,
+                codePreview: code ? code.substring(0, 30) + '...' : null
+              })
+
+              if (error) {
+                console.error('❌ OAuth error in welcome page:', error)
+                if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+                if (timeoutRef.current) clearTimeout(timeoutRef.current)
+                setStatus('error')
+                setErrorMessage(`OAuth error: ${error}`)
+                onError(error)
+                return true
+              }
+
+              if (code) {
+                console.log('✅ Successfully extracted code from Welcome to Bullhorn page!')
+                if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+                if (timeoutRef.current) clearTimeout(timeoutRef.current)
+                onCodeReceived(code)
+                return true
+              }
+            } catch (urlError) {
+              console.error('❌ Error parsing welcome page URL:', urlError)
+            }
+          }
+
           if (iframeUrl.includes('code=')) {
             try {
               const url = new URL(iframeUrl)

@@ -355,18 +355,19 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
               console.log(`[Poll ${pollAttempts}/${maxPollAttempts}] Accessible URL:`, popupUrl.substring(0, 100) + '...')
             }
 
-            if (popupUrl.includes('welcome.bullhornstaffing.com') && popupUrl.includes('code=')) {
+            if (popupUrl.includes('welcome.bullhornstaffing.com')) {
               try {
                 const url = new URL(popupUrl)
                 const code = url.searchParams.get('code')
                 const error = url.searchParams.get('error')
 
-                console.log('✅ WELCOME PAGE REACHED - Code in URL!', { 
+                console.log('✅ WELCOME PAGE REACHED!', { 
                   hasCode: !!code, 
                   hasError: !!error,
                   codePreview: code ? code.substring(0, 30) + '...' : null,
                   error: error,
-                  fullUrl: popupUrl.substring(0, 150) + '...'
+                  fullUrl: popupUrl.substring(0, 150) + '...',
+                  message: 'Welcome to Bullhorn page detected - extracting code immediately!'
                 })
 
                 if (error) {
@@ -386,7 +387,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                   if (pollInterval) clearInterval(pollInterval)
                   if (timeoutId) clearTimeout(timeoutId)
                   if (messageListener) window.removeEventListener('message', messageListener)
-                  console.log('✅ CODE EXTRACTED FROM WELCOME PAGE! Processing now...')
+                  console.log('✅ CODE EXTRACTED FROM WELCOME PAGE! Processing immediately (no login action needed)...')
                   popup.close()
                   
                   toast.loading('Exchanging code for token...', { id: 'oauth-popup' })
