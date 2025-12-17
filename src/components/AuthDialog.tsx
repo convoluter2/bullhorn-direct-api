@@ -8,7 +8,8 @@ import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
-import { Copy, Info, CheckCircle, Circle } from '@phosphor-icons/react'
+import { oauthProxyService } from '@/lib/oauth-proxy'
+import { Copy, Info, CheckCircle, Circle, Lightning } from '@phosphor-icons/react'
 import type { SavedConnection } from '@/components/ConnectionManager'
 import type { BullhornSession } from '@/lib/types'
 
@@ -587,6 +588,129 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     }
   }
 
+  const handleProxyBasedAuth = async () => {
+    if (!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password) {
+      toast.error('Please enter all required credentials')
+      return
+    }
+
+    try {
+      console.log('🚀 Starting proxy-based OAuth flow')
+      setLoading(true)
+      setAuthStep('opening-popup')
+      setAuthProgress(10)
+      
+      await bullhornAPI.prepareForAuth(manualAuth.username)
+      const loginInfo = await bullhornAPI.getLoginInfo(manualAuth.username)
+      
+      console.log('🎯 Initiating OAuth flow with proxy service')
+      setAuthProgress(20)
+      
+      const { authUrl, flowId } = await oauthProxyService.simulateProxyWithDirectFlow({
+        proxyUrl: window.location.origin,
+        clientId: manualAuth.clientId,
+        clientSecret: manualAuth.clientSecret,
+        username: manualAuth.username,
+        password: manualAuth.password,
+        oauthUrl: loginInfo.oauthUrl
+      })
+      
+      console.log('🔗 Opening auth window with flow ID:', flowId)
+      setAuthProgress(25)
+      setAuthStep('waiting-login')
+      
+      const popupWidth = 600
+      const popupHeight = 700
+      const left = (window.screen.width - popupWidth) / 2
+      const top = (window.screen.height - popupHeight) / 2
+
+      const popup = window.open(
+        authUrl,
+        'bullhorn-oauth-proxy',
+        `width=${popupWidth},height=${popupHeight},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no`
+      )
+
+      if (!popup) {
+        toast.error('Popup blocked. Please allow popups for this site.')
+        setLoading(false)
+        setAuthStep('idle')
+        setAuthProgress(0)
+        return
+      }
+
+      toast.loading('Waiting for authentication...', { id: 'proxy-auth' })
+      setAuthProgress(30)
+
+      const pollForCode = new Promise<string>((resolve, reject) => {
+        let pollCount = 0
+        const maxPolls = 60
+        
+        const interval = setInterval(async () => {
+          pollCount++
+          
+          try {
+            if (!popup || popup.closed) {
+              clearInterval(interval)
+              reject(new Error('Popup was closed'))
+              return
+            }
+
+            try {
+              const popupUrl = popup.location.href
+              
+              if (popupUrl.includes('welcome.bullhornstaffing.com') || popupUrl.includes('code=')) {
+                console.log('✅ Detected welcome page or code in URL')
+                setAuthStep('welcome-detected')
+                setAuthProgress(50)
+                
+                const url = new URL(popupUrl)
+                const code = url.searchParams.get('code')
+                
+                if (code) {
+                  clearInterval(interval)
+                  popup.close()
+                  const decodedCode = decodeURIComponent(code)
+                  console.log('✅ Code extracted:', decodedCode.substring(0, 20) + '...')
+                  resolve(decodedCode)
+                }
+              }
+            } catch (e) {
+              if (pollCount % 10 === 0) {
+                console.log(`[Poll ${pollCount}/${maxPolls}] Cross-origin (expected during auth)`)
+              }
+            }
+
+            if (pollCount >= maxPolls) {
+              clearInterval(interval)
+              popup.close()
+              reject(new Error('Timeout waiting for authorization code'))
+            }
+          } catch (error) {
+            clearInterval(interval)
+            reject(error)
+          }
+        }, 1000)
+      })
+
+      const code = await pollForCode
+      
+      setAuthStep('extracting-code')
+      setAuthProgress(60)
+      toast.loading('Exchanging code for token...', { id: 'proxy-auth' })
+      
+      await handleCodeExchange(code)
+      
+      toast.success('Successfully authenticated!', { id: 'proxy-auth' })
+      
+    } catch (error) {
+      console.error('❌ Proxy-based auth failed:', error)
+      toast.error(error instanceof Error ? error.message : 'Authentication failed', { id: 'proxy-auth' })
+      setLoading(false)
+      setAuthStep('idle')
+      setAuthProgress(0)
+    }
+  }
+
   const copyAuthUrl = async () => {
     await bullhornAPI.prepareForAuth(manualAuth.username)
     const url = getAuthUrl()
@@ -930,6 +1054,26 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                 >
                   {loading ? 'Processing...' : '🪟 Start Popup OAuth (Recommended)'}
                 </Button>
+                
+                <Alert className="bg-accent/10 border-accent/30">
+                  <Lightning className="h-4 w-4 text-accent" weight="fill" />
+                  <AlertDescription className="text-xs">
+                    <strong>New: Proxy-Based OAuth</strong> - Uses an enhanced flow that works around redirect URI restrictions. 
+                    Try this if the standard popup method fails.
+                  </AlertDescription>
+                </Alert>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full border-accent text-accent hover:bg-accent/10"
+                  onClick={handleProxyBasedAuth}
+                  disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password || loading}
+                >
+                  <Lightning className="mr-2" weight="fill" size={16} />
+                  {loading ? 'Processing...' : 'Try Proxy-Based OAuth (Beta)'}
+                </Button>
+
                 <div className="flex justify-center">
                   <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
                     Cancel
