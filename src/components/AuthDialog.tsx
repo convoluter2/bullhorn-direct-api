@@ -370,11 +370,11 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       }
 
       window.addEventListener('message', messageListener)
-      console.log('✅ Message listener registered, starting polling...')
+      console.log('✅ Message listener registered, starting 30-second polling window...')
 
       let codeFound = false
       let pollAttempts = 0
-      const maxPollAttempts = 360
+      const maxPollAttempts = 60
 
       pollInterval = setInterval(() => {
         pollAttempts++
@@ -383,9 +383,15 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           if (pollInterval) clearInterval(pollInterval)
           if (timeoutId) clearTimeout(timeoutId)
           if (popup && !popup.closed) popup.close()
-          console.error('❌ POLLING TIMEOUT after', maxPollAttempts, 'attempts (', maxPollAttempts * 0.5, 'seconds)')
-          toast.error('Authentication timeout - please try again', { id: 'oauth-popup' })
+          if (messageListener) window.removeEventListener('message', messageListener)
+          console.error('❌ POLLING TIMEOUT after 30 seconds - connection not established')
+          toast.error('Connection timeout after 30 seconds. Unable to connect to Bullhorn. Please check your credentials and try again.', { 
+            id: 'oauth-popup',
+            duration: 5000
+          })
           setLoading(false)
+          setAuthStep('idle')
+          setAuthProgress(0)
           return
         }
 
@@ -393,10 +399,16 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           if (!popup || popup.closed) {
             if (pollInterval) clearInterval(pollInterval)
             if (timeoutId) clearTimeout(timeoutId)
+            if (messageListener) window.removeEventListener('message', messageListener)
             if (!codeFound) {
               console.warn('⚠️ Popup closed without finding code')
-              toast.error('Authentication window closed', { id: 'oauth-popup' })
+              toast.error('Authentication window closed. Connection not established.', { 
+                id: 'oauth-popup',
+                duration: 4000
+              })
               setLoading(false)
+              setAuthStep('idle')
+              setAuthProgress(0)
             }
             return
           }
@@ -408,7 +420,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             setPopupUrl(popupUrlValue)
             
             if (pollAttempts % 10 === 0) {
-              console.log(`[Poll ${pollAttempts}/${maxPollAttempts}] Accessible URL:`, popupUrlValue.substring(0, 100) + '...')
+              const secondsElapsed = (pollAttempts * 0.5).toFixed(1)
+              console.log(`[Poll ${pollAttempts}/${maxPollAttempts}] ${secondsElapsed}s elapsed - Accessible URL:`, popupUrlValue.substring(0, 100) + '...')
             }
 
             if (popupUrlValue.includes('welcome.bullhornstaffing.com')) {
@@ -494,7 +507,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             setPopupUrl('(Cross-origin - cannot access URL during Bullhorn authentication)')
             
             if (pollAttempts % 20 === 0) {
-              console.log(`[Poll ${pollAttempts}] Popup on cross-origin page (expected during Bullhorn auth flow)`)
+              const secondsElapsed = (pollAttempts * 0.5).toFixed(1)
+              console.log(`[Poll ${pollAttempts}/${maxPollAttempts}] ${secondsElapsed}s elapsed - Popup on cross-origin page (expected during Bullhorn auth flow)`)
             }
           }
         } catch (err) {
@@ -507,11 +521,17 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       timeoutId = setTimeout(() => {
         if (popup && !popup.closed) {
           if (pollInterval) clearInterval(pollInterval)
+          if (messageListener) window.removeEventListener('message', messageListener)
           popup.close()
-          toast.error('Authentication timeout - please try again', { id: 'oauth-popup' })
+          toast.error('Connection timeout after 30 seconds. Unable to connect to Bullhorn. Please check your credentials and try again.', { 
+            id: 'oauth-popup',
+            duration: 5000
+          })
           setLoading(false)
+          setAuthStep('idle')
+          setAuthProgress(0)
         }
-      }, 180000)
+      }, 30000)
 
     } catch (error) {
       console.error('❌ OAUTH FLOW ERROR:', error)

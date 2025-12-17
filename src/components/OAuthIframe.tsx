@@ -25,12 +25,12 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
   useEffect(() => {
     let isMounted = true
     let pollAttempts = 0
-    const maxPollAttempts = 360
+    const maxPollAttempts = 60
     let lastKnownUrl = ''
     let welcomePageRetries = 0
     const maxWelcomeRetries = 5
 
-    console.log('🖼️ Iframe OAuth monitor initialized')
+    console.log('🖼️ Iframe OAuth monitor initialized (30 second timeout)')
     console.log('🔗 Auth URL:', authUrl.substring(0, 100) + '...')
 
     const extractCodeWithRetry = async (iframeUrl: string, retryCount: number = 0): Promise<boolean> => {
@@ -190,29 +190,30 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
         if (pollAttempts > maxPollAttempts) {
           if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
           if (timeoutRef.current) clearTimeout(timeoutRef.current)
-          console.error('❌ Iframe monitoring timeout after', maxPollAttempts / 2, 'seconds')
+          console.error('❌ Iframe monitoring timeout after 30 seconds - connection not established')
           setStatus('error')
-          setErrorMessage('Authentication timeout - the process took too long. Please try the popup method.')
-          onError('Timeout')
+          setErrorMessage('Connection timeout after 30 seconds. Unable to connect to Bullhorn. Please check your credentials or try the popup method.')
+          onError('Timeout after 30 seconds')
           return
         }
 
         const foundCode = checkForCode()
         
-        if (!foundCode && pollAttempts % 20 === 0) {
-          console.log(`[Iframe Poll ${pollAttempts}/${maxPollAttempts}] Still monitoring... (${pollAttempts * 0.5}s elapsed)`)
+        if (!foundCode && pollAttempts % 10 === 0) {
+          const secondsElapsed = (pollAttempts * 0.5).toFixed(1)
+          console.log(`[Iframe Poll ${pollAttempts}/${maxPollAttempts}] Still monitoring... (${secondsElapsed}s / 30s elapsed)`)
         }
       }, 500)
 
       timeoutRef.current = setTimeout(() => {
         if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
         if (isMounted) {
-          console.error('❌ Iframe monitoring timeout (3 minutes)')
+          console.error('❌ Iframe monitoring timeout after 30 seconds')
           setStatus('error')
-          setErrorMessage('Authentication timeout - Bullhorn may be blocking iframe access. Please try the popup method instead.')
-          onError('Timeout after 3 minutes')
+          setErrorMessage('Connection timeout after 30 seconds. Unable to connect to Bullhorn. Bullhorn may be blocking iframe access. Please try the popup method instead.')
+          onError('Timeout after 30 seconds')
         }
-      }, 180000)
+      }, 30000)
     }
 
     const iframeLoadHandler = () => {
