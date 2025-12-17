@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { XCircle, Spinner, ArrowLeft } from '@phosphor-icons/react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { toast } from 'sonner'
 import type { BullhornSession } from '@/lib/types'
 
@@ -22,37 +21,48 @@ export function OAuthCallback({
   const [progress, setProgress] = useState<string[]>([])
 
   useEffect(() => {
+    let isMounted = true
+
     const handleAutoAuthenticate = async () => {
       try {
+        if (!isMounted) return
+
         const urlParams = new URLSearchParams(window.location.search)
         const code = urlParams.get('code')
         const errorParam = urlParams.get('error')
         const errorDescription = urlParams.get('error_description')
-        const stateParam = urlParams.get('state')
+
+        console.log('OAuth Callback - URL params:', { code: code?.substring(0, 20) + '...', errorParam })
 
         if (errorParam) {
-          setStatus('error')
-          setError(errorDescription || errorParam)
-          toast.error(`OAuth Error: ${errorDescription || errorParam}`)
+          if (isMounted) {
+            setStatus('error')
+            setError(errorDescription || errorParam)
+            toast.error(`OAuth Error: ${errorDescription || errorParam}`)
+          }
           return
         }
 
         if (!code) {
-          setStatus('error')
-          setError('No authorization code found in URL')
-          toast.error('No authorization code found')
+          if (isMounted) {
+            setStatus('error')
+            setError('No authorization code found in URL')
+            toast.error('No authorization code found')
+          }
           return
         }
 
-        setProgress(prev => [...prev, 'Authorization code detected'])
+        if (isMounted) setProgress(prev => [...prev, 'Authorization code detected'])
 
         let codeToUse = code
         if (code.includes('%3A') || code.includes('%2F')) {
           codeToUse = decodeURIComponent(code)
-          setProgress(prev => [...prev, 'Code was URL-encoded, decoded successfully'])
+          if (isMounted) setProgress(prev => [...prev, 'Code was URL-encoded, decoded successfully'])
         } else {
-          setProgress(prev => [...prev, 'Code decoded successfully'])
+          if (isMounted) setProgress(prev => [...prev, 'Code decoded successfully'])
         }
+
+        console.log('OAuth Callback - Decoded code:', codeToUse.substring(0, 20) + '...')
 
         const pendingAuth = await window.spark.kv.get<{
           clientId: string
@@ -62,26 +72,39 @@ export function OAuthCallback({
           timestamp: number
         }>('pending-oauth-auth')
 
+        console.log('OAuth Callback - Pending auth:', { 
+          found: !!pendingAuth, 
+          hasClientId: !!pendingAuth?.clientId,
+          hasRedirectUri: !!pendingAuth?.redirectUri,
+          timestamp: pendingAuth?.timestamp
+        })
+
         if (!pendingAuth) {
-          setStatus('error')
-          setError('OAuth session expired. Please restart the authentication process.')
-          toast.error('OAuth session expired')
+          if (isMounted) {
+            setStatus('error')
+            setError('OAuth session expired. Please restart the authentication process.')
+            toast.error('OAuth session expired')
+          }
           return
         }
 
         if (Date.now() - pendingAuth.timestamp > 600000) {
           await window.spark.kv.delete('pending-oauth-auth')
-          setStatus('error')
-          setError('OAuth session expired (timeout). Please restart the authentication process.')
-          toast.error('OAuth session expired')
+          if (isMounted) {
+            setStatus('error')
+            setError('OAuth session expired (timeout). Please restart the authentication process.')
+            toast.error('OAuth session expired')
+          }
           return
         }
 
-        setProgress(prev => [...prev, 'Retrieving stored credentials'])
+        if (isMounted) setProgress(prev => [...prev, 'Retrieving stored credentials'])
 
         const { clientId, clientSecret, redirectUri, connectionId } = pendingAuth
 
-        setProgress(prev => [...prev, 'Exchanging code for access token'])
+        if (isMounted) setProgress(prev => [...prev, 'Exchanging code for access token'])
+
+        console.log('OAuth Callback - Exchanging code for token...')
 
         const tokenData = await bullhornAPI.exchangeCodeForToken(
           codeToUse,
@@ -90,31 +113,47 @@ export function OAuthCallback({
           redirectUri
         )
 
-        setProgress(prev => [...prev, 'Access token received'])
-        setProgress(prev => [...prev, 'Logging into Bullhorn REST API'])
+        console.log('OAuth Callback - Token received, logging in...')
+
+        if (isMounted) {
+          setProgress(prev => [...prev, 'Access token received'])
+          setProgress(prev => [...prev, 'Logging into Bullhorn REST API'])
+        }
 
         const session = await bullhornAPI.login(tokenData.accessToken)
         session.refreshToken = tokenData.refreshToken
         session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
 
-        setProgress(prev => [...prev, 'Session established successfully'])
+        console.log('OAuth Callback - Session established')
+
+        if (isMounted) setProgress(prev => [...prev, 'Session established successfully'])
 
         await window.spark.kv.delete('pending-oauth-auth')
 
         window.history.replaceState({}, document.title, window.location.pathname)
         
-        toast.success('Successfully authenticated with Bullhorn')
-        onAuthenticated(session, connectionId)
+        console.log('OAuth Callback - Complete, calling onAuthenticated')
+
+        if (isMounted) {
+          toast.success('Successfully authenticated with Bullhorn')
+          onAuthenticated(session, connectionId)
+        }
       } catch (err) {
         console.error('OAuth callback error:', err)
-        setStatus('error')
-        const errorMessage = err instanceof Error ? err.message : 'Authentication failed'
-        setError(errorMessage)
-        toast.error(`Authentication failed: ${errorMessage}`)
+        if (isMounted) {
+          setStatus('error')
+          const errorMessage = err instanceof Error ? err.message : 'Authentication failed'
+          setError(errorMessage)
+          toast.error(`Authentication failed: ${errorMessage}`)
+        }
       }
     }
 
     handleAutoAuthenticate()
+
+    return () => {
+      isMounted = false
+    }
   }, [onAuthenticated, onCancel])
 
   if (status === 'processing') {
