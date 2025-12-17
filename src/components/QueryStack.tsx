@@ -27,6 +27,8 @@ import { ToManyFieldInput } from '@/components/ToManyFieldInput'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
 import { FieldSelector } from '@/components/FieldSelector'
 import { FilterGroupBuilder } from '@/components/FilterGroupBuilder'
+import { ConditionalAssociationBuilder, type ConditionalAssociation } from '@/components/ConditionalAssociationBuilder'
+import { getAssociationsForRecord, mergeAssociationActions, describeAssociation } from '@/lib/conditional-logic'
 import type { QueryFilter, QueryConfig, FilterGroup, UpdateSnapshot } from '@/lib/types'
 
 interface QueryStackProps {
@@ -77,6 +79,8 @@ export function QueryStack({ onLog }: QueryStackProps) {
   const [manualEntityDialogOpen, setManualEntityDialogOpen] = useState(false)
   const [snapshots, setSnapshots] = useKV<UpdateSnapshot[]>('querystack-snapshots', [])
   const [lastSnapshotId, setLastSnapshotId] = useState<string | null>(null)
+  const [conditionalAssociations, setConditionalAssociations] = useState<ConditionalAssociation[]>([])
+  const [useConditionalLogic, setUseConditionalLogic] = useState(false)
 
   const { entities, loading: entitiesLoading, error: entitiesError, refresh: refreshEntities, addEntity } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
@@ -360,6 +364,23 @@ export function QueryStack({ onLog }: QueryStackProps) {
               updateData[update.field] = update.value
             }
           })
+
+          if (useConditionalLogic && conditionalAssociations.length > 0) {
+            const conditionalActions = getAssociationsForRecord(conditionalAssociations, entityData.data)
+            const mergedActions = mergeAssociationActions(conditionalActions)
+            
+            mergedActions.forEach((action, field) => {
+              const existingUpdateIdx = toManyUpdates.findIndex(u => u.field === field)
+              if (existingUpdateIdx >= 0) {
+                toManyUpdates.splice(existingUpdateIdx, 1)
+              }
+              toManyUpdates.push({
+                field: action.field,
+                operation: action.operation,
+                ids: action.ids
+              })
+            })
+          }
 
           if (dryRun) {
             const previewNewValues: any = { ...updateData }
@@ -1097,6 +1118,35 @@ export function QueryStack({ onLog }: QueryStackProps) {
                         )
                       })}
                     </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 rounded-md border bg-card">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">
+                        Use Conditional Association Logic
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Apply different associations based on field values
+                      </p>
+                    </div>
+                    <Switch
+                      checked={useConditionalLogic}
+                      onCheckedChange={setUseConditionalLogic}
+                      disabled={loading || (!targetEntity && !entity) || (targetEntity ? targetMetadataLoading : metadataLoading)}
+                    />
+                  </div>
+
+                  {useConditionalLogic && (targetEntity || entity) && !(targetEntity ? targetMetadataLoading : metadataLoading) && (
+                    <ConditionalAssociationBuilder
+                      fields={targetEntity ? targetAvailableFields : availableFields}
+                      value={conditionalAssociations}
+                      onChange={setConditionalAssociations}
+                      disabled={loading}
+                    />
                   )}
                 </div>
 

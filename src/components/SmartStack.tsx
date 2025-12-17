@@ -21,6 +21,8 @@ import { useEntities } from '@/hooks/use-entities'
 import { SmartFieldInput } from '@/components/SmartFieldInput'
 import { ToManyFieldInput } from '@/components/ToManyFieldInput'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
+import { ConditionalAssociationBuilder, type ConditionalAssociation } from '@/components/ConditionalAssociationBuilder'
+import { getAssociationsForRecord, mergeAssociationActions, describeAssociation } from '@/lib/conditional-logic'
 import type { QueryFilter, UpdateSnapshot } from '@/lib/types'
 
 interface SmartStackProps {
@@ -61,6 +63,8 @@ export function SmartStack({ onLog }: SmartStackProps) {
   const [manualEntityDialogOpen, setManualEntityDialogOpen] = useState(false)
   const [snapshots, setSnapshots] = useKV<UpdateSnapshot[]>('smartstack-snapshots', [])
   const [lastSnapshotId, setLastSnapshotId] = useState<string | null>(null)
+  const [conditionalAssociations, setConditionalAssociations] = useState<ConditionalAssociation[]>([])
+  const [useConditionalLogic, setUseConditionalLogic] = useState(false)
 
   const { entities, loading: entitiesLoading, refresh: refreshEntities, addEntity } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(selectedEntity || undefined)
@@ -296,6 +300,23 @@ export function SmartStack({ onLog }: SmartStackProps) {
               updateData[update.field] = update.value
             }
           })
+
+          if (useConditionalLogic && conditionalAssociations.length > 0) {
+            const conditionalActions = getAssociationsForRecord(conditionalAssociations, entity.data)
+            const mergedActions = mergeAssociationActions(conditionalActions)
+            
+            mergedActions.forEach((action, field) => {
+              const existingUpdateIdx = toManyUpdates.findIndex(u => u.field === field)
+              if (existingUpdateIdx >= 0) {
+                toManyUpdates.splice(existingUpdateIdx, 1)
+              }
+              toManyUpdates.push({
+                field: action.field,
+                operation: action.operation,
+                ids: action.ids
+              })
+            })
+          }
 
           if (dryRun) {
             const previewNewValues: any = { ...updateData }
@@ -775,6 +796,35 @@ export function SmartStack({ onLog }: SmartStackProps) {
                     )
                   })}
                 </div>
+              )}
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 rounded-md border bg-card">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-medium">
+                    Use Conditional Association Logic
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Apply different associations based on field values
+                  </p>
+                </div>
+                <Switch
+                  checked={useConditionalLogic}
+                  onCheckedChange={setUseConditionalLogic}
+                  disabled={loading || !selectedEntity || metadataLoading}
+                />
+              </div>
+
+              {useConditionalLogic && selectedEntity && !metadataLoading && (
+                <ConditionalAssociationBuilder
+                  fields={availableFields}
+                  value={conditionalAssociations}
+                  onChange={setConditionalAssociations}
+                  disabled={loading}
+                />
               )}
             </div>
 

@@ -39,13 +39,25 @@ This is a sophisticated enterprise data management tool with multiple modules (Q
 - **Success criteria**: Successfully imports valid records, reports errors clearly, maintains data integrity
 
 ### SmartStack v2
-- **Functionality**: AI-powered batch processing with natural language operation generation, or manual operation configuration with dependencies and error handling
-- **Purpose**: Complex multi-step operations that require ordering and rollback capability, made simple through AI assistance
-- **Trigger**: User describes operations in natural language OR manually configures operation stack
-- **Progression**: 
-  - **AI Method**: Describe task in natural language → AI generates operations → Review/edit operations → Execute stack → Monitor progress → Handle failures → Complete
-  - **Manual Method**: Add operations → Define operation type/entity/data → Configure rules → Execute stack → Monitor progress → Handle failures → Complete or rollback
-- **Success criteria**: AI generates accurate operations from natural language, executes operations in correct order, handles failures gracefully, provides detailed status with descriptions
+- **Functionality**: Batch processing with CSV upload of IDs, query filters, field updates, and conditional association logic based on field values
+- **Purpose**: Complex bulk update operations with fine-grained control over which associations are applied based on record data
+- **Trigger**: User uploads CSV with IDs OR manually configures operation stack
+- **Progression**: Upload CSV with IDs → Select entity → Add query filters (optional) → Define field updates → Configure conditional associations (optional) → Preview (dry run) → Execute → Monitor progress → Handle failures → Complete or rollback
+- **Success criteria**: Executes operations in correct order, handles failures gracefully, conditional associations apply correctly based on field values, provides detailed status with descriptions
+
+### QueryStack
+- **Functionality**: Combine QueryBlast with SmartStack - query records first, then apply bulk updates with conditional association logic
+- **Purpose**: Create dynamic lists using queries and then perform bulk updates with field-based conditional logic
+- **Trigger**: User builds query to find records, then configures updates
+- **Progression**: Select entity → Build query filters → Execute query → Preview results → Optionally select different target entity → Add update filters → Define field updates → Configure conditional associations → Preview changes (dry run) → Execute updates → Monitor progress → Complete or rollback
+- **Success criteria**: Query returns accurate data, updates apply correctly to queried records, conditional associations work based on field values, rollback capability available
+
+### Conditional Association Logic
+- **Functionality**: Define rules that apply different to-many association operations (add/remove/replace) based on field values of each record
+- **Purpose**: Enable sophisticated data management where association changes depend on record state (e.g., add certification A if status is "Active", remove certification B if date < X)
+- **Trigger**: User enables conditional logic in SmartStack or QueryStack and defines rules
+- **Progression**: Enable conditional logic → Add conditional rule → Define conditions (field, operator, value) with AND/OR logic → Select association field → Choose operation (add/remove/replace) → Specify IDs → Add more rules → Preview applies correct associations → Execute
+- **Success criteria**: Conditions evaluate correctly against record data, correct associations applied per rule, multiple rules can be active, proper conflict resolution when rules overlap
 
 ### Audit & Logging
 - **Functionality**: Comprehensive tracking of all operations with timestamps and results
