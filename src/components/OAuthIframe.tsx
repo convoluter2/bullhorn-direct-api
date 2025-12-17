@@ -16,6 +16,7 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [status, setStatus] = useState<'loading' | 'monitoring' | 'error'>('loading')
   const [errorMessage, setErrorMessage] = useState('')
+  const [welcomePageDetected, setWelcomePageDetected] = useState(false)
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -113,6 +114,9 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
 
           if (iframeUrl.includes('welcome.bullhornstaffing.com')) {
             console.log('🎉 WELCOME PAGE DETECTED! Starting code extraction with retry logic...')
+            console.log('📄 Welcome to Bullhorn page - "Thank you for using Bullhorn" page loaded')
+            setWelcomePageDetected(true)
+            toast.success('✅ Welcome to Bullhorn page loaded! Extracting code...', { id: 'welcome-detect' })
             
             extractCodeWithRetry(iframeUrl, 0).then(success => {
               if (!success && isMounted) {
@@ -292,6 +296,14 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {welcomePageDetected && (
+            <Alert className="border-green-500 bg-green-500/10">
+              <Info className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-700 font-medium">
+                ✅ Welcome to Bullhorn page detected! Extracting authorization code...
+              </AlertDescription>
+            </Alert>
+          )}
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription className="text-xs space-y-1">

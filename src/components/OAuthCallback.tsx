@@ -19,6 +19,7 @@ export function OAuthCallback({
   const [status, setStatus] = useState<'processing' | 'error' | 'timeout'>('processing')
   const [error, setError] = useState('')
   const [progress, setProgress] = useState<string[]>([])
+  const [welcomePageDetected, setWelcomePageDetected] = useState(false)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const processedRef = useRef(false)
 
@@ -62,6 +63,7 @@ export function OAuthCallback({
         }
         
         if (window.location.href.includes('welcome.bullhornstaffing.com') && retryCount < maxRetries - 1) {
+          console.log('🎉 WELCOME TO BULLHORN page detected - "Thank you for using Bullhorn"')
           console.log(`⏳ Code not found on welcome page yet, retrying in ${backoffDelay}ms...`)
           await new Promise(resolve => setTimeout(resolve, backoffDelay))
           return extractCodeFromUrl(retryCount + 1)
@@ -85,6 +87,12 @@ export function OAuthCallback({
       try {
         if (!isMounted || processedRef.current) return
         processedRef.current = true
+
+        if (window.location.href.includes('welcome.bullhornstaffing.com')) {
+          console.log('🎉 WELCOME TO BULLHORN page detected!')
+          setWelcomePageDetected(true)
+          if (isMounted) setProgress(prev => [...prev, '✅ Welcome to Bullhorn page loaded'])
+        }
 
         if (isMounted) setProgress(prev => [...prev, 'Analyzing OAuth callback URL...'])
 
@@ -307,7 +315,14 @@ export function OAuthCallback({
               Automatically processing your authorization...
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {welcomePageDetected && (
+              <Alert className="border-green-500 bg-green-500/10">
+                <AlertDescription className="text-green-700 font-medium">
+                  ✅ Welcome to Bullhorn - Thank you for using Bullhorn
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-2 text-sm">
               {progress.map((step, index) => (
                 <p key={index} className="text-muted-foreground">

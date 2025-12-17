@@ -22,6 +22,7 @@ interface AuthDialogProps {
 export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedConnection }: AuthDialogProps) {
   const [loading, setLoading] = useState(false)
   const [showIframe, setShowIframe] = useState(false)
+  const [welcomePageDetected, setWelcomePageDetected] = useState(false)
   const [manualAuth, setManualAuth] = useState({
     clientId: '',
     clientSecret: '',
@@ -52,6 +53,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         }))
       }
       setShowIframe(false)
+      setWelcomePageDetected(false)
     }
     loadConnectionCredentials()
   }, [open, preselectedConnection])
@@ -238,6 +240,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       })
 
       setLoading(true)
+      setWelcomePageDetected(false)
       
       console.log('💾 Saving pending auth to KV store...')
       await window.spark.kv.set('pending-oauth-auth', {
@@ -356,6 +359,11 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             }
 
             if (popupUrl.includes('welcome.bullhornstaffing.com')) {
+              console.log('🎉 WELCOME PAGE DETECTED in popup! Starting code extraction with retry logic...')
+              console.log('📄 Welcome to Bullhorn page - "Thank you for using Bullhorn" page loaded')
+              setWelcomePageDetected(true)
+              toast.success('✅ Welcome to Bullhorn page detected! Extracting code...', { id: 'welcome-detect' })
+              
               const extractCodeWithRetry = async (attemptNumber: number = 1): Promise<void> => {
                 const maxRetries = 5
                 const backoffDelay = Math.min(500 * Math.pow(2, attemptNumber - 1), 3000)
@@ -614,6 +622,15 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           />
         ) : (
           <div className="space-y-4">
+          {welcomePageDetected && (
+            <Alert className="border-green-500 bg-green-500/10">
+              <Info className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-700 font-medium">
+                ✅ Welcome to Bullhorn page detected in popup! Extracting authorization code...
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription className="space-y-2">
