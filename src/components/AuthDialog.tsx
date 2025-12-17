@@ -118,8 +118,9 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     const state = Math.random().toString(36).substring(7)
     const clientId = manualAuth.clientId || 'YOUR_CLIENT_ID'
     
-    console.log('NOT using redirect URI - relying on default Bullhorn behavior')
-    return bullhornAPI.getAuthorizationUrl(clientId, undefined, state, manualAuth.username, manualAuth.password)
+    const redirectUri = `${window.location.origin}/oauth-callback`
+    console.log('Using redirect URI:', redirectUri)
+    return bullhornAPI.getAuthorizationUrl(clientId, redirectUri, state, manualAuth.username, manualAuth.password)
   }
   
   const handleStartOAuthFlow = async () => {
@@ -185,11 +186,16 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       console.log('✅ Popup opened successfully, setting up monitoring...')
 
       messageListener = (event: MessageEvent) => {
-        console.log('📨 Message received:', event.origin, event.data)
+        console.log('📨 Message received from:', event.origin, 'Data type:', event.data?.type)
+        
+        if (event.origin !== window.location.origin) {
+          console.warn('⚠️ Ignoring message from different origin:', event.origin)
+          return
+        }
         
         if (event.data && typeof event.data === 'object') {
           if (event.data.type === 'BULLHORN_OAUTH_CODE' && event.data.code) {
-            console.log('✅ CODE RECEIVED VIA MESSAGE:', event.data.code.substring(0, 30) + '...')
+            console.log('✅ CODE RECEIVED VIA POSTMESSAGE:', event.data.code.substring(0, 30) + '...')
             
             if (pollInterval) clearInterval(pollInterval)
             if (timeoutId) clearTimeout(timeoutId)
@@ -257,18 +263,18 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
               console.log(`[Poll ${pollAttempts}/${maxPollAttempts}] Accessible URL:`, popupUrl.substring(0, 100) + '...')
             }
 
-            if ((popupUrl.includes('welcome.bullhornstaffing.com') || popupUrl.includes(window.location.origin)) && popupUrl.includes('code=')) {
+            if (popupUrl.includes('/oauth-callback') && popupUrl.includes('code=')) {
               try {
                 const url = new URL(popupUrl)
                 const code = url.searchParams.get('code')
                 const error = url.searchParams.get('error')
 
-                console.log('✅ CALLBACK DETECTED (redirected to welcome page):', { 
+                console.log('✅ OAUTH CALLBACK PAGE REACHED - Code in URL!', { 
                   hasCode: !!code, 
                   hasError: !!error,
                   codePreview: code ? code.substring(0, 30) + '...' : null,
                   error: error,
-                  allParams: Array.from(url.searchParams.keys()).join(', ')
+                  fullUrl: popupUrl.substring(0, 150) + '...'
                 })
 
                 if (error) {
@@ -288,7 +294,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                   if (pollInterval) clearInterval(pollInterval)
                   if (timeoutId) clearTimeout(timeoutId)
                   if (messageListener) window.removeEventListener('message', messageListener)
-                  console.log('✅ CODE EXTRACTED! Processing now...')
+                  console.log('✅ CODE EXTRACTED FROM URL! Processing now...')
                   popup.close()
                   
                   toast.loading('Exchanging code for token...', { id: 'oauth-popup' })
@@ -363,19 +369,20 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         console.log('✓ Code already decoded')
       }
 
-      console.log('🎫 Exchanging code for token (WITHOUT redirect_uri)...')
+      const redirectUri = `${window.location.origin}/oauth-callback`
+      console.log('🎫 Exchanging code for token (WITH redirect_uri)...')
       console.log('📋 Exchange parameters:', {
         codeLength: codeToUse.length,
         clientIdPreview: manualAuth.clientId.substring(0, 10) + '...',
         hasSecret: !!manualAuth.clientSecret,
-        noRedirectUri: true
+        redirectUri
       })
 
       const tokenData = await bullhornAPI.exchangeCodeForToken(
         codeToUse,
         manualAuth.clientId,
         manualAuth.clientSecret,
-        undefined
+        redirectUri
       )
       
       console.log('✅ Token received:', {

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bullhorn OAuth Callback</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin: 0 0 0.5rem;
+        }
+        p {
+            opacity: 0.9;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <h1>Processing Authentication...</h1>
+        <p>Please wait while we complete your login.</p>
+    </div>
+
+    <script>
+        console.log('OAuth Callback Page Loaded')
+        console.log('Full URL:', window.location.href)
+        
+        try {
+            const urlParams = new URLSearchParams(window.location.search)
+            const code = urlParams.get('code')
+            const error = urlParams.get('error')
+            const state = urlParams.get('state')
+
+            console.log('OAuth Callback - Extracted params:', { 
+                hasCode: !!code, 
+                hasError: !!error,
+                state,
+                codePreview: code ? code.substring(0, 30) + '...' : null,
+                error
+            })
+
+            if (window.opener && !window.opener.closed) {
+                if (error) {
+                    console.error('OAuth Error:', error)
+                    window.opener.postMessage({
+                        type: 'BULLHORN_OAUTH_ERROR',
+                        error: error,
+                        state: state
+                    }, window.location.origin)
+                } else if (code) {
+                    console.log('✅ Sending code to parent window')
+                    window.opener.postMessage({
+                        type: 'BULLHORN_OAUTH_CODE',
+                        code: code,
+                        state: state
+                    }, window.location.origin)
+                } else {
+                    console.error('No code or error found in URL')
+                    window.opener.postMessage({
+                        type: 'BULLHORN_OAUTH_ERROR',
+                        error: 'No authorization code received',
+                        state: state
+                    }, window.location.origin)
+                }
+
+                setTimeout(() => {
+                    console.log('Closing callback window...')
+                    window.close()
+                }, 500)
+            } else {
+                console.error('No opener window found - cannot send message')
+                document.querySelector('.container').innerHTML = `
+                    <h1>Authentication Complete</h1>
+                    <p>You can close this window.</p>
+                `
+            }
+        } catch (err) {
+            console.error('Error in OAuth callback:', err)
+            if (window.opener && !window.opener.closed) {
+                window.opener.postMessage({
+                    type: 'BULLHORN_OAUTH_ERROR',
+                    error: 'Failed to process OAuth callback: ' + err.message
+                }, window.location.origin)
+            }
+        }
+    </script>
+</body>
+</html>
