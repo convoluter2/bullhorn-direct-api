@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Swap, Flask } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Swap, Flask, TestTube } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -15,6 +15,7 @@ import { AuditLogs } from '@/components/AuditLogs'
 import { ConnectionManager, type SavedConnection, type SecureCredentials } from '@/components/ConnectionManager'
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { OperatorTestSuite } from '@/components/OperatorTestSuite'
+import { OAuthTestSuite } from '@/components/OAuthTestSuite'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { toast } from 'sonner'
@@ -71,8 +72,17 @@ function App() {
     const code = urlParams.get('code')
     const errorParam = urlParams.get('error')
     
+    console.log('App - Checking for OAuth callback:', { 
+      hasCode: !!code, 
+      hasError: !!errorParam,
+      fullSearch: window.location.search 
+    })
+    
     if (code || errorParam) {
+      console.log('App - Setting isOAuthCallback to true')
       setIsOAuthCallback(true)
+    } else {
+      console.log('App - No OAuth callback detected')
     }
   }, [])
 
@@ -118,23 +128,39 @@ function App() {
   }, [session?.expiresAt, session?.refreshToken, currentConnectionId, addLog])
 
   const handleAuthenticated = (newSession: BullhornSession, connectionId?: string) => {
-    setSession(() => newSession)
-    bullhornAPI.setSession(newSession)
-    setIsOAuthCallback(false)
+    console.log('App - handleAuthenticated called:', { 
+      hasSession: !!newSession, 
+      connectionId,
+      hasToken: !!newSession?.BhRestToken 
+    })
     
-    if (connectionId) {
-      setCurrentConnectionId(() => connectionId)
-      const updatedConnections = savedConnections.map(conn => 
-        conn.id === connectionId ? { ...conn, lastUsed: Date.now() } : conn
-      )
-      setSavedConnections(updatedConnections)
-      secureCredentialsAPI.updateConnection(connectionId, { lastUsed: Date.now() })
+    try {
+      setSession(() => newSession)
+      bullhornAPI.setSession(newSession)
+      setIsOAuthCallback(false)
+      
+      if (connectionId) {
+        setCurrentConnectionId(() => connectionId)
+        const updatedConnections = savedConnections.map(conn => 
+          conn.id === connectionId ? { ...conn, lastUsed: Date.now() } : conn
+        )
+        setSavedConnections(updatedConnections)
+        secureCredentialsAPI.updateConnection(connectionId, { lastUsed: Date.now() })
+      }
+      
+      console.log('App - Authentication handling complete')
+    } catch (error) {
+      console.error('App - Error in handleAuthenticated:', error)
+      toast.error('Failed to complete authentication setup')
+      setIsOAuthCallback(false)
     }
   }
 
   const handleCancelOAuth = () => {
+    console.log('App - OAuth cancelled by user')
     setIsOAuthCallback(false)
     window.history.replaceState({}, document.title, window.location.pathname)
+    toast.info('Authentication cancelled')
   }
 
   const handleDisconnect = () => {
@@ -219,6 +245,7 @@ function App() {
   }, [session])
 
   if (isOAuthCallback) {
+    console.log('App - Rendering OAuthCallback component')
     return (
       <>
         <Toaster position="top-right" />
@@ -229,6 +256,8 @@ function App() {
       </>
     )
   }
+
+  console.log('App - Rendering main app', { hasSession: !!session })
 
   return (
     <div className="min-h-screen bg-background">
@@ -295,7 +324,7 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -315,6 +344,10 @@ function App() {
               <TabsTrigger value="operators" className="gap-2">
                 <Flask size={18} />
                 <span className="hidden sm:inline">Operators</span>
+              </TabsTrigger>
+              <TabsTrigger value="oauth-test" className="gap-2">
+                <TestTube size={18} />
+                <span className="hidden sm:inline">OAuth Test</span>
               </TabsTrigger>
               <TabsTrigger value="logs" className="gap-2">
                 <ClockCounterClockwise size={18} />
@@ -345,6 +378,10 @@ function App() {
 
             <TabsContent value="operators" className="space-y-6">
               <OperatorTestSuite />
+            </TabsContent>
+
+            <TabsContent value="oauth-test" className="space-y-6">
+              <OAuthTestSuite />
             </TabsContent>
 
             <TabsContent value="logs" className="space-y-6">
