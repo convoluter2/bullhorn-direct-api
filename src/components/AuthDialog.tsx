@@ -127,6 +127,10 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       return
     }
 
+    let pollInterval: NodeJS.Timeout | null = null
+    let timeoutId: NodeJS.Timeout | null = null
+    let popup: Window | null = null
+
     try {
       setLoading(true)
       
@@ -143,9 +147,10 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       const left = (window.screen.width - popupWidth) / 2
       const top = (window.screen.height - popupHeight) / 2
 
+      console.log('Opening popup with auth URL:', authUrl.substring(0, 100) + '...')
       toast.loading('Opening Bullhorn login...', { id: 'oauth-popup' })
 
-      const popup = window.open(
+      popup = window.open(
         authUrl,
         'bullhorn-oauth',
         `width=${popupWidth},height=${popupHeight},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no`
@@ -157,58 +162,110 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         return
       }
 
-      const pollInterval = setInterval(() => {
+      let codeFound = false
+      let pollAttempts = 0
+      const maxPollAttempts = 360
+
+      pollInterval = setInterval(() => {
+        pollAttempts++
+        
+        if (pollAttempts > maxPollAttempts) {
+          if (pollInterval) clearInterval(pollInterval)
+          if (timeoutId) clearTimeout(timeoutId)
+          if (popup && !popup.closed) popup.close()
+          toast.error('Polling timeout - authentication took too long', { id: 'oauth-popup' })
+          setLoading(false)
+          return
+        }
+
         try {
-          if (popup.closed) {
-            clearInterval(pollInterval)
-            toast.error('Authentication window closed', { id: 'oauth-popup' })
-            setLoading(false)
+          if (!popup || popup.closed) {
+            if (pollInterval) clearInterval(pollInterval)
+            if (timeoutId) clearTimeout(timeoutId)
+            if (!codeFound) {
+              toast.error('Authentication window closed', { id: 'oauth-popup' })
+              setLoading(false)
+            }
             return
           }
 
-          let popupUrl: string
+          let popupUrl: string | undefined
           try {
             popupUrl = popup.location.href
           } catch (e) {
             return
           }
 
-          if (popupUrl && popupUrl.includes('welcome.bullhornstaffing.com')) {
-            const url = new URL(popupUrl)
-            const code = url.searchParams.get('code')
-            const error = url.searchParams.get('error')
+          if (!popupUrl) return
 
-            if (error) {
-              clearInterval(pollInterval)
-              popup.close()
-              toast.error(`OAuth error: ${error}`, { id: 'oauth-popup' })
-              setLoading(false)
-              return
-            }
+          if (pollAttempts % 10 === 0) {
+            console.log('Polling popup (attempt', pollAttempts + '):', popupUrl.substring(0, 80) + '...')
+          }
 
-            if (code) {
-              clearInterval(pollInterval)
-              popup.close()
-              
-              toast.loading('Processing authorization...', { id: 'oauth-popup' })
-              
-              handleCodeExchange(code)
+          if (popupUrl.includes('welcome.bullhornstaffing.com')) {
+            try {
+              const url = new URL(popupUrl)
+              const code = url.searchParams.get('code')
+              const error = url.searchParams.get('error')
+
+              console.log('Popup reached welcome page:', { 
+                hasCode: !!code, 
+                hasError: !!error,
+                code: code ? code.substring(0, 30) + '...' : null,
+                fullUrl: popupUrl
+              })
+
+              if (error) {
+                codeFound = true
+                if (pollInterval) clearInterval(pollInterval)
+                if (timeoutId) clearTimeout(timeoutId)
+                popup.close()
+                toast.error(`OAuth error: ${error}`, { id: 'oauth-popup' })
+                setLoading(false)
+                return
+              }
+
+              if (code) {
+                codeFound = true
+                if (pollInterval) clearInterval(pollInterval)
+                if (timeoutId) clearTimeout(timeoutId)
+                console.log('✅ Code extracted from popup, closing popup and processing...')
+                popup.close()
+                
+                toast.loading('Processing authorization...', { id: 'oauth-popup' })
+                
+                handleCodeExchange(code).catch((err) => {
+                  console.error('❌ Code exchange failed:', err)
+                  toast.error('Failed to complete authentication', { id: 'oauth-popup' })
+                  setLoading(false)
+                })
+              } else {
+                console.log('⚠️ Welcome page loaded but no code parameter found yet')
+              }
+            } catch (urlError) {
+              console.error('Error parsing popup URL:', urlError)
             }
           }
         } catch (err) {
+          if (pollAttempts % 20 === 0) {
+            console.log('Popup polling error (attempt', pollAttempts + '):', err)
+          }
         }
       }, 500)
 
-      setTimeout(() => {
-        if (!popup.closed) {
-          clearInterval(pollInterval)
+      timeoutId = setTimeout(() => {
+        if (popup && !popup.closed) {
+          if (pollInterval) clearInterval(pollInterval)
           popup.close()
-          toast.error('Authentication timeout', { id: 'oauth-popup' })
+          toast.error('Authentication timeout - please try again', { id: 'oauth-popup' })
           setLoading(false)
         }
-      }, 300000)
+      }, 180000)
 
     } catch (error) {
+      if (pollInterval) clearInterval(pollInterval)
+      if (timeoutId) clearTimeout(timeoutId)
+      if (popup && !popup.closed) popup.close()
       toast.error('Failed to start OAuth flow. Please try again.', { id: 'oauth-popup' })
       console.error('Failed to start OAuth:', error)
       setLoading(false)
@@ -217,25 +274,44 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
 
   const handleCodeExchange = async (code: string) => {
     try {
+      console.log('Starting code exchange with code:', code.substring(0, 30) + '...')
+      
       let codeToUse = code
-      if (codeToUse.includes('%3A') || codeToUse.includes('%2F')) {
-        codeToUse = decodeURIComponent(codeToUse)
+      if (codeToUse.includes('%3A') || codeToUse.includes('%2F') || codeToUse.includes('%3a')) {
+        const decoded = decodeURIComponent(codeToUse)
+        console.log('Code was URL-encoded, decoded:', { 
+          original: codeToUse.substring(0, 30), 
+          decoded: decoded.substring(0, 30) 
+        })
+        codeToUse = decoded
       }
 
+      console.log('Exchanging code for token...')
       const tokenData = await bullhornAPI.exchangeCodeForToken(
         codeToUse,
         manualAuth.clientId,
         manualAuth.clientSecret
       )
+      
+      console.log('Token received, logging in to REST API...')
       const session = await bullhornAPI.login(tokenData.accessToken)
       session.refreshToken = tokenData.refreshToken
       session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
 
+      console.log('Session established:', {
+        hasToken: !!session.BhRestToken,
+        hasRestUrl: !!session.restUrl,
+        corporationId: session.corporationId
+      })
+
       await window.spark.kv.delete('pending-oauth-auth')
       
+      console.log('Authentication complete, notifying parent...')
       toast.success('Successfully authenticated with Bullhorn', { id: 'oauth-popup' })
+      
       onAuthenticated(session, preselectedConnection?.id)
       onOpenChange(false)
+      
       setManualAuth({ 
         clientId: '', 
         clientSecret: '',
@@ -245,9 +321,14 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         useAutomatedFlow: true
       })
       setLoading(false)
+      
+      console.log('Code exchange complete')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Authentication failed', { id: 'oauth-popup' })
+      console.error('Code exchange error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Authentication failed'
+      toast.error(`Authentication failed: ${errorMessage}`, { id: 'oauth-popup' })
       setLoading(false)
+      throw error
     }
   }
 
