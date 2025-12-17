@@ -16,6 +16,8 @@ import { ConnectionManager, type SavedConnection, type SecureCredentials } from 
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { OperatorTestSuite } from '@/components/OperatorTestSuite'
 import { OAuthTestSuite } from '@/components/OAuthTestSuite'
+import { OAuthDiagnostics } from '@/components/OAuthDiagnostics'
+import { ConsoleMonitor } from '@/components/ConsoleMonitor'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { toast } from 'sonner'
@@ -384,6 +386,8 @@ function App() {
             </TabsContent>
 
             <TabsContent value="oauth-test" className="space-y-6">
+              <ConsoleMonitor />
+              <OAuthDiagnostics />
               <OAuthTestSuite />
             </TabsContent>
 

@@ -127,13 +127,28 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       return
     }
 
+    if (!manualAuth.username || !manualAuth.password) {
+      toast.error('Please enter your Bullhorn username and password')
+      return
+    }
+
     let pollInterval: NodeJS.Timeout | null = null
     let timeoutId: NodeJS.Timeout | null = null
     let popup: Window | null = null
 
     try {
+      console.log('🚀 STARTING OAUTH FLOW')
+      console.log('📋 Credentials check:', {
+        hasClientId: !!manualAuth.clientId,
+        hasClientSecret: !!manualAuth.clientSecret,
+        hasUsername: !!manualAuth.username,
+        hasPassword: !!manualAuth.password,
+        clientIdPreview: manualAuth.clientId.substring(0, 10) + '...'
+      })
+
       setLoading(true)
       
+      console.log('💾 Saving pending auth to KV store...')
       await window.spark.kv.set('pending-oauth-auth', {
         clientId: manualAuth.clientId,
         clientSecret: manualAuth.clientSecret,
@@ -142,12 +157,14 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       })
 
       const authUrl = getAuthUrl()
+      console.log('🔗 Generated auth URL (length:', authUrl.length + '):', authUrl.substring(0, 150) + '...')
+      
       const popupWidth = 600
       const popupHeight = 700
       const left = (window.screen.width - popupWidth) / 2
       const top = (window.screen.height - popupHeight) / 2
 
-      console.log('Opening popup with auth URL:', authUrl.substring(0, 100) + '...')
+      console.log('🪟 Opening popup window...')
       toast.loading('Opening Bullhorn login...', { id: 'oauth-popup' })
 
       popup = window.open(
@@ -157,10 +174,13 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       )
 
       if (!popup) {
+        console.error('❌ POPUP BLOCKED!')
         toast.error('Popup blocked. Please allow popups for this site.', { id: 'oauth-popup' })
         setLoading(false)
         return
       }
+
+      console.log('✅ Popup opened successfully, starting polling...')
 
       let codeFound = false
       let pollAttempts = 0
@@ -173,7 +193,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           if (pollInterval) clearInterval(pollInterval)
           if (timeoutId) clearTimeout(timeoutId)
           if (popup && !popup.closed) popup.close()
-          toast.error('Polling timeout - authentication took too long', { id: 'oauth-popup' })
+          console.error('❌ POLLING TIMEOUT after', maxPollAttempts, 'attempts (', maxPollAttempts * 0.5, 'seconds)')
+          toast.error('Authentication timeout - please try again', { id: 'oauth-popup' })
           setLoading(false)
           return
         }
@@ -183,6 +204,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             if (pollInterval) clearInterval(pollInterval)
             if (timeoutId) clearTimeout(timeoutId)
             if (!codeFound) {
+              console.warn('⚠️ Popup closed without finding code')
               toast.error('Authentication window closed', { id: 'oauth-popup' })
               setLoading(false)
             }
@@ -199,7 +221,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           if (!popupUrl) return
 
           if (pollAttempts % 10 === 0) {
-            console.log('Polling popup (attempt', pollAttempts + '):', popupUrl.substring(0, 80) + '...')
+            console.log(`[Poll ${pollAttempts}/${maxPollAttempts}] Current URL:`, popupUrl.substring(0, 100) + '...')
           }
 
           if (popupUrl.includes('welcome.bullhornstaffing.com')) {
@@ -208,11 +230,12 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
               const code = url.searchParams.get('code')
               const error = url.searchParams.get('error')
 
-              console.log('Popup reached welcome page:', { 
+              console.log('✅ WELCOME PAGE DETECTED:', { 
                 hasCode: !!code, 
                 hasError: !!error,
-                code: code ? code.substring(0, 30) + '...' : null,
-                fullUrl: popupUrl
+                codePreview: code ? code.substring(0, 30) + '...' : null,
+                error: error,
+                allParams: Array.from(url.searchParams.keys()).join(', ')
               })
 
               if (error) {
@@ -220,6 +243,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                 if (pollInterval) clearInterval(pollInterval)
                 if (timeoutId) clearTimeout(timeoutId)
                 popup.close()
+                console.error('❌ OAuth error in URL:', error)
                 toast.error(`OAuth error: ${error}`, { id: 'oauth-popup' })
                 setLoading(false)
                 return
@@ -229,26 +253,26 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                 codeFound = true
                 if (pollInterval) clearInterval(pollInterval)
                 if (timeoutId) clearTimeout(timeoutId)
-                console.log('✅ Code extracted from popup, closing popup and processing...')
+                console.log('✅ CODE EXTRACTED! Processing now...')
                 popup.close()
                 
-                toast.loading('Processing authorization...', { id: 'oauth-popup' })
+                toast.loading('Exchanging code for token...', { id: 'oauth-popup' })
                 
                 handleCodeExchange(code).catch((err) => {
-                  console.error('❌ Code exchange failed:', err)
+                  console.error('❌ CODE EXCHANGE FAILED:', err)
                   toast.error('Failed to complete authentication', { id: 'oauth-popup' })
                   setLoading(false)
                 })
               } else {
-                console.log('⚠️ Welcome page loaded but no code parameter found yet')
+                console.warn('⚠️ Welcome page but NO CODE parameter - waiting...')
               }
             } catch (urlError) {
-              console.error('Error parsing popup URL:', urlError)
+              console.error('❌ Error parsing popup URL:', urlError)
             }
           }
         } catch (err) {
           if (pollAttempts % 20 === 0) {
-            console.log('Popup polling error (attempt', pollAttempts + '):', err)
+            console.error(`[Poll ${pollAttempts}] Popup access error:`, err)
           }
         }
       }, 500)
@@ -263,50 +287,77 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       }, 180000)
 
     } catch (error) {
+      console.error('❌ OAUTH FLOW ERROR:', error)
+      console.error('❌ Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      })
       if (pollInterval) clearInterval(pollInterval)
       if (timeoutId) clearTimeout(timeoutId)
-      if (popup && !popup.closed) popup.close()
+      if (popup && !popup.closed) {
+        console.log('🧹 Closing popup due to error...')
+        popup.close()
+      }
       toast.error('Failed to start OAuth flow. Please try again.', { id: 'oauth-popup' })
-      console.error('Failed to start OAuth:', error)
       setLoading(false)
     }
   }
 
   const handleCodeExchange = async (code: string) => {
     try {
-      console.log('Starting code exchange with code:', code.substring(0, 30) + '...')
+      console.log('🔄 STARTING CODE EXCHANGE')
+      console.log('📝 Raw code received:', code.substring(0, 50) + '...')
       
       let codeToUse = code
       if (codeToUse.includes('%3A') || codeToUse.includes('%2F') || codeToUse.includes('%3a')) {
         const decoded = decodeURIComponent(codeToUse)
-        console.log('Code was URL-encoded, decoded:', { 
-          original: codeToUse.substring(0, 30), 
-          decoded: decoded.substring(0, 30) 
+        console.log('🔓 Code was URL-encoded:', { 
+          originalPreview: codeToUse.substring(0, 40), 
+          decodedPreview: decoded.substring(0, 40),
+          hadColon: decoded.includes(':')
         })
         codeToUse = decoded
+      } else {
+        console.log('✓ Code already decoded')
       }
 
-      console.log('Exchanging code for token...')
+      console.log('🎫 Exchanging code for token...')
+      console.log('📋 Exchange parameters:', {
+        codeLength: codeToUse.length,
+        clientIdPreview: manualAuth.clientId.substring(0, 10) + '...',
+        hasSecret: !!manualAuth.clientSecret
+      })
+
       const tokenData = await bullhornAPI.exchangeCodeForToken(
         codeToUse,
         manualAuth.clientId,
         manualAuth.clientSecret
       )
       
-      console.log('Token received, logging in to REST API...')
+      console.log('✅ Token received:', {
+        hasAccessToken: !!tokenData.accessToken,
+        hasRefreshToken: !!tokenData.refreshToken,
+        expiresIn: tokenData.expiresIn
+      })
+      
+      console.log('🔐 Logging in to REST API...')
       const session = await bullhornAPI.login(tokenData.accessToken)
+      
       session.refreshToken = tokenData.refreshToken
       session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
 
-      console.log('Session established:', {
+      console.log('✅ Session established:', {
         hasToken: !!session.BhRestToken,
         hasRestUrl: !!session.restUrl,
-        corporationId: session.corporationId
+        corporationId: session.corporationId,
+        userId: session.userId
       })
 
+      console.log('🧹 Cleaning up pending auth...')
       await window.spark.kv.delete('pending-oauth-auth')
       
-      console.log('Authentication complete, notifying parent...')
+      console.log('🎉 Authentication complete, notifying parent component...')
       toast.success('Successfully authenticated with Bullhorn', { id: 'oauth-popup' })
       
       onAuthenticated(session, preselectedConnection?.id)
@@ -322,9 +373,14 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       })
       setLoading(false)
       
-      console.log('Code exchange complete')
+      console.log('✅ CODE EXCHANGE COMPLETE')
     } catch (error) {
-      console.error('Code exchange error:', error)
+      console.error('❌ CODE EXCHANGE ERROR:', error)
+      console.error('❌ Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      })
       const errorMessage = error instanceof Error ? error.message : 'Authentication failed'
       toast.error(`Authentication failed: ${errorMessage}`, { id: 'oauth-popup' })
       setLoading(false)
