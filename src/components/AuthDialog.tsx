@@ -117,7 +117,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
   const getAuthUrl = () => {
     const state = Math.random().toString(36).substring(7)
     const clientId = manualAuth.clientId || 'YOUR_CLIENT_ID'
-    const redirectUri = window.location.origin + '/'
+    const redirectUri = 'https://welcome.bullhornstaffing.com/'
     
     console.log('Using redirect URI:', redirectUri)
     return bullhornAPI.getAuthorizationUrl(clientId, redirectUri, state, manualAuth.username, manualAuth.password)
@@ -258,13 +258,13 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
               console.log(`[Poll ${pollAttempts}/${maxPollAttempts}] Accessible URL:`, popupUrl.substring(0, 100) + '...')
             }
 
-            if (popupUrl.includes(window.location.origin) && popupUrl.includes('code=')) {
+            if ((popupUrl.includes('welcome.bullhornstaffing.com') || popupUrl.includes(window.location.origin)) && popupUrl.includes('code=')) {
               try {
                 const url = new URL(popupUrl)
                 const code = url.searchParams.get('code')
                 const error = url.searchParams.get('error')
 
-                console.log('✅ CALLBACK DETECTED (redirected back to our page):', { 
+                console.log('✅ CALLBACK DETECTED (redirected to welcome page):', { 
                   hasCode: !!code, 
                   hasError: !!error,
                   codePreview: code ? code.substring(0, 30) + '...' : null,
@@ -364,7 +364,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         console.log('✓ Code already decoded')
       }
 
-      const redirectUri = window.location.origin + '/'
+      const redirectUri = 'https://welcome.bullhornstaffing.com/'
       console.log('🎫 Exchanging code for token (WITH redirect_uri to match authorize request)...')
       console.log('📋 Exchange parameters:', {
         codeLength: codeToUse.length,

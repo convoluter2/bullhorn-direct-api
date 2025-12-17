@@ -140,7 +140,7 @@ export function OAuthCallback({
 
         if (isMounted) setProgress(prev => [...prev, 'Exchanging code for access token'])
 
-        const redirectUri = window.location.origin + '/'
+        const redirectUri = 'https://welcome.bullhornstaffing.com/'
         console.log('OAuth Callback - Exchanging code for token with redirect_uri:', redirectUri)
 
         const tokenData = await bullhornAPI.exchangeCodeForToken(
