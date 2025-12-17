@@ -108,7 +108,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           manualAuth.clientSecret,
           manualAuth.username
         )
-        const session = await bullhornAPI.login(tokenData.accessToken)
+        const session = await bullhornAPI.login(tokenData.accessToken, manualAuth.username)
         session.refreshToken = tokenData.refreshToken
         session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
         
@@ -478,7 +478,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       })
       
       console.log('🔐 Logging in to REST API...')
-      const session = await bullhornAPI.login(tokenData.accessToken)
+      const session = await bullhornAPI.login(tokenData.accessToken, manualAuth.username)
       
       session.refreshToken = tokenData.refreshToken
       session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)

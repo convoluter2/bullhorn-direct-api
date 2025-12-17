@@ -158,7 +158,7 @@ export function OAuthCallback({
           setProgress(prev => [...prev, 'Logging into Bullhorn REST API'])
         }
 
-        const session = await bullhornAPI.login(tokenData.accessToken)
+        const session = await bullhornAPI.login(tokenData.accessToken, username)
         session.refreshToken = tokenData.refreshToken
         session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
 

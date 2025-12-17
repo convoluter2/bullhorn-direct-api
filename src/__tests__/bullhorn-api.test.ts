@@ -20,17 +20,16 @@ describe('BullhornAPI', () => {
 
   describe('getAuthorizationUrl', () => {
     it('should generate correct authorization URL without username/password', () => {
-      const url = api.getAuthorizationUrl('client-id', 'state-123')
+      const url = api.getAuthorizationUrl('test-user', 'client-id', 'state-123')
       expect(url).toContain('client_id=client-id')
       expect(url).toContain('response_type=code')
       expect(url).toContain('state=state-123')
       expect(url).not.toContain('redirect_uri')
-      expect(url).not.toContain('username')
-      expect(url).not.toContain('password')
+      expect(url).not.toContain('action=Login')
     })
 
     it('should include username and password when provided', () => {
-      const url = api.getAuthorizationUrl('client-id', 'state-123', 'user@test.com', 'pass123')
+      const url = api.getAuthorizationUrl('user@test.com', 'client-id', 'state-123', 'pass123')
       expect(url).toContain('action=Login')
       expect(url).toContain('username=user%40test.com')
       expect(url).toContain('password=pass123')

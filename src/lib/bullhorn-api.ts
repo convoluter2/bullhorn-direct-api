@@ -110,7 +110,7 @@ export class BullhornAPI {
     code: string,
     clientId: string,
     clientSecret: string,
-    username: string
+    username?: string
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
     let finalCode = code
     
@@ -119,7 +119,12 @@ export class BullhornAPI {
       console.log('Code was URL-encoded, decoded it:', { original: code.substring(0, 40), decoded: finalCode.substring(0, 40) })
     }
     
-    const loginInfo = await this.getLoginInfo(username)
+    let oauthUrl = 'https://auth-east.bullhornstaffing.com/oauth'
+    
+    if (username) {
+      const loginInfo = await this.getLoginInfo(username)
+      oauthUrl = loginInfo.oauthUrl
+    }
     
     const params = new URLSearchParams({
       grant_type: 'authorization_code',
@@ -131,10 +136,10 @@ export class BullhornAPI {
     console.log('🔑 Exchanging code for token (NO redirect_uri):', {
       codeLength: finalCode.length,
       clientIdPreview: clientId.substring(0, 10) + '...',
-      oauthUrl: loginInfo.oauthUrl
+      oauthUrl: oauthUrl
     })
 
-    const tokenUrl = `${loginInfo.oauthUrl}/token`
+    const tokenUrl = `${oauthUrl}/token`
 
     let response: Response
     try {
@@ -176,9 +181,14 @@ export class BullhornAPI {
     refreshToken: string,
     clientId: string,
     clientSecret: string,
-    username: string
+    username?: string
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
-    const loginInfo = await this.getLoginInfo(username)
+    let oauthUrl = 'https://auth-east.bullhornstaffing.com/oauth'
+    
+    if (username) {
+      const loginInfo = await this.getLoginInfo(username)
+      oauthUrl = loginInfo.oauthUrl
+    }
     
     const params = new URLSearchParams({
       grant_type: 'refresh_token',
@@ -188,10 +198,10 @@ export class BullhornAPI {
     })
 
     console.log('🔄 Refreshing access token...', {
-      oauthUrl: loginInfo.oauthUrl
+      oauthUrl: oauthUrl
     })
 
-    const tokenUrl = `${loginInfo.oauthUrl}/token`
+    const tokenUrl = `${oauthUrl}/token`
 
     let response: Response
     try {
@@ -229,7 +239,17 @@ export class BullhornAPI {
     }
   }
 
-  async login(accessToken: string): Promise<BullhornSession> {
+  async login(accessToken: string, username?: string): Promise<BullhornSession> {
+    let loginUrl = BULLHORN_LOGIN_URL
+    
+    if (username && this.loginInfoCache.has(username)) {
+      const loginInfo = this.loginInfoCache.get(username)!
+      loginUrl = loginInfo.restUrl.replace(/\/$/, '') + '/login'
+      console.log('🔐 Using region-specific login URL from loginInfo:', loginUrl)
+    } else {
+      console.log('🔐 Using default login URL (no region info available)')
+    }
+
     const params = new URLSearchParams({
       version: '*',
       access_token: accessToken
@@ -239,12 +259,12 @@ export class BullhornAPI {
 
     let response: Response
     try {
-      response = await fetch(`${BULLHORN_LOGIN_URL}?${params.toString()}`, {
+      response = await fetch(`${loginUrl}?${params.toString()}`, {
         method: 'POST'
       })
     } catch (error) {
       console.log('❌ Direct login failed (CORS), using proxy...', error)
-      response = await fetchWithCorsProxy(`${BULLHORN_LOGIN_URL}?${params.toString()}`, {
+      response = await fetchWithCorsProxy(`${loginUrl}?${params.toString()}`, {
         method: 'POST'
       })
     }
@@ -256,7 +276,7 @@ export class BullhornAPI {
     }
 
     const data = await response.json()
-    console.log('✅ Login successful')
+    console.log('✅ Login successful, received restUrl:', data.restUrl)
     
     return {
       BhRestToken: data.BhRestToken,
@@ -281,7 +301,7 @@ export class BullhornAPI {
       )
       console.log('Got access token, logging in...')
       
-      const session = await this.login(tokenData.accessToken)
+      const session = await this.login(tokenData.accessToken, credentials.username)
       
       session.refreshToken = tokenData.refreshToken
       session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)

@@ -111,7 +111,7 @@ function App() {
             credentials.clientSecret,
             credentials.username
           )
-          const newSession = await bullhornAPI.login(tokenData.accessToken)
+          const newSession = await bullhornAPI.login(tokenData.accessToken, credentials.username)
           newSession.refreshToken = tokenData.refreshToken
           newSession.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
           
