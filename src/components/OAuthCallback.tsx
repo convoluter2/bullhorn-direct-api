@@ -140,12 +140,14 @@ export function OAuthCallback({
 
         if (isMounted) setProgress(prev => [...prev, 'Exchanging code for access token'])
 
-        console.log('OAuth Callback - Exchanging code for token (no redirect_uri)...')
+        const redirectUri = `${window.location.origin}${window.location.pathname}`
+        console.log('OAuth Callback - Exchanging code for token with redirect_uri:', redirectUri)
 
         const tokenData = await bullhornAPI.exchangeCodeForToken(
           codeToUse,
           clientId,
-          clientSecret
+          clientSecret,
+          redirectUri
         )
 
         console.log('OAuth Callback - Token received, logging in...')

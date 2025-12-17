@@ -117,8 +117,10 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
   const getAuthUrl = () => {
     const state = Math.random().toString(36).substring(7)
     const clientId = manualAuth.clientId || 'YOUR_CLIENT_ID'
+    const redirectUri = `${window.location.origin}${window.location.pathname}`
     
-    return bullhornAPI.getAuthorizationUrl(clientId, undefined, state, manualAuth.username, manualAuth.password)
+    console.log('Generated redirect URI:', redirectUri)
+    return bullhornAPI.getAuthorizationUrl(clientId, redirectUri, state, manualAuth.username, manualAuth.password)
   }
   
   const handleStartOAuthFlow = async () => {
@@ -135,6 +137,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     let pollInterval: NodeJS.Timeout | null = null
     let timeoutId: NodeJS.Timeout | null = null
     let popup: Window | null = null
+    let messageListener: ((event: MessageEvent) => void) | null = null
 
     try {
       console.log('🚀 STARTING OAUTH FLOW')
@@ -180,7 +183,43 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         return
       }
 
-      console.log('✅ Popup opened successfully, starting polling...')
+      console.log('✅ Popup opened successfully, setting up monitoring...')
+
+      messageListener = (event: MessageEvent) => {
+        console.log('📨 Message received:', event.origin, event.data)
+        
+        if (event.data && typeof event.data === 'object') {
+          if (event.data.type === 'BULLHORN_OAUTH_CODE' && event.data.code) {
+            console.log('✅ CODE RECEIVED VIA MESSAGE:', event.data.code.substring(0, 30) + '...')
+            
+            if (pollInterval) clearInterval(pollInterval)
+            if (timeoutId) clearTimeout(timeoutId)
+            if (popup && !popup.closed) popup.close()
+            if (messageListener) window.removeEventListener('message', messageListener)
+            
+            toast.loading('Exchanging code for token...', { id: 'oauth-popup' })
+            
+            handleCodeExchange(event.data.code).catch((err) => {
+              console.error('❌ CODE EXCHANGE FAILED:', err)
+              toast.error('Failed to complete authentication', { id: 'oauth-popup' })
+              setLoading(false)
+            })
+          } else if (event.data.type === 'BULLHORN_OAUTH_ERROR') {
+            console.error('❌ OAuth error via message:', event.data.error)
+            
+            if (pollInterval) clearInterval(pollInterval)
+            if (timeoutId) clearTimeout(timeoutId)
+            if (popup && !popup.closed) popup.close()
+            if (messageListener) window.removeEventListener('message', messageListener)
+            
+            toast.error(`OAuth error: ${event.data.error}`, { id: 'oauth-popup' })
+            setLoading(false)
+          }
+        }
+      }
+
+      window.addEventListener('message', messageListener)
+      console.log('✅ Message listener registered, starting polling...')
 
       let codeFound = false
       let pollAttempts = 0
@@ -214,65 +253,67 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           let popupUrl: string | undefined
           try {
             popupUrl = popup.location.href
-          } catch (e) {
-            return
-          }
+            
+            if (pollAttempts % 10 === 0) {
+              console.log(`[Poll ${pollAttempts}/${maxPollAttempts}] Accessible URL:`, popupUrl.substring(0, 100) + '...')
+            }
 
-          if (!popupUrl) return
+            if (popupUrl.includes(window.location.origin) && popupUrl.includes('code=')) {
+              try {
+                const url = new URL(popupUrl)
+                const code = url.searchParams.get('code')
+                const error = url.searchParams.get('error')
 
-          if (pollAttempts % 10 === 0) {
-            console.log(`[Poll ${pollAttempts}/${maxPollAttempts}] Current URL:`, popupUrl.substring(0, 100) + '...')
-          }
-
-          if (popupUrl.includes('welcome.bullhornstaffing.com')) {
-            try {
-              const url = new URL(popupUrl)
-              const code = url.searchParams.get('code')
-              const error = url.searchParams.get('error')
-
-              console.log('✅ WELCOME PAGE DETECTED:', { 
-                hasCode: !!code, 
-                hasError: !!error,
-                codePreview: code ? code.substring(0, 30) + '...' : null,
-                error: error,
-                allParams: Array.from(url.searchParams.keys()).join(', ')
-              })
-
-              if (error) {
-                codeFound = true
-                if (pollInterval) clearInterval(pollInterval)
-                if (timeoutId) clearTimeout(timeoutId)
-                popup.close()
-                console.error('❌ OAuth error in URL:', error)
-                toast.error(`OAuth error: ${error}`, { id: 'oauth-popup' })
-                setLoading(false)
-                return
-              }
-
-              if (code) {
-                codeFound = true
-                if (pollInterval) clearInterval(pollInterval)
-                if (timeoutId) clearTimeout(timeoutId)
-                console.log('✅ CODE EXTRACTED! Processing now...')
-                popup.close()
-                
-                toast.loading('Exchanging code for token...', { id: 'oauth-popup' })
-                
-                handleCodeExchange(code).catch((err) => {
-                  console.error('❌ CODE EXCHANGE FAILED:', err)
-                  toast.error('Failed to complete authentication', { id: 'oauth-popup' })
-                  setLoading(false)
+                console.log('✅ CALLBACK DETECTED (redirected back to our page):', { 
+                  hasCode: !!code, 
+                  hasError: !!error,
+                  codePreview: code ? code.substring(0, 30) + '...' : null,
+                  error: error,
+                  allParams: Array.from(url.searchParams.keys()).join(', ')
                 })
-              } else {
-                console.warn('⚠️ Welcome page but NO CODE parameter - waiting...')
+
+                if (error) {
+                  codeFound = true
+                  if (pollInterval) clearInterval(pollInterval)
+                  if (timeoutId) clearTimeout(timeoutId)
+                  if (messageListener) window.removeEventListener('message', messageListener)
+                  popup.close()
+                  console.error('❌ OAuth error in URL:', error)
+                  toast.error(`OAuth error: ${error}`, { id: 'oauth-popup' })
+                  setLoading(false)
+                  return
+                }
+
+                if (code) {
+                  codeFound = true
+                  if (pollInterval) clearInterval(pollInterval)
+                  if (timeoutId) clearTimeout(timeoutId)
+                  if (messageListener) window.removeEventListener('message', messageListener)
+                  console.log('✅ CODE EXTRACTED! Processing now...')
+                  popup.close()
+                  
+                  toast.loading('Exchanging code for token...', { id: 'oauth-popup' })
+                  
+                  handleCodeExchange(code).catch((err) => {
+                    console.error('❌ CODE EXCHANGE FAILED:', err)
+                    toast.error('Failed to complete authentication', { id: 'oauth-popup' })
+                    setLoading(false)
+                  })
+                } else {
+                  console.warn('⚠️ Callback page detected but NO CODE parameter - waiting...')
+                }
+              } catch (urlError) {
+                console.error('❌ Error parsing popup URL:', urlError)
               }
-            } catch (urlError) {
-              console.error('❌ Error parsing popup URL:', urlError)
+            }
+          } catch (crossOriginError) {
+            if (pollAttempts % 20 === 0) {
+              console.log(`[Poll ${pollAttempts}] Popup on cross-origin page (normal during auth flow)`)
             }
           }
         } catch (err) {
-          if (pollAttempts % 20 === 0) {
-            console.error(`[Poll ${pollAttempts}] Popup access error:`, err)
+          if (pollAttempts % 30 === 0) {
+            console.error(`[Poll ${pollAttempts}] Unexpected popup error:`, err)
           }
         }
       }, 500)
@@ -295,6 +336,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       })
       if (pollInterval) clearInterval(pollInterval)
       if (timeoutId) clearTimeout(timeoutId)
+      if (messageListener) window.removeEventListener('message', messageListener)
       if (popup && !popup.closed) {
         console.log('🧹 Closing popup due to error...')
         popup.close()
@@ -322,17 +364,20 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         console.log('✓ Code already decoded')
       }
 
-      console.log('🎫 Exchanging code for token...')
+      const redirectUri = `${window.location.origin}${window.location.pathname}`
+      console.log('🎫 Exchanging code for token (with redirect_uri)...')
       console.log('📋 Exchange parameters:', {
         codeLength: codeToUse.length,
         clientIdPreview: manualAuth.clientId.substring(0, 10) + '...',
-        hasSecret: !!manualAuth.clientSecret
+        hasSecret: !!manualAuth.clientSecret,
+        redirectUri
       })
 
       const tokenData = await bullhornAPI.exchangeCodeForToken(
         codeToUse,
         manualAuth.clientId,
-        manualAuth.clientSecret
+        manualAuth.clientSecret,
+        redirectUri
       )
       
       console.log('✅ Token received:', {
@@ -419,7 +464,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         <DialogHeader>
           <DialogTitle className="text-2xl">Connect to Bullhorn</DialogTitle>
           <DialogDescription>
-            Fully automated OAuth authentication - no redirect URI needed!
+            Popup-based OAuth with automatic code extraction and exchange
           </DialogDescription>
         </DialogHeader>
 
@@ -429,11 +474,12 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             <AlertDescription className="space-y-2">
               <p className="font-medium">✨ Popup-Based OAuth Authentication</p>
               <p className="text-xs">
-                <strong>Recommended:</strong> Use "Start Automated OAuth Flow" - opens Bullhorn login in a popup window, 
-                extracts the authorization code automatically, and closes the popup. You'll never see the welcome page.
+                <strong>Recommended:</strong> Use "Start Popup OAuth Flow" - opens Bullhorn login in a popup window, 
+                automatically logs you in, extracts the authorization code when Bullhorn redirects back, and closes the popup.
               </p>
               <p className="text-xs mt-1">
-                <strong>Fallback:</strong> If popup is blocked, disable automated flow to try programmatic authentication.
+                <strong>Fallback:</strong> If popup is blocked, disable automated flow to try programmatic authentication 
+                (may not work with all Bullhorn configurations).
               </p>
             </AlertDescription>
           </Alert>
@@ -518,11 +564,11 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                <strong>Enabled:</strong> Opens Bullhorn login in a popup window, automatically extracts the authorization code 
-                from the welcome page, and closes the popup. <strong>You'll never see the welcome page in your main window.</strong>
+                <strong>Enabled:</strong> Opens Bullhorn login in a popup window, automatically logs you in using your credentials, 
+                extracts the authorization code when Bullhorn redirects back, and closes the popup. <strong>Quick and seamless.</strong>
               </p>
               <p className="text-xs text-muted-foreground">
-                <strong>Disabled:</strong> Fallback to programmatic authentication (may not work in all browsers) 
+                <strong>Disabled:</strong> Fallback to programmatic authentication (may not work with all Bullhorn configurations) 
                 or manual code entry.
               </p>
             </div>

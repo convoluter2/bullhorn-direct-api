@@ -15,6 +15,10 @@ export class BullhornAPI {
       state: state
     })
     
+    if (redirectUri) {
+      params.append('redirect_uri', redirectUri)
+    }
+    
     if (username && password) {
       params.append('action', 'Login')
       params.append('username', username)
@@ -44,9 +48,15 @@ export class BullhornAPI {
       client_secret: clientSecret
     })
 
-    console.log('Exchanging code for token (no redirect_uri):', {
+    if (redirectUri) {
+      params.append('redirect_uri', redirectUri)
+    }
+
+    console.log('Exchanging code for token:', {
       code: finalCode.substring(0, 30) + '...',
-      clientId
+      clientId,
+      hasRedirectUri: !!redirectUri,
+      redirectUri
     })
 
     const response = await fetch(`${BULLHORN_AUTH_URL}/token`, {
