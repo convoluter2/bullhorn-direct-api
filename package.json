@@ -7,6 +7,7 @@
         "dev": "concurrently \"npm run dev:proxy\" \"npm run dev:vite\"",
         "dev:vite": "vite",
         "dev:proxy": "node server/proxy.js",
+        "verify": "bash verify-proxy.sh",
         "kill": "fuser -k 5000/tcp && fuser -k 3001/tcp",
         "build": "tsc -b --noCheck && vite build",
         "lint": "eslint .",

@@ -13,13 +13,26 @@ app.use(express.json());
 
 const pendingAuths = new Map();
 
+setInterval(() => {
+  const now = Date.now();
+  const fiveMinutesAgo = now - 300000;
+  
+  for (const [state, auth] of pendingAuths.entries()) {
+    if (auth.timestamp < fiveMinutesAgo) {
+      console.log(`🧹 Cleaning up expired auth state: ${state}`);
+      pendingAuths.delete(state);
+    }
+  }
+}, 60000);
+
 app.get('/oauth/callback', async (req, res) => {
   const { code, state, error, error_description } = req.query;
   
   console.log('📥 OAuth callback received:', { 
     hasCode: !!code, 
     state, 
-    hasError: !!error 
+    hasError: !!error,
+    timestamp: new Date().toISOString()
   });
 
   if (error) {
@@ -147,9 +160,7 @@ app.get('/oauth/callback', async (req, res) => {
       timestamp: Date.now()
     });
     
-    setTimeout(() => {
-      pendingAuths.delete(state);
-    }, 300000);
+    console.log(`💾 Stored auth code for state: ${state} (Total pending: ${pendingAuths.size})`);
   }
 
   res.send(`
@@ -228,27 +239,43 @@ app.get('/oauth/status/:state', (req, res) => {
   const { state } = req.params;
   const auth = pendingAuths.get(state);
   
+  console.log(`🔍 Status check for state: ${state} - Found: ${!!auth}`);
+  
   if (auth) {
     res.json({ success: true, code: auth.code });
     pendingAuths.delete(state);
+    console.log(`✅ Code retrieved and removed for state: ${state}`);
   } else {
     res.json({ success: false });
   }
 });
 
 app.get('/health', (req, res) => {
-  res.json({ 
+  const uptime = process.uptime();
+  const health = { 
     status: 'healthy', 
     service: 'oauth-proxy',
+    version: '1.0.0',
     timestamp: new Date().toISOString(),
-    pendingAuths: pendingAuths.size
-  });
+    uptime: `${Math.floor(uptime / 60)}m ${Math.floor(uptime % 60)}s`,
+    pendingAuths: pendingAuths.size,
+    port: PORT
+  };
+  
+  res.json(health);
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 OAuth Proxy Server running on port ${PORT}`);
-  console.log(`📍 Callback URL: http://localhost:${PORT}/oauth/callback`);
-  console.log(`💚 Health check: http://localhost:${PORT}/health`);
+  console.log('');
+  console.log('🚀 ═══════════════════════════════════════════════════');
+  console.log('🔐 OAuth Proxy Server Started Successfully');
+  console.log('═══════════════════════════════════════════════════');
+  console.log(`📍 Port: ${PORT}`);
+  console.log(`🔗 Callback: http://localhost:${PORT}/oauth/callback`);
+  console.log(`💚 Health: http://localhost:${PORT}/health`);
+  console.log(`⏰ Started: ${new Date().toISOString()}`);
+  console.log('═══════════════════════════════════════════════════');
+  console.log('');
 });
 
 process.on('uncaughtException', (error) => {
