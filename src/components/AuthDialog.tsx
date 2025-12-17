@@ -355,13 +355,13 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
               console.log(`[Poll ${pollAttempts}/${maxPollAttempts}] Accessible URL:`, popupUrl.substring(0, 100) + '...')
             }
 
-            if (popupUrl.includes('/oauth-callback') && popupUrl.includes('code=')) {
+            if (popupUrl.includes('welcome.bullhornstaffing.com') && popupUrl.includes('code=')) {
               try {
                 const url = new URL(popupUrl)
                 const code = url.searchParams.get('code')
                 const error = url.searchParams.get('error')
 
-                console.log('✅ OAUTH CALLBACK PAGE REACHED - Code in URL!', { 
+                console.log('✅ WELCOME PAGE REACHED - Code in URL!', { 
                   hasCode: !!code, 
                   hasError: !!error,
                   codePreview: code ? code.substring(0, 30) + '...' : null,
@@ -386,7 +386,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                   if (pollInterval) clearInterval(pollInterval)
                   if (timeoutId) clearTimeout(timeoutId)
                   if (messageListener) window.removeEventListener('message', messageListener)
-                  console.log('✅ CODE EXTRACTED FROM URL! Processing now...')
+                  console.log('✅ CODE EXTRACTED FROM WELCOME PAGE! Processing now...')
                   popup.close()
                   
                   toast.loading('Exchanging code for token...', { id: 'oauth-popup' })
@@ -397,7 +397,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                     setLoading(false)
                   })
                 } else {
-                  console.warn('⚠️ Callback page detected but NO CODE parameter - waiting...')
+                  console.warn('⚠️ Welcome page detected but NO CODE parameter - waiting...')
                 }
               } catch (urlError) {
                 console.error('❌ Error parsing popup URL:', urlError)
