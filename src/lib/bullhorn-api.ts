@@ -34,9 +34,11 @@ export class BullhornAPI {
     clientSecret: string,
     redirectUri?: string
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
+    const decodedCode = decodeURIComponent(code)
+    
     const params = new URLSearchParams({
       grant_type: 'authorization_code',
-      code: code,
+      code: decodedCode,
       client_id: clientId,
       client_secret: clientSecret
     })

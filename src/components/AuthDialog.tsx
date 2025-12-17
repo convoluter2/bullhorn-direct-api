@@ -57,9 +57,11 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       const redirectUri = manualAuth.useRedirectUri && manualAuth.redirectUri 
         ? manualAuth.redirectUri 
         : undefined
+      
+      const decodedCode = decodeURIComponent(manualAuth.authCode)
         
       const tokenData = await bullhornAPI.exchangeCodeForToken(
-        manualAuth.authCode,
+        decodedCode,
         manualAuth.clientId,
         manualAuth.clientSecret,
         redirectUri
@@ -357,7 +359,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                   placeholder="Paste the authorization code from the redirect URL"
                 />
                 <p className="text-xs text-muted-foreground">
-                  After authorizing, copy the 'code' parameter from the redirect URL or browser address bar
+                  After authorizing, copy the 'code' parameter from the redirect URL or browser address bar.
+                  URL-encoded characters (like %3A) will be automatically decoded.
                 </p>
               </div>
             )}

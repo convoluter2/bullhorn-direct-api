@@ -63,11 +63,12 @@ export function OAuthCallback({
     }
 
     if (code) {
-      setAuthCode(code)
+      const decodedCode = decodeURIComponent(code)
+      setAuthCode(decodedCode)
       setStatus('found')
       
       if (storedCredentials) {
-        handleAutoAuthenticate(code, storedCredentials.clientId, storedCredentials.clientSecret)
+        handleAutoAuthenticate(decodedCode, storedCredentials.clientId, storedCredentials.clientSecret)
       }
     } else {
       setStatus('manual')
@@ -183,6 +184,9 @@ export function OAuthCallback({
                   readOnly
                   className="font-mono text-xs bg-muted"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Code has been automatically decoded and is ready for authentication
+                </p>
               </div>
             )}
 
