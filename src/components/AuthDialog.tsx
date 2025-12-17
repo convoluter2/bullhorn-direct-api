@@ -128,6 +128,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     }
 
     try {
+      setLoading(true)
+      
       await window.spark.kv.set('pending-oauth-auth', {
         clientId: manualAuth.clientId,
         clientSecret: manualAuth.clientSecret,
@@ -135,13 +137,117 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         timestamp: Date.now()
       })
 
-      toast.loading('Redirecting to Bullhorn...', { id: 'oauth-redirect' })
-
       const authUrl = getAuthUrl()
-      window.location.href = authUrl
+      const popupWidth = 600
+      const popupHeight = 700
+      const left = (window.screen.width - popupWidth) / 2
+      const top = (window.screen.height - popupHeight) / 2
+
+      toast.loading('Opening Bullhorn login...', { id: 'oauth-popup' })
+
+      const popup = window.open(
+        authUrl,
+        'bullhorn-oauth',
+        `width=${popupWidth},height=${popupHeight},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no`
+      )
+
+      if (!popup) {
+        toast.error('Popup blocked. Please allow popups for this site.', { id: 'oauth-popup' })
+        setLoading(false)
+        return
+      }
+
+      const pollInterval = setInterval(() => {
+        try {
+          if (popup.closed) {
+            clearInterval(pollInterval)
+            toast.error('Authentication window closed', { id: 'oauth-popup' })
+            setLoading(false)
+            return
+          }
+
+          let popupUrl: string
+          try {
+            popupUrl = popup.location.href
+          } catch (e) {
+            return
+          }
+
+          if (popupUrl && popupUrl.includes('welcome.bullhornstaffing.com')) {
+            const url = new URL(popupUrl)
+            const code = url.searchParams.get('code')
+            const error = url.searchParams.get('error')
+
+            if (error) {
+              clearInterval(pollInterval)
+              popup.close()
+              toast.error(`OAuth error: ${error}`, { id: 'oauth-popup' })
+              setLoading(false)
+              return
+            }
+
+            if (code) {
+              clearInterval(pollInterval)
+              popup.close()
+              
+              toast.loading('Processing authorization...', { id: 'oauth-popup' })
+              
+              handleCodeExchange(code)
+            }
+          }
+        } catch (err) {
+        }
+      }, 500)
+
+      setTimeout(() => {
+        if (!popup.closed) {
+          clearInterval(pollInterval)
+          popup.close()
+          toast.error('Authentication timeout', { id: 'oauth-popup' })
+          setLoading(false)
+        }
+      }, 300000)
+
     } catch (error) {
-      toast.error('Failed to store OAuth session. Please try again.', { id: 'oauth-redirect' })
-      console.error('Failed to store pending auth:', error)
+      toast.error('Failed to start OAuth flow. Please try again.', { id: 'oauth-popup' })
+      console.error('Failed to start OAuth:', error)
+      setLoading(false)
+    }
+  }
+
+  const handleCodeExchange = async (code: string) => {
+    try {
+      let codeToUse = code
+      if (codeToUse.includes('%3A') || codeToUse.includes('%2F')) {
+        codeToUse = decodeURIComponent(codeToUse)
+      }
+
+      const tokenData = await bullhornAPI.exchangeCodeForToken(
+        codeToUse,
+        manualAuth.clientId,
+        manualAuth.clientSecret
+      )
+      const session = await bullhornAPI.login(tokenData.accessToken)
+      session.refreshToken = tokenData.refreshToken
+      session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
+
+      await window.spark.kv.delete('pending-oauth-auth')
+      
+      toast.success('Successfully authenticated with Bullhorn', { id: 'oauth-popup' })
+      onAuthenticated(session, preselectedConnection?.id)
+      onOpenChange(false)
+      setManualAuth({ 
+        clientId: '', 
+        clientSecret: '',
+        username: '',
+        password: '', 
+        authCode: '', 
+        useAutomatedFlow: true
+      })
+      setLoading(false)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Authentication failed', { id: 'oauth-popup' })
+      setLoading(false)
     }
   }
 
@@ -184,13 +290,13 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription className="space-y-2">
-              <p className="font-medium">✨ Simplified OAuth Authentication</p>
+              <p className="font-medium">✨ Popup-Based OAuth Authentication</p>
               <p className="text-xs">
-                <strong>Recommended:</strong> Use "Start Automated OAuth Flow" for fully automatic authentication. 
-                No redirect URI configuration needed - we'll handle everything automatically.
+                <strong>Recommended:</strong> Use "Start Automated OAuth Flow" - opens Bullhorn login in a popup window, 
+                extracts the authorization code automatically, and closes the popup. You'll never see the welcome page.
               </p>
               <p className="text-xs mt-1">
-                <strong>Fallback:</strong> If automated flow doesn't work, disable it to try programmatic authentication.
+                <strong>Fallback:</strong> If popup is blocked, disable automated flow to try programmatic authentication.
               </p>
             </AlertDescription>
           </Alert>
@@ -257,7 +363,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
 
             <div className="space-y-3 p-4 bg-muted/50 rounded-lg border border-border">
               <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">✨ Automated OAuth Mode (Recommended)</Label>
+                <Label className="text-sm font-medium">✨ Popup OAuth Mode (Recommended)</Label>
                 <div className="flex items-center gap-2">
                   <Label htmlFor="useAutomatedFlow" className="text-xs text-muted-foreground cursor-pointer">
                     Enable
@@ -275,8 +381,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                <strong>Enabled:</strong> Fully automated authentication - you'll be redirected to Bullhorn to log in, 
-                then automatically returned. <strong>No redirect URI configuration needed</strong> - the app handles everything.
+                <strong>Enabled:</strong> Opens Bullhorn login in a popup window, automatically extracts the authorization code 
+                from the welcome page, and closes the popup. <strong>You'll never see the welcome page in your main window.</strong>
               </p>
               <p className="text-xs text-muted-foreground">
                 <strong>Disabled:</strong> Fallback to programmatic authentication (may not work in all browsers) 
@@ -349,7 +455,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                   onClick={handleStartOAuthFlow}
                   disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password || loading}
                 >
-                  {loading ? 'Redirecting...' : '✨ Start Automated OAuth Flow'}
+                  {loading ? 'Processing...' : '✨ Start Popup OAuth Flow'}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                   Cancel
