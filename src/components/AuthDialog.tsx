@@ -356,53 +356,72 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             }
 
             if (popupUrl.includes('welcome.bullhornstaffing.com')) {
-              try {
-                const url = new URL(popupUrl)
-                const code = url.searchParams.get('code')
-                const error = url.searchParams.get('error')
-
-                console.log('✅ WELCOME PAGE REACHED!', { 
-                  hasCode: !!code, 
-                  hasError: !!error,
-                  codePreview: code ? code.substring(0, 30) + '...' : null,
-                  error: error,
-                  fullUrl: popupUrl.substring(0, 150) + '...',
-                  message: 'Welcome to Bullhorn page detected - extracting code immediately!'
-                })
-
-                if (error) {
-                  codeFound = true
-                  if (pollInterval) clearInterval(pollInterval)
-                  if (timeoutId) clearTimeout(timeoutId)
-                  if (messageListener) window.removeEventListener('message', messageListener)
-                  popup.close()
-                  console.error('❌ OAuth error in URL:', error)
-                  toast.error(`OAuth error: ${error}`, { id: 'oauth-popup' })
-                  setLoading(false)
-                  return
-                }
-
-                if (code) {
-                  codeFound = true
-                  if (pollInterval) clearInterval(pollInterval)
-                  if (timeoutId) clearTimeout(timeoutId)
-                  if (messageListener) window.removeEventListener('message', messageListener)
-                  console.log('✅ CODE EXTRACTED FROM WELCOME PAGE! Processing immediately (no login action needed)...')
-                  popup.close()
+              const extractCodeWithRetry = async (attemptNumber: number = 1): Promise<void> => {
+                const maxRetries = 5
+                const backoffDelay = Math.min(500 * Math.pow(2, attemptNumber - 1), 3000)
+                
+                try {
+                  if (!popup) return
                   
-                  toast.loading('Exchanging code for token...', { id: 'oauth-popup' })
-                  
-                  handleCodeExchange(code).catch((err) => {
-                    console.error('❌ CODE EXCHANGE FAILED:', err)
-                    toast.error('Failed to complete authentication', { id: 'oauth-popup' })
-                    setLoading(false)
+                  const currentUrl = popup.location.href
+                  const url = new URL(currentUrl)
+                  const code = url.searchParams.get('code')
+                  const error = url.searchParams.get('error')
+
+                  console.log(`✅ [Attempt ${attemptNumber}/${maxRetries}] WELCOME PAGE CODE EXTRACTION:`, { 
+                    hasCode: !!code, 
+                    hasError: !!error,
+                    codePreview: code ? code.substring(0, 30) + '...' : null,
+                    error: error,
+                    fullUrl: currentUrl.substring(0, 150) + '...'
                   })
-                } else {
-                  console.warn('⚠️ Welcome page detected but NO CODE parameter - waiting...')
+
+                  if (error) {
+                    codeFound = true
+                    if (pollInterval) clearInterval(pollInterval)
+                    if (timeoutId) clearTimeout(timeoutId)
+                    if (messageListener) window.removeEventListener('message', messageListener)
+                    popup.close()
+                    console.error('❌ OAuth error in URL:', error)
+                    toast.error(`OAuth error: ${error}`, { id: 'oauth-popup' })
+                    setLoading(false)
+                    return
+                  }
+
+                  if (code) {
+                    codeFound = true
+                    if (pollInterval) clearInterval(pollInterval)
+                    if (timeoutId) clearTimeout(timeoutId)
+                    if (messageListener) window.removeEventListener('message', messageListener)
+                    console.log(`✅ CODE EXTRACTED FROM WELCOME PAGE on attempt ${attemptNumber}! Processing immediately (no login action needed)...`)
+                    popup.close()
+                    
+                    toast.loading('Exchanging code for token...', { id: 'oauth-popup' })
+                    
+                    handleCodeExchange(code).catch((err) => {
+                      console.error('❌ CODE EXCHANGE FAILED:', err)
+                      toast.error('Failed to complete authentication', { id: 'oauth-popup' })
+                      setLoading(false)
+                    })
+                  } else if (attemptNumber < maxRetries) {
+                    console.warn(`⚠️ [Attempt ${attemptNumber}/${maxRetries}] Welcome page detected but NO CODE parameter - retrying in ${backoffDelay}ms...`)
+                    await new Promise(resolve => setTimeout(resolve, backoffDelay))
+                    return extractCodeWithRetry(attemptNumber + 1)
+                  } else {
+                    console.warn(`⚠️ Welcome page detected but NO CODE after ${maxRetries} attempts - continuing to poll...`)
+                  }
+                } catch (urlError) {
+                  console.error(`❌ [Attempt ${attemptNumber}] Error parsing popup URL:`, urlError)
+                  
+                  if (attemptNumber < maxRetries) {
+                    console.log(`⏳ Retrying after error in ${backoffDelay}ms...`)
+                    await new Promise(resolve => setTimeout(resolve, backoffDelay))
+                    return extractCodeWithRetry(attemptNumber + 1)
+                  }
                 }
-              } catch (urlError) {
-                console.error('❌ Error parsing popup URL:', urlError)
               }
+              
+              extractCodeWithRetry(1)
             }
           } catch (crossOriginError) {
             if (pollAttempts % 20 === 0) {

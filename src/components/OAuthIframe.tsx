@@ -24,9 +24,82 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
     let pollAttempts = 0
     const maxPollAttempts = 360
     let lastKnownUrl = ''
+    let welcomePageRetries = 0
+    const maxWelcomeRetries = 5
 
     console.log('🖼️ Iframe OAuth monitor initialized')
     console.log('🔗 Auth URL:', authUrl.substring(0, 100) + '...')
+
+    const extractCodeWithRetry = async (iframeUrl: string, retryCount: number = 0): Promise<boolean> => {
+      try {
+        const url = new URL(iframeUrl)
+        const code = url.searchParams.get('code')
+        const error = url.searchParams.get('error')
+
+        console.log(`🔍 [Attempt ${retryCount + 1}/${maxWelcomeRetries}] Welcome page code extraction:`, {
+          hasCode: !!code,
+          hasError: !!error,
+          codePreview: code ? code.substring(0, 30) + '...' : null,
+          fullUrl: iframeUrl.substring(0, 150)
+        })
+
+        if (error) {
+          console.error('❌ OAuth error in welcome page:', error)
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+          if (timeoutRef.current) clearTimeout(timeoutRef.current)
+          setStatus('error')
+          setErrorMessage(`OAuth error: ${error}`)
+          onError(error)
+          return true
+        }
+
+        if (code) {
+          let finalCode = code
+          if (code.includes('%3A') || code.includes('%2F') || code.includes('%3a')) {
+            finalCode = decodeURIComponent(code)
+            console.log('🔧 Decoded URL-encoded code:', {
+              original: code.substring(0, 30),
+              decoded: finalCode.substring(0, 30)
+            })
+          }
+          
+          console.log('✅ Successfully extracted code from Welcome to Bullhorn page!')
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+          if (timeoutRef.current) clearTimeout(timeoutRef.current)
+          onCodeReceived(finalCode)
+          return true
+        }
+
+        if (retryCount < maxWelcomeRetries - 1) {
+          const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 5000)
+          console.log(`⏳ Code not found yet, retrying in ${backoffDelay}ms (retry ${retryCount + 1}/${maxWelcomeRetries})`)
+          
+          await new Promise(resolve => setTimeout(resolve, backoffDelay))
+          
+          if (!isMounted) return false
+          
+          return extractCodeWithRetry(iframeUrl, retryCount + 1)
+        } else {
+          console.warn('⚠️ Max retries reached for welcome page, code still not available')
+          return false
+        }
+      } catch (urlError) {
+        console.error(`❌ [Attempt ${retryCount + 1}] Error parsing welcome page URL:`, urlError)
+        
+        if (retryCount < maxWelcomeRetries - 1) {
+          const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 5000)
+          console.log(`⏳ Retrying after error in ${backoffDelay}ms...`)
+          
+          await new Promise(resolve => setTimeout(resolve, backoffDelay))
+          
+          if (!isMounted) return false
+          
+          return extractCodeWithRetry(iframeUrl, retryCount + 1)
+        }
+        
+        return false
+      }
+    }
 
     const checkForCode = () => {
       try {
@@ -39,39 +112,15 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
           }
 
           if (iframeUrl.includes('welcome.bullhornstaffing.com')) {
-            console.log('🎉 WELCOME PAGE DETECTED! Extracting code immediately...')
+            console.log('🎉 WELCOME PAGE DETECTED! Starting code extraction with retry logic...')
             
-            try {
-              const url = new URL(iframeUrl)
-              const code = url.searchParams.get('code')
-              const error = url.searchParams.get('error')
-
-              console.log('✅ Welcome page code extraction:', {
-                hasCode: !!code,
-                hasError: !!error,
-                codePreview: code ? code.substring(0, 30) + '...' : null
-              })
-
-              if (error) {
-                console.error('❌ OAuth error in welcome page:', error)
-                if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
-                if (timeoutRef.current) clearTimeout(timeoutRef.current)
-                setStatus('error')
-                setErrorMessage(`OAuth error: ${error}`)
-                onError(error)
-                return true
+            extractCodeWithRetry(iframeUrl, 0).then(success => {
+              if (!success && isMounted) {
+                console.warn('⚠️ All retry attempts failed, continuing to poll...')
               }
-
-              if (code) {
-                console.log('✅ Successfully extracted code from Welcome to Bullhorn page!')
-                if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
-                if (timeoutRef.current) clearTimeout(timeoutRef.current)
-                onCodeReceived(code)
-                return true
-              }
-            } catch (urlError) {
-              console.error('❌ Error parsing welcome page URL:', urlError)
-            }
+            })
+            
+            return false
           }
 
           if (iframeUrl.includes('code=')) {
@@ -97,10 +146,19 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
               }
 
               if (code) {
+                let finalCode = code
+                if (code.includes('%3A') || code.includes('%2F') || code.includes('%3a')) {
+                  finalCode = decodeURIComponent(code)
+                  console.log('🔧 Decoded URL-encoded code:', {
+                    original: code.substring(0, 30),
+                    decoded: finalCode.substring(0, 30)
+                  })
+                }
+                
                 console.log('✅ Successfully extracted code from iframe!')
                 if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
                 if (timeoutRef.current) clearTimeout(timeoutRef.current)
-                onCodeReceived(code)
+                onCodeReceived(finalCode)
                 return true
               }
             } catch (urlError) {

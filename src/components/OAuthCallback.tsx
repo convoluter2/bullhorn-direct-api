@@ -36,21 +36,61 @@ export function OAuthCallback({
       }
     }, 30000)
 
+    const extractCodeFromUrl = async (retryCount: number = 0): Promise<{ code: string | null, error: string | null }> => {
+      const maxRetries = 5
+      const backoffDelay = Math.min(500 * Math.pow(2, retryCount), 3000)
+      
+      try {
+        console.log(`🔍 [Attempt ${retryCount + 1}/${maxRetries}] Extracting code from URL...`)
+        
+        const urlParams = new URLSearchParams(window.location.search)
+        const code = urlParams.get('code')
+        const errorParam = urlParams.get('error')
+        
+        console.log('OAuth Callback - URL params:', { 
+          code: code ? code.substring(0, 20) + '...' : null, 
+          errorParam,
+          fullUrl: window.location.href.substring(0, 150)
+        })
+        
+        if (errorParam) {
+          return { code: null, error: errorParam }
+        }
+        
+        if (code) {
+          return { code, error: null }
+        }
+        
+        if (window.location.href.includes('welcome.bullhornstaffing.com') && retryCount < maxRetries - 1) {
+          console.log(`⏳ Code not found on welcome page yet, retrying in ${backoffDelay}ms...`)
+          await new Promise(resolve => setTimeout(resolve, backoffDelay))
+          return extractCodeFromUrl(retryCount + 1)
+        }
+        
+        return { code: null, error: null }
+      } catch (error) {
+        console.error(`❌ [Attempt ${retryCount + 1}] Error extracting code:`, error)
+        
+        if (retryCount < maxRetries - 1) {
+          console.log(`⏳ Retrying after error in ${backoffDelay}ms...`)
+          await new Promise(resolve => setTimeout(resolve, backoffDelay))
+          return extractCodeFromUrl(retryCount + 1)
+        }
+        
+        return { code: null, error: 'Failed to extract code after multiple attempts' }
+      }
+    }
+
     const handleAutoAuthenticate = async () => {
       try {
         if (!isMounted || processedRef.current) return
         processedRef.current = true
 
-        const urlParams = new URLSearchParams(window.location.search)
-        const code = urlParams.get('code')
-        const errorParam = urlParams.get('error')
-        const errorDescription = urlParams.get('error_description')
+        if (isMounted) setProgress(prev => [...prev, 'Analyzing OAuth callback URL...'])
 
-        console.log('OAuth Callback - URL params:', { 
-          code: code ? code.substring(0, 20) + '...' : null, 
-          errorParam,
-          fullUrl: window.location.href
-        })
+        const { code, error: errorParam } = await extractCodeFromUrl()
+        
+        const errorDescription = new URLSearchParams(window.location.search).get('error_description')
 
         if (errorParam) {
           if (isMounted) {
@@ -69,7 +109,7 @@ export function OAuthCallback({
         if (!code) {
           if (isMounted) {
             setStatus('error')
-            setError('No authorization code found in URL. The OAuth callback may have failed or been cancelled.')
+            setError('No authorization code found in URL after multiple retry attempts. The OAuth callback may have failed or been cancelled.')
             toast.error('No authorization code received')
             
             setTimeout(() => {
