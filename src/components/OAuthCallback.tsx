@@ -145,8 +145,7 @@ export function OAuthCallback({
         const tokenData = await bullhornAPI.exchangeCodeForToken(
           codeToUse,
           clientId,
-          clientSecret,
-          undefined
+          clientSecret
         )
 
         console.log('OAuth Callback - Token received, logging in...')

@@ -8,16 +8,12 @@ const BULLHORN_ATS_URL = 'https://cls43.bullhornstaffing.com'
 export class BullhornAPI {
   private session: BullhornSession | null = null
 
-  getAuthorizationUrl(clientId: string, redirectUri: string | undefined, state: string, username?: string, password?: string): string {
+  getAuthorizationUrl(clientId: string, state: string, username?: string, password?: string): string {
     const params = new URLSearchParams({
       client_id: clientId,
       response_type: 'code',
       state: state
     })
-    
-    if (redirectUri) {
-      params.append('redirect_uri', redirectUri)
-    }
     
     if (username && password) {
       params.append('action', 'Login')
@@ -31,8 +27,7 @@ export class BullhornAPI {
   async exchangeCodeForToken(
     code: string,
     clientId: string,
-    clientSecret: string,
-    redirectUri?: string
+    clientSecret: string
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
     let finalCode = code
     
@@ -48,15 +43,9 @@ export class BullhornAPI {
       client_secret: clientSecret
     })
 
-    if (redirectUri) {
-      params.append('redirect_uri', redirectUri)
-    }
-
-    console.log('Exchanging code for token:', {
+    console.log('Exchanging code for token (NO redirect_uri):', {
       code: finalCode.substring(0, 30) + '...',
-      clientId,
-      hasRedirectUri: !!redirectUri,
-      redirectUri
+      clientId
     })
 
     const response = await fetch(`${BULLHORN_AUTH_URL}/token`, {
@@ -151,8 +140,7 @@ export class BullhornAPI {
       const tokenData = await this.exchangeCodeForToken(
         authCode,
         credentials.clientId,
-        credentials.clientSecret,
-        undefined
+        credentials.clientSecret
       )
       console.log('Got access token, logging in...')
       

@@ -140,7 +140,6 @@ export function AutomatedOAuthTest({ onAuthSuccess }: AutomatedOAuthTestProps) {
 
       const authUrl = bullhornAPI.getAuthorizationUrl(
         credentials.clientId,
-        undefined,
         'test-state',
         credentials.username,
         credentials.password

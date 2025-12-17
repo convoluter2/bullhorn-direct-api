@@ -93,12 +93,10 @@ describe('Automated OAuth Flow End-to-End', () => {
 
   describe('Step 2: Generate Authorization URL', () => {
     it('should generate correct OAuth URL with credentials pre-filled', () => {
-      const redirectUri = 'https://test.app/'
       const state = 'test-state-123'
 
       const authUrl = api.getAuthorizationUrl(
         MOCK_CREDENTIALS.clientId,
-        redirectUri,
         state,
         MOCK_CREDENTIALS.username,
         MOCK_CREDENTIALS.password
@@ -108,7 +106,7 @@ describe('Automated OAuth Flow End-to-End', () => {
       expect(authUrl).toContain(`client_id=${MOCK_CREDENTIALS.clientId}`)
       expect(authUrl).toContain('response_type=code')
       expect(authUrl).toContain(`state=${state}`)
-      expect(authUrl).toContain(`redirect_uri=${encodeURIComponent(redirectUri)}`)
+      expect(authUrl).not.toContain('redirect_uri')
       expect(authUrl).toContain('action=Login')
       expect(authUrl).toContain(`username=${encodeURIComponent(MOCK_CREDENTIALS.username)}`)
       expect(authUrl).toContain(`password=${encodeURIComponent(MOCK_CREDENTIALS.password)}`)
@@ -186,8 +184,7 @@ describe('Automated OAuth Flow End-to-End', () => {
       const result = await api.exchangeCodeForToken(
         MOCK_AUTH_CODE,
         MOCK_CREDENTIALS.clientId,
-        MOCK_CREDENTIALS.clientSecret,
-        'https://test.app/'
+        MOCK_CREDENTIALS.clientSecret
       )
 
       expect(result).toBeDefined()
@@ -220,8 +217,7 @@ describe('Automated OAuth Flow End-to-End', () => {
       const result = await api.exchangeCodeForToken(
         MOCK_AUTH_CODE_ENCODED,
         MOCK_CREDENTIALS.clientId,
-        MOCK_CREDENTIALS.clientSecret,
-        'https://test.app/'
+        MOCK_CREDENTIALS.clientSecret
       )
 
       expect(result).toBeDefined()
@@ -246,8 +242,7 @@ describe('Automated OAuth Flow End-to-End', () => {
         api.exchangeCodeForToken(
           'invalid-code',
           MOCK_CREDENTIALS.clientId,
-          MOCK_CREDENTIALS.clientSecret,
-          'https://test.app/'
+          MOCK_CREDENTIALS.clientSecret
         )
       ).rejects.toThrow('Failed to exchange code for token')
     })
@@ -310,8 +305,7 @@ describe('Automated OAuth Flow End-to-End', () => {
       const tokenData = await api.exchangeCodeForToken(
         MOCK_AUTH_CODE,
         MOCK_CREDENTIALS.clientId,
-        MOCK_CREDENTIALS.clientSecret,
-        'https://test.app/'
+        MOCK_CREDENTIALS.clientSecret
       )
 
       const session = await api.login(tokenData.accessToken)
@@ -366,7 +360,6 @@ describe('Automated OAuth Flow End-to-End', () => {
       // Step 2: Generate auth URL
       const authUrl = api.getAuthorizationUrl(
         MOCK_CREDENTIALS.clientId,
-        'https://test.app/',
         'state-123',
         MOCK_CREDENTIALS.username,
         MOCK_CREDENTIALS.password
@@ -409,8 +402,7 @@ describe('Automated OAuth Flow End-to-End', () => {
       const tokenData = await api.exchangeCodeForToken(
         decodedCode,
         MOCK_CREDENTIALS.clientId,
-        MOCK_CREDENTIALS.clientSecret,
-        'https://test.app/'
+        MOCK_CREDENTIALS.clientSecret
       )
 
       // Step 5: Login with access token
@@ -465,8 +457,7 @@ describe('Automated OAuth Flow End-to-End', () => {
         api.exchangeCodeForToken(
           'expired-code',
           MOCK_CREDENTIALS.clientId,
-          MOCK_CREDENTIALS.clientSecret,
-          'https://test.app/'
+          MOCK_CREDENTIALS.clientSecret
         )
       ).rejects.toThrow()
     })

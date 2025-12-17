@@ -119,7 +119,6 @@ export function OAuthDiagnostics() {
       addLog('Test 4: Generate OAuth URL')
       const authUrl = bullhornAPI.getAuthorizationUrl(
         credentials.clientId,
-        undefined,
         'test-state',
         credentials.username,
         credentials.password
