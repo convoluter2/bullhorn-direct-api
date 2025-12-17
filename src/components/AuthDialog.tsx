@@ -117,10 +117,9 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
   const getAuthUrl = () => {
     const state = Math.random().toString(36).substring(7)
     const clientId = manualAuth.clientId || 'YOUR_CLIENT_ID'
-    const redirectUri = `${window.location.origin}${window.location.pathname}`
     
-    console.log('Generated redirect URI:', redirectUri)
-    return bullhornAPI.getAuthorizationUrl(clientId, redirectUri, state, manualAuth.username, manualAuth.password)
+    console.log('NOT including redirect URI (as per working configuration)')
+    return bullhornAPI.getAuthorizationUrl(clientId, undefined, state, manualAuth.username, manualAuth.password)
   }
   
   const handleStartOAuthFlow = async () => {
@@ -364,20 +363,18 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         console.log('✓ Code already decoded')
       }
 
-      const redirectUri = `${window.location.origin}${window.location.pathname}`
-      console.log('🎫 Exchanging code for token (with redirect_uri)...')
+      console.log('🎫 Exchanging code for token (WITHOUT redirect_uri - matching authorize request)...')
       console.log('📋 Exchange parameters:', {
         codeLength: codeToUse.length,
         clientIdPreview: manualAuth.clientId.substring(0, 10) + '...',
-        hasSecret: !!manualAuth.clientSecret,
-        redirectUri
+        hasSecret: !!manualAuth.clientSecret
       })
 
       const tokenData = await bullhornAPI.exchangeCodeForToken(
         codeToUse,
         manualAuth.clientId,
         manualAuth.clientSecret,
-        redirectUri
+        undefined
       )
       
       console.log('✅ Token received:', {

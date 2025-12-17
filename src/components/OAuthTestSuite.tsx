@@ -263,10 +263,9 @@ export function OAuthTestSuite() {
       const startTime8 = Date.now()
 
       try {
-        const currentUrl = window.location.origin + window.location.pathname
         const authUrl = bullhornAPI.getAuthorizationUrl(
           credentials.clientId,
-          currentUrl,
+          undefined,
           'test-state',
           credentials.username,
           credentials.password
@@ -288,7 +287,7 @@ export function OAuthTestSuite() {
         } else {
           updateTest(7, { 
             status: 'success', 
-            message: 'OAuth redirect URL generated successfully',
+            message: 'OAuth redirect URL generated (no redirect_uri - working config)',
             details: authUrl,
             duration: Date.now() - startTime8
           })
