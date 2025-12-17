@@ -28,6 +28,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
   const [welcomePageDetected, setWelcomePageDetected] = useState(false)
   const [authStep, setAuthStep] = useState<AuthStep>('idle')
   const [authProgress, setAuthProgress] = useState(0)
+  const [popupUrl, setPopupUrl] = useState<string>('')
   const [manualAuth, setManualAuth] = useState({
     clientId: '',
     clientSecret: '',
@@ -61,6 +62,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       setWelcomePageDetected(false)
       setAuthStep('idle')
       setAuthProgress(0)
+      setPopupUrl('')
     }
     loadConnectionCredentials()
   }, [open, preselectedConnection])
@@ -399,15 +401,17 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             return
           }
 
-          let popupUrl: string | undefined
+          let popupUrlValue: string | undefined
           try {
-            popupUrl = popup.location.href
+            popupUrlValue = popup.location.href
+            
+            setPopupUrl(popupUrlValue)
             
             if (pollAttempts % 10 === 0) {
-              console.log(`[Poll ${pollAttempts}/${maxPollAttempts}] Accessible URL:`, popupUrl.substring(0, 100) + '...')
+              console.log(`[Poll ${pollAttempts}/${maxPollAttempts}] Accessible URL:`, popupUrlValue.substring(0, 100) + '...')
             }
 
-            if (popupUrl.includes('welcome.bullhornstaffing.com')) {
+            if (popupUrlValue.includes('welcome.bullhornstaffing.com')) {
               console.log('🎉 WELCOME PAGE DETECTED in popup! Starting code extraction with retry logic...')
               console.log('📄 Welcome to Bullhorn page - "Thank you for using Bullhorn" page loaded')
               setWelcomePageDetected(true)
@@ -487,6 +491,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
               extractCodeWithRetry(1)
             }
           } catch (crossOriginError) {
+            setPopupUrl('(Cross-origin - cannot access URL during Bullhorn authentication)')
+            
             if (pollAttempts % 20 === 0) {
               console.log(`[Poll ${pollAttempts}] Popup on cross-origin page (expected during Bullhorn auth flow)`)
             }
@@ -775,6 +781,15 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                     Authentication complete
                   </span>
                 </div>
+              </div>
+            </div>
+          )}
+          
+          {popupUrl && loading && (
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground">Current URL in Popup:</Label>
+              <div className="p-2 bg-muted rounded border border-border font-mono text-xs break-all">
+                {popupUrl}
               </div>
             </div>
           )}

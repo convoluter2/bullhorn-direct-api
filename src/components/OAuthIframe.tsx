@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { XCircle, Spinner, Info } from '@phosphor-icons/react'
 import { toast } from 'sonner'
@@ -17,6 +18,7 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
   const [status, setStatus] = useState<'loading' | 'monitoring' | 'error'>('loading')
   const [errorMessage, setErrorMessage] = useState('')
   const [welcomePageDetected, setWelcomePageDetected] = useState(false)
+  const [currentUrl, setCurrentUrl] = useState<string>('')
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -109,6 +111,7 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
 
           if (iframeUrl !== lastKnownUrl) {
             lastKnownUrl = iframeUrl
+            setCurrentUrl(iframeUrl)
             console.log('🔄 Iframe navigated to:', iframeUrl.substring(0, 100))
           }
 
@@ -303,6 +306,14 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
                 ✅ Welcome to Bullhorn page detected! Extracting authorization code...
               </AlertDescription>
             </Alert>
+          )}
+          {currentUrl && (
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground">Current URL in Iframe:</Label>
+              <div className="p-2 bg-muted rounded border border-border font-mono text-xs break-all">
+                {currentUrl}
+              </div>
+            </div>
           )}
           <Alert>
             <Info className="h-4 w-4" />
