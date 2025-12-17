@@ -265,6 +265,38 @@ app.get('/health', (req, res) => {
   res.json(health);
 });
 
+app.post('/restart', (req, res) => {
+  console.log('');
+  console.log('🔄 ═══════════════════════════════════════════════════');
+  console.log('🔄 Restart Request Received');
+  console.log('═══════════════════════════════════════════════════');
+  console.log(`⏰ Time: ${new Date().toISOString()}`);
+  console.log('═══════════════════════════════════════════════════');
+  console.log('');
+  
+  res.json({ 
+    success: true, 
+    message: 'Proxy server restarting...',
+    timestamp: new Date().toISOString()
+  });
+  
+  setTimeout(() => {
+    console.log('');
+    console.log('🔄 ═══════════════════════════════════════════════════');
+    console.log('🔄 Restarting Proxy Server...');
+    console.log('═══════════════════════════════════════════════════');
+    console.log('');
+    
+    pendingAuths.clear();
+    
+    console.log('✅ Cleared all pending authentications');
+    console.log('✅ Server will continue running');
+    console.log('');
+    console.log('═══════════════════════════════════════════════════');
+    console.log('');
+  }, 100);
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log('');
   console.log('🚀 ═══════════════════════════════════════════════════');

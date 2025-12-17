@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { CheckCircle, XCircle, Circle, ArrowClockwise, Terminal } from '@phosphor-icons/react'
+import { CheckCircle, XCircle, Circle, ArrowClockwise, Terminal, Power } from '@phosphor-icons/react'
 import { oauthProxyService } from '@/lib/oauth-proxy'
+import { toast } from 'sonner'
 
 export function ProxyStatus() {
   const [proxyHealthy, setProxyHealthy] = useState<boolean | null>(null)
   const [checking, setChecking] = useState(true)
+  const [restarting, setRestarting] = useState(false)
   const [healthData, setHealthData] = useState<any>(null)
   const [lastCheck, setLastCheck] = useState<Date | null>(null)
 
@@ -42,6 +44,40 @@ export function ProxyStatus() {
 
   const handleRetry = () => {
     checkProxy()
+  }
+
+  const handleRestart = async () => {
+    setRestarting(true)
+    toast.loading('Restarting proxy server...', { id: 'proxy-restart' })
+    
+    try {
+      const proxyUrl = import.meta.env.VITE_PROXY_URL || 'http://localhost:3001'
+      const response = await fetch(`${proxyUrl}/restart`, { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      
+      if (response.ok) {
+        toast.success('Proxy server restart initiated', { id: 'proxy-restart' })
+        
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        
+        await checkProxy()
+        
+        if (proxyHealthy) {
+          toast.success('Proxy server restarted successfully')
+        } else {
+          toast.warning('Proxy restart initiated but not yet responding')
+        }
+      } else {
+        throw new Error('Restart request failed')
+      }
+    } catch (error) {
+      console.error('Failed to restart proxy:', error)
+      toast.error('Unable to restart proxy server. Please restart manually.', { id: 'proxy-restart' })
+    } finally {
+      setRestarting(false)
+    }
   }
 
   if (checking && proxyHealthy === null) {
@@ -139,8 +175,18 @@ export function ProxyStatus() {
               The OAuth proxy server is not responding. Authentication will not work without it.
             </p>
             
+            <div className="bg-accent/10 border border-accent/20 p-3 rounded-md space-y-1">
+              <div className="text-accent-foreground font-semibold text-xs flex items-center gap-1">
+                <Power size={14} className="text-accent" />
+                Try restarting the proxy first
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Click the Restart button below to attempt an automatic restart.
+              </p>
+            </div>
+            
             <div className="bg-muted p-3 rounded-md space-y-2 font-mono text-xs">
-              <div className="text-foreground">To start the proxy:</div>
+              <div className="text-foreground">If restart fails, run manually:</div>
               <div className="bg-background p-2 rounded border">
                 npm run dev:proxy
               </div>
@@ -158,25 +204,47 @@ export function ProxyStatus() {
             )}
           </div>
 
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="w-full"
-            onClick={handleRetry}
-            disabled={checking}
-          >
-            {checking ? (
-              <>
-                <ArrowClockwise size={14} className="animate-spin" />
-                Checking...
-              </>
-            ) : (
-              <>
-                <ArrowClockwise size={14} />
-                Retry Connection
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex-1"
+              onClick={handleRetry}
+              disabled={checking || restarting}
+            >
+              {checking ? (
+                <>
+                  <ArrowClockwise size={14} className="animate-spin" />
+                  Checking...
+                </>
+              ) : (
+                <>
+                  <ArrowClockwise size={14} />
+                  Retry
+                </>
+              )}
+            </Button>
+            
+            <Button 
+              variant="default" 
+              size="sm" 
+              className="flex-1"
+              onClick={handleRestart}
+              disabled={checking || restarting}
+            >
+              {restarting ? (
+                <>
+                  <ArrowClockwise size={14} className="animate-spin" />
+                  Restarting...
+                </>
+              ) : (
+                <>
+                  <Power size={14} />
+                  Restart
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </PopoverContent>
     </Popover>
