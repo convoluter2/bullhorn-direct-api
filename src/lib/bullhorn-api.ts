@@ -8,12 +8,16 @@ const BULLHORN_ATS_URL = 'https://cls43.bullhornstaffing.com'
 export class BullhornAPI {
   private session: BullhornSession | null = null
 
-  getAuthorizationUrl(clientId: string, state: string, username?: string, password?: string): string {
+  getAuthorizationUrl(clientId: string, state: string, username?: string, password?: string, redirectUri?: string): string {
     const params = new URLSearchParams({
       client_id: clientId,
       response_type: 'code',
       state: state
     })
+    
+    if (redirectUri) {
+      params.append('redirect_uri', redirectUri)
+    }
     
     if (username && password) {
       params.append('action', 'Login')
@@ -27,13 +31,14 @@ export class BullhornAPI {
   async exchangeCodeForToken(
     code: string,
     clientId: string,
-    clientSecret: string
+    clientSecret: string,
+    redirectUri?: string
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
     let finalCode = code
     
-    if (code.includes('%3A') || code.includes('%2F')) {
+    if (code.includes('%3A') || code.includes('%2F') || code.includes('%3a')) {
       finalCode = decodeURIComponent(code)
-      console.log('Code was URL-encoded, decoded it:', { original: code, decoded: finalCode })
+      console.log('Code was URL-encoded, decoded it:', { original: code.substring(0, 40), decoded: finalCode.substring(0, 40) })
     }
     
     const params = new URLSearchParams({
@@ -43,9 +48,14 @@ export class BullhornAPI {
       client_secret: clientSecret
     })
 
-    console.log('Exchanging code for token (NO redirect_uri):', {
-      code: finalCode.substring(0, 30) + '...',
-      clientId
+    if (redirectUri) {
+      params.append('redirect_uri', redirectUri)
+    }
+
+    console.log('Exchanging code for token:', {
+      codeLength: finalCode.length,
+      clientIdPreview: clientId.substring(0, 10) + '...',
+      hasRedirectUri: !!redirectUri
     })
 
     const response = await fetch(`${BULLHORN_AUTH_URL}/token`, {
