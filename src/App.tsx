@@ -268,11 +268,34 @@ function App() {
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <Database className="text-accent" size={32} weight="duotone" />
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight">Bullhorn Data Manager</h1>
-                <p className="text-sm text-muted-foreground">Direct API integration for advanced data operations</p>
+              <div className="flex items-center gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold tracking-tight">Bullhorn Data Manager</h1>
+                  <p className="text-sm text-muted-foreground">Direct API integration for advanced data operations</p>
+                </div>
+                {session && savedConnections.find(conn => conn.id === currentConnectionId) && (
+                  <>
+                    <div className="h-12 w-px bg-border" />
+                    <div>
+                      <h2 className="text-2xl font-bold tracking-tight text-accent">
+                        {savedConnections.find(conn => conn.id === currentConnectionId)?.name}
+                      </h2>
+                      <div className="flex items-center gap-2">
+                        <Badge 
+                          variant={savedConnections.find(conn => conn.id === currentConnectionId)?.environment === 'PROD' ? 'default' : 'secondary'}
+                          className="text-sm font-semibold"
+                        >
+                          {savedConnections.find(conn => conn.id === currentConnectionId)?.environment}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          {savedConnections.find(conn => conn.id === currentConnectionId)?.tenant}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-3">
