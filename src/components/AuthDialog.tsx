@@ -102,20 +102,68 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     return bullhornAPI.getAuthorizationUrl(clientId, redirectUri, state, manualAuth.username, manualAuth.password)
   }
   
-  const handleStartOAuthFlow = () => {
+  const handleStartOAuthFlow = async () => {
     if (!manualAuth.clientId || !manualAuth.clientSecret) {
       toast.error('Please enter your Client ID and Client Secret first')
       return
     }
     
-    const authUrl = getAuthUrl()
-    window.location.href = authUrl
+    const redirectUri = manualAuth.useRedirectUri && manualAuth.redirectUri 
+      ? manualAuth.redirectUri 
+      : undefined
+
+    try {
+      await window.spark.kv.set('pending-oauth-auth', {
+        clientId: manualAuth.clientId,
+        clientSecret: manualAuth.clientSecret,
+        redirectUri: redirectUri,
+        connectionId: preselectedConnection?.id,
+        timestamp: Date.now()
+      })
+
+      toast.loading('Redirecting to Bullhorn...', { id: 'oauth-redirect' })
+
+      const authUrl = getAuthUrl()
+      window.location.href = authUrl
+    } catch (error) {
+      toast.error('Failed to store OAuth session. Please try again.', { id: 'oauth-redirect' })
+      console.error('Failed to store pending auth:', error)
+    }
   }
 
-  const copyAuthUrl = () => {
+  const copyAuthUrl = async () => {
     const url = getAuthUrl()
     navigator.clipboard.writeText(url)
+    
+    const redirectUri = manualAuth.useRedirectUri && manualAuth.redirectUri 
+      ? manualAuth.redirectUri 
+      : undefined
+
+    await window.spark.kv.set('pending-oauth-auth', {
+      clientId: manualAuth.clientId,
+      clientSecret: manualAuth.clientSecret,
+      redirectUri: redirectUri,
+      connectionId: preselectedConnection?.id,
+      timestamp: Date.now()
+    })
+    
     toast.success('Authorization URL copied to clipboard')
+  }
+
+  const handleOpenAuthUrl = async () => {
+    const redirectUri = manualAuth.useRedirectUri && manualAuth.redirectUri 
+      ? manualAuth.redirectUri 
+      : undefined
+
+    await window.spark.kv.set('pending-oauth-auth', {
+      clientId: manualAuth.clientId,
+      clientSecret: manualAuth.clientSecret,
+      redirectUri: redirectUri,
+      connectionId: preselectedConnection?.id,
+      timestamp: Date.now()
+    })
+
+    window.open(getAuthUrl(), '_blank')
   }
 
   return (
@@ -124,7 +172,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         <DialogHeader>
           <DialogTitle className="text-2xl">Connect to Bullhorn</DialogTitle>
           <DialogDescription>
-            Authenticate using OAuth authorization code flow
+            Fully automated OAuth authentication - no manual code entry needed!
           </DialogDescription>
         </DialogHeader>
 
@@ -132,11 +180,10 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription className="space-y-2">
-              <p className="font-medium">OAuth Authorization</p>
+              <p className="font-medium">✨ Fully Automated OAuth Flow</p>
               <p className="text-xs">
-                This method generates a Bullhorn OAuth URL that you visit to get an authorization code. 
-                If you're seeing a "Invalid Redirect URI" error, make sure the redirect URI setting below 
-                matches your Bullhorn OAuth app configuration.
+                The app now automatically extracts, decodes, and exchanges the authorization code for tokens. 
+                Simply authorize with Bullhorn and you'll be logged in instantly - no manual code copying required!
               </p>
             </AlertDescription>
           </Alert>
@@ -244,11 +291,11 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             </div>
 
             <div className="space-y-2 p-3 bg-muted rounded-lg">
-              <Label className="text-sm font-medium">Step 1: Get Authorization Code</Label>
+              <Label className="text-sm font-medium">Get Authorization</Label>
               <p className="text-xs text-muted-foreground mb-2">
                 {manualAuth.useRedirectUri 
-                  ? 'Click to authorize and automatically return to this app:'
-                  : 'Visit the authorization URL to get your code:'
+                  ? 'Click to start the OAuth flow. You will be redirected to Bullhorn to authenticate, then automatically returned.'
+                  : 'When you authorize, the app will automatically capture and process the authorization code. No manual entry needed!'
                 }
               </p>
               {!manualAuth.useRedirectUri && (
@@ -272,44 +319,30 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                 type="button"
                 size="sm"
                 variant={manualAuth.useRedirectUri ? "default" : "secondary"}
-                onClick={manualAuth.useRedirectUri ? handleStartOAuthFlow : () => window.open(getAuthUrl(), '_blank')}
+                onClick={manualAuth.useRedirectUri ? handleStartOAuthFlow : handleOpenAuthUrl}
                 className="w-full mt-2"
                 disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password}
               >
-                {manualAuth.useRedirectUri ? 'Start OAuth Flow' : 'Open Authorization URL'}
+                {manualAuth.useRedirectUri ? 'Start Automated OAuth Flow' : 'Authorize with Bullhorn'}
               </Button>
               {manualAuth.useRedirectUri && (
                 <p className="text-xs text-muted-foreground mt-2">
-                  You'll be redirected to Bullhorn to authorize, then automatically returned here.
+                  ✨ Fully automated: After authorization, the app will automatically exchange the code for tokens and log you in.
+                </p>
+              )}
+              {!manualAuth.useRedirectUri && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  ✨ Fully automated: After you authorize in the popup, return to this app and the authentication will complete automatically.
                 </p>
               )}
             </div>
 
-            {!manualAuth.useRedirectUri && (
-              <div className="space-y-2">
-                <Label htmlFor="authCode">Step 2: Authorization Code</Label>
-                <Input
-                  id="authCode"
-                  type="text"
-                  value={manualAuth.authCode}
-                  onChange={(e) => setManualAuth({ ...manualAuth, authCode: e.target.value })}
-                  required
-                  disabled={loading}
-                  placeholder="Paste the authorization code from the redirect URL"
-                />
-                <p className="text-xs text-muted-foreground">
-                  After authorizing, copy the 'code' parameter from the redirect URL or browser address bar.
-                  URL-encoded characters (like %3A) will be automatically decoded.
-                </p>
-              </div>
-            )}
-            
             {manualAuth.useRedirectUri && (
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription className="text-xs">
-                  When using redirect URI, the app will automatically capture the authorization code. 
-                  You won't need to manually paste it.
+                  The entire OAuth process is now automated. You'll be redirected to Bullhorn to log in, 
+                  then automatically returned and authenticated without any manual code entry.
                 </AlertDescription>
               </Alert>
             )}
