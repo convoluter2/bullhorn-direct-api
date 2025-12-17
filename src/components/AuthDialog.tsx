@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
-import { Copy, Info } from '@phosphor-icons/react'
+import { Copy, Info, CheckCircle, Circle } from '@phosphor-icons/react'
 import { OAuthIframe } from '@/components/OAuthIframe'
 import type { SavedConnection } from '@/components/ConnectionManager'
 import type { BullhornSession } from '@/lib/types'
@@ -19,10 +20,14 @@ interface AuthDialogProps {
   preselectedConnection?: SavedConnection | null
 }
 
+type AuthStep = 'idle' | 'opening-popup' | 'waiting-login' | 'welcome-detected' | 'extracting-code' | 'exchanging-token' | 'logging-in' | 'complete'
+
 export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedConnection }: AuthDialogProps) {
   const [loading, setLoading] = useState(false)
   const [showIframe, setShowIframe] = useState(false)
   const [welcomePageDetected, setWelcomePageDetected] = useState(false)
+  const [authStep, setAuthStep] = useState<AuthStep>('idle')
+  const [authProgress, setAuthProgress] = useState(0)
   const [manualAuth, setManualAuth] = useState({
     clientId: '',
     clientSecret: '',
@@ -54,6 +59,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       }
       setShowIframe(false)
       setWelcomePageDetected(false)
+      setAuthStep('idle')
+      setAuthProgress(0)
     }
     loadConnectionCredentials()
   }, [open, preselectedConnection])
@@ -91,6 +98,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
   const handleCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setAuthStep('exchanging-token')
+    setAuthProgress(50)
 
     try {
       if (manualAuth.authCode) {
@@ -99,21 +108,29 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         if (!codeToUse) {
           toast.error('Invalid authorization code or URL')
           setLoading(false)
+          setAuthStep('idle')
+          setAuthProgress(0)
           return
         }
         
         console.log('🎫 Using extracted code (length:', codeToUse.length, ')')
-          
+        
+        setAuthProgress(60)
         const tokenData = await bullhornAPI.exchangeCodeForToken(
           codeToUse,
           manualAuth.clientId,
           manualAuth.clientSecret,
           manualAuth.username
         )
+        
+        setAuthStep('logging-in')
+        setAuthProgress(80)
         const session = await bullhornAPI.login(tokenData.accessToken, manualAuth.username)
         session.refreshToken = tokenData.refreshToken
         session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
         
+        setAuthStep('complete')
+        setAuthProgress(100)
         toast.success('Successfully authenticated with Bullhorn')
         onAuthenticated(session, preselectedConnection?.id)
         onOpenChange(false)
@@ -125,6 +142,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           authCode: '', 
           useAutomatedFlow: true
         })
+        setAuthStep('idle')
+        setAuthProgress(0)
       } else {
         toast.loading('Authenticating with saved credentials...', { id: 'auto-auth' })
         
@@ -135,6 +154,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           password: manualAuth.password
         })
         
+        setAuthStep('complete')
+        setAuthProgress(100)
         toast.success('Successfully authenticated with Bullhorn', { id: 'auto-auth' })
         onAuthenticated(session, preselectedConnection?.id)
         onOpenChange(false)
@@ -146,9 +167,13 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           authCode: '', 
           useAutomatedFlow: true
         })
+        setAuthStep('idle')
+        setAuthProgress(0)
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Authentication failed', { id: 'auto-auth' })
+      setAuthStep('idle')
+      setAuthProgress(0)
     } finally {
       setLoading(false)
     }
@@ -174,6 +199,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     }
 
     console.log('🖼️ Starting iframe-based OAuth flow')
+    setAuthStep('opening-popup')
+    setAuthProgress(10)
     
     await window.spark.kv.set('pending-oauth-auth', {
       clientId: manualAuth.clientId,
@@ -186,12 +213,16 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     await bullhornAPI.prepareForAuth(manualAuth.username)
 
     setShowIframe(true)
+    setAuthStep('waiting-login')
+    setAuthProgress(20)
     toast.info('Opening authentication iframe - complete your login below')
   }
 
   const handleIframeCodeReceived = async (code: string) => {
     console.log('📱 Code received from iframe:', code.substring(0, 30) + '...')
     setShowIframe(false)
+    setAuthStep('exchanging-token')
+    setAuthProgress(60)
     toast.loading('Exchanging code for token...', { id: 'iframe-auth' })
     
     try {
@@ -199,17 +230,23 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     } catch (error) {
       console.error('❌ Iframe code exchange failed:', error)
       toast.error('Failed to complete authentication', { id: 'iframe-auth' })
+      setAuthStep('idle')
+      setAuthProgress(0)
     }
   }
 
   const handleIframeError = (error: string) => {
     console.error('❌ Iframe authentication error:', error)
     setShowIframe(false)
+    setAuthStep('idle')
+    setAuthProgress(0)
     toast.error(`Iframe authentication failed: ${error}`)
   }
 
   const handleIframeCancel = () => {
     setShowIframe(false)
+    setAuthStep('idle')
+    setAuthProgress(0)
     toast.info('Iframe authentication cancelled - use popup method instead')
   }
 
@@ -241,6 +278,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
 
       setLoading(true)
       setWelcomePageDetected(false)
+      setAuthStep('opening-popup')
+      setAuthProgress(10)
       
       console.log('💾 Saving pending auth to KV store...')
       await window.spark.kv.set('pending-oauth-auth', {
@@ -263,6 +302,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       const top = (window.screen.height - popupHeight) / 2
 
       console.log('🪟 Opening popup window...')
+      setAuthProgress(15)
       toast.loading('Opening Bullhorn login...', { id: 'oauth-popup' })
 
       popup = window.open(
@@ -275,10 +315,15 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         console.error('❌ POPUP BLOCKED!')
         toast.error('Popup blocked. Please allow popups for this site.', { id: 'oauth-popup' })
         setLoading(false)
+        setAuthStep('idle')
+        setAuthProgress(0)
         return
       }
 
       console.log('✅ Popup opened successfully, setting up monitoring...')
+      setAuthStep('waiting-login')
+      setAuthProgress(25)
+      toast.loading('Waiting for login...', { id: 'oauth-popup' })
 
       messageListener = (event: MessageEvent) => {
         console.log('📨 Message received from:', event.origin, 'Data type:', event.data?.type)
@@ -297,12 +342,16 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             if (popup && !popup.closed) popup.close()
             if (messageListener) window.removeEventListener('message', messageListener)
             
+            setAuthStep('exchanging-token')
+            setAuthProgress(60)
             toast.loading('Exchanging code for token...', { id: 'oauth-popup' })
             
             handleCodeExchange(event.data.code).catch((err) => {
               console.error('❌ CODE EXCHANGE FAILED:', err)
               toast.error('Failed to complete authentication', { id: 'oauth-popup' })
               setLoading(false)
+              setAuthStep('idle')
+              setAuthProgress(0)
             })
           } else if (event.data.type === 'BULLHORN_OAUTH_ERROR') {
             console.error('❌ OAuth error via message:', event.data.error)
@@ -362,6 +411,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
               console.log('🎉 WELCOME PAGE DETECTED in popup! Starting code extraction with retry logic...')
               console.log('📄 Welcome to Bullhorn page - "Thank you for using Bullhorn" page loaded')
               setWelcomePageDetected(true)
+              setAuthStep('welcome-detected')
+              setAuthProgress(40)
               toast.success('✅ Welcome to Bullhorn page detected! Extracting code...', { id: 'welcome-detect' })
               
               const extractCodeWithRetry = async (attemptNumber: number = 1): Promise<void> => {
@@ -404,12 +455,16 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                     console.log(`✅ CODE EXTRACTED FROM WELCOME PAGE on attempt ${attemptNumber}! Processing immediately (no login action needed)...`)
                     popup.close()
                     
-                    toast.loading('Exchanging code for token...', { id: 'oauth-popup' })
+                    setAuthStep('extracting-code')
+                    setAuthProgress(50)
+                    toast.loading('Code extracted! Exchanging for token...', { id: 'oauth-popup' })
                     
                     handleCodeExchange(code).catch((err) => {
                       console.error('❌ CODE EXCHANGE FAILED:', err)
                       toast.error('Failed to complete authentication', { id: 'oauth-popup' })
                       setLoading(false)
+                      setAuthStep('idle')
+                      setAuthProgress(0)
                     })
                   } else if (attemptNumber < maxRetries) {
                     console.warn(`⚠️ [Attempt ${attemptNumber}/${maxRetries}] Welcome page detected but NO CODE parameter - retrying in ${backoffDelay}ms...`)
@@ -475,6 +530,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     try {
       console.log('🔄 STARTING CODE EXCHANGE')
       console.log('📝 Raw code received:', code.substring(0, 50) + '...')
+      setAuthStep('exchanging-token')
+      setAuthProgress(60)
       
       let codeToUse = code
       if (codeToUse.includes('%3A') || codeToUse.includes('%2F') || codeToUse.includes('%3a')) {
@@ -496,6 +553,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         hasSecret: !!manualAuth.clientSecret
       })
 
+      setAuthProgress(70)
       const tokenData = await bullhornAPI.exchangeCodeForToken(
         codeToUse,
         manualAuth.clientId,
@@ -510,6 +568,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       })
       
       console.log('🔐 Logging in to REST API...')
+      setAuthStep('logging-in')
+      setAuthProgress(85)
       const session = await bullhornAPI.login(tokenData.accessToken, manualAuth.username)
       
       session.refreshToken = tokenData.refreshToken
@@ -526,6 +586,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       await window.spark.kv.delete('pending-oauth-auth')
       
       console.log('🎉 Authentication complete, notifying parent component...')
+      setAuthStep('complete')
+      setAuthProgress(100)
       toast.success('Successfully authenticated with Bullhorn', { id: 'oauth-popup' })
       
       onAuthenticated(session, preselectedConnection?.id)
@@ -540,6 +602,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         useAutomatedFlow: true
       })
       setLoading(false)
+      setAuthStep('idle')
+      setAuthProgress(0)
       
       console.log('✅ CODE EXCHANGE COMPLETE')
     } catch (error) {
@@ -552,6 +616,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       const errorMessage = error instanceof Error ? error.message : 'Authentication failed'
       toast.error(`Authentication failed: ${errorMessage}`, { id: 'oauth-popup' })
       setLoading(false)
+      setAuthStep('idle')
+      setAuthProgress(0)
       throw error
     }
   }
@@ -622,6 +688,97 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           />
         ) : (
           <div className="space-y-4">
+          {(authStep !== 'idle' || loading) && (
+            <div className="space-y-3 p-4 border border-accent/30 bg-accent/5 rounded-lg">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-foreground">Authentication Progress</span>
+                  <span className="text-xs font-mono text-muted-foreground">{authProgress}%</span>
+                </div>
+                <Progress value={authProgress} className="h-2" />
+              </div>
+              
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 text-sm">
+                  {authStep === 'opening-popup' || authStep !== 'idle' ? (
+                    <CheckCircle weight="fill" className="text-accent" size={16} />
+                  ) : (
+                    <Circle className="text-muted-foreground" size={16} />
+                  )}
+                  <span className={authStep === 'opening-popup' ? 'text-accent font-medium' : 'text-muted-foreground'}>
+                    Opening authentication window
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-2 text-sm">
+                  {authStep === 'waiting-login' || authStep === 'welcome-detected' || authStep === 'extracting-code' || authStep === 'exchanging-token' || authStep === 'logging-in' || authStep === 'complete' ? (
+                    <CheckCircle weight="fill" className="text-accent" size={16} />
+                  ) : (
+                    <Circle className="text-muted-foreground" size={16} />
+                  )}
+                  <span className={authStep === 'waiting-login' ? 'text-accent font-medium' : authStep === 'opening-popup' || authStep === 'idle' ? 'text-muted-foreground' : 'text-foreground'}>
+                    Waiting for Bullhorn login
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-2 text-sm">
+                  {authStep === 'welcome-detected' || authStep === 'extracting-code' || authStep === 'exchanging-token' || authStep === 'logging-in' || authStep === 'complete' ? (
+                    <CheckCircle weight="fill" className="text-accent" size={16} />
+                  ) : (
+                    <Circle className="text-muted-foreground" size={16} />
+                  )}
+                  <span className={authStep === 'welcome-detected' ? 'text-accent font-medium' : (authStep === 'extracting-code' || authStep === 'exchanging-token' || authStep === 'logging-in' || authStep === 'complete') ? 'text-foreground' : 'text-muted-foreground'}>
+                    Welcome page detected
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-2 text-sm">
+                  {authStep === 'extracting-code' || authStep === 'exchanging-token' || authStep === 'logging-in' || authStep === 'complete' ? (
+                    <CheckCircle weight="fill" className="text-accent" size={16} />
+                  ) : (
+                    <Circle className="text-muted-foreground" size={16} />
+                  )}
+                  <span className={authStep === 'extracting-code' ? 'text-accent font-medium' : authStep === 'exchanging-token' || authStep === 'logging-in' || authStep === 'complete' ? 'text-foreground' : 'text-muted-foreground'}>
+                    Extracting authorization code
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-2 text-sm">
+                  {authStep === 'exchanging-token' || authStep === 'logging-in' || authStep === 'complete' ? (
+                    <CheckCircle weight="fill" className="text-accent" size={16} />
+                  ) : (
+                    <Circle className="text-muted-foreground" size={16} />
+                  )}
+                  <span className={authStep === 'exchanging-token' ? 'text-accent font-medium' : authStep === 'logging-in' || authStep === 'complete' ? 'text-foreground' : 'text-muted-foreground'}>
+                    Exchanging code for token
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-2 text-sm">
+                  {authStep === 'logging-in' || authStep === 'complete' ? (
+                    <CheckCircle weight="fill" className="text-accent" size={16} />
+                  ) : (
+                    <Circle className="text-muted-foreground" size={16} />
+                  )}
+                  <span className={authStep === 'logging-in' ? 'text-accent font-medium' : authStep === 'complete' ? 'text-foreground' : 'text-muted-foreground'}>
+                    Logging in to REST API
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-2 text-sm">
+                  {authStep === 'complete' ? (
+                    <CheckCircle weight="fill" className="text-green-500" size={16} />
+                  ) : (
+                    <Circle className="text-muted-foreground" size={16} />
+                  )}
+                  <span className={authStep === 'complete' ? 'text-green-500 font-medium' : 'text-muted-foreground'}>
+                    Authentication complete
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {welcomePageDetected && (
             <Alert className="border-green-500 bg-green-500/10">
               <Info className="h-4 w-4 text-green-600" />
