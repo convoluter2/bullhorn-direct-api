@@ -138,10 +138,9 @@ export function AutomatedOAuthTest({ onAuthSuccess }: AutomatedOAuthTestProps) {
       updateStep(stepIndex, { status: 'running' })
       const startTime4 = Date.now()
 
-      const currentUrl = window.location.origin + window.location.pathname
       const authUrl = bullhornAPI.getAuthorizationUrl(
         credentials.clientId,
-        currentUrl,
+        undefined,
         'test-state',
         credentials.username,
         credentials.password
@@ -158,7 +157,7 @@ export function AutomatedOAuthTest({ onAuthSuccess }: AutomatedOAuthTestProps) {
 
       updateStep(stepIndex, { 
         status: 'success', 
-        message: 'OAuth URL generated successfully',
+        message: 'OAuth URL generated (no redirect_uri needed)',
         duration: Date.now() - startTime4
       })
 

@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
-import { Copy, Info, Database } from '@phosphor-icons/react'
+import { Copy, Info } from '@phosphor-icons/react'
 import type { SavedConnection } from '@/components/ConnectionManager'
 import type { BullhornSession } from '@/lib/types'
 
@@ -26,11 +26,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     username: '',
     password: '',
     authCode: '',
-    useRedirectUri: true,
-    redirectUri: ''
+    useAutomatedFlow: true
   })
-
-  const currentUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : ''
 
   useEffect(() => {
     const loadConnectionCredentials = async () => {
@@ -43,20 +40,18 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             username: credentials.username,
             password: credentials.password,
             authCode: '',
-            useRedirectUri: true,
-            redirectUri: currentUrl
+            useAutomatedFlow: true
           })
         }
       } else if (open && !preselectedConnection) {
         setManualAuth(prev => ({
           ...prev,
-          useRedirectUri: true,
-          redirectUri: currentUrl
+          useAutomatedFlow: true
         }))
       }
     }
     loadConnectionCredentials()
-  }, [open, preselectedConnection, currentUrl])
+  }, [open, preselectedConnection])
   
   const handleCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -64,10 +59,6 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
 
     try {
       if (manualAuth.authCode) {
-        const redirectUri = manualAuth.useRedirectUri && manualAuth.redirectUri 
-          ? manualAuth.redirectUri 
-          : undefined
-        
         let codeToUse = manualAuth.authCode
         if (codeToUse.includes('%3A') || codeToUse.includes('%2F')) {
           codeToUse = decodeURIComponent(codeToUse)
@@ -77,8 +68,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         const tokenData = await bullhornAPI.exchangeCodeForToken(
           codeToUse,
           manualAuth.clientId,
-          manualAuth.clientSecret,
-          redirectUri
+          manualAuth.clientSecret
         )
         const session = await bullhornAPI.login(tokenData.accessToken)
         session.refreshToken = tokenData.refreshToken
@@ -93,8 +83,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           username: '',
           password: '', 
           authCode: '', 
-          useRedirectUri: false, 
-          redirectUri: '' 
+          useAutomatedFlow: true
         })
       } else {
         toast.loading('Authenticating with saved credentials...', { id: 'auto-auth' })
@@ -115,8 +104,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           username: '',
           password: '', 
           authCode: '', 
-          useRedirectUri: false, 
-          redirectUri: '' 
+          useAutomatedFlow: true
         })
       }
     } catch (error) {
@@ -129,11 +117,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
   const getAuthUrl = () => {
     const state = Math.random().toString(36).substring(7)
     const clientId = manualAuth.clientId || 'YOUR_CLIENT_ID'
-    const redirectUri = manualAuth.useRedirectUri && manualAuth.redirectUri 
-      ? manualAuth.redirectUri 
-      : undefined
     
-    return bullhornAPI.getAuthorizationUrl(clientId, redirectUri, state, manualAuth.username, manualAuth.password)
+    return bullhornAPI.getAuthorizationUrl(clientId, undefined, state, manualAuth.username, manualAuth.password)
   }
   
   const handleStartOAuthFlow = async () => {
@@ -141,16 +126,11 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       toast.error('Please enter your Client ID and Client Secret first')
       return
     }
-    
-    const redirectUri = manualAuth.useRedirectUri && manualAuth.redirectUri 
-      ? manualAuth.redirectUri 
-      : undefined
 
     try {
       await window.spark.kv.set('pending-oauth-auth', {
         clientId: manualAuth.clientId,
         clientSecret: manualAuth.clientSecret,
-        redirectUri: redirectUri,
         connectionId: preselectedConnection?.id,
         timestamp: Date.now()
       })
@@ -168,15 +148,10 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
   const copyAuthUrl = async () => {
     const url = getAuthUrl()
     navigator.clipboard.writeText(url)
-    
-    const redirectUri = manualAuth.useRedirectUri && manualAuth.redirectUri 
-      ? manualAuth.redirectUri 
-      : undefined
 
     await window.spark.kv.set('pending-oauth-auth', {
       clientId: manualAuth.clientId,
       clientSecret: manualAuth.clientSecret,
-      redirectUri: redirectUri,
       connectionId: preselectedConnection?.id,
       timestamp: Date.now()
     })
@@ -185,14 +160,9 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
   }
 
   const handleOpenAuthUrl = async () => {
-    const redirectUri = manualAuth.useRedirectUri && manualAuth.redirectUri 
-      ? manualAuth.redirectUri 
-      : undefined
-
     await window.spark.kv.set('pending-oauth-auth', {
       clientId: manualAuth.clientId,
       clientSecret: manualAuth.clientSecret,
-      redirectUri: redirectUri,
       connectionId: preselectedConnection?.id,
       timestamp: Date.now()
     })
@@ -206,7 +176,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         <DialogHeader>
           <DialogTitle className="text-2xl">Connect to Bullhorn</DialogTitle>
           <DialogDescription>
-            Fully automated OAuth authentication - no manual code entry needed!
+            Fully automated OAuth authentication - no redirect URI needed!
           </DialogDescription>
         </DialogHeader>
 
@@ -214,14 +184,13 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription className="space-y-2">
-              <p className="font-medium">✨ Automated OAuth Authentication</p>
+              <p className="font-medium">✨ Simplified OAuth Authentication</p>
               <p className="text-xs">
                 <strong>Recommended:</strong> Use "Start Automated OAuth Flow" for fully automatic authentication. 
-                You'll be redirected to Bullhorn to log in, then automatically returned with no manual code entry.
+                No redirect URI configuration needed - we'll handle everything automatically.
               </p>
               <p className="text-xs mt-1">
-                <strong>Troubleshooting:</strong> If you get "Invalid Redirect URI" errors, ensure your Bullhorn 
-                OAuth app has this URL configured as a redirect URI, or disable automated mode to try programmatic authentication.
+                <strong>Fallback:</strong> If automated flow doesn't work, disable it to try programmatic authentication.
               </p>
             </AlertDescription>
           </Alert>
@@ -290,17 +259,16 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">✨ Automated OAuth Mode (Recommended)</Label>
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="useRedirectUri" className="text-xs text-muted-foreground cursor-pointer">
+                  <Label htmlFor="useAutomatedFlow" className="text-xs text-muted-foreground cursor-pointer">
                     Enable
                   </Label>
                   <input
-                    id="useRedirectUri"
+                    id="useAutomatedFlow"
                     type="checkbox"
-                    checked={manualAuth.useRedirectUri}
+                    checked={manualAuth.useAutomatedFlow}
                     onChange={(e) => setManualAuth({ 
                       ...manualAuth, 
-                      useRedirectUri: e.target.checked,
-                      redirectUri: e.target.checked && !manualAuth.redirectUri ? currentUrl : manualAuth.redirectUri
+                      useAutomatedFlow: e.target.checked
                     })}
                     className="cursor-pointer"
                   />
@@ -308,32 +276,15 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
               </div>
               <p className="text-xs text-muted-foreground">
                 <strong>Enabled:</strong> Fully automated authentication - you'll be redirected to Bullhorn to log in, 
-                then automatically returned with no manual code entry needed.
+                then automatically returned. <strong>No redirect URI configuration needed</strong> - the app handles everything.
               </p>
               <p className="text-xs text-muted-foreground">
                 <strong>Disabled:</strong> Fallback to programmatic authentication (may not work in all browsers) 
                 or manual code entry.
               </p>
-              {manualAuth.useRedirectUri && (
-                <div className="space-y-1">
-                  <Label className="text-xs">Redirect URI</Label>
-                  <Input
-                    id="redirectUri"
-                    type="text"
-                    value={manualAuth.redirectUri}
-                    onChange={(e) => setManualAuth({ ...manualAuth, redirectUri: e.target.value })}
-                    placeholder={currentUrl}
-                    className="mt-2"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Must match your Bullhorn OAuth app configuration. If you get "Invalid Redirect URI" errors, 
-                    verify this matches exactly. Current URL: <code className="text-xs bg-background px-1 rounded">{currentUrl}</code>
-                  </p>
-                </div>
-              )}
             </div>
 
-            {!manualAuth.useRedirectUri && (
+            {!manualAuth.useAutomatedFlow && (
               <>
                 <div className="space-y-2 p-3 bg-muted rounded-lg">
                   <Label className="text-sm font-medium">Authorization Code (Optional)</Label>
@@ -390,7 +341,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
               </>
             )}
 
-            {manualAuth.useRedirectUri ? (
+            {manualAuth.useAutomatedFlow ? (
               <div className="flex gap-3 pt-2">
                 <Button
                   type="button"
