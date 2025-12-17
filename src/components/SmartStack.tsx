@@ -12,7 +12,8 @@ import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Switch } from '@/components/ui/switch'
-import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Eye, ArrowCounterClockwise } from '@phosphor-icons/react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Eye, ArrowCounterClockwise, ListBullets, TreeStructure } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV } from '@/lib/csv-utils'
@@ -23,7 +24,8 @@ import { ToManyFieldInput } from '@/components/ToManyFieldInput'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
 import { ConditionalAssociationBuilder, type ConditionalAssociation } from '@/components/ConditionalAssociationBuilder'
 import { getAssociationsForRecord, mergeAssociationActions, describeAssociation } from '@/lib/conditional-logic'
-import type { QueryFilter, UpdateSnapshot } from '@/lib/types'
+import { FilterGroupBuilder } from '@/components/FilterGroupBuilder'
+import type { QueryFilter, UpdateSnapshot, FilterGroup } from '@/lib/types'
 
 interface SmartStackProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -49,6 +51,9 @@ export function SmartStack({ onLog }: SmartStackProps) {
   const [csvFileName, setCsvFileName] = useState<string>('')
   const [selectedEntity, setSelectedEntity] = useState<string>('')
   const [filters, setFilters] = useState<QueryFilter[]>([])
+  const [filterGroups, setFilterGroups] = useState<FilterGroup[]>([])
+  const [groupLogic, setGroupLogic] = useState<'AND' | 'OR'>('AND')
+  const [filterMode, setFilterMode] = useState<'simple' | 'grouped'>('simple')
   const [fieldUpdates, setFieldUpdates] = useState<FieldUpdate[]>([])
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -235,46 +240,81 @@ export function SmartStack({ onLog }: SmartStackProps) {
             continue
           }
 
-          const validFilters = filters.filter(f => f.field && f.value)
           let passesFilters = true
           
-          if (validFilters.length > 0) {
-            passesFilters = validFilters.every(filter => {
-              const fieldValue = entity.data[filter.field]
-              const filterValue = filter.value
+          if (filterMode === 'simple') {
+            const validFilters = filters.filter(f => f.field && f.value)
+            
+            if (validFilters.length > 0) {
+              passesFilters = validFilters.every(filter => {
+                const fieldValue = entity.data[filter.field]
+                const filterValue = filter.value
 
-              switch (filter.operator) {
-                case 'equals':
-                  return String(fieldValue) === filterValue
-                case 'not_equals':
-                  return String(fieldValue) !== filterValue
-                case 'contains':
-                  return String(fieldValue).toLowerCase().includes(filterValue.toLowerCase())
-                case 'greater_than':
-                  return Number(fieldValue) > Number(filterValue)
-                case 'less_than':
-                  return Number(fieldValue) < Number(filterValue)
-                case 'is_null':
-                  return fieldValue === null || fieldValue === undefined
-                case 'is_not_null':
-                  return fieldValue !== null && fieldValue !== undefined
-                default:
-                  return true
-              }
-            })
-
-            if (!passesFilters) {
-              if (dryRun) {
-                preview.push({
-                  id,
-                  willUpdate: false,
-                  reason: 'Does not match filters',
-                  currentValues: entity.data,
-                  newValues: {}
-                })
-              }
-              continue
+                switch (filter.operator) {
+                  case 'equals':
+                    return String(fieldValue) === filterValue
+                  case 'not_equals':
+                    return String(fieldValue) !== filterValue
+                  case 'contains':
+                    return String(fieldValue).toLowerCase().includes(filterValue.toLowerCase())
+                  case 'greater_than':
+                    return Number(fieldValue) > Number(filterValue)
+                  case 'less_than':
+                    return Number(fieldValue) < Number(filterValue)
+                  case 'is_null':
+                    return fieldValue === null || fieldValue === undefined
+                  case 'is_not_null':
+                    return fieldValue !== null && fieldValue !== undefined
+                  default:
+                    return true
+                }
+              })
             }
+          } else if (filterMode === 'grouped' && filterGroups.length > 0) {
+            const groupResults = filterGroups.map(group => {
+              return group.filters.every(filter => {
+                if (!filter.field) return true
+                
+                const fieldValue = entity.data[filter.field]
+                const filterValue = filter.value
+
+                switch (filter.operator) {
+                  case 'equals':
+                    return String(fieldValue) === filterValue
+                  case 'not_equals':
+                    return String(fieldValue) !== filterValue
+                  case 'contains':
+                    return String(fieldValue).toLowerCase().includes(filterValue.toLowerCase())
+                  case 'greater_than':
+                    return Number(fieldValue) > Number(filterValue)
+                  case 'less_than':
+                    return Number(fieldValue) < Number(filterValue)
+                  case 'is_null':
+                    return fieldValue === null || fieldValue === undefined
+                  case 'is_not_null':
+                    return fieldValue !== null && fieldValue !== undefined
+                  default:
+                    return true
+                }
+              })
+            })
+            
+            passesFilters = groupLogic === 'AND' 
+              ? groupResults.every(r => r) 
+              : groupResults.some(r => r)
+          }
+
+          if (!passesFilters) {
+            if (dryRun) {
+              preview.push({
+                id,
+                willUpdate: false,
+                reason: 'Does not match filters',
+                currentValues: entity.data,
+                newValues: {}
+              })
+            }
+            continue
           }
 
           const updateData: any = {}
@@ -639,82 +679,109 @@ export function SmartStack({ onLog }: SmartStackProps) {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label>Step 3: Add Query Filters (Optional)</Label>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={addFilter}
-                  disabled={loading || !selectedEntity || metadataLoading}
-                >
-                  <Plus size={16} />
-                  Add Filter
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Tabs value={filterMode} onValueChange={(v) => setFilterMode(v as 'simple' | 'grouped')}>
+                    <TabsList className="h-8">
+                      <TabsTrigger value="simple" className="gap-1 text-xs h-7 px-2">
+                        <ListBullets size={14} />
+                        Simple
+                      </TabsTrigger>
+                      <TabsTrigger value="grouped" className="gap-1 text-xs h-7 px-2">
+                        <TreeStructure size={14} />
+                        Grouped
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  {filterMode === 'simple' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={addFilter}
+                      disabled={loading || !selectedEntity || metadataLoading}
+                    >
+                      <Plus size={16} />
+                      Add Filter
+                    </Button>
+                  )}
+                </div>
               </div>
               {metadataLoading && selectedEntity ? (
                 <Skeleton className="h-20 w-full" />
-              ) : filters.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No filters - all IDs from CSV will be updated
-                </p>
+              ) : filterMode === 'simple' ? (
+                filters.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No filters - all IDs from CSV will be updated
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {filters.map((filter, index) => (
+                      <Card key={index} className="p-3">
+                        <div className="flex gap-2">
+                          <Select
+                            value={filter.field || undefined}
+                            onValueChange={(v) => updateFilter(index, { field: v })}
+                            disabled={loading}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Field name" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableFields.map((field) => (
+                                <SelectItem key={field.name} value={field.name}>
+                                  {field.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select
+                            value={filter.operator}
+                            onValueChange={(v) => updateFilter(index, { operator: v })}
+                            disabled={loading}
+                          >
+                            <SelectTrigger className="w-[150px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="equals">Equals</SelectItem>
+                              <SelectItem value="not_equals">Not Equals</SelectItem>
+                              <SelectItem value="contains">Contains</SelectItem>
+                              <SelectItem value="greater_than">Greater Than</SelectItem>
+                              <SelectItem value="less_than">Less Than</SelectItem>
+                              <SelectItem value="is_null">Is Null</SelectItem>
+                              <SelectItem value="is_not_null">Is Not Null</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <ValidatedFieldInput
+                            field={fieldsMap[filter.field] || null}
+                            value={filter.value}
+                            onChange={(v) => updateFilter(index, { value: v })}
+                            disabled={loading || filter.operator === 'is_null' || filter.operator === 'is_not_null'}
+                            placeholder="Value"
+                            className="flex-1"
+                          />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => removeFilter(index)}
+                            disabled={loading}
+                            className="text-destructive"
+                          >
+                            <Trash size={18} />
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )
               ) : (
-                <div className="space-y-2">
-                  {filters.map((filter, index) => (
-                    <Card key={index} className="p-3">
-                      <div className="flex gap-2">
-                        <Select
-                          value={filter.field || undefined}
-                          onValueChange={(v) => updateFilter(index, { field: v })}
-                          disabled={loading}
-                        >
-                          <SelectTrigger className="flex-1">
-                            <SelectValue placeholder="Field name" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableFields.map((field) => (
-                              <SelectItem key={field.name} value={field.name}>
-                                {field.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Select
-                          value={filter.operator}
-                          onValueChange={(v) => updateFilter(index, { operator: v })}
-                          disabled={loading}
-                        >
-                          <SelectTrigger className="w-[150px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="equals">Equals</SelectItem>
-                            <SelectItem value="not_equals">Not Equals</SelectItem>
-                            <SelectItem value="contains">Contains</SelectItem>
-                            <SelectItem value="greater_than">Greater Than</SelectItem>
-                            <SelectItem value="less_than">Less Than</SelectItem>
-                            <SelectItem value="is_null">Is Null</SelectItem>
-                            <SelectItem value="is_not_null">Is Not Null</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <ValidatedFieldInput
-                          field={fieldsMap[filter.field] || null}
-                          value={filter.value}
-                          onChange={(v) => updateFilter(index, { value: v })}
-                          disabled={loading || filter.operator === 'is_null' || filter.operator === 'is_not_null'}
-                          placeholder="Value"
-                          className="flex-1"
-                        />
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => removeFilter(index)}
-                          disabled={loading}
-                          className="text-destructive"
-                        >
-                          <Trash size={18} />
-                        </Button>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+                <FilterGroupBuilder
+                  groups={filterGroups}
+                  onGroupsChange={setFilterGroups}
+                  groupLogic={groupLogic}
+                  onGroupLogicChange={setGroupLogic}
+                  availableFields={availableFields}
+                  fieldsMap={fieldsMap}
+                />
               )}
             </div>
 

@@ -56,6 +56,11 @@ export function ValidatedFieldInput({
       if (isNaN(timestamp) || timestamp < 0) {
         validationError = 'Must be a valid timestamp'
       }
+    } else if (dataSpecialization === 'email') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(newValue)) {
+        validationError = 'Must be a valid email address'
+      }
     }
 
     setError(validationError)
@@ -92,6 +97,10 @@ export function ValidatedFieldInput({
 
   if (dataSpecialization === 'phone') {
     return <PhoneInput value={value} onChange={onChange} className={className} placeholder={placeholder} />
+  }
+
+  if (dataSpecialization === 'email') {
+    return <EmailInput value={value} onChange={validateAndChange} error={error} className={className} placeholder={placeholder} />
   }
 
   if (dataType === 'boolean') {
@@ -226,6 +235,39 @@ function PhoneInput({
       placeholder={placeholder || '(555) 123-4567'}
       className={className}
     />
+  )
+}
+
+function EmailInput({ 
+  value, 
+  onChange, 
+  error, 
+  className, 
+  placeholder 
+}: { 
+  value: string
+  onChange: (v: string) => void
+  error: string | null
+  className?: string
+  placeholder?: string 
+}) {
+  return (
+    <div className="relative">
+      <Input
+        type="email"
+        inputMode="email"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder || 'email@example.com'}
+        className={cn(className, error && 'border-destructive')}
+      />
+      {error && (
+        <div className="absolute -bottom-5 left-0 text-xs text-destructive flex items-center gap-1">
+          <Warning size={12} />
+          {error}
+        </div>
+      )}
+    </div>
   )
 }
 
