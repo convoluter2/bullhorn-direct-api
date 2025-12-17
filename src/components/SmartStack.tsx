@@ -18,7 +18,7 @@ import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV } from '@/lib/csv-utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
-import { SmartFieldInput } from '@/components/SmartFieldInput'
+import { ValidatedFieldInput } from '@/components/ValidatedFieldInput'
 import { ToManyFieldInput } from '@/components/ToManyFieldInput'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
 import { ConditionalAssociationBuilder, type ConditionalAssociation } from '@/components/ConditionalAssociationBuilder'
@@ -694,7 +694,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
                             <SelectItem value="is_not_null">Is Not Null</SelectItem>
                           </SelectContent>
                         </Select>
-                        <SmartFieldInput
+                        <ValidatedFieldInput
                           field={fieldsMap[filter.field] || null}
                           value={filter.value}
                           onChange={(v) => updateFilter(index, { value: v })}
@@ -783,7 +783,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
                               disabled={loading}
                             />
                           ) : (
-                            <SmartFieldInput
+                            <ValidatedFieldInput
                               field={fieldMeta || null}
                               value={update.value}
                               onChange={(v) => updateFieldUpdate(update.id, { value: v })}

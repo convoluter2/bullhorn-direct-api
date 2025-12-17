@@ -22,7 +22,7 @@ import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
-import { SmartFieldInput } from '@/components/SmartFieldInput'
+import { ValidatedFieldInput } from '@/components/ValidatedFieldInput'
 import { ToManyFieldInput } from '@/components/ToManyFieldInput'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
 import { FieldSelector } from '@/components/FieldSelector'
@@ -769,7 +769,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
                                 </div>
                                 <div className="flex-1 space-y-1">
                                   <Label className="text-xs">Value</Label>
-                                  <SmartFieldInput
+                                  <ValidatedFieldInput
                                     field={fieldsMap[filter.field] || null}
                                     value={filter.value}
                                     onChange={(v) => updateQueryFilter(index, 'value', v)}
@@ -1018,7 +1018,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
                                 <SelectItem value="is_not_null">Is Not Null</SelectItem>
                               </SelectContent>
                             </Select>
-                            <SmartFieldInput
+                            <ValidatedFieldInput
                               field={(targetEntity ? targetFieldsMap : fieldsMap)[filter.field] || null}
                               value={filter.value}
                               onChange={(v) => updateUpdateFilter(index, { value: v })}
@@ -1105,7 +1105,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
                                   disabled={loading}
                                 />
                               ) : (
-                                <SmartFieldInput
+                                <ValidatedFieldInput
                                   field={fieldMeta || null}
                                   value={update.value}
                                   onChange={(v) => updateFieldUpdate(update.id, { value: v })}

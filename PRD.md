@@ -82,6 +82,13 @@ This is a sophisticated enterprise data management tool with multiple modules (Q
 - **Token Expiry**: Proactive refresh 60 seconds before expiration, background refresh every 30 seconds
 - **Concurrent Operations**: Queue management to prevent conflicting updates
 - **Malformed CSV**: Robust parsing with error reporting, skip invalid rows option
+- **Field Type Validation**: Smart input controls that enforce field-specific validation rules based on metadata
+  - Integer fields: Only accept whole numbers with visual feedback for invalid input
+  - Numeric/Decimal fields: Accept decimal values with proper formatting
+  - Date/Timestamp fields: Date picker with visual calendar or manual timestamp entry in milliseconds
+  - Phone fields: Auto-formatting with input masks (e.g., (555) 123-4567)
+  - Boolean fields: Toggle buttons for true/false selection
+  - Option/Enum fields: Dropdown with searchable options, allow custom values for flexibility
 
 ## Design Direction
 The design should evoke confidence, precision, and power - like a professional developer tool or enterprise admin console. It should feel sophisticated yet approachable, with clear information hierarchy and data-dense displays that don't overwhelm.

@@ -16,7 +16,7 @@ import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { FieldSelector } from '@/components/FieldSelector'
-import { SmartFieldInput } from '@/components/SmartFieldInput'
+import { ValidatedFieldInput } from '@/components/ValidatedFieldInput'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
 import { FilterGroupBuilder } from '@/components/FilterGroupBuilder'
 import type { QueryFilter, QueryConfig, FilterGroup } from '@/lib/types'
@@ -381,7 +381,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                               </div>
                               <div className="flex-1 space-y-1">
                                 <Label className="text-xs">Value</Label>
-                                <SmartFieldInput
+                                <ValidatedFieldInput
                                   field={fieldsMap[filter.field] || null}
                                   value={filter.value}
                                   onChange={(v) => updateFilter(index, 'value', v)}

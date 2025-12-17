@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Trash, Unite, Intersect } from '@phosphor-icons/react'
-import { SmartFieldInput } from '@/components/SmartFieldInput'
+import { ValidatedFieldInput } from '@/components/ValidatedFieldInput'
 import type { FilterGroup, QueryFilter } from '@/lib/types'
 import type { EntityField } from '@/hooks/use-entity-metadata'
 
@@ -229,7 +229,7 @@ export function FilterGroupBuilder({
                       </div>
                       <div className="flex-1 space-y-1">
                         <Label className="text-xs">Value</Label>
-                        <SmartFieldInput
+                        <ValidatedFieldInput
                           field={fieldsMap[filter.field] || null}
                           value={filter.value}
                           onChange={(v) => updateFilter(group.id, filterIndex, 'value', v)}
