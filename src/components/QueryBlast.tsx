@@ -362,20 +362,29 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                                   </SelectContent>
                                 </Select>
                               </div>
-                              <div className="w-32 space-y-1">
+                              <div className="w-40 space-y-1">
                                 <Label className="text-xs">Operator</Label>
                                 <Select value={filter.operator} onValueChange={(v) => updateFilter(index, 'operator', v)}>
                                   <SelectTrigger>
                                     <SelectValue />
                                   </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="equals">Equals</SelectItem>
-                                    <SelectItem value="not_equals">Not Equals</SelectItem>
-                                    <SelectItem value="contains">Contains</SelectItem>
-                                    <SelectItem value="greater_than">Greater Than</SelectItem>
-                                    <SelectItem value="less_than">Less Than</SelectItem>
-                                    <SelectItem value="is_null">Is Null</SelectItem>
-                                    <SelectItem value="is_not_null">Is Not Null</SelectItem>
+                                  <SelectContent className="max-h-[300px]">
+                                    <SelectItem value="equals">= Equals</SelectItem>
+                                    <SelectItem value="not_equals">≠ Not Equals</SelectItem>
+                                    <SelectItem value="greater_than">&gt; Greater Than</SelectItem>
+                                    <SelectItem value="less_than">&lt; Less Than</SelectItem>
+                                    <SelectItem value="greater_equal">≥ Greater or Equal</SelectItem>
+                                    <SelectItem value="less_equal">≤ Less or Equal</SelectItem>
+                                    <SelectItem value="contains">⊃ Contains</SelectItem>
+                                    <SelectItem value="starts_with">⊐ Starts With</SelectItem>
+                                    <SelectItem value="ends_with">⊏ Ends With</SelectItem>
+                                    <SelectItem value="is_null">∅ Is Null</SelectItem>
+                                    <SelectItem value="is_not_null">∃ Is Not Null</SelectItem>
+                                    <SelectItem value="in_list">∈ In List [...]</SelectItem>
+                                    <SelectItem value="in_list_parens">∈ In List (...)</SelectItem>
+                                    <SelectItem value="between_inclusive">⊆ Between [...]</SelectItem>
+                                    <SelectItem value="between_exclusive">⊂ Between (...)</SelectItem>
+                                    <SelectItem value="lucene">🔍 Lucene Query</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -386,7 +395,13 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                                   value={filter.value}
                                   onChange={(v) => updateFilter(index, 'value', v)}
                                   disabled={filter.operator === 'is_null' || filter.operator === 'is_not_null'}
-                                  placeholder="Value"
+                                  placeholder={
+                                    filter.operator === 'in_list' || filter.operator === 'in_list_parens'
+                                      ? 'value1,value2,value3'
+                                      : filter.operator === 'between_inclusive' || filter.operator === 'between_exclusive'
+                                      ? 'start,end'
+                                      : 'Value'
+                                  }
                                 />
                               </div>
                               <Button

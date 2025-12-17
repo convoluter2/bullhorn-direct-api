@@ -195,12 +195,12 @@ export class BullhornAPI {
     return this.session
   }
 
-  async search(config: QueryConfig): Promise<QueryResult> {
+  async search(config: QueryConfig, rawQuery?: string): Promise<QueryResult> {
     if (!this.session) {
       throw new Error('Not authenticated')
     }
 
-    const query = this.buildQuery(config)
+    const query = rawQuery || this.buildQuery(config)
     const fields = config.fields.join(',')
     const count = config.count || 500
     const start = config.start || 0
@@ -279,6 +279,43 @@ export class BullhornAPI {
       return `${filter.field}${operator}`
     }
     
+    if (filter.operator === 'in_list' || filter.operator === 'in_list_parens') {
+      const values = filter.value.split(',').map((v: string) => v.trim())
+      if (filter.operator === 'in_list') {
+        return `${filter.field}:[${values.join(',')}]`
+      } else {
+        return `${filter.field}:(${values.join(',')})`
+      }
+    }
+    
+    if (filter.operator === 'between_inclusive' || filter.operator === 'between_exclusive') {
+      const values = filter.value.split(',').map((v: string) => v.trim())
+      if (values.length < 2) {
+        return `${filter.field}:${filter.value}`
+      }
+      if (filter.operator === 'between_inclusive') {
+        return `${filter.field}:..[${values[0]},${values[1]}]`
+      } else {
+        return `${filter.field}:..(${values[0]},${values[1]})`
+      }
+    }
+    
+    if (filter.operator === 'starts_with') {
+      return `${filter.field}:*[${filter.value}`
+    }
+    
+    if (filter.operator === 'ends_with') {
+      return `${filter.field}:]${filter.value}`
+    }
+    
+    if (filter.operator === 'contains') {
+      return `${filter.field}:*${filter.value}*`
+    }
+    
+    if (filter.operator === 'lucene') {
+      return `${filter.field}~"${filter.value}"`
+    }
+    
     let value = filter.value
     if (value.includes(' ') || value.includes(',')) {
       value = `"${value}"`
@@ -292,12 +329,19 @@ export class BullhornAPI {
       'equals': ':',
       'not_equals': ':<>',
       'contains': ':*',
+      'starts_with': ':*[',
+      'ends_with': ':]',
       'greater_than': ':>',
       'less_than': ':<',
       'greater_equal': ':>=',
       'less_equal': ':<=',
       'is_null': ':IS NULL',
-      'is_not_null': ':IS NOT NULL'
+      'is_not_null': ':IS NOT NULL',
+      'in_list': ':[',
+      'in_list_parens': ':(',
+      'between_inclusive': ':..[',
+      'between_exclusive': ':..(',
+      'lucene': '~'
     }
     return operatorMap[operator] || ':'
   }

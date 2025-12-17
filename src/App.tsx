@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Swap } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Swap, Flask } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -14,6 +14,7 @@ import { QueryStack } from '@/components/QueryStack'
 import { AuditLogs } from '@/components/AuditLogs'
 import { ConnectionManager, type SavedConnection } from '@/components/ConnectionManager'
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
+import { OperatorTestSuite } from '@/components/OperatorTestSuite'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { toast } from 'sonner'
 import type { BullhornSession, AuditLog } from '@/lib/types'
@@ -293,7 +294,7 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -309,6 +310,10 @@ function App() {
               <TabsTrigger value="querystack" className="gap-2">
                 <ChartLineUp size={18} />
                 <span className="hidden sm:inline">QueryStack</span>
+              </TabsTrigger>
+              <TabsTrigger value="operators" className="gap-2">
+                <Flask size={18} />
+                <span className="hidden sm:inline">Operators</span>
               </TabsTrigger>
               <TabsTrigger value="logs" className="gap-2">
                 <ClockCounterClockwise size={18} />
@@ -335,6 +340,10 @@ function App() {
 
             <TabsContent value="querystack" className="space-y-6">
               <QueryStack onLog={addLog} />
+            </TabsContent>
+
+            <TabsContent value="operators" className="space-y-6">
+              <OperatorTestSuite />
             </TabsContent>
 
             <TabsContent value="logs" className="space-y-6">
