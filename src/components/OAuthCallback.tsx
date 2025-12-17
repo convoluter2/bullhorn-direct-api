@@ -46,8 +46,13 @@ export function OAuthCallback({
 
         setProgress(prev => [...prev, 'Authorization code detected'])
 
-        const decodedCode = decodeURIComponent(code)
-        setProgress(prev => [...prev, 'Code decoded successfully'])
+        let codeToUse = code
+        if (code.includes('%3A') || code.includes('%2F')) {
+          codeToUse = decodeURIComponent(code)
+          setProgress(prev => [...prev, 'Code was URL-encoded, decoded successfully'])
+        } else {
+          setProgress(prev => [...prev, 'Code decoded successfully'])
+        }
 
         const pendingAuth = await window.spark.kv.get<{
           clientId: string
@@ -79,7 +84,7 @@ export function OAuthCallback({
         setProgress(prev => [...prev, 'Exchanging code for access token'])
 
         const tokenData = await bullhornAPI.exchangeCodeForToken(
-          decodedCode,
+          codeToUse,
           clientId,
           clientSecret,
           redirectUri

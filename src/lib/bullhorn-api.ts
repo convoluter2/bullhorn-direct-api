@@ -34,11 +34,16 @@ export class BullhornAPI {
     clientSecret: string,
     redirectUri?: string
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
-    const decodedCode = decodeURIComponent(code)
+    let finalCode = code
+    
+    if (code.includes('%3A') || code.includes('%2F')) {
+      finalCode = decodeURIComponent(code)
+      console.log('Code was URL-encoded, decoded it:', { original: code, decoded: finalCode })
+    }
     
     const params = new URLSearchParams({
       grant_type: 'authorization_code',
-      code: decodedCode,
+      code: finalCode,
       client_id: clientId,
       client_secret: clientSecret
     })
@@ -46,6 +51,13 @@ export class BullhornAPI {
     if (redirectUri) {
       params.append('redirect_uri', redirectUri)
     }
+
+    console.log('Exchanging code for token:', {
+      code: finalCode,
+      clientId,
+      hasRedirectUri: !!redirectUri,
+      redirectUri
+    })
 
     const response = await fetch(`${BULLHORN_AUTH_URL}/token`, {
       method: 'POST',
@@ -57,6 +69,7 @@ export class BullhornAPI {
 
     if (!response.ok) {
       const errorText = await response.text()
+      console.error('Token exchange failed:', errorText)
       throw new Error(`Failed to exchange code for token: ${errorText}`)
     }
 
@@ -131,20 +144,28 @@ export class BullhornAPI {
 
   async authenticate(credentials: BullhornCredentials): Promise<BullhornSession> {
     try {
+      console.log('Starting programmatic authentication...')
       const authCode = await this.getAuthorizationCode(credentials)
+      console.log('Got authorization code:', authCode)
+      
       const tokenData = await this.exchangeCodeForToken(
         authCode,
         credentials.clientId,
-        credentials.clientSecret
+        credentials.clientSecret,
+        undefined
       )
+      console.log('Got access token, logging in...')
+      
       const session = await this.login(tokenData.accessToken)
       
       session.refreshToken = tokenData.refreshToken
       session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
       
       this.session = session
+      console.log('Authentication complete!')
       return session
     } catch (error) {
+      console.error('Authentication failed:', error)
       throw new Error(`Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
@@ -168,7 +189,7 @@ export class BullhornAPI {
       const url = new URL(locationHeader, window.location.origin)
       const code = url.searchParams.get('code')
       if (code) {
-        return code
+        return decodeURIComponent(code)
       }
     }
 
@@ -176,14 +197,14 @@ export class BullhornAPI {
       const url = new URL(response.url)
       const code = url.searchParams.get('code')
       if (code) {
-        return code
+        return decodeURIComponent(code)
       }
     }
 
     const responseText = await response.text()
     const codeMatch = responseText.match(/code=([^&"']+)/)
     if (codeMatch) {
-      return codeMatch[1]
+      return decodeURIComponent(codeMatch[1])
     }
 
     throw new Error('No authorization code received. Please check your credentials or use the Authorization Code tab to authenticate manually.')

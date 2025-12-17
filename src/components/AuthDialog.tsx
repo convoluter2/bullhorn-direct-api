@@ -57,36 +57,64 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     setLoading(true)
 
     try {
-      const redirectUri = manualAuth.useRedirectUri && manualAuth.redirectUri 
-        ? manualAuth.redirectUri 
-        : undefined
-      
-      const decodedCode = decodeURIComponent(manualAuth.authCode)
+      if (manualAuth.authCode) {
+        const redirectUri = manualAuth.useRedirectUri && manualAuth.redirectUri 
+          ? manualAuth.redirectUri 
+          : undefined
         
-      const tokenData = await bullhornAPI.exchangeCodeForToken(
-        decodedCode,
-        manualAuth.clientId,
-        manualAuth.clientSecret,
-        redirectUri
-      )
-      const session = await bullhornAPI.login(tokenData.accessToken)
-      session.refreshToken = tokenData.refreshToken
-      session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
-      
-      toast.success('Successfully authenticated with Bullhorn')
-      onAuthenticated(session, preselectedConnection?.id)
-      onOpenChange(false)
-      setManualAuth({ 
-        clientId: '', 
-        clientSecret: '',
-        username: '',
-        password: '', 
-        authCode: '', 
-        useRedirectUri: false, 
-        redirectUri: '' 
-      })
+        let codeToUse = manualAuth.authCode
+        if (codeToUse.includes('%3A') || codeToUse.includes('%2F')) {
+          codeToUse = decodeURIComponent(codeToUse)
+          console.log('Code was URL-encoded, decoded it')
+        }
+          
+        const tokenData = await bullhornAPI.exchangeCodeForToken(
+          codeToUse,
+          manualAuth.clientId,
+          manualAuth.clientSecret,
+          redirectUri
+        )
+        const session = await bullhornAPI.login(tokenData.accessToken)
+        session.refreshToken = tokenData.refreshToken
+        session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
+        
+        toast.success('Successfully authenticated with Bullhorn')
+        onAuthenticated(session, preselectedConnection?.id)
+        onOpenChange(false)
+        setManualAuth({ 
+          clientId: '', 
+          clientSecret: '',
+          username: '',
+          password: '', 
+          authCode: '', 
+          useRedirectUri: false, 
+          redirectUri: '' 
+        })
+      } else {
+        toast.loading('Authenticating with saved credentials...', { id: 'auto-auth' })
+        
+        const session = await bullhornAPI.authenticate({
+          clientId: manualAuth.clientId,
+          clientSecret: manualAuth.clientSecret,
+          username: manualAuth.username,
+          password: manualAuth.password
+        })
+        
+        toast.success('Successfully authenticated with Bullhorn', { id: 'auto-auth' })
+        onAuthenticated(session, preselectedConnection?.id)
+        onOpenChange(false)
+        setManualAuth({ 
+          clientId: '', 
+          clientSecret: '',
+          username: '',
+          password: '', 
+          authCode: '', 
+          useRedirectUri: false, 
+          redirectUri: '' 
+        })
+      }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Authentication failed')
+      toast.error(error instanceof Error ? error.message : 'Authentication failed', { id: 'auto-auth' })
     } finally {
       setLoading(false)
     }
@@ -180,10 +208,10 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription className="space-y-2">
-              <p className="font-medium">✨ Fully Automated OAuth Flow</p>
+              <p className="font-medium">✨ Quick Connect with Saved Credentials</p>
               <p className="text-xs">
-                The app now automatically extracts, decodes, and exchanges the authorization code for tokens. 
-                Simply authorize with Bullhorn and you'll be logged in instantly - no manual code copying required!
+                With saved credentials loaded, simply click "Quick Connect" to authenticate programmatically.
+                No manual OAuth flow needed! Or use the OAuth options below for manual authorization.
               </p>
             </AlertDescription>
           </Alert>
@@ -291,11 +319,29 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             </div>
 
             <div className="space-y-2 p-3 bg-muted rounded-lg">
-              <Label className="text-sm font-medium">Get Authorization</Label>
+              <Label className="text-sm font-medium">Authorization Code (Optional)</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Only needed if you want to manually handle the OAuth flow. Leave blank to use Quick Connect with saved credentials.
+              </p>
+              <Input
+                id="manual-authCode"
+                type="text"
+                value={manualAuth.authCode}
+                onChange={(e) => setManualAuth({ ...manualAuth, authCode: e.target.value })}
+                disabled={loading}
+                placeholder="25184_8090191_44:0e19f0db-1c33-4409-b914-af5345c2b885"
+              />
+              <p className="text-xs text-muted-foreground">
+                Get this from the Bullhorn OAuth authorization response URL
+              </p>
+            </div>
+
+            <div className="space-y-2 p-3 bg-muted rounded-lg">
+              <Label className="text-sm font-medium">Get Authorization (Manual OAuth Flow)</Label>
               <p className="text-xs text-muted-foreground mb-2">
                 {manualAuth.useRedirectUri 
                   ? 'Click to start the OAuth flow. You will be redirected to Bullhorn to authenticate, then automatically returned.'
-                  : 'When you authorize, the app will automatically capture and process the authorization code. No manual entry needed!'
+                  : 'Open the authorization URL in a popup to get the code manually. Only use if Quick Connect fails.'
                 }
               </p>
               {!manualAuth.useRedirectUri && (
@@ -332,7 +378,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
               )}
               {!manualAuth.useRedirectUri && (
                 <p className="text-xs text-muted-foreground mt-2">
-                  ✨ Fully automated: After you authorize in the popup, return to this app and the authentication will complete automatically.
+                  ✨ Manual flow: After you authorize in the popup, copy the code from the URL and paste it above.
                 </p>
               )}
             </div>
@@ -349,11 +395,26 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
 
             {!manualAuth.useRedirectUri && (
               <div className="flex gap-3 pt-2">
-                <Button type="submit" className="flex-1" disabled={loading}>
-                  {loading ? 'Authenticating...' : 'Connect with Code'}
+                <Button 
+                  type="submit" 
+                  className="flex-1" 
+                  disabled={loading || !manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password}
+                >
+                  {loading ? 'Authenticating...' : 'Quick Connect'}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-                  Cancel
+                <Button 
+                  type="submit" 
+                  variant="outline"
+                  className="flex-1" 
+                  disabled={loading || !manualAuth.authCode}
+                  onClick={(e) => {
+                    if (!manualAuth.authCode) {
+                      e.preventDefault()
+                      toast.error('Please enter an authorization code')
+                    }
+                  }}
+                >
+                  {loading ? 'Authenticating...' : 'Connect with Code'}
                 </Button>
               </div>
             )}
