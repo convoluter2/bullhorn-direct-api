@@ -64,14 +64,11 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           codeToUse = decodeURIComponent(codeToUse)
           console.log('Code was URL-encoded, decoded it')
         }
-
-        const redirectUri = `${window.location.origin}/oauth-callback.html`
           
         const tokenData = await bullhornAPI.exchangeCodeForToken(
           codeToUse,
           manualAuth.clientId,
-          manualAuth.clientSecret,
-          redirectUri
+          manualAuth.clientSecret
         )
         const session = await bullhornAPI.login(tokenData.accessToken)
         session.refreshToken = tokenData.refreshToken
@@ -120,10 +117,9 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
   const getAuthUrl = () => {
     const state = Math.random().toString(36).substring(7)
     const clientId = manualAuth.clientId || 'YOUR_CLIENT_ID'
-    const redirectUri = `${window.location.origin}/oauth-callback.html`
     
-    console.log('🔗 Generating auth URL with redirect_uri:', redirectUri)
-    return bullhornAPI.getAuthorizationUrl(clientId, state, manualAuth.username, manualAuth.password, redirectUri)
+    console.log('🔗 Generating auth URL (NO redirect_uri)')
+    return bullhornAPI.getAuthorizationUrl(clientId, state, manualAuth.username, manualAuth.password)
   }
   
   const handleStartOAuthFlow = async () => {
@@ -372,8 +368,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         console.log('✓ Code already decoded')
       }
 
-      const redirectUri = `${window.location.origin}/oauth-callback.html`
-      console.log('🎫 Exchanging code for token with redirect_uri:', redirectUri)
+      console.log('🎫 Exchanging code for token (NO redirect_uri)')
       console.log('📋 Exchange parameters:', {
         codeLength: codeToUse.length,
         clientIdPreview: manualAuth.clientId.substring(0, 10) + '...',
@@ -383,8 +378,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       const tokenData = await bullhornAPI.exchangeCodeForToken(
         codeToUse,
         manualAuth.clientId,
-        manualAuth.clientSecret,
-        redirectUri
+        manualAuth.clientSecret
       )
       
       console.log('✅ Token received:', {

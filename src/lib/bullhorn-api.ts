@@ -1,5 +1,6 @@
 import type { BullhornCredentials, BullhornSession, QueryConfig, QueryResult } from './types'
 import { toast } from 'sonner'
+import { fetchWithCorsProxy } from './cors-proxy'
 
 const BULLHORN_AUTH_URL = 'https://auth-east.bullhornstaffing.com/oauth'
 const BULLHORN_LOGIN_URL = 'https://rest.bullhornstaffing.com/rest-services/login'
@@ -8,16 +9,12 @@ const BULLHORN_ATS_URL = 'https://cls43.bullhornstaffing.com'
 export class BullhornAPI {
   private session: BullhornSession | null = null
 
-  getAuthorizationUrl(clientId: string, state: string, username?: string, password?: string, redirectUri?: string): string {
+  getAuthorizationUrl(clientId: string, state: string, username?: string, password?: string): string {
     const params = new URLSearchParams({
       client_id: clientId,
       response_type: 'code',
       state: state
     })
-    
-    if (redirectUri) {
-      params.append('redirect_uri', redirectUri)
-    }
     
     if (username && password) {
       params.append('action', 'Login')
@@ -31,8 +28,7 @@ export class BullhornAPI {
   async exchangeCodeForToken(
     code: string,
     clientId: string,
-    clientSecret: string,
-    redirectUri?: string
+    clientSecret: string
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
     let finalCode = code
     
@@ -48,14 +44,9 @@ export class BullhornAPI {
       client_secret: clientSecret
     })
 
-    if (redirectUri) {
-      params.append('redirect_uri', redirectUri)
-    }
-
-    console.log('Exchanging code for token:', {
+    console.log('Exchanging code for token (NO redirect_uri):', {
       codeLength: finalCode.length,
-      clientIdPreview: clientId.substring(0, 10) + '...',
-      hasRedirectUri: !!redirectUri
+      clientIdPreview: clientId.substring(0, 10) + '...'
     })
 
     const response = await fetch(`${BULLHORN_AUTH_URL}/token`, {
@@ -180,19 +171,33 @@ export class BullhornAPI {
       state: state
     })
 
+    const authUrl = `${BULLHORN_AUTH_URL}/authorize?${params.toString()}`
+
     try {
-      const response = await fetch(`${BULLHORN_AUTH_URL}/authorize?${params.toString()}`, {
-        method: 'POST',
-        redirect: 'follow',
-        credentials: 'include'
-      })
+      console.log('Attempting programmatic authorization code flow...')
+      
+      let response: Response
+      try {
+        response = await fetch(authUrl, {
+          method: 'POST',
+          redirect: 'follow',
+          credentials: 'include'
+        })
+      } catch (fetchError) {
+        console.log('Direct fetch failed (likely CORS), trying with proxy...', fetchError)
+        response = await fetchWithCorsProxy(authUrl, {
+          method: 'POST',
+          redirect: 'follow',
+          credentials: 'include'
+        })
+      }
 
       if (response.redirected && response.url) {
         const url = new URL(response.url)
         const code = url.searchParams.get('code')
         if (code) {
           const decodedCode = decodeURIComponent(code)
-          console.log('Got authorization code from redirect URL:', decodedCode)
+          console.log('Got authorization code from redirect URL:', decodedCode.substring(0, 30) + '...')
           return decodedCode
         }
       }
@@ -205,7 +210,7 @@ export class BullhornAPI {
         const code = url.searchParams.get('code')
         if (code) {
           const decodedCode = decodeURIComponent(code)
-          console.log('Got authorization code from response HTML:', decodedCode)
+          console.log('Got authorization code from response HTML:', decodedCode.substring(0, 30) + '...')
           return decodedCode
         }
       }
@@ -213,7 +218,7 @@ export class BullhornAPI {
       const codeMatch = responseText.match(/[?&]code=([^&"'<>\s]+)/)
       if (codeMatch) {
         const decodedCode = decodeURIComponent(codeMatch[1])
-        console.log('Got authorization code from pattern match:', decodedCode)
+        console.log('Got authorization code from pattern match:', decodedCode.substring(0, 30) + '...')
         return decodedCode
       }
 
