@@ -292,16 +292,10 @@ function App() {
                   </Button>
                 </>
               ) : (
-                <>
-                  <Button variant="outline" onClick={() => setConnectionManagerOpen(true)}>
-                    <Faders />
-                    Saved Connections
-                  </Button>
-                  <Button onClick={() => setAuthDialogOpen(true)}>
-                    <Database />
-                    Connect to Bullhorn
-                  </Button>
-                </>
+                <Button variant="outline" onClick={() => setConnectionManagerOpen(true)}>
+                  <Faders />
+                  Saved Connections
+                </Button>
               )}
             </div>
           </div>
@@ -310,17 +304,26 @@ function App() {
 
       <main className="container mx-auto px-4 py-8">
         {!session ? (
-          <div className="text-center py-20">
-            <Database size={64} className="mx-auto mb-6 text-accent opacity-50" weight="duotone" />
-            <h2 className="text-3xl font-bold mb-3">Welcome to Bullhorn Data Manager</h2>
-            <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
-              Connect to your Bullhorn instance to access QueryBlast, CSV Loader, SmartStack v2, 
-              QueryStack, and comprehensive audit logging features.
-            </p>
-            <Button size="lg" onClick={() => setAuthDialogOpen(true)}>
-              <Database />
-              Connect to Bullhorn
-            </Button>
+          <div className="space-y-8">
+            <div className="text-center py-12">
+              <Database size={64} className="mx-auto mb-6 text-accent opacity-50" weight="duotone" />
+              <h2 className="text-3xl font-bold mb-3">Welcome to Bullhorn Data Manager</h2>
+              <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
+                Connect to your Bullhorn instance to access QueryBlast, CSV Loader, SmartStack v2, 
+                QueryStack, and comprehensive audit logging features.
+              </p>
+            </div>
+
+            <ConnectionManager
+              open={true}
+              onOpenChange={() => {}}
+              connections={savedConnections || []}
+              onSaveConnection={handleSaveConnection}
+              onDeleteConnection={handleDeleteConnection}
+              onSelectConnection={handleSelectConnectionFromManager}
+              onUpdateConnection={handleUpdateConnection}
+              embedded={true}
+            />
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
