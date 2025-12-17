@@ -32,13 +32,45 @@ Save and quickly switch between multiple Bullhorn tenant connections (NPE/PROD f
 
 ## Getting Started
 
-1. Click "Connect to Bullhorn" in the header
-2. Enter your OAuth credentials (Client ID, Client Secret, Username, Password)
-3. Authenticate with Bullhorn
-4. Start using QueryBlast, CSV Loader, SmartStack, or QueryStack
+### Quick Start
+
+```bash
+npm run dev
+```
+
+This starts both the frontend (Vite) and the OAuth proxy server automatically.
+
+### Authentication Setup
+
+1. **Configure Bullhorn OAuth Redirect URI**
+   - Add `http://localhost:3001/oauth/callback` to your Bullhorn OAuth API key
+   - See [README_PROXY.md](./README_PROXY.md) for detailed setup
+
+2. **Connect to Bullhorn**
+   - Click "Saved Connections" when app loads
+   - Enter your OAuth credentials (Client ID, Client Secret, Username, Password)
+   - Click "Try Proxy-Based OAuth (Beta)" for seamless authentication
+   - Or use standard popup OAuth flow
+
+3. **Start Managing Data**
+   - Use QueryBlast, CSV Loader, SmartStack, or QueryStack
+
+### OAuth Proxy Server
+
+The app includes a backend proxy server to handle OAuth redirects properly. The proxy solves cross-origin issues and automatically extracts authorization codes.
+
+**Key Features:**
+- ✅ Handles OAuth redirect URI
+- ✅ Automatically decodes authorization codes
+- ✅ Works around browser CORS restrictions
+- ✅ Seamless popup-based authentication
+
+See [README_PROXY.md](./README_PROXY.md) for complete proxy documentation.
 
 ## Documentation
 
+- [README_PROXY.md](./README_PROXY.md) - **OAuth Proxy Quick Start** 🔐
+- [OAUTH_PROXY_SETUP.md](./OAUTH_PROXY_SETUP.md) - Detailed Proxy Setup Guide
 - [PRD.md](./PRD.md) - Product Requirements Document
 - [CONDITIONAL_ASSOCIATIONS.md](./CONDITIONAL_ASSOCIATIONS.md) - Conditional Logic Guide
 - [CONDITIONAL_ASSOCIATIONS_QUICK_REF.md](./CONDITIONAL_ASSOCIATIONS_QUICK_REF.md) - Quick Reference
@@ -47,6 +79,7 @@ Save and quickly switch between multiple Bullhorn tenant connections (NPE/PROD f
 ## Key Capabilities
 
 ✅ Direct Bullhorn REST API integration  
+✅ **OAuth2 Proxy Server for seamless authentication** 🆕  
 ✅ OAuth2 authentication with automatic token refresh  
 ✅ Complex query building with grouped filters  
 ✅ CSV import/export with field mapping  
@@ -62,6 +95,7 @@ Save and quickly switch between multiple Bullhorn tenant connections (NPE/PROD f
 - React 19 + TypeScript
 - Tailwind CSS v4
 - shadcn/ui components
+- **Express.js (OAuth Proxy Server)** 🆕
 - Bullhorn REST API
 - Spark Runtime SDK
 

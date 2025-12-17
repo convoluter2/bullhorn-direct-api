@@ -596,6 +596,13 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
 
     try {
       console.log('🚀 Starting proxy-based OAuth flow')
+      
+      const isHealthy = await oauthProxyService.checkHealth()
+      if (!isHealthy) {
+        toast.error('OAuth proxy server is not available. Please check server logs.')
+        return
+      }
+      
       setLoading(true)
       setAuthStep('opening-popup')
       setAuthProgress(10)
@@ -603,19 +610,16 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       await bullhornAPI.prepareForAuth(manualAuth.username)
       const loginInfo = await bullhornAPI.getLoginInfo(manualAuth.username)
       
-      console.log('🎯 Initiating OAuth flow with proxy service')
+      console.log('🎯 Building OAuth URL with proxy redirect')
       setAuthProgress(20)
       
-      const { authUrl, flowId } = await oauthProxyService.simulateProxyWithDirectFlow({
-        proxyUrl: window.location.origin,
-        clientId: manualAuth.clientId,
-        clientSecret: manualAuth.clientSecret,
-        username: manualAuth.username,
-        password: manualAuth.password,
-        oauthUrl: loginInfo.oauthUrl
-      })
+      const state = oauthProxyService.generateState()
+      const proxyCallbackUrl = oauthProxyService.getProxyCallbackUrl()
       
-      console.log('🔗 Opening auth window with flow ID:', flowId)
+      const authUrl = `${loginInfo.oauthUrl}/authorize?client_id=${manualAuth.clientId}&response_type=code&state=${state}&redirect_uri=${encodeURIComponent(proxyCallbackUrl)}&action=Login&username=${encodeURIComponent(manualAuth.username)}&password=${encodeURIComponent(manualAuth.password)}`
+      
+      console.log('🔗 Opening auth window with state:', state)
+      console.log('📍 Redirect URI:', proxyCallbackUrl)
       setAuthProgress(25)
       setAuthStep('waiting-login')
       
@@ -641,66 +645,76 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       toast.loading('Waiting for authentication...', { id: 'proxy-auth' })
       setAuthProgress(30)
 
-      const pollForCode = new Promise<string>((resolve, reject) => {
-        let pollCount = 0
-        const maxPolls = 60
+      let messageReceived = false
+
+      const messageListener = (event: MessageEvent) => {
+        console.log('📨 Message received:', event.data?.type)
         
-        const interval = setInterval(async () => {
-          pollCount++
+        if (event.data?.type === 'OAUTH_SUCCESS' && event.data.code) {
+          messageReceived = true
+          console.log('✅ OAuth code received via postMessage')
+          window.removeEventListener('message', messageListener)
           
-          try {
-            if (!popup || popup.closed) {
-              clearInterval(interval)
-              reject(new Error('Popup was closed'))
-              return
-            }
-
-            try {
-              const popupUrl = popup.location.href
-              
-              if (popupUrl.includes('welcome.bullhornstaffing.com') || popupUrl.includes('code=')) {
-                console.log('✅ Detected welcome page or code in URL')
-                setAuthStep('welcome-detected')
-                setAuthProgress(50)
-                
-                const url = new URL(popupUrl)
-                const code = url.searchParams.get('code')
-                
-                if (code) {
-                  clearInterval(interval)
-                  popup.close()
-                  const decodedCode = decodeURIComponent(code)
-                  console.log('✅ Code extracted:', decodedCode.substring(0, 20) + '...')
-                  resolve(decodedCode)
-                }
-              }
-            } catch (e) {
-              if (pollCount % 10 === 0) {
-                console.log(`[Poll ${pollCount}/${maxPolls}] Cross-origin (expected during auth)`)
-              }
-            }
-
-            if (pollCount >= maxPolls) {
-              clearInterval(interval)
-              popup.close()
-              reject(new Error('Timeout waiting for authorization code'))
-            }
-          } catch (error) {
-            clearInterval(interval)
-            reject(error)
+          if (popup && !popup.closed) {
+            popup.close()
           }
-        }, 1000)
-      })
+          
+          setAuthStep('extracting-code')
+          setAuthProgress(60)
+          toast.loading('Exchanging code for token...', { id: 'proxy-auth' })
+          
+          handleCodeExchange(event.data.code).catch((err) => {
+            console.error('❌ Code exchange failed:', err)
+            toast.error('Failed to complete authentication', { id: 'proxy-auth' })
+            setLoading(false)
+            setAuthStep('idle')
+            setAuthProgress(0)
+          })
+        } else if (event.data?.type === 'OAUTH_ERROR') {
+          messageReceived = true
+          console.error('❌ OAuth error received:', event.data.error)
+          window.removeEventListener('message', messageListener)
+          
+          if (popup && !popup.closed) {
+            popup.close()
+          }
+          
+          toast.error(`Authentication failed: ${event.data.error_description || event.data.error}`, { id: 'proxy-auth' })
+          setLoading(false)
+          setAuthStep('idle')
+          setAuthProgress(0)
+        }
+      }
 
-      const code = await pollForCode
-      
-      setAuthStep('extracting-code')
-      setAuthProgress(60)
-      toast.loading('Exchanging code for token...', { id: 'proxy-auth' })
-      
-      await handleCodeExchange(code)
-      
-      toast.success('Successfully authenticated!', { id: 'proxy-auth' })
+      window.addEventListener('message', messageListener)
+
+      const checkPopupClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkPopupClosed)
+          window.removeEventListener('message', messageListener)
+          
+          if (!messageReceived && !loading) {
+            console.warn('⚠️ Popup closed without receiving code')
+            toast.error('Authentication cancelled', { id: 'proxy-auth' })
+            setLoading(false)
+            setAuthStep('idle')
+            setAuthProgress(0)
+          }
+        }
+      }, 500)
+
+      setTimeout(() => {
+        clearInterval(checkPopupClosed)
+        window.removeEventListener('message', messageListener)
+        
+        if (!messageReceived && popup && !popup.closed) {
+          popup.close()
+          toast.error('Authentication timeout. Please try again.', { id: 'proxy-auth' })
+          setLoading(false)
+          setAuthStep('idle')
+          setAuthProgress(0)
+        }
+      }, 60000)
       
     } catch (error) {
       console.error('❌ Proxy-based auth failed:', error)

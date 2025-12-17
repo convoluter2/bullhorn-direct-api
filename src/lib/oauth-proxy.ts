@@ -1,218 +1,68 @@
-export interface OAuthProxyConfig {
-  proxyUrl: string
-  clientId: string
-  clientSecret: string
-  username: string
-  password: string
-  oauthUrl: string
-}
+const PROXY_URL = import.meta.env.VITE_PROXY_URL || 'http://localhost:3001';
 
-export interface OAuthProxyResponse {
-  success: boolean
-  code?: string
-  accessToken?: string
-  refreshToken?: string
-  expiresIn?: number
-  error?: string
-  errorDescription?: string
-}
+export const oauthProxyService = {
+  getProxyCallbackUrl(): string {
+    return `${PROXY_URL}/oauth/callback`;
+  },
 
-export class OAuthProxyService {
-  private proxyBaseUrl: string
-
-  constructor(proxyBaseUrl?: string) {
-    this.proxyBaseUrl = proxyBaseUrl || 'https://oauth-proxy.spark.github.dev'
-  }
-
-  async initiateOAuthFlow(config: OAuthProxyConfig): Promise<{ authUrl: string; flowId: string }> {
-    const flowId = `flow_${Date.now()}_${Math.random().toString(36).substring(7)}`
-    
-    const authUrl = new URL(`${config.oauthUrl}/authorize`)
-    authUrl.searchParams.set('client_id', config.clientId)
-    authUrl.searchParams.set('response_type', 'code')
-    authUrl.searchParams.set('state', flowId)
-    authUrl.searchParams.set('redirect_uri', `${this.proxyBaseUrl}/callback`)
-    
-    if (config.password) {
-      authUrl.searchParams.set('action', 'Login')
-      authUrl.searchParams.set('username', config.username)
-      authUrl.searchParams.set('password', config.password)
-    }
-
-    await window.spark.kv.set(`oauth_flow_${flowId}`, {
-      clientId: config.clientId,
-      clientSecret: config.clientSecret,
-      username: config.username,
-      oauthUrl: config.oauthUrl,
-      timestamp: Date.now(),
-      status: 'pending'
-    })
-
-    console.log('🎯 OAuth flow initiated:', { flowId, authUrl: authUrl.toString() })
-    
-    return {
-      authUrl: authUrl.toString(),
-      flowId
-    }
-  }
-
-  async pollForCompletion(flowId: string, maxAttempts: number = 60): Promise<OAuthProxyResponse> {
-    console.log('🔄 Starting poll for flow:', flowId)
-    
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      const flowData = await window.spark.kv.get<any>(`oauth_flow_${flowId}`)
-      
-      if (!flowData) {
-        console.error('❌ Flow data not found for:', flowId)
-        throw new Error('OAuth flow data not found')
-      }
-
-      console.log(`[Poll ${attempt + 1}/${maxAttempts}] Flow status:`, flowData.status)
-
-      if (flowData.status === 'completed') {
-        console.log('✅ OAuth flow completed successfully')
-        await window.spark.kv.delete(`oauth_flow_${flowId}`)
-        
-        return {
-          success: true,
-          code: flowData.code,
-          accessToken: flowData.accessToken,
-          refreshToken: flowData.refreshToken,
-          expiresIn: flowData.expiresIn
-        }
-      }
-
-      if (flowData.status === 'error') {
-        console.error('❌ OAuth flow failed:', flowData.error)
-        await window.spark.kv.delete(`oauth_flow_${flowId}`)
-        
-        return {
-          success: false,
-          error: flowData.error,
-          errorDescription: flowData.errorDescription
-        }
-      }
-    }
-
-    console.error('⏱️ OAuth flow timed out')
-    throw new Error('OAuth flow timed out after 60 seconds')
-  }
-
-  async exchangeCodeViaProxy(
-    code: string,
-    clientId: string,
-    clientSecret: string,
-    oauthUrl: string
-  ): Promise<OAuthProxyResponse> {
-    console.log('🔄 Exchanging code via proxy...')
-    
+  async checkHealth(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.proxyBaseUrl}/exchange`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          code,
-          clientId,
-          clientSecret,
-          oauthUrl
-        })
-      })
-
+      const response = await fetch(`${PROXY_URL}/health`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('❌ Proxy exchange failed:', errorText)
-        throw new Error(`Proxy exchange failed: ${errorText}`)
+        console.error('❌ Proxy health check failed:', response.status);
+        return false;
       }
-
-      const data = await response.json() as OAuthProxyResponse
-      console.log('✅ Code exchanged successfully via proxy')
       
-      return data
+      const data = await response.json();
+      console.log('✅ Proxy server healthy:', data);
+      return data.status === 'healthy';
     } catch (error) {
-      console.error('❌ Proxy exchange error:', error)
-      throw error
+      console.error('❌ Proxy server not reachable:', error);
+      return false;
     }
-  }
+  },
 
-  async handleCallbackInline(callbackUrl: string): Promise<string> {
-    console.log('🔍 Extracting code from callback URL...')
+  async pollForCode(state: string, maxAttempts: number = 30): Promise<string | null> {
+    console.log(`🔄 Polling proxy for OAuth code (state: ${state})`);
     
-    try {
-      const url = new URL(callbackUrl)
-      const code = url.searchParams.get('code')
-      const error = url.searchParams.get('error')
-      const state = url.searchParams.get('state')
-
-      if (error) {
-        console.error('❌ OAuth error in callback:', error)
-        throw new Error(`OAuth error: ${error}`)
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const response = await fetch(`${PROXY_URL}/oauth/status/${state}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!response.ok) {
+          console.warn(`⚠️ Poll attempt ${attempt}/${maxAttempts} failed:`, response.status);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.code) {
+          console.log('✅ Code retrieved from proxy:', data.code.substring(0, 30) + '...');
+          return data.code;
+        }
+        
+        console.log(`⏳ Poll attempt ${attempt}/${maxAttempts} - code not ready yet`);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (error) {
+        console.error(`❌ Poll attempt ${attempt}/${maxAttempts} error:`, error);
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
-
-      if (!code) {
-        console.error('❌ No code in callback URL')
-        throw new Error('No authorization code in callback')
-      }
-
-      console.log('✅ Code extracted from callback:', {
-        codeLength: code.length,
-        state,
-        codePreview: code.substring(0, 20) + '...'
-      })
-
-      const decodedCode = decodeURIComponent(code)
-      console.log('🔓 Decoded code:', {
-        original: code.substring(0, 20) + '...',
-        decoded: decodedCode.substring(0, 20) + '...',
-        hasColon: decodedCode.includes(':')
-      })
-
-      return decodedCode
-    } catch (error) {
-      console.error('❌ Error handling callback:', error)
-      throw error
     }
+    
+    console.error('❌ Max polling attempts reached, code not found');
+    return null;
+  },
+
+  generateState(): string {
+    return Math.random().toString(36).substring(2, 15) + 
+           Math.random().toString(36).substring(2, 15);
   }
-
-  async simulateProxyWithDirectFlow(config: OAuthProxyConfig): Promise<{ authUrl: string; flowId: string }> {
-    const flowId = `local_${Date.now()}_${Math.random().toString(36).substring(7)}`
-    
-    const appUrl = window.location.origin
-    const callbackUrl = `${appUrl}/oauth/callback`
-    
-    const authUrl = new URL(`${config.oauthUrl}/authorize`)
-    authUrl.searchParams.set('client_id', config.clientId)
-    authUrl.searchParams.set('response_type', 'code')
-    authUrl.searchParams.set('state', flowId)
-    
-    if (config.password) {
-      authUrl.searchParams.set('action', 'Login')
-      authUrl.searchParams.set('username', config.username)
-      authUrl.searchParams.set('password', config.password)
-    }
-
-    await window.spark.kv.set(`oauth_flow_${flowId}`, {
-      clientId: config.clientId,
-      clientSecret: config.clientSecret,
-      username: config.username,
-      oauthUrl: config.oauthUrl,
-      timestamp: Date.now(),
-      status: 'pending'
-    })
-
-    console.log('🎯 Local OAuth flow initiated (no redirect_uri):', { 
-      flowId, 
-      authUrl: authUrl.toString().substring(0, 100) + '...' 
-    })
-    
-    return {
-      authUrl: authUrl.toString(),
-      flowId
-    }
-  }
-}
-
-export const oauthProxyService = new OAuthProxyService()
+};
