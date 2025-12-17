@@ -4,34 +4,43 @@ const CORS_PROXIES = [
   'https://cors-anywhere.herokuapp.com/'
 ]
 
-let currentProxyIndex = -1
+let currentProxyIndex = 0
+let useProxyByDefault = true
 
 export async function fetchWithCorsProxy(
   url: string,
   options?: RequestInit,
-  retryCount = 0
+  tryDirectFirst?: boolean
 ): Promise<Response> {
-  if (retryCount === 0) {
+  if (tryDirectFirst) {
     try {
-      console.log('Attempting direct fetch (no proxy)...')
+      console.log('🔗 Attempting direct fetch (no proxy)...')
       const response = await fetch(url, options)
       if (response.ok || response.status >= 400) {
+        console.log('✅ Direct fetch succeeded')
         return response
       }
     } catch (error) {
-      console.log('Direct fetch failed, will try with proxy:', error)
+      console.log('❌ Direct fetch failed, switching to proxy:', error)
     }
   }
 
-  if (retryCount >= CORS_PROXIES.length) {
+  return fetchWithProxy(url, 0, options)
+}
+
+async function fetchWithProxy(
+  url: string,
+  proxyIndex: number,
+  options?: RequestInit
+): Promise<Response> {
+  if (proxyIndex >= CORS_PROXIES.length) {
     throw new Error('All CORS proxy attempts failed. Please check your network connection and try again.')
   }
 
-  currentProxyIndex = retryCount
-  const proxy = CORS_PROXIES[currentProxyIndex]
+  const proxy = CORS_PROXIES[proxyIndex]
   const proxiedUrl = `${proxy}${encodeURIComponent(url)}`
 
-  console.log(`Attempting fetch with proxy ${retryCount + 1}/${CORS_PROXIES.length}:`, proxy)
+  console.log(`🌐 Using CORS proxy ${proxyIndex + 1}/${CORS_PROXIES.length}:`, proxy.replace(/\?$/, ''))
 
   try {
     const response = await fetch(proxiedUrl, {
@@ -42,17 +51,19 @@ export async function fetchWithCorsProxy(
       }
     })
 
-    if (!response.ok && retryCount < CORS_PROXIES.length - 1) {
-      console.log(`Proxy ${retryCount + 1} failed with status ${response.status}, trying next...`)
-      return fetchWithCorsProxy(url, options, retryCount + 1)
+    if (!response.ok && proxyIndex < CORS_PROXIES.length - 1) {
+      console.log(`⚠️ Proxy ${proxyIndex + 1} failed with status ${response.status}, trying next...`)
+      return fetchWithProxy(url, proxyIndex + 1, options)
     }
 
+    console.log(`✅ Proxy ${proxyIndex + 1} succeeded`)
+    currentProxyIndex = proxyIndex
     return response
   } catch (error) {
-    console.error(`Proxy ${retryCount + 1} error:`, error)
+    console.error(`❌ Proxy ${proxyIndex + 1} error:`, error)
     
-    if (retryCount < CORS_PROXIES.length - 1) {
-      return fetchWithCorsProxy(url, options, retryCount + 1)
+    if (proxyIndex < CORS_PROXIES.length - 1) {
+      return fetchWithProxy(url, proxyIndex + 1, options)
     }
     
     throw error
@@ -60,5 +71,13 @@ export async function fetchWithCorsProxy(
 }
 
 export function clearProxyCache() {
-  currentProxyIndex = -1
+  currentProxyIndex = 0
+}
+
+export function setUseProxyByDefault(useProxy: boolean) {
+  useProxyByDefault = useProxy
+}
+
+export function shouldUseProxy(): boolean {
+  return useProxyByDefault
 }

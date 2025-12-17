@@ -44,26 +44,39 @@ export class BullhornAPI {
       client_secret: clientSecret
     })
 
-    console.log('Exchanging code for token (NO redirect_uri):', {
+    console.log('🔑 Exchanging code for token (NO redirect_uri):', {
       codeLength: finalCode.length,
       clientIdPreview: clientId.substring(0, 10) + '...'
     })
 
-    const response = await fetch(`${BULLHORN_AUTH_URL}/token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: params.toString()
-    })
+    let response: Response
+    try {
+      response = await fetch(`${BULLHORN_AUTH_URL}/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: params.toString()
+      })
+    } catch (error) {
+      console.log('❌ Direct token exchange failed (CORS), using proxy...', error)
+      response = await fetchWithCorsProxy(`${BULLHORN_AUTH_URL}/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: params.toString()
+      })
+    }
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('Token exchange failed:', errorText)
+      console.error('❌ Token exchange failed:', errorText)
       throw new Error(`Failed to exchange code for token: ${errorText}`)
     }
 
     const data = await response.json()
+    console.log('✅ Token exchange successful')
     
     return {
       accessToken: data.access_token,
@@ -84,20 +97,36 @@ export class BullhornAPI {
       client_secret: clientSecret
     })
 
-    const response = await fetch(`${BULLHORN_AUTH_URL}/token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: params.toString()
-    })
+    console.log('🔄 Refreshing access token...')
+
+    let response: Response
+    try {
+      response = await fetch(`${BULLHORN_AUTH_URL}/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: params.toString()
+      })
+    } catch (error) {
+      console.log('❌ Direct token refresh failed (CORS), using proxy...', error)
+      response = await fetchWithCorsProxy(`${BULLHORN_AUTH_URL}/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: params.toString()
+      })
+    }
 
     if (!response.ok) {
       const errorText = await response.text()
+      console.error('❌ Token refresh failed:', errorText)
       throw new Error(`Failed to refresh access token: ${errorText}`)
     }
 
     const data = await response.json()
+    console.log('✅ Token refresh successful')
     
     return {
       accessToken: data.access_token,
@@ -112,16 +141,28 @@ export class BullhornAPI {
       access_token: accessToken
     })
 
-    const response = await fetch(`${BULLHORN_LOGIN_URL}?${params.toString()}`, {
-      method: 'POST'
-    })
+    console.log('🔐 Logging in with access token...')
+
+    let response: Response
+    try {
+      response = await fetch(`${BULLHORN_LOGIN_URL}?${params.toString()}`, {
+        method: 'POST'
+      })
+    } catch (error) {
+      console.log('❌ Direct login failed (CORS), using proxy...', error)
+      response = await fetchWithCorsProxy(`${BULLHORN_LOGIN_URL}?${params.toString()}`, {
+        method: 'POST'
+      })
+    }
 
     if (!response.ok) {
       const errorText = await response.text()
+      console.error('❌ Login failed:', errorText)
       throw new Error(`Failed to login with access token: ${errorText}`)
     }
 
     const data = await response.json()
+    console.log('✅ Login successful')
     
     return {
       BhRestToken: data.BhRestToken,
@@ -174,30 +215,20 @@ export class BullhornAPI {
     const authUrl = `${BULLHORN_AUTH_URL}/authorize?${params.toString()}`
 
     try {
-      console.log('Attempting programmatic authorization code flow...')
+      console.log('🔐 Starting programmatic authorization code flow with CORS proxy...')
       
-      let response: Response
-      try {
-        response = await fetch(authUrl, {
-          method: 'POST',
-          redirect: 'follow',
-          credentials: 'include'
-        })
-      } catch (fetchError) {
-        console.log('Direct fetch failed (likely CORS), trying with proxy...', fetchError)
-        response = await fetchWithCorsProxy(authUrl, {
-          method: 'POST',
-          redirect: 'follow',
-          credentials: 'include'
-        })
-      }
+      const response = await fetchWithCorsProxy(authUrl, {
+        method: 'POST',
+        redirect: 'follow',
+        credentials: 'include'
+      })
 
       if (response.redirected && response.url) {
         const url = new URL(response.url)
         const code = url.searchParams.get('code')
         if (code) {
           const decodedCode = decodeURIComponent(code)
-          console.log('Got authorization code from redirect URL:', decodedCode.substring(0, 30) + '...')
+          console.log('✅ Got authorization code from redirect URL:', decodedCode.substring(0, 30) + '...')
           return decodedCode
         }
       }
@@ -210,7 +241,7 @@ export class BullhornAPI {
         const code = url.searchParams.get('code')
         if (code) {
           const decodedCode = decodeURIComponent(code)
-          console.log('Got authorization code from response HTML:', decodedCode.substring(0, 30) + '...')
+          console.log('✅ Got authorization code from response HTML:', decodedCode.substring(0, 30) + '...')
           return decodedCode
         }
       }
@@ -218,11 +249,11 @@ export class BullhornAPI {
       const codeMatch = responseText.match(/[?&]code=([^&"'<>\s]+)/)
       if (codeMatch) {
         const decodedCode = decodeURIComponent(codeMatch[1])
-        console.log('Got authorization code from pattern match:', decodedCode.substring(0, 30) + '...')
+        console.log('✅ Got authorization code from pattern match:', decodedCode.substring(0, 30) + '...')
         return decodedCode
       }
 
-      console.error('Failed to extract code. Response:', {
+      console.error('❌ Failed to extract code. Response:', {
         url: response.url,
         redirected: response.redirected,
         status: response.status,
@@ -234,7 +265,7 @@ export class BullhornAPI {
       if (error instanceof Error && error.message.includes('authorization code')) {
         throw error
       }
-      console.error('Authorization code extraction error:', error)
+      console.error('❌ Authorization code extraction error:', error)
       throw new Error('Failed to get authorization code automatically. Please use the manual OAuth flow with the "Start Automated OAuth Flow" button.')
     }
   }
