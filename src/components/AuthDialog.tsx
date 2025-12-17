@@ -117,9 +117,10 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
   const getAuthUrl = () => {
     const state = Math.random().toString(36).substring(7)
     const clientId = manualAuth.clientId || 'YOUR_CLIENT_ID'
+    const redirectUri = window.location.origin + '/'
     
-    console.log('NOT including redirect URI (as per working configuration)')
-    return bullhornAPI.getAuthorizationUrl(clientId, undefined, state, manualAuth.username, manualAuth.password)
+    console.log('Using redirect URI:', redirectUri)
+    return bullhornAPI.getAuthorizationUrl(clientId, redirectUri, state, manualAuth.username, manualAuth.password)
   }
   
   const handleStartOAuthFlow = async () => {
@@ -307,7 +308,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             }
           } catch (crossOriginError) {
             if (pollAttempts % 20 === 0) {
-              console.log(`[Poll ${pollAttempts}] Popup on cross-origin page (normal during auth flow)`)
+              console.log(`[Poll ${pollAttempts}] Popup on cross-origin page (expected during Bullhorn auth flow)`)
             }
           }
         } catch (err) {
@@ -363,18 +364,20 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         console.log('✓ Code already decoded')
       }
 
-      console.log('🎫 Exchanging code for token (WITHOUT redirect_uri - matching authorize request)...')
+      const redirectUri = window.location.origin + '/'
+      console.log('🎫 Exchanging code for token (WITH redirect_uri to match authorize request)...')
       console.log('📋 Exchange parameters:', {
         codeLength: codeToUse.length,
         clientIdPreview: manualAuth.clientId.substring(0, 10) + '...',
-        hasSecret: !!manualAuth.clientSecret
+        hasSecret: !!manualAuth.clientSecret,
+        redirectUri
       })
 
       const tokenData = await bullhornAPI.exchangeCodeForToken(
         codeToUse,
         manualAuth.clientId,
         manualAuth.clientSecret,
-        undefined
+        redirectUri
       )
       
       console.log('✅ Token received:', {
