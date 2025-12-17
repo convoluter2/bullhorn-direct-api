@@ -5,22 +5,21 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { toast } from 'sonner'
-import { useKV } from '@github/spark/hooks'
 import { bullhornAPI } from '@/lib/bullhorn-api'
+import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { Copy, Info, Database } from '@phosphor-icons/react'
-import { ConnectionManager, type SavedConnection } from '@/components/ConnectionManager'
+import type { SavedConnection } from '@/components/ConnectionManager'
 import type { BullhornSession } from '@/lib/types'
 
 interface AuthDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onAuthenticated: (session: BullhornSession) => void
+  onAuthenticated: (session: BullhornSession, connectionId?: string) => void
   preselectedConnection?: SavedConnection | null
 }
 
 export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedConnection }: AuthDialogProps) {
   const [loading, setLoading] = useState(false)
-  const [showConnectionManager, setShowConnectionManager] = useState(false)
   const [manualAuth, setManualAuth] = useState({
     clientId: '',
     clientSecret: '',
@@ -30,21 +29,25 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     useRedirectUri: false,
     redirectUri: ''
   })
-  const [, setStoredCredentials] = useKV<{ clientId: string; clientSecret: string } | null>('bullhorn-credentials', null)
-  const [savedConnections, setSavedConnections] = useKV<SavedConnection[]>('saved-connections', [])
 
   useEffect(() => {
-    if (open && preselectedConnection) {
-      setManualAuth({
-        clientId: preselectedConnection.clientId,
-        clientSecret: preselectedConnection.clientSecret,
-        username: preselectedConnection.username,
-        password: preselectedConnection.password,
-        authCode: '',
-        useRedirectUri: false,
-        redirectUri: ''
-      })
+    const loadConnectionCredentials = async () => {
+      if (open && preselectedConnection) {
+        const credentials = await secureCredentialsAPI.getCredentials(preselectedConnection.id)
+        if (credentials) {
+          setManualAuth({
+            clientId: credentials.clientId,
+            clientSecret: credentials.clientSecret,
+            username: credentials.username,
+            password: credentials.password,
+            authCode: '',
+            useRedirectUri: false,
+            redirectUri: ''
+          })
+        }
+      }
     }
+    loadConnectionCredentials()
   }, [open, preselectedConnection])
   
   const currentUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : ''
@@ -70,13 +73,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       session.refreshToken = tokenData.refreshToken
       session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
       
-      setStoredCredentials(() => ({
-        clientId: manualAuth.clientId,
-        clientSecret: manualAuth.clientSecret
-      }))
-      
       toast.success('Successfully authenticated with Bullhorn')
-      onAuthenticated(session)
+      onAuthenticated(session, preselectedConnection?.id)
       onOpenChange(false)
       setManualAuth({ 
         clientId: '', 
@@ -110,11 +108,6 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       return
     }
     
-    setStoredCredentials(() => ({
-      clientId: manualAuth.clientId,
-      clientSecret: manualAuth.clientSecret
-    }))
-    
     const authUrl = getAuthUrl()
     window.location.href = authUrl
   }
@@ -125,82 +118,28 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     toast.success('Authorization URL copied to clipboard')
   }
 
-  const handleSaveConnection = (connection: Omit<SavedConnection, 'id' | 'createdAt'>) => {
-    const newConnection: SavedConnection = {
-      ...connection,
-      id: `conn-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-      createdAt: Date.now()
-    }
-    setSavedConnections((current) => [...(current || []), newConnection])
-  }
-
-  const handleDeleteConnection = (id: string) => {
-    setSavedConnections((current) => (current || []).filter(conn => conn.id !== id))
-  }
-
-  const handleUpdateConnection = (id: string, updates: Partial<SavedConnection>) => {
-    setSavedConnections((current) => 
-      (current || []).map(conn => 
-        conn.id === id ? { ...conn, ...updates } : conn
-      )
-    )
-  }
-
-  const handleSelectConnection = (connection: SavedConnection) => {
-    setManualAuth({
-      clientId: connection.clientId,
-      clientSecret: connection.clientSecret,
-      username: connection.username,
-      password: connection.password,
-      authCode: '',
-      useRedirectUri: false,
-      redirectUri: ''
-    })
-    
-    setSavedConnections((current) => 
-      (current || []).map(conn => 
-        conn.id === connection.id ? { ...conn, lastUsed: Date.now() } : conn
-      )
-    )
-    
-    setShowConnectionManager(false)
-    toast.success(`Loaded connection: ${connection.name}`)
-  }
-
   return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">Connect to Bullhorn</DialogTitle>
-            <DialogDescription>
-              Authenticate using OAuth authorization code flow
-            </DialogDescription>
-          </DialogHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle className="text-2xl">Connect to Bullhorn</DialogTitle>
+          <DialogDescription>
+            Authenticate using OAuth authorization code flow
+          </DialogDescription>
+        </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                className="flex-1"
-                onClick={() => setShowConnectionManager(true)}
-              >
-                <Database />
-                Saved Connections
-              </Button>
-            </div>
-
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription className="space-y-2">
-                <p className="font-medium">OAuth Authorization</p>
-                <p className="text-xs">
-                  This method generates a Bullhorn OAuth URL that you visit to get an authorization code. 
-                  If you're seeing a "Invalid Redirect URI" error, make sure the redirect URI setting below 
-                  matches your Bullhorn OAuth app configuration.
-                </p>
-              </AlertDescription>
-            </Alert>
+        <div className="space-y-4">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription className="space-y-2">
+              <p className="font-medium">OAuth Authorization</p>
+              <p className="text-xs">
+                This method generates a Bullhorn OAuth URL that you visit to get an authorization code. 
+                If you're seeing a "Invalid Redirect URI" error, make sure the redirect URI setting below 
+                matches your Bullhorn OAuth app configuration.
+              </p>
+            </AlertDescription>
+          </Alert>
 
           <form onSubmit={handleCodeSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -397,16 +336,5 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         </div>
       </DialogContent>
     </Dialog>
-
-    <ConnectionManager
-      open={showConnectionManager}
-      onOpenChange={setShowConnectionManager}
-      connections={savedConnections || []}
-      onSaveConnection={handleSaveConnection}
-      onDeleteConnection={handleDeleteConnection}
-      onSelectConnection={handleSelectConnection}
-      onUpdateConnection={handleUpdateConnection}
-    />
-  </>
   )
 }

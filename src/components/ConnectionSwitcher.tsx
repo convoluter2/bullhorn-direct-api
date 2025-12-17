@@ -60,7 +60,9 @@ export function ConnectionSwitcher({
                   <Check size={14} className="text-accent" weight="bold" />
                   <span className="font-medium">{currentConnection.name}</span>
                 </div>
-                <div className="text-xs pl-5 truncate">User: {currentConnection.username}</div>
+                <div className="text-xs pl-5 truncate">
+                  {currentConnection.tenant} - {currentConnection.environment}
+                </div>
               </div>
             </div>
             <DropdownMenuSeparator />
@@ -84,9 +86,14 @@ export function ConnectionSwitcher({
                 className="cursor-pointer"
               >
                 <div className="flex flex-col gap-1 flex-1">
-                  <div className="font-medium">{connection.name}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{connection.name}</span>
+                    <Badge variant={connection.environment === 'PROD' ? 'default' : 'secondary'} className="text-xs">
+                      {connection.environment}
+                    </Badge>
+                  </div>
                   <div className="text-xs text-muted-foreground">
-                    User: {connection.username}
+                    {connection.tenant}
                   </div>
                   {connection.lastUsed && (
                     <div className="text-xs text-muted-foreground">

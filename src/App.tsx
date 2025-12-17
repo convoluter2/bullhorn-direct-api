@@ -12,10 +12,11 @@ import { CSVLoader } from '@/components/CSVLoader'
 import { SmartStack } from '@/components/SmartStack'
 import { QueryStack } from '@/components/QueryStack'
 import { AuditLogs } from '@/components/AuditLogs'
-import { ConnectionManager, type SavedConnection } from '@/components/ConnectionManager'
+import { ConnectionManager, type SavedConnection, type SecureCredentials } from '@/components/ConnectionManager'
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { OperatorTestSuite } from '@/components/OperatorTestSuite'
 import { bullhornAPI } from '@/lib/bullhorn-api'
+import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { toast } from 'sonner'
 import type { BullhornSession, AuditLog } from '@/lib/types'
 
@@ -25,11 +26,18 @@ function App() {
   const [connectionManagerOpen, setConnectionManagerOpen] = useState(false)
   const [logs, setLogs] = useKV<AuditLog[]>('audit-logs', [])
   const [activeTab, setActiveTab] = useState('queryblast')
-  const [credentials, setCredentials] = useKV<{ clientId: string; clientSecret: string } | null>('bullhorn-credentials', null)
-  const [savedConnections, setSavedConnections] = useKV<SavedConnection[]>('saved-connections', [])
+  const [savedConnections, setSavedConnections] = useState<SavedConnection[]>([])
   const [isOAuthCallback, setIsOAuthCallback] = useState(false)
   const [currentConnectionId, setCurrentConnectionId] = useKV<string | null>('current-connection-id', null)
   const [preselectedConnection, setPreselectedConnection] = useState<SavedConnection | null>(null)
+
+  useEffect(() => {
+    const loadConnections = async () => {
+      const connections = await secureCredentialsAPI.getConnections()
+      setSavedConnections(connections)
+    }
+    loadConnections()
+  }, [])
 
   const addLog = useCallback((operation: string, status: 'success' | 'error', message: string, details?: any) => {
     const newLog: AuditLog = {
@@ -69,7 +77,7 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!session || !session.refreshToken || !session.expiresAt || !credentials) {
+    if (!session || !session.refreshToken || !session.expiresAt || !currentConnectionId) {
       return
     }
 
@@ -79,6 +87,12 @@ function App() {
 
       if (timeUntilExpiry < 60000 && timeUntilExpiry > 0) {
         try {
+          const credentials = await secureCredentialsAPI.getCredentials(currentConnectionId)
+          if (!credentials) {
+            toast.error('Failed to retrieve credentials for token refresh')
+            return
+          }
+
           const tokenData = await bullhornAPI.refreshAccessToken(
             session.refreshToken!,
             credentials.clientId,
@@ -101,35 +115,26 @@ function App() {
 
     const interval = setInterval(checkTokenExpiry, 30000)
     return () => clearInterval(interval)
-  }, [session?.expiresAt, session?.refreshToken, credentials, addLog])
+  }, [session?.expiresAt, session?.refreshToken, currentConnectionId, addLog])
 
-  const handleAuthenticated = (newSession: BullhornSession) => {
+  const handleAuthenticated = (newSession: BullhornSession, connectionId?: string) => {
     setSession(() => newSession)
     bullhornAPI.setSession(newSession)
     setIsOAuthCallback(false)
     
-    if (credentials) {
-      const matchingConnection = savedConnections?.find(
-        conn => conn.clientId === credentials.clientId
+    if (connectionId) {
+      setCurrentConnectionId(() => connectionId)
+      const updatedConnections = savedConnections.map(conn => 
+        conn.id === connectionId ? { ...conn, lastUsed: Date.now() } : conn
       )
-      if (matchingConnection) {
-        setCurrentConnectionId(() => matchingConnection.id)
-        setSavedConnections((current) => 
-          (current || []).map(conn => 
-            conn.id === matchingConnection.id ? { ...conn, lastUsed: Date.now() } : conn
-          )
-        )
-      }
+      setSavedConnections(updatedConnections)
+      secureCredentialsAPI.updateConnection(connectionId, { lastUsed: Date.now() })
     }
   }
 
   const handleCancelOAuth = () => {
     setIsOAuthCallback(false)
     window.history.replaceState({}, document.title, window.location.pathname)
-  }
-
-  const handleSaveCredentials = (clientId: string, clientSecret: string) => {
-    setCredentials(() => ({ clientId, clientSecret } as { clientId: string; clientSecret: string }))
   }
 
   const handleDisconnect = () => {
@@ -139,33 +144,33 @@ function App() {
     }
   }
 
-  const handleSaveConnection = (connection: Omit<SavedConnection, 'id' | 'createdAt'>) => {
-    const newConnection: SavedConnection = {
-      ...connection,
-      id: `conn-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-      createdAt: Date.now()
+  const handleSaveConnection = async (connection: SavedConnection, credentials: SecureCredentials) => {
+    await secureCredentialsAPI.saveConnection(connection)
+    await secureCredentialsAPI.saveCredentials(connection.id, credentials)
+    
+    const connections = await secureCredentialsAPI.getConnections()
+    setSavedConnections(connections)
+  }
+
+  const handleDeleteConnection = async (id: string) => {
+    await secureCredentialsAPI.deleteConnection(id)
+    const connections = await secureCredentialsAPI.getConnections()
+    setSavedConnections(connections)
+  }
+
+  const handleUpdateConnection = async (id: string, updates: Partial<SavedConnection>, credentials?: SecureCredentials) => {
+    await secureCredentialsAPI.updateConnection(id, updates)
+    if (credentials) {
+      await secureCredentialsAPI.saveCredentials(id, credentials)
     }
-    setSavedConnections((current) => [...(current || []), newConnection])
-  }
-
-  const handleDeleteConnection = (id: string) => {
-    setSavedConnections((current) => (current || []).filter(conn => conn.id !== id))
-  }
-
-  const handleUpdateConnection = (id: string, updates: Partial<SavedConnection>) => {
-    setSavedConnections((current) => 
-      (current || []).map(conn => 
-        conn.id === id ? { ...conn, ...updates } : conn
-      )
-    )
+    const connections = await secureCredentialsAPI.getConnections()
+    setSavedConnections(connections)
   }
 
   const handleSelectConnectionFromManager = async (connection: SavedConnection) => {
-    setSavedConnections((current) => 
-      (current || []).map(conn => 
-        conn.id === connection.id ? { ...conn, lastUsed: Date.now() } : conn
-      )
-    )
+    await secureCredentialsAPI.updateConnection(connection.id, { lastUsed: Date.now() })
+    const connections = await secureCredentialsAPI.getConnections()
+    setSavedConnections(connections)
     
     setConnectionManagerOpen(false)
     setPreselectedConnection(connection)
@@ -177,27 +182,25 @@ function App() {
     try {
       toast.loading('Switching connection...', { id: 'switch-connection' })
 
-      setCredentials(() => ({ 
-        clientId: connection.clientId, 
-        clientSecret: connection.clientSecret 
-      }))
+      const credentials = await secureCredentialsAPI.getCredentials(connection.id)
+      if (!credentials) {
+        throw new Error('Credentials not found for this connection')
+      }
 
       const newSession = await bullhornAPI.authenticate({
-        clientId: connection.clientId,
-        clientSecret: connection.clientSecret,
-        username: connection.username,
-        password: connection.password
+        clientId: credentials.clientId,
+        clientSecret: credentials.clientSecret,
+        username: credentials.username,
+        password: credentials.password
       })
 
       setSession(() => newSession)
       bullhornAPI.setSession(newSession)
       
       setCurrentConnectionId(() => connection.id)
-      setSavedConnections((current) => 
-        (current || []).map(conn => 
-          conn.id === connection.id ? { ...conn, lastUsed: Date.now() } : conn
-        )
-      )
+      await secureCredentialsAPI.updateConnection(connection.id, { lastUsed: Date.now() })
+      const connections = await secureCredentialsAPI.getConnections()
+      setSavedConnections(connections)
 
       toast.success(`Switched to ${connection.name}`, { id: 'switch-connection' })
       addLog('Connection Switch', 'success', `Switched to connection: ${connection.name}`)
@@ -222,8 +225,6 @@ function App() {
         <OAuthCallback 
           onAuthenticated={handleAuthenticated} 
           onCancel={handleCancelOAuth}
-          storedCredentials={credentials || null}
-          onSaveCredentials={handleSaveCredentials}
         />
       </>
     )

@@ -10,23 +10,19 @@ import { toast } from 'sonner'
 import type { BullhornSession } from '@/lib/types'
 
 interface OAuthCallbackProps {
-  onAuthenticated: (session: BullhornSession) => void
+  onAuthenticated: (session: BullhornSession, connectionId?: string) => void
   onCancel: () => void
-  storedCredentials: { clientId: string; clientSecret: string } | null
-  onSaveCredentials: (clientId: string, clientSecret: string) => void
 }
 
 export function OAuthCallback({ 
   onAuthenticated, 
-  onCancel, 
-  storedCredentials,
-  onSaveCredentials 
+  onCancel
 }: OAuthCallbackProps) {
   const [status, setStatus] = useState<'detecting' | 'found' | 'error' | 'manual'>('detecting')
   const [authCode, setAuthCode] = useState('')
   const [error, setError] = useState('')
-  const [clientId, setClientId] = useState(storedCredentials?.clientId || '')
-  const [clientSecret, setClientSecret] = useState(storedCredentials?.clientSecret || '')
+  const [clientId, setClientId] = useState('')
+  const [clientSecret, setClientSecret] = useState('')
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -65,15 +61,11 @@ export function OAuthCallback({
     if (code) {
       const decodedCode = decodeURIComponent(code)
       setAuthCode(decodedCode)
-      setStatus('found')
-      
-      if (storedCredentials) {
-        handleAutoAuthenticate(decodedCode, storedCredentials.clientId, storedCredentials.clientSecret)
-      }
+      setStatus('manual')
     } else {
       setStatus('manual')
     }
-  }, [storedCredentials, onAuthenticated])
+  }, [onAuthenticated])
 
   const handleManualAuthenticate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -84,8 +76,6 @@ export function OAuthCallback({
       const session = await bullhornAPI.login(tokenData.accessToken)
       session.refreshToken = tokenData.refreshToken
       session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
-
-      onSaveCredentials(clientId, clientSecret)
       
       window.history.replaceState({}, document.title, window.location.pathname)
       
@@ -99,7 +89,7 @@ export function OAuthCallback({
     }
   }
 
-  if (status === 'detecting' || (status === 'found' && loading && storedCredentials)) {
+  if (status === 'detecting' || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
