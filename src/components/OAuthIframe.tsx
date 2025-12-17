@@ -23,6 +23,61 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
     let isMounted = true
     let pollAttempts = 0
     const maxPollAttempts = 360
+    let lastKnownUrl = ''
+
+    console.log('🖼️ Iframe OAuth monitor initialized')
+    console.log('🔗 Auth URL:', authUrl.substring(0, 100) + '...')
+
+    const checkForCode = () => {
+      try {
+        if (iframeRef.current?.contentWindow?.location.href) {
+          const iframeUrl = iframeRef.current.contentWindow.location.href
+
+          if (iframeUrl !== lastKnownUrl) {
+            lastKnownUrl = iframeUrl
+            console.log('🔄 Iframe navigated to:', iframeUrl.substring(0, 100))
+          }
+
+          if (iframeUrl.includes('code=')) {
+            try {
+              const url = new URL(iframeUrl)
+              const code = url.searchParams.get('code')
+              const error = url.searchParams.get('error')
+
+              console.log('✅ Code parameter detected in iframe URL!', {
+                hasCode: !!code,
+                hasError: !!error,
+                codePreview: code ? code.substring(0, 30) + '...' : null
+              })
+
+              if (error) {
+                console.error('❌ OAuth error in iframe URL:', error)
+                if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+                if (timeoutRef.current) clearTimeout(timeoutRef.current)
+                setStatus('error')
+                setErrorMessage(`OAuth error: ${error}`)
+                onError(error)
+                return true
+              }
+
+              if (code) {
+                console.log('✅ Successfully extracted code from iframe!')
+                if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+                if (timeoutRef.current) clearTimeout(timeoutRef.current)
+                onCodeReceived(code)
+                return true
+              }
+            } catch (urlError) {
+              console.error('❌ Error parsing iframe URL:', urlError)
+            }
+          }
+          return false
+        }
+      } catch (crossOriginError) {
+        return false
+      }
+      return false
+    }
 
     const startMonitoring = () => {
       console.log('📱 Starting iframe URL monitoring...')
@@ -34,52 +89,17 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
         if (pollAttempts > maxPollAttempts) {
           if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
           if (timeoutRef.current) clearTimeout(timeoutRef.current)
-          console.error('❌ Iframe monitoring timeout')
+          console.error('❌ Iframe monitoring timeout after', maxPollAttempts / 2, 'seconds')
           setStatus('error')
-          setErrorMessage('Authentication timeout - the process took too long')
+          setErrorMessage('Authentication timeout - the process took too long. Please try the popup method.')
           onError('Timeout')
           return
         }
 
-        try {
-          if (iframeRef.current?.contentWindow?.location.href) {
-            const iframeUrl = iframeRef.current.contentWindow.location.href
-
-            if (pollAttempts % 10 === 0) {
-              console.log(`[Iframe Poll ${pollAttempts}] URL accessible:`, iframeUrl.substring(0, 100))
-            }
-
-            if (iframeUrl.includes('code=')) {
-              try {
-                const url = new URL(iframeUrl)
-                const code = url.searchParams.get('code')
-                const error = url.searchParams.get('error')
-
-                if (error) {
-                  console.error('❌ OAuth error in iframe URL:', error)
-                  if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
-                  if (timeoutRef.current) clearTimeout(timeoutRef.current)
-                  setStatus('error')
-                  setErrorMessage(`OAuth error: ${error}`)
-                  onError(error)
-                  return
-                }
-
-                if (code) {
-                  console.log('✅ Code extracted from iframe URL!')
-                  if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
-                  if (timeoutRef.current) clearTimeout(timeoutRef.current)
-                  onCodeReceived(code)
-                }
-              } catch (urlError) {
-                console.error('❌ Error parsing iframe URL:', urlError)
-              }
-            }
-          }
-        } catch (crossOriginError) {
-          if (pollAttempts % 20 === 0) {
-            console.log(`[Iframe Poll ${pollAttempts}] Cross-origin, continuing to monitor...`)
-          }
+        const foundCode = checkForCode()
+        
+        if (!foundCode && pollAttempts % 20 === 0) {
+          console.log(`[Iframe Poll ${pollAttempts}/${maxPollAttempts}] Still monitoring... (${pollAttempts * 0.5}s elapsed)`)
         }
       }, 500)
 
@@ -88,20 +108,31 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
         if (isMounted) {
           console.error('❌ Iframe monitoring timeout (3 minutes)')
           setStatus('error')
-          setErrorMessage('Authentication timeout - please try the popup method instead')
+          setErrorMessage('Authentication timeout - Bullhorn may be blocking iframe access. Please try the popup method instead.')
           onError('Timeout after 3 minutes')
         }
       }, 180000)
     }
 
     const iframeLoadHandler = () => {
-      console.log('📱 Iframe loaded, starting monitoring...')
-      startMonitoring()
+      console.log('📱 Iframe loaded event fired')
+      const foundCode = checkForCode()
+      if (!foundCode) {
+        console.log('📱 No code found on initial load, starting continuous monitoring...')
+        startMonitoring()
+      }
     }
 
     const currentIframe = iframeRef.current
     if (currentIframe) {
       currentIframe.addEventListener('load', iframeLoadHandler)
+      
+      setTimeout(() => {
+        if (isMounted && !checkForCode()) {
+          console.log('📱 Initial check did not find code, starting fallback monitoring...')
+          startMonitoring()
+        }
+      }, 1000)
     }
 
     return () => {
@@ -111,6 +142,7 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
       if (currentIframe) {
         currentIframe.removeEventListener('load', iframeLoadHandler)
       }
+      console.log('🧹 Iframe monitor cleanup complete')
     }
   }, [authUrl, onCodeReceived, onError])
 
@@ -157,34 +189,40 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Spinner className="animate-spin" size={24} />
-            {status === 'loading' ? 'Loading Authentication' : 'Monitoring Authentication'}
+            {status === 'loading' ? 'Loading Authentication' : 'Waiting for Login'}
           </CardTitle>
           <CardDescription>
             {status === 'loading' 
               ? 'Preparing authentication iframe...' 
-              : 'Complete your login in the frame below'}
+              : 'Log in to Bullhorn in the frame below - we\'ll automatically detect and extract the code'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert>
             <Info className="h-4 w-4" />
-            <AlertDescription className="text-xs">
-              <strong>Note:</strong> Bullhorn may block iframe embedding. If this method doesn't work, 
-              the popup-based flow is more reliable and will automatically extract the code for you.
+            <AlertDescription className="text-xs space-y-1">
+              <p><strong>Instructions:</strong></p>
+              <ul className="list-disc list-inside ml-2 space-y-0.5">
+                <li>Complete your Bullhorn login in the frame below</li>
+                <li>The code will be automatically extracted when you're redirected</li>
+                <li>If the iframe is blank or blocked, click "Cancel & Use Popup Instead"</li>
+              </ul>
             </AlertDescription>
           </Alert>
-          <div className="border border-border rounded-lg overflow-hidden" style={{ height: '600px' }}>
+          <div className="border-2 border-accent/50 rounded-lg overflow-hidden shadow-lg bg-card" style={{ height: '600px' }}>
             <iframe
               ref={iframeRef}
               src={authUrl}
-              title="Bullhorn OAuth"
-              className="w-full h-full"
-              sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+              title="Bullhorn OAuth Login"
+              className="w-full h-full bg-white"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
             />
           </div>
-          <Button onClick={onCancel} variant="outline" className="w-full">
-            Cancel & Use Popup Instead
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={onCancel} variant="outline" className="flex-1">
+              Cancel & Use Popup Instead
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

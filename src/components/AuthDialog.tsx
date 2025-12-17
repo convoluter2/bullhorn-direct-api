@@ -171,6 +171,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       return
     }
 
+    console.log('🖼️ Starting iframe-based OAuth flow')
+    
     await window.spark.kv.set('pending-oauth-auth', {
       clientId: manualAuth.clientId,
       clientSecret: manualAuth.clientSecret,
@@ -179,8 +181,10 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       timestamp: Date.now()
     })
 
+    await bullhornAPI.prepareForAuth(manualAuth.username)
+
     setShowIframe(true)
-    toast.info('Loading authentication in iframe...')
+    toast.info('Opening authentication iframe - complete your login below')
   }
 
   const handleIframeCodeReceived = async (code: string) => {
@@ -575,7 +579,9 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         <DialogHeader>
           <DialogTitle className="text-2xl">Connect to Bullhorn</DialogTitle>
           <DialogDescription>
-            {showIframe ? 'Iframe-based OAuth authentication' : 'Popup-based OAuth with automatic code extraction and exchange'}
+            {showIframe 
+              ? '🖼️ Iframe Authentication - Complete login below and we\'ll extract the code automatically' 
+              : '✨ Automated OAuth - Choose your preferred authentication method'}
           </DialogDescription>
         </DialogHeader>
 
@@ -591,14 +597,17 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription className="space-y-2">
-              <p className="font-medium">✨ Popup-Based OAuth Authentication</p>
+              <p className="font-medium">🔐 Automated OAuth Authentication</p>
               <p className="text-xs">
-                <strong>Recommended:</strong> Use "Start Popup OAuth Flow" - opens Bullhorn login in a popup window, 
-                automatically logs you in, extracts the authorization code when Bullhorn redirects back, and closes the popup.
+                <strong>🖼️ Iframe Method:</strong> Opens Bullhorn login in an embedded frame below. Complete your login 
+                and we'll automatically extract the code when you're redirected. Works if Bullhorn allows iframe embedding.
               </p>
               <p className="text-xs mt-1">
-                <strong>Fallback:</strong> If popup is blocked, disable automated flow to try programmatic authentication 
-                (may not work with all Bullhorn configurations).
+                <strong>🪟 Popup Method:</strong> Opens Bullhorn login in a popup window. Automatically logs you in, 
+                extracts the authorization code, and closes the popup. More reliable if iframes are blocked.
+              </p>
+              <p className="text-xs mt-1">
+                <strong>⚡ Manual/Programmatic:</strong> Fallback options if automated methods don't work with your Bullhorn configuration.
               </p>
             </AlertDescription>
           </Alert>
@@ -754,29 +763,31 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                 <div className="flex gap-3">
                   <Button
                     type="button"
+                    variant="default"
+                    className="flex-1"
+                    onClick={handleStartIframeFlow}
+                    disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password || loading}
+                  >
+                    {loading ? 'Processing...' : '🖼️ Start Iframe OAuth'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
                     className="flex-1"
                     onClick={handleStartOAuthFlow}
                     disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password || loading}
                   >
-                    {loading ? 'Processing...' : '✨ Start Popup OAuth Flow'}
+                    {loading ? 'Processing...' : '🪟 Start Popup OAuth'}
                   </Button>
-                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                </div>
+                <div className="flex justify-center">
+                  <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
                     Cancel
                   </Button>
                 </div>
-                <div className="text-center">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleStartIframeFlow}
-                    disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password || loading}
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    Try Iframe Method (Experimental)
-                  </Button>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Alternative if popup is blocked (may not work if Bullhorn blocks iframes)
+                <div className="text-center pt-2 border-t border-border">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    💡 <strong>Tip:</strong> Try Iframe first - it embeds login directly. If blocked, use Popup method.
                   </p>
                 </div>
               </div>
