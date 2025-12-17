@@ -171,43 +171,69 @@ export class BullhornAPI {
   }
 
   private async getAuthorizationCode(credentials: BullhornCredentials): Promise<string> {
+    const state = 'auto-' + Math.random().toString(36).substring(7)
+    
     const params = new URLSearchParams({
       client_id: credentials.clientId,
       response_type: 'code',
       username: credentials.username,
       password: credentials.password,
-      action: 'Login'
+      action: 'Login',
+      state: state
     })
 
-    const response = await fetch(`${BULLHORN_AUTH_URL}/authorize?${params.toString()}`, {
-      method: 'POST',
-      redirect: 'manual'
-    })
+    try {
+      const response = await fetch(`${BULLHORN_AUTH_URL}/authorize?${params.toString()}`, {
+        method: 'POST',
+        redirect: 'follow',
+        credentials: 'include'
+      })
 
-    const locationHeader = response.headers.get('location')
-    if (locationHeader) {
-      const url = new URL(locationHeader, window.location.origin)
-      const code = url.searchParams.get('code')
-      if (code) {
-        return decodeURIComponent(code)
+      if (response.redirected && response.url) {
+        const url = new URL(response.url)
+        const code = url.searchParams.get('code')
+        if (code) {
+          const decodedCode = decodeURIComponent(code)
+          console.log('Got authorization code from redirect URL:', decodedCode)
+          return decodedCode
+        }
       }
-    }
 
-    if (response.redirected) {
-      const url = new URL(response.url)
-      const code = url.searchParams.get('code')
-      if (code) {
-        return decodeURIComponent(code)
+      const responseText = await response.text()
+      
+      const urlMatches = responseText.match(/(?:href|location)=["']([^"']*code=[^"']*)["']/i)
+      if (urlMatches && urlMatches[1]) {
+        const url = new URL(urlMatches[1].replace(/&amp;/g, '&'), window.location.origin)
+        const code = url.searchParams.get('code')
+        if (code) {
+          const decodedCode = decodeURIComponent(code)
+          console.log('Got authorization code from response HTML:', decodedCode)
+          return decodedCode
+        }
       }
-    }
 
-    const responseText = await response.text()
-    const codeMatch = responseText.match(/code=([^&"']+)/)
-    if (codeMatch) {
-      return decodeURIComponent(codeMatch[1])
-    }
+      const codeMatch = responseText.match(/[?&]code=([^&"'<>\s]+)/)
+      if (codeMatch) {
+        const decodedCode = decodeURIComponent(codeMatch[1])
+        console.log('Got authorization code from pattern match:', decodedCode)
+        return decodedCode
+      }
 
-    throw new Error('No authorization code received. Please check your credentials or use the Authorization Code tab to authenticate manually.')
+      console.error('Failed to extract code. Response:', {
+        url: response.url,
+        redirected: response.redirected,
+        status: response.status,
+        textPreview: responseText.substring(0, 500)
+      })
+
+      throw new Error('No authorization code received. The automated flow failed - please use the manual OAuth flow instead.')
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('authorization code')) {
+        throw error
+      }
+      console.error('Authorization code extraction error:', error)
+      throw new Error('Failed to get authorization code automatically. Please use the manual OAuth flow with the "Start Automated OAuth Flow" button.')
+    }
   }
 
   setSession(session: BullhornSession) {

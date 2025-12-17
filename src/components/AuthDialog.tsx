@@ -26,9 +26,11 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     username: '',
     password: '',
     authCode: '',
-    useRedirectUri: false,
+    useRedirectUri: true,
     redirectUri: ''
   })
+
+  const currentUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : ''
 
   useEffect(() => {
     const loadConnectionCredentials = async () => {
@@ -41,17 +43,21 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             username: credentials.username,
             password: credentials.password,
             authCode: '',
-            useRedirectUri: false,
-            redirectUri: ''
+            useRedirectUri: true,
+            redirectUri: currentUrl
           })
         }
+      } else if (open && !preselectedConnection) {
+        setManualAuth(prev => ({
+          ...prev,
+          useRedirectUri: true,
+          redirectUri: currentUrl
+        }))
       }
     }
     loadConnectionCredentials()
-  }, [open, preselectedConnection])
+  }, [open, preselectedConnection, currentUrl])
   
-  const currentUrl = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : ''
-
   const handleCodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -208,10 +214,14 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription className="space-y-2">
-              <p className="font-medium">✨ Quick Connect with Saved Credentials</p>
+              <p className="font-medium">✨ Automated OAuth Authentication</p>
               <p className="text-xs">
-                With saved credentials loaded, simply click "Quick Connect" to authenticate programmatically.
-                No manual OAuth flow needed! Or use the OAuth options below for manual authorization.
+                <strong>Recommended:</strong> Use "Start Automated OAuth Flow" for fully automatic authentication. 
+                You'll be redirected to Bullhorn to log in, then automatically returned with no manual code entry.
+              </p>
+              <p className="text-xs mt-1">
+                <strong>Troubleshooting:</strong> If you get "Invalid Redirect URI" errors, ensure your Bullhorn 
+                OAuth app has this URL configured as a redirect URI, or disable automated mode to try programmatic authentication.
               </p>
             </AlertDescription>
           </Alert>
@@ -278,10 +288,10 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
 
             <div className="space-y-3 p-4 bg-muted/50 rounded-lg border border-border">
               <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">Redirect URI Configuration</Label>
+                <Label className="text-sm font-medium">✨ Automated OAuth Mode (Recommended)</Label>
                 <div className="flex items-center gap-2">
                   <Label htmlFor="useRedirectUri" className="text-xs text-muted-foreground cursor-pointer">
-                    Use Redirect URI
+                    Enable
                   </Label>
                   <input
                     id="useRedirectUri"
@@ -297,11 +307,16 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                <strong>Important:</strong> Only enable this if your Bullhorn OAuth app has a redirect URI configured. 
-                If you're getting "Invalid Redirect URI: null" errors, leave this <strong>unchecked</strong>.
+                <strong>Enabled:</strong> Fully automated authentication - you'll be redirected to Bullhorn to log in, 
+                then automatically returned with no manual code entry needed.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                <strong>Disabled:</strong> Fallback to programmatic authentication (may not work in all browsers) 
+                or manual code entry.
               </p>
               {manualAuth.useRedirectUri && (
                 <div className="space-y-1">
+                  <Label className="text-xs">Redirect URI</Label>
                   <Input
                     id="redirectUri"
                     type="text"
@@ -311,96 +326,92 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                     className="mt-2"
                   />
                   <p className="text-xs text-muted-foreground">
-                    This must exactly match the redirect URI configured in your Bullhorn OAuth app.
-                    Current URL pre-filled: <code className="text-xs">{currentUrl}</code>
+                    Must match your Bullhorn OAuth app configuration. If you get "Invalid Redirect URI" errors, 
+                    verify this matches exactly. Current URL: <code className="text-xs bg-background px-1 rounded">{currentUrl}</code>
                   </p>
                 </div>
               )}
             </div>
 
-            <div className="space-y-2 p-3 bg-muted rounded-lg">
-              <Label className="text-sm font-medium">Authorization Code (Optional)</Label>
-              <p className="text-xs text-muted-foreground mb-2">
-                Only needed if you want to manually handle the OAuth flow. Leave blank to use Quick Connect with saved credentials.
-              </p>
-              <Input
-                id="manual-authCode"
-                type="text"
-                value={manualAuth.authCode}
-                onChange={(e) => setManualAuth({ ...manualAuth, authCode: e.target.value })}
-                disabled={loading}
-                placeholder="25184_8090191_44:0e19f0db-1c33-4409-b914-af5345c2b885"
-              />
-              <p className="text-xs text-muted-foreground">
-                Get this from the Bullhorn OAuth authorization response URL
-              </p>
-            </div>
-
-            <div className="space-y-2 p-3 bg-muted rounded-lg">
-              <Label className="text-sm font-medium">Get Authorization (Manual OAuth Flow)</Label>
-              <p className="text-xs text-muted-foreground mb-2">
-                {manualAuth.useRedirectUri 
-                  ? 'Click to start the OAuth flow. You will be redirected to Bullhorn to authenticate, then automatically returned.'
-                  : 'Open the authorization URL in a popup to get the code manually. Only use if Quick Connect fails.'
-                }
-              </p>
-              {!manualAuth.useRedirectUri && (
-                <div className="flex gap-2">
+            {!manualAuth.useRedirectUri && (
+              <>
+                <div className="space-y-2 p-3 bg-muted rounded-lg">
+                  <Label className="text-sm font-medium">Authorization Code (Optional)</Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Only needed if using manual OAuth flow. Leave blank to use Quick Connect (programmatic auth).
+                  </p>
                   <Input
-                    value={getAuthUrl()}
-                    readOnly
-                    className="font-mono text-xs"
+                    id="manual-authCode"
+                    type="text"
+                    value={manualAuth.authCode}
+                    onChange={(e) => setManualAuth({ ...manualAuth, authCode: e.target.value })}
+                    disabled={loading}
+                    placeholder="25184_8090191_44:0e19f0db-1c33-4409-b914-af5345c2b885"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Get this from the Bullhorn OAuth authorization response URL
+                  </p>
+                </div>
+
+                <div className="space-y-2 p-3 bg-muted rounded-lg">
+                  <Label className="text-sm font-medium">Get Authorization Code (Manual)</Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Open the authorization URL in a popup, log in to Bullhorn, and copy the code from the result URL.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      value={getAuthUrl()}
+                      readOnly
+                      className="font-mono text-xs"
+                    />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={copyAuthUrl}
+                    >
+                      <Copy size={16} />
+                    </Button>
+                  </div>
                   <Button
                     type="button"
                     size="sm"
-                    variant="outline"
-                    onClick={copyAuthUrl}
+                    variant="secondary"
+                    onClick={handleOpenAuthUrl}
+                    className="w-full mt-2"
+                    disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password}
                   >
-                    <Copy size={16} />
+                    Open Authorization URL
                   </Button>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    After authorizing, copy the code from the URL and paste it in the field above.
+                  </p>
                 </div>
-              )}
-              <Button
-                type="button"
-                size="sm"
-                variant={manualAuth.useRedirectUri ? "default" : "secondary"}
-                onClick={manualAuth.useRedirectUri ? handleStartOAuthFlow : handleOpenAuthUrl}
-                className="w-full mt-2"
-                disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password}
-              >
-                {manualAuth.useRedirectUri ? 'Start Automated OAuth Flow' : 'Authorize with Bullhorn'}
-              </Button>
-              {manualAuth.useRedirectUri && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  ✨ Fully automated: After authorization, the app will automatically exchange the code for tokens and log you in.
-                </p>
-              )}
-              {!manualAuth.useRedirectUri && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  ✨ Manual flow: After you authorize in the popup, copy the code from the URL and paste it above.
-                </p>
-              )}
-            </div>
-
-            {manualAuth.useRedirectUri && (
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertDescription className="text-xs">
-                  The entire OAuth process is now automated. You'll be redirected to Bullhorn to log in, 
-                  then automatically returned and authenticated without any manual code entry.
-                </AlertDescription>
-              </Alert>
+              </>
             )}
 
-            {!manualAuth.useRedirectUri && (
+            {manualAuth.useRedirectUri ? (
+              <div className="flex gap-3 pt-2">
+                <Button
+                  type="button"
+                  className="flex-1"
+                  onClick={handleStartOAuthFlow}
+                  disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password || loading}
+                >
+                  {loading ? 'Redirecting...' : '✨ Start Automated OAuth Flow'}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
               <div className="flex gap-3 pt-2">
                 <Button 
                   type="submit" 
                   className="flex-1" 
                   disabled={loading || !manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password}
                 >
-                  {loading ? 'Authenticating...' : 'Quick Connect'}
+                  {loading ? 'Authenticating...' : 'Quick Connect (Programmatic)'}
                 </Button>
                 <Button 
                   type="submit" 
@@ -415,14 +426,6 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                   }}
                 >
                   {loading ? 'Authenticating...' : 'Connect with Code'}
-                </Button>
-              </div>
-            )}
-            
-            {manualAuth.useRedirectUri && (
-              <div className="flex gap-3 pt-2">
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full">
-                  Cancel
                 </Button>
               </div>
             )}
