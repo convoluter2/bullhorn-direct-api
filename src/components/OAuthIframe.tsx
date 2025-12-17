@@ -191,9 +191,10 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
           if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
           if (timeoutRef.current) clearTimeout(timeoutRef.current)
           console.error('❌ Iframe monitoring timeout after 30 seconds - connection not established')
+          console.error('❌ IFRAME IS INCOMPATIBLE - Bullhorn blocks iframe embedding via X-Frame-Options')
           setStatus('error')
-          setErrorMessage('Connection timeout after 30 seconds. Unable to connect to Bullhorn. Please check your credentials or try the popup method.')
-          onError('Timeout after 30 seconds')
+          setErrorMessage('Iframe authentication is incompatible with Bullhorn due to X-Frame-Options security policy. The iframe cannot access cross-origin content. Please use the popup method instead.')
+          onError('Iframe incompatible - X-Frame-Options blocked')
           return
         }
 
@@ -209,9 +210,11 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
         if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
         if (isMounted) {
           console.error('❌ Iframe monitoring timeout after 30 seconds')
+          console.error('❌ ROOT CAUSE: Bullhorn authentication servers use X-Frame-Options header which prevents iframe embedding')
+          console.error('❌ SOLUTION: Popup-based authentication is the only compatible method')
           setStatus('error')
-          setErrorMessage('Connection timeout after 30 seconds. Unable to connect to Bullhorn. Bullhorn may be blocking iframe access. Please try the popup method instead.')
-          onError('Timeout after 30 seconds')
+          setErrorMessage('Iframe authentication failed due to cross-origin security restrictions (X-Frame-Options). Bullhorn does not allow iframe embedding of their authentication pages. Please use the popup method instead, which is the only compatible approach.')
+          onError('Iframe blocked by X-Frame-Options - use popup instead')
         }
       }, 30000)
     }
@@ -267,14 +270,14 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
             </AlertDescription>
           </Alert>
           <div className="text-sm text-muted-foreground">
-            <p className="mb-2">Possible reasons:</p>
+            <p className="mb-2 font-semibold text-destructive">Root Cause:</p>
             <ul className="list-disc list-inside space-y-1 ml-2">
-              <li>Bullhorn may block iframe embedding (X-Frame-Options)</li>
-              <li>Cross-origin restrictions preventing URL access</li>
-              <li>Network or authentication issues</li>
+              <li><strong>Bullhorn blocks iframe embedding</strong> using X-Frame-Options security header</li>
+              <li>Cross-origin security policies prevent JavaScript from accessing iframe URLs</li>
+              <li>This is a fundamental browser security restriction that cannot be bypassed</li>
             </ul>
-            <p className="mt-3">
-              <strong>Recommendation:</strong> Use the popup-based flow instead (enabled by default).
+            <p className="mt-3 p-2 bg-accent/10 border border-accent rounded">
+              <strong>✅ Solution:</strong> Use the popup-based authentication method instead. Popups are not subject to X-Frame-Options restrictions and will work correctly.
             </p>
           </div>
           <Button onClick={onCancel} variant="outline" className="w-full">

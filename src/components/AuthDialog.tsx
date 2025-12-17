@@ -9,7 +9,6 @@ import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { Copy, Info, CheckCircle, Circle } from '@phosphor-icons/react'
-import { OAuthIframe } from '@/components/OAuthIframe'
 import type { SavedConnection } from '@/components/ConnectionManager'
 import type { BullhornSession } from '@/lib/types'
 
@@ -24,7 +23,6 @@ type AuthStep = 'idle' | 'opening-popup' | 'waiting-login' | 'welcome-detected' 
 
 export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedConnection }: AuthDialogProps) {
   const [loading, setLoading] = useState(false)
-  const [showIframe, setShowIframe] = useState(false)
   const [welcomePageDetected, setWelcomePageDetected] = useState(false)
   const [authStep, setAuthStep] = useState<AuthStep>('idle')
   const [authProgress, setAuthProgress] = useState(0)
@@ -58,7 +56,6 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           useAutomatedFlow: true
         }))
       }
-      setShowIframe(false)
       setWelcomePageDetected(false)
       setAuthStep('idle')
       setAuthProgress(0)
@@ -189,69 +186,6 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     return bullhornAPI.getAuthorizationUrl(manualAuth.username, clientId, state, manualAuth.password)
   }
   
-  const handleStartIframeFlow = async () => {
-    if (!manualAuth.clientId || !manualAuth.clientSecret) {
-      toast.error('Please enter your Client ID and Client Secret first')
-      return
-    }
-
-    if (!manualAuth.username || !manualAuth.password) {
-      toast.error('Please enter your Bullhorn username and password')
-      return
-    }
-
-    console.log('🖼️ Starting iframe-based OAuth flow')
-    setAuthStep('opening-popup')
-    setAuthProgress(10)
-    
-    await window.spark.kv.set('pending-oauth-auth', {
-      clientId: manualAuth.clientId,
-      clientSecret: manualAuth.clientSecret,
-      username: manualAuth.username,
-      connectionId: preselectedConnection?.id,
-      timestamp: Date.now()
-    })
-
-    await bullhornAPI.prepareForAuth(manualAuth.username)
-
-    setShowIframe(true)
-    setAuthStep('waiting-login')
-    setAuthProgress(20)
-    toast.info('Opening authentication iframe - complete your login below')
-  }
-
-  const handleIframeCodeReceived = async (code: string) => {
-    console.log('📱 Code received from iframe:', code.substring(0, 30) + '...')
-    setShowIframe(false)
-    setAuthStep('exchanging-token')
-    setAuthProgress(60)
-    toast.loading('Exchanging code for token...', { id: 'iframe-auth' })
-    
-    try {
-      await handleCodeExchange(code)
-    } catch (error) {
-      console.error('❌ Iframe code exchange failed:', error)
-      toast.error('Failed to complete authentication', { id: 'iframe-auth' })
-      setAuthStep('idle')
-      setAuthProgress(0)
-    }
-  }
-
-  const handleIframeError = (error: string) => {
-    console.error('❌ Iframe authentication error:', error)
-    setShowIframe(false)
-    setAuthStep('idle')
-    setAuthProgress(0)
-    toast.error(`Iframe authentication failed: ${error}`)
-  }
-
-  const handleIframeCancel = () => {
-    setShowIframe(false)
-    setAuthStep('idle')
-    setAuthProgress(0)
-    toast.info('Iframe authentication cancelled - use popup method instead')
-  }
-
   const handleStartOAuthFlow = async () => {
     if (!manualAuth.clientId || !manualAuth.clientSecret) {
       toast.error('Please enter your Client ID and Client Secret first')
@@ -385,9 +319,14 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           if (popup && !popup.closed) popup.close()
           if (messageListener) window.removeEventListener('message', messageListener)
           console.error('❌ POLLING TIMEOUT after 30 seconds - connection not established')
-          toast.error('Connection timeout after 30 seconds. Unable to connect to Bullhorn. Please check your credentials and try again.', { 
+          console.error('💡 TROUBLESHOOTING:')
+          console.error('   1. Verify your credentials are correct (username, password, client ID, client secret)')
+          console.error('   2. Check if you can log in manually at auth-east/west.bullhornstaffing.com')
+          console.error('   3. Ensure the OAuth app has the correct permissions')
+          console.error('   4. Try disabling automated mode and using manual code entry')
+          toast.error('Connection timeout after 30 seconds. Bullhorn login did not complete. Please verify your credentials and try again, or use manual mode.', { 
             id: 'oauth-popup',
-            duration: 5000
+            duration: 7000
           })
           setLoading(false)
           setAuthStep('idle')
@@ -699,21 +638,11 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         <DialogHeader>
           <DialogTitle className="text-2xl">Connect to Bullhorn</DialogTitle>
           <DialogDescription>
-            {showIframe 
-              ? '🖼️ Iframe Authentication - Complete login below and we\'ll extract the code automatically' 
-              : '✨ Automated OAuth - Choose your preferred authentication method'}
+            ✨ Automated OAuth - Popup window will handle authentication automatically
           </DialogDescription>
         </DialogHeader>
 
-        {showIframe ? (
-          <OAuthIframe
-            authUrl={getAuthUrl()}
-            onCodeReceived={handleIframeCodeReceived}
-            onError={handleIframeError}
-            onCancel={handleIframeCancel}
-          />
-        ) : (
-          <div className="space-y-4">
+        <div className="space-y-4">
           {(authStep !== 'idle' || loading) && (
             <div className="space-y-3 p-4 border border-accent/30 bg-accent/5 rounded-lg">
               <div className="space-y-2">
@@ -828,15 +757,18 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             <AlertDescription className="space-y-2">
               <p className="font-medium">🔐 Automated OAuth Authentication</p>
               <p className="text-xs">
-                <strong>🖼️ Iframe Method:</strong> Opens Bullhorn login in an embedded frame below. Complete your login 
-                and we'll automatically extract the code when you're redirected. Works if Bullhorn allows iframe embedding.
+                <strong>🪟 Popup Method (Recommended):</strong> Opens Bullhorn login in a popup window. Automatically logs you in, 
+                extracts the authorization code, and closes the popup. This is the only reliable method due to Bullhorn's X-Frame-Options security policy.
               </p>
               <p className="text-xs mt-1">
-                <strong>🪟 Popup Method:</strong> Opens Bullhorn login in a popup window. Automatically logs you in, 
-                extracts the authorization code, and closes the popup. More reliable if iframes are blocked.
+                <strong>⚡ Manual/Programmatic:</strong> Fallback options if the popup method doesn't work with your Bullhorn configuration or browser settings.
               </p>
-              <p className="text-xs mt-1">
-                <strong>⚡ Manual/Programmatic:</strong> Fallback options if automated methods don't work with your Bullhorn configuration.
+              <p className="text-xs mt-2 text-muted-foreground">
+                ⚠️ Note: Iframe method is disabled because Bullhorn blocks iframe embedding for security reasons (X-Frame-Options header).
+              </p>
+              <p className="text-xs mt-2 p-2 bg-muted rounded border border-border">
+                <strong>⏱️ 30-Second Timeout:</strong> If the popup doesn't complete within 30 seconds, verify your credentials are correct. 
+                Incorrect credentials will cause the popup to hang on the login page. If this persists, disable automated mode and manually paste the code.
               </p>
             </AlertDescription>
           </Alert>
@@ -989,34 +921,24 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
 
             {manualAuth.useAutomatedFlow ? (
               <div className="space-y-3 pt-2">
-                <div className="flex gap-3">
-                  <Button
-                    type="button"
-                    variant="default"
-                    className="flex-1"
-                    onClick={handleStartIframeFlow}
-                    disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password || loading}
-                  >
-                    {loading ? 'Processing...' : '🖼️ Start Iframe OAuth'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={handleStartOAuthFlow}
-                    disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password || loading}
-                  >
-                    {loading ? 'Processing...' : '🪟 Start Popup OAuth'}
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  variant="default"
+                  className="w-full"
+                  onClick={handleStartOAuthFlow}
+                  disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password || loading}
+                >
+                  {loading ? 'Processing...' : '🪟 Start Popup OAuth (Recommended)'}
+                </Button>
                 <div className="flex justify-center">
                   <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
                     Cancel
                   </Button>
                 </div>
                 <div className="text-center pt-2 border-t border-border">
-                  <p className="text-xs text-muted-foreground mb-2">
-                    💡 <strong>Tip:</strong> Try Iframe first - it embeds login directly. If blocked, use Popup method.
+                  <p className="text-xs text-muted-foreground">
+                    💡 <strong>Tip:</strong> The popup will open, log you in automatically, and extract the code. 
+                    Make sure popups are allowed for this site.
                   </p>
                 </div>
               </div>
@@ -1047,7 +969,6 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             )}
           </form>
         </div>
-        )}
       </DialogContent>
     </Dialog>
   )
