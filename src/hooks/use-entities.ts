@@ -16,15 +16,16 @@ export function useEntities() {
   const [entitiesCache, setEntitiesCache] = useKV<EntitiesCache | null>('entities-cache', null)
   const loadingRef = useRef(false)
   const hasLoadedRef = useRef(false)
-  const initializedRef = useRef(false)
+  const cacheCheckedRef = useRef(false)
 
   useEffect(() => {
-    if (initializedRef.current || loadingRef.current) {
+    if (loadingRef.current || hasLoadedRef.current || cacheCheckedRef.current) {
       return
     }
 
+    cacheCheckedRef.current = true
+
     const loadEntities = async () => {
-      initializedRef.current = true
       loadingRef.current = true
       setLoading(true)
       setError(null)
@@ -40,6 +41,7 @@ export function useEntities() {
         }
 
         if (entitiesCache && entitiesCache.entities && entitiesCache.entities.length > 0 && Date.now() - entitiesCache.lastUpdated < CACHE_DURATION) {
+          console.log('Loading entities from cache:', entitiesCache.entities.length)
           setEntities(entitiesCache.entities)
           setLoading(false)
           loadingRef.current = false
@@ -47,6 +49,7 @@ export function useEntities() {
           return
         }
 
+        console.log('Fetching fresh entities from API...')
         const fetchedEntities = await bullhornAPI.getAllEntities()
         
         if (fetchedEntities.length === 0) {
@@ -73,10 +76,10 @@ export function useEntities() {
     }
 
     loadEntities()
-  }, [entitiesCache, setEntitiesCache])
+  }, [entitiesCache])
 
   const refresh = useCallback(() => {
-    initializedRef.current = false
+    cacheCheckedRef.current = false
     loadingRef.current = false
     hasLoadedRef.current = false
     setLoading(true)
@@ -102,6 +105,7 @@ export function useEntities() {
         
         setEntities(fetchedEntities)
         hasLoadedRef.current = true
+        cacheCheckedRef.current = true
         
         const newCache = {
           entities: fetchedEntities,
@@ -120,7 +124,7 @@ export function useEntities() {
     }
 
     loadEntities()
-  }, [setEntitiesCache])
+  }, [])
 
   const addEntity = useCallback((entityName: string) => {
     const trimmedName = entityName.trim()
@@ -140,7 +144,7 @@ export function useEntities() {
     }))
     
     return true
-  }, [entities, setEntitiesCache])
+  }, [entities])
 
   return { entities, loading, error, refresh, addEntity }
 }

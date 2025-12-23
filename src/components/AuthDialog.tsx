@@ -365,83 +365,85 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             }
 
             if (popupUrlValue.includes('welcome.bullhornstaffing.com')) {
-              console.log('🎉 WELCOME PAGE DETECTED in popup! Starting code extraction with retry logic...')
-              console.log('📄 Welcome to Bullhorn page - "Thank you for using Bullhorn" page loaded')
-              setWelcomePageDetected(true)
-              setAuthStep('welcome-detected')
-              setAuthProgress(40)
-              toast.success('✅ Welcome to Bullhorn page detected! Extracting code...', { id: 'welcome-detect' })
-              
-              const extractCodeWithRetry = async (attemptNumber: number = 1): Promise<void> => {
-                const maxRetries = 5
-                const backoffDelay = Math.min(500 * Math.pow(2, attemptNumber - 1), 3000)
+              if (!welcomePageDetected) {
+                console.log('🎉 WELCOME PAGE DETECTED in popup! Starting code extraction with retry logic...')
+                console.log('📄 Welcome to Bullhorn page - "Thank you for using Bullhorn" page loaded')
+                setWelcomePageDetected(true)
+                setAuthStep('welcome-detected')
+                setAuthProgress(40)
+                toast.success('✅ Welcome to Bullhorn page detected! Extracting code...', { id: 'welcome-detect' })
                 
-                try {
-                  if (!popup) return
+                const extractCodeWithRetry = async (attemptNumber: number = 1): Promise<void> => {
+                  const maxRetries = 5
+                  const backoffDelay = Math.min(500 * Math.pow(2, attemptNumber - 1), 3000)
                   
-                  const currentUrl = popup.location.href
-                  const url = new URL(currentUrl)
-                  const code = url.searchParams.get('code')
-                  const error = url.searchParams.get('error')
-
-                  console.log(`✅ [Attempt ${attemptNumber}/${maxRetries}] WELCOME PAGE CODE EXTRACTION:`, { 
-                    hasCode: !!code, 
-                    hasError: !!error,
-                    codePreview: code ? code.substring(0, 30) + '...' : null,
-                    error: error,
-                    fullUrl: currentUrl.substring(0, 150) + '...'
-                  })
-
-                  if (error) {
-                    codeFound = true
-                    if (pollInterval) clearInterval(pollInterval)
-                    if (timeoutId) clearTimeout(timeoutId)
-                    if (messageListener) window.removeEventListener('message', messageListener)
-                    popup.close()
-                    console.error('❌ OAuth error in URL:', error)
-                    toast.error(`OAuth error: ${error}`, { id: 'oauth-popup' })
-                    setLoading(false)
-                    return
-                  }
-
-                  if (code) {
-                    codeFound = true
-                    if (pollInterval) clearInterval(pollInterval)
-                    if (timeoutId) clearTimeout(timeoutId)
-                    if (messageListener) window.removeEventListener('message', messageListener)
-                    console.log(`✅ CODE EXTRACTED FROM WELCOME PAGE on attempt ${attemptNumber}! Processing immediately (no login action needed)...`)
-                    popup.close()
+                  try {
+                    if (!popup) return
                     
-                    setAuthStep('extracting-code')
-                    setAuthProgress(50)
-                    toast.loading('Code extracted! Exchanging for token...', { id: 'oauth-popup' })
-                    
-                    handleCodeExchange(code).catch((err) => {
-                      console.error('❌ CODE EXCHANGE FAILED:', err)
-                      toast.error('Failed to complete authentication', { id: 'oauth-popup' })
-                      setLoading(false)
-                      setAuthStep('idle')
-                      setAuthProgress(0)
+                    const currentUrl = popup.location.href
+                    const url = new URL(currentUrl)
+                    const code = url.searchParams.get('code')
+                    const error = url.searchParams.get('error')
+
+                    console.log(`✅ [Attempt ${attemptNumber}/${maxRetries}] WELCOME PAGE CODE EXTRACTION:`, { 
+                      hasCode: !!code, 
+                      hasError: !!error,
+                      codePreview: code ? code.substring(0, 30) + '...' : null,
+                      error: error,
+                      fullUrl: currentUrl.substring(0, 150) + '...'
                     })
-                  } else if (attemptNumber < maxRetries) {
-                    console.warn(`⚠️ [Attempt ${attemptNumber}/${maxRetries}] Welcome page detected but NO CODE parameter - retrying in ${backoffDelay}ms...`)
-                    await new Promise(resolve => setTimeout(resolve, backoffDelay))
-                    return extractCodeWithRetry(attemptNumber + 1)
-                  } else {
-                    console.warn(`⚠️ Welcome page detected but NO CODE after ${maxRetries} attempts - continuing to poll...`)
-                  }
-                } catch (urlError) {
-                  console.error(`❌ [Attempt ${attemptNumber}] Error parsing popup URL:`, urlError)
-                  
-                  if (attemptNumber < maxRetries) {
-                    console.log(`⏳ Retrying after error in ${backoffDelay}ms...`)
-                    await new Promise(resolve => setTimeout(resolve, backoffDelay))
-                    return extractCodeWithRetry(attemptNumber + 1)
+
+                    if (error) {
+                      codeFound = true
+                      if (pollInterval) clearInterval(pollInterval)
+                      if (timeoutId) clearTimeout(timeoutId)
+                      if (messageListener) window.removeEventListener('message', messageListener)
+                      popup.close()
+                      console.error('❌ OAuth error in URL:', error)
+                      toast.error(`OAuth error: ${error}`, { id: 'oauth-popup' })
+                      setLoading(false)
+                      return
+                    }
+
+                    if (code) {
+                      codeFound = true
+                      if (pollInterval) clearInterval(pollInterval)
+                      if (timeoutId) clearTimeout(timeoutId)
+                      if (messageListener) window.removeEventListener('message', messageListener)
+                      console.log(`✅ CODE EXTRACTED FROM WELCOME PAGE on attempt ${attemptNumber}! Processing immediately (no login action needed)...`)
+                      popup.close()
+                      
+                      setAuthStep('extracting-code')
+                      setAuthProgress(50)
+                      toast.loading('Code extracted! Exchanging for token...', { id: 'oauth-popup' })
+                      
+                      handleCodeExchange(code).catch((err) => {
+                        console.error('❌ CODE EXCHANGE FAILED:', err)
+                        toast.error('Failed to complete authentication', { id: 'oauth-popup' })
+                        setLoading(false)
+                        setAuthStep('idle')
+                        setAuthProgress(0)
+                      })
+                    } else if (attemptNumber < maxRetries) {
+                      console.warn(`⚠️ [Attempt ${attemptNumber}/${maxRetries}] Welcome page detected but NO CODE parameter - retrying in ${backoffDelay}ms...`)
+                      await new Promise(resolve => setTimeout(resolve, backoffDelay))
+                      return extractCodeWithRetry(attemptNumber + 1)
+                    } else {
+                      console.warn(`⚠️ Welcome page detected but NO CODE after ${maxRetries} attempts - continuing to poll...`)
+                    }
+                  } catch (urlError) {
+                    console.error(`❌ [Attempt ${attemptNumber}] Error parsing popup URL:`, urlError)
+                    
+                    if (attemptNumber < maxRetries) {
+                      console.log(`⏳ Retrying after error in ${backoffDelay}ms...`)
+                      await new Promise(resolve => setTimeout(resolve, backoffDelay))
+                      return extractCodeWithRetry(attemptNumber + 1)
+                    }
                   }
                 }
+                
+                extractCodeWithRetry(1)
               }
-              
-              extractCodeWithRetry(1)
             }
           } catch (crossOriginError) {
             setPopupUrl('(Cross-origin - cannot access URL during Bullhorn authentication)')

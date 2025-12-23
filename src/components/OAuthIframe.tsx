@@ -116,16 +116,18 @@ export function OAuthIframe({ authUrl, onCodeReceived, onError, onCancel }: OAut
           }
 
           if (iframeUrl.includes('welcome.bullhornstaffing.com')) {
-            console.log('🎉 WELCOME PAGE DETECTED! Starting code extraction with retry logic...')
-            console.log('📄 Welcome to Bullhorn page - "Thank you for using Bullhorn" page loaded')
-            setWelcomePageDetected(true)
-            toast.success('✅ Welcome to Bullhorn page loaded! Extracting code...', { id: 'welcome-detect' })
-            
-            extractCodeWithRetry(iframeUrl, 0).then(success => {
-              if (!success && isMounted) {
-                console.warn('⚠️ All retry attempts failed, continuing to poll...')
-              }
-            })
+            if (!welcomePageDetected) {
+              console.log('🎉 WELCOME PAGE DETECTED! Starting code extraction with retry logic...')
+              console.log('📄 Welcome to Bullhorn page - "Thank you for using Bullhorn" page loaded')
+              setWelcomePageDetected(true)
+              toast.success('✅ Welcome to Bullhorn page loaded! Extracting code...', { id: 'welcome-detect' })
+              
+              extractCodeWithRetry(iframeUrl, 0).then(success => {
+                if (!success && isMounted) {
+                  console.warn('⚠️ All retry attempts failed, continuing to poll...')
+                }
+              })
+            }
             
             return false
           }

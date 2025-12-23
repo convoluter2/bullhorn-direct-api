@@ -56,11 +56,11 @@ function App() {
       rollbackData: details?.rollbackData
     }
     setLogs((currentLogs) => [newLog, ...(currentLogs || [])])
-  }, [setLogs])
+  }, [])
 
   const clearLogs = useCallback(() => {
     setLogs(() => [])
-  }, [setLogs])
+  }, [])
 
   const updateLog = useCallback((logId: string, updates: Partial<AuditLog>) => {
     setLogs((currentLogs) => 
@@ -68,7 +68,7 @@ function App() {
         log.id === logId ? { ...log, ...updates } : log
       )
     )
-  }, [setLogs])
+  }, [])
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -95,8 +95,12 @@ function App() {
     }
 
     const checkTokenExpiry = async () => {
+      if (!session || !session.refreshToken || !session.expiresAt || !currentConnectionId) {
+        return
+      }
+      
       const now = Date.now()
-      const timeUntilExpiry = session.expiresAt! - now
+      const timeUntilExpiry = session.expiresAt - now
 
       if (timeUntilExpiry < 60000 && timeUntilExpiry > 0) {
         try {
@@ -107,7 +111,7 @@ function App() {
           }
 
           const tokenData = await bullhornAPI.refreshAccessToken(
-            session.refreshToken!,
+            session.refreshToken,
             credentials.clientId,
             credentials.clientSecret,
             credentials.username
@@ -129,7 +133,7 @@ function App() {
 
     const interval = setInterval(checkTokenExpiry, 30000)
     return () => clearInterval(interval)
-  }, [session?.expiresAt, session?.refreshToken, currentConnectionId, addLog])
+  }, [session, currentConnectionId, addLog])
 
   const handleAuthenticated = (newSession: BullhornSession, connectionId?: string) => {
     console.log('App - handleAuthenticated called:', { 
