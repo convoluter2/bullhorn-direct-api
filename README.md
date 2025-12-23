@@ -76,6 +76,16 @@ See [README_PROXY.md](./README_PROXY.md) for complete proxy documentation.
 - [CONDITIONAL_ASSOCIATIONS_QUICK_REF.md](./CONDITIONAL_ASSOCIATIONS_QUICK_REF.md) - Quick Reference
 - [OAUTH_GUIDE.md](./OAUTH_GUIDE.md) - OAuth Setup Guide
 
+### 🔧 Troubleshooting
+
+**Getting ERR_TOO_MANY_REDIRECTS during OAuth?**
+- [QUICK_FIX_REDIRECT_LOOP.md](./QUICK_FIX_REDIRECT_LOOP.md) - **Quick Fix Guide** ⚡
+- [COOKIE_REDIRECT_LOOP_FIX.md](./COOKIE_REDIRECT_LOOP_FIX.md) - Detailed Troubleshooting
+- [COOKIE_FIX_IMPLEMENTATION.md](./COOKIE_FIX_IMPLEMENTATION.md) - Technical Details
+- [COOKIE_REDIRECT_SOLUTION.md](./COOKIE_REDIRECT_SOLUTION.md) - Complete Solution Package
+
+**TL;DR:** Use Incognito mode (`Ctrl+Shift+N` or `Cmd+Shift+N`) to avoid cookie conflicts!
+
 ## Key Capabilities
 
 ✅ Direct Bullhorn REST API integration  

@@ -84,10 +84,13 @@ export class BullhornAPI {
       ? this.loginInfoCache.get(username)!.oauthUrl
       : 'https://auth-east.bullhornstaffing.com/oauth'
     
+    const timestamp = Date.now()
+    const uniqueState = `${state}_${timestamp}`
+    
     const params = new URLSearchParams({
       client_id: clientId,
       response_type: 'code',
-      state: state
+      state: uniqueState
     })
     
     if (password) {
@@ -96,10 +99,13 @@ export class BullhornAPI {
       params.append('password', password)
     }
     
+    params.append('_t', timestamp.toString())
+    
     const authUrl = `${oauthUrl}/authorize?${params.toString()}`
-    console.log('🔗 Generated authorization URL:', {
+    console.log('🔗 Generated authorization URL with cache-busting:', {
       oauthUrl,
       usedCache: this.loginInfoCache.has(username),
+      timestamp,
       authUrlPreview: authUrl.substring(0, 100) + '...'
     })
     

@@ -28,6 +28,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
   const [authStep, setAuthStep] = useState<AuthStep>('idle')
   const [authProgress, setAuthProgress] = useState(0)
   const [popupUrl, setPopupUrl] = useState<string>('')
+  const [showCookieHelp, setShowCookieHelp] = useState(false)
+  const [isIncognito, setIsIncognito] = useState<boolean | null>(null)
   const [manualAuth, setManualAuth] = useState({
     clientId: '',
     clientSecret: '',
@@ -36,6 +38,32 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     authCode: '',
     useAutomatedFlow: true
   })
+  
+  useEffect(() => {
+    const detectIncognito = async () => {
+      try {
+        if ('storage' in navigator && 'estimate' in navigator.storage) {
+          const { quota } = await navigator.storage.estimate()
+          setIsIncognito(!!(quota && quota < 120000000))
+        } else {
+          const testKey = 'incognito-test'
+          try {
+            localStorage.setItem(testKey, '1')
+            localStorage.removeItem(testKey)
+            setIsIncognito(false)
+          } catch (e) {
+            setIsIncognito(true)
+          }
+        }
+      } catch (error) {
+        setIsIncognito(null)
+      }
+    }
+    
+    if (open) {
+      detectIncognito()
+    }
+  }, [open])
 
   useEffect(() => {
     const loadConnectionCredentials = async () => {
@@ -934,6 +962,79 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             </Alert>
           )}
           
+          {showCookieHelp && (
+            <Alert className="border-destructive bg-destructive/10">
+              <Info className="h-4 w-4 text-destructive" />
+              <AlertDescription className="space-y-2">
+                <p className="font-medium text-destructive">🍪 Cookie/Redirect Loop Detected</p>
+                <p className="text-xs text-foreground">
+                  If you're seeing "ERR_TOO_MANY_REDIRECTS" or the popup keeps redirecting, this is caused by old Bullhorn session cookies in your browser.
+                </p>
+                <div className="text-xs space-y-1 mt-2 p-2 bg-background rounded border border-border">
+                  <p className="font-semibold">✨ Quick Fixes:</p>
+                  <ol className="list-decimal list-inside space-y-1 ml-2">
+                    <li>Use <strong>Incognito/Private mode</strong> (no old cookies) - Recommended!</li>
+                    <li>Clear cookies for <code className="bg-muted px-1 rounded">*.bullhornstaffing.com</code></li>
+                    <li>Try the <strong>Proxy-Based OAuth</strong> button below (works around cookie issues)</li>
+                  </ol>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      window.open('https://support.google.com/accounts/answer/32050', '_blank')
+                    }}
+                  >
+                    How to Clear Cookies
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setShowCookieHelp(false)}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {isIncognito === false && !showCookieHelp && (
+            <Alert className="border-yellow-500 bg-yellow-500/10">
+              <Info className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="space-y-2">
+                <p className="font-medium text-yellow-700">⚠️ Not Using Incognito Mode</p>
+                <p className="text-xs text-foreground">
+                  You're not in Incognito/Private mode. If you've previously logged into Bullhorn, you may encounter redirect loops due to cached cookies.
+                </p>
+                <p className="text-xs font-semibold text-yellow-700">
+                  💡 Recommendation: Use Incognito mode for reliable OAuth authentication
+                </p>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      toast.info('Open a new Incognito window and try again:\n\nChrome/Edge: Ctrl+Shift+N (Windows) or Cmd+Shift+N (Mac)\nFirefox: Ctrl+Shift+P (Windows) or Cmd+Shift+P (Mac)', {
+                        duration: 10000
+                      })
+                    }}
+                  >
+                    Show Incognito Shortcuts
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setIsIncognito(null)}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription className="space-y-2">
@@ -951,6 +1052,15 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
               <p className="text-xs mt-2 p-2 bg-muted rounded border border-border">
                 <strong>⏱️ 30-Second Timeout:</strong> If the popup doesn't complete within 30 seconds, verify your credentials are correct. 
                 Incorrect credentials will cause the popup to hang on the login page. If this persists, disable automated mode and manually paste the code.
+              </p>
+              <p className="text-xs mt-2 p-2 bg-yellow-500/10 rounded border border-yellow-500/30 text-yellow-700 dark:text-yellow-400">
+                <strong>🍪 Getting redirect loops?</strong> <button 
+                  type="button"
+                  onClick={() => setShowCookieHelp(true)}
+                  className="underline hover:no-underline font-semibold"
+                >
+                  Click here for cookie clearing instructions
+                </button>
               </p>
             </AlertDescription>
           </Alert>
