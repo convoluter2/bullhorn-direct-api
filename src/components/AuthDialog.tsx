@@ -366,17 +366,14 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
 
             if (popupUrlValue.includes('welcome.bullhornstaffing.com')) {
               if (!welcomePageDetected) {
-                console.log('🎉 WELCOME PAGE DETECTED in popup! Starting code extraction with retry logic...')
+                console.log('🎉 WELCOME PAGE DETECTED in popup! Extracting code IMMEDIATELY to prevent expiration...')
                 console.log('📄 Welcome to Bullhorn page - "Thank you for using Bullhorn" page loaded')
                 setWelcomePageDetected(true)
                 setAuthStep('welcome-detected')
                 setAuthProgress(40)
-                toast.success('✅ Welcome to Bullhorn page detected! Extracting code...', { id: 'welcome-detect' })
+                toast.success('✅ Welcome page detected! Extracting code...', { id: 'welcome-detect' })
                 
-                const extractCodeWithRetry = async (attemptNumber: number = 1): Promise<void> => {
-                  const maxRetries = 5
-                  const backoffDelay = Math.min(500 * Math.pow(2, attemptNumber - 1), 3000)
-                  
+                const extractCodeImmediately = async (): Promise<void> => {
                   try {
                     if (!popup) return
                     
@@ -385,7 +382,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                     const code = url.searchParams.get('code')
                     const error = url.searchParams.get('error')
 
-                    console.log(`✅ [Attempt ${attemptNumber}/${maxRetries}] WELCOME PAGE CODE EXTRACTION:`, { 
+                    console.log(`🔍 IMMEDIATE CODE EXTRACTION:`, { 
                       hasCode: !!code, 
                       hasError: !!error,
                       codePreview: code ? code.substring(0, 30) + '...' : null,
@@ -402,6 +399,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                       console.error('❌ OAuth error in URL:', error)
                       toast.error(`OAuth error: ${error}`, { id: 'oauth-popup' })
                       setLoading(false)
+                      setAuthStep('idle')
+                      setAuthProgress(0)
                       return
                     }
 
@@ -410,39 +409,32 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                       if (pollInterval) clearInterval(pollInterval)
                       if (timeoutId) clearTimeout(timeoutId)
                       if (messageListener) window.removeEventListener('message', messageListener)
-                      console.log(`✅ CODE EXTRACTED FROM WELCOME PAGE on attempt ${attemptNumber}! Processing immediately (no login action needed)...`)
+                      console.log(`⚡ CODE EXTRACTED! Processing IMMEDIATELY to avoid expiration (codes expire in 60 seconds)...`)
                       popup.close()
                       
                       setAuthStep('extracting-code')
                       setAuthProgress(50)
-                      toast.loading('Code extracted! Exchanging for token...', { id: 'oauth-popup' })
+                      toast.loading('Code extracted! Exchanging immediately...', { id: 'oauth-popup' })
                       
                       handleCodeExchange(code).catch((err) => {
                         console.error('❌ CODE EXCHANGE FAILED:', err)
-                        toast.error('Failed to complete authentication', { id: 'oauth-popup' })
+                        const errorMsg = err instanceof Error ? err.message : 'Authentication failed'
+                        toast.error(errorMsg, { id: 'oauth-popup', duration: 7000 })
                         setLoading(false)
                         setAuthStep('idle')
                         setAuthProgress(0)
                       })
-                    } else if (attemptNumber < maxRetries) {
-                      console.warn(`⚠️ [Attempt ${attemptNumber}/${maxRetries}] Welcome page detected but NO CODE parameter - retrying in ${backoffDelay}ms...`)
-                      await new Promise(resolve => setTimeout(resolve, backoffDelay))
-                      return extractCodeWithRetry(attemptNumber + 1)
                     } else {
-                      console.warn(`⚠️ Welcome page detected but NO CODE after ${maxRetries} attempts - continuing to poll...`)
+                      console.warn(`⚠️ Welcome page detected but NO CODE parameter yet - this is unusual`)
+                      console.warn(`⚠️ URL was:`, currentUrl)
+                      console.warn(`⚠️ This may indicate the OAuth flow failed silently`)
                     }
                   } catch (urlError) {
-                    console.error(`❌ [Attempt ${attemptNumber}] Error parsing popup URL:`, urlError)
-                    
-                    if (attemptNumber < maxRetries) {
-                      console.log(`⏳ Retrying after error in ${backoffDelay}ms...`)
-                      await new Promise(resolve => setTimeout(resolve, backoffDelay))
-                      return extractCodeWithRetry(attemptNumber + 1)
-                    }
+                    console.error(`❌ Error extracting code from popup URL:`, urlError)
                   }
                 }
                 
-                extractCodeWithRetry(1)
+                extractCodeImmediately()
               }
             }
           } catch (crossOriginError) {
@@ -495,33 +487,61 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
   }
 
   const handleCodeExchange = async (code: string) => {
+    const exchangeStartTime = Date.now()
     try {
       console.log('🔄 STARTING CODE EXCHANGE')
+      console.log('⏱️  CRITICAL: Authorization codes expire in 60 seconds from generation')
       console.log('📝 Raw code received:', code.substring(0, 50) + '...')
       setAuthStep('exchanging-token')
       setAuthProgress(60)
       
-      let codeToUse = code
-      if (codeToUse.includes('%3A') || codeToUse.includes('%2F') || codeToUse.includes('%3a')) {
-        const decoded = decodeURIComponent(codeToUse)
-        console.log('🔓 Code was URL-encoded:', { 
+      let codeToUse = code.trim()
+      
+      let decodedOnce = codeToUse
+      try {
+        decodedOnce = decodeURIComponent(codeToUse)
+      } catch (e) {
+        console.log('Code is not URL-encoded or already decoded')
+      }
+      
+      if (decodedOnce !== codeToUse) {
+        console.log('🔓 Code was URL-encoded (1st decode):', { 
           originalPreview: codeToUse.substring(0, 40), 
-          decodedPreview: decoded.substring(0, 40),
-          hadColon: decoded.includes(':')
+          decodedPreview: decodedOnce.substring(0, 40),
+          hadColon: decodedOnce.includes(':')
         })
-        codeToUse = decoded
-      } else {
-        console.log('✓ Code already decoded')
+        codeToUse = decodedOnce
+      }
+      
+      while (codeToUse.includes('%3A') || codeToUse.includes('%3a') || codeToUse.includes('%2F') || codeToUse.includes('%2f')) {
+        try {
+          const furtherDecoded = decodeURIComponent(codeToUse)
+          if (furtherDecoded === codeToUse) {
+            break
+          }
+          console.log('🔓 Code had multiple encoding layers, decoded again:', {
+            before: codeToUse.substring(0, 40),
+            after: furtherDecoded.substring(0, 40)
+          })
+          codeToUse = furtherDecoded
+        } catch (e) {
+          console.log('⚠️ Could not decode further, using current value')
+          break
+        }
       }
 
-      console.log('🎫 Exchanging code for token (NO redirect_uri)')
+      console.log('🎫 Final code prepared for exchange')
       console.log('📋 Exchange parameters:', {
         codeLength: codeToUse.length,
+        codePreview: codeToUse.substring(0, 20) + '...' + codeToUse.substring(codeToUse.length - 10),
+        hasColon: codeToUse.includes(':'),
         clientIdPreview: manualAuth.clientId.substring(0, 10) + '...',
-        hasSecret: !!manualAuth.clientSecret
+        hasSecret: !!manualAuth.clientSecret,
+        username: manualAuth.username
       })
 
       setAuthProgress(70)
+      console.log('⏱️  Attempting token exchange - this must complete within 60 seconds of code generation')
       const tokenData = await bullhornAPI.exchangeCodeForToken(
         codeToUse,
         manualAuth.clientId,
@@ -529,7 +549,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         manualAuth.username
       )
       
-      console.log('✅ Token received:', {
+      const exchangeElapsed = ((Date.now() - exchangeStartTime) / 1000).toFixed(2)
+      console.log(`✅ Token received in ${exchangeElapsed}s:`, {
         hasAccessToken: !!tokenData.accessToken,
         hasRefreshToken: !!tokenData.refreshToken,
         expiresIn: tokenData.expiresIn
@@ -543,7 +564,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       session.refreshToken = tokenData.refreshToken
       session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
 
-      console.log('✅ Session established:', {
+      const totalElapsed = ((Date.now() - exchangeStartTime) / 1000).toFixed(2)
+      console.log(`✅ Session established in ${totalElapsed}s total:`, {
         hasToken: !!session.BhRestToken,
         hasRestUrl: !!session.restUrl,
         corporationId: session.corporationId,
@@ -573,16 +595,30 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       setAuthStep('idle')
       setAuthProgress(0)
       
-      console.log('✅ CODE EXCHANGE COMPLETE')
+      console.log(`✅ CODE EXCHANGE COMPLETE - Total time: ${totalElapsed}s`)
     } catch (error) {
-      console.error('❌ CODE EXCHANGE ERROR:', error)
+      const exchangeElapsed = ((Date.now() - exchangeStartTime) / 1000).toFixed(2)
+      console.error(`❌ CODE EXCHANGE ERROR after ${exchangeElapsed}s:`, error)
       console.error('❌ Error details:', {
         name: error instanceof Error ? error.name : 'Unknown',
         message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
+        timeElapsed: `${exchangeElapsed}s`
       })
-      const errorMessage = error instanceof Error ? error.message : 'Authentication failed'
-      toast.error(`Authentication failed: ${errorMessage}`, { id: 'oauth-popup' })
+      
+      let errorMessage = error instanceof Error ? error.message : 'Authentication failed'
+      
+      if (errorMessage.includes('invalid_grant') || errorMessage.includes('expired')) {
+        errorMessage = `Authorization code expired or invalid. The code must be used within 60 seconds of generation. Time elapsed: ${exchangeElapsed}s. Please try again.`
+        console.error('💡 TROUBLESHOOTING:')
+        console.error('   1. The authorization code expires in 60 seconds')
+        console.error('   2. Each code can only be used once')
+        console.error('   3. Verify your system clock is accurate')
+        console.error('   4. Check that the correct OAuth region is being used')
+        console.error(`   5. This exchange took ${exchangeElapsed}s - may have timed out`)
+      }
+      
+      toast.error(errorMessage, { id: 'oauth-popup', duration: 8000 })
       setLoading(false)
       setAuthStep('idle')
       setAuthProgress(0)

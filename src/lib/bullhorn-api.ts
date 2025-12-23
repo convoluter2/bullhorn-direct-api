@@ -112,18 +112,53 @@ export class BullhornAPI {
     clientSecret: string,
     username?: string
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
-    let finalCode = code
+    let finalCode = code.trim()
     
-    if (code.includes('%3A') || code.includes('%2F') || code.includes('%3a')) {
-      finalCode = decodeURIComponent(code)
-      console.log('Code was URL-encoded, decoded it:', { original: code.substring(0, 40), decoded: finalCode.substring(0, 40) })
+    let decodedOnce = finalCode
+    try {
+      decodedOnce = decodeURIComponent(finalCode)
+    } catch (e) {
+      console.log('Code is not URL-encoded or already decoded')
+    }
+    
+    if (decodedOnce !== finalCode) {
+      console.log('🔓 Code was URL-encoded (1st decode):', { 
+        original: finalCode.substring(0, 40), 
+        decoded: decodedOnce.substring(0, 40),
+        hasColon: decodedOnce.includes(':')
+      })
+      finalCode = decodedOnce
+    }
+    
+    while (finalCode.includes('%3A') || finalCode.includes('%3a') || finalCode.includes('%2F') || finalCode.includes('%2f')) {
+      try {
+        const furtherDecoded = decodeURIComponent(finalCode)
+        if (furtherDecoded === finalCode) {
+          break
+        }
+        console.log('🔓 Code had multiple encoding layers, decoded again:', {
+          before: finalCode.substring(0, 40),
+          after: furtherDecoded.substring(0, 40)
+        })
+        finalCode = furtherDecoded
+      } catch (e) {
+        console.log('⚠️ Could not decode further, using current value')
+        break
+      }
     }
     
     let oauthUrl = 'https://auth-east.bullhornstaffing.com/oauth'
     
     if (username) {
-      const loginInfo = await this.getLoginInfo(username)
-      oauthUrl = loginInfo.oauthUrl
+      try {
+        const loginInfo = await this.getLoginInfo(username)
+        oauthUrl = loginInfo.oauthUrl
+        console.log('✅ Using region-specific OAuth URL:', oauthUrl)
+      } catch (error) {
+        console.warn('⚠️ Could not fetch loginInfo, using default OAuth URL:', error)
+      }
+    } else {
+      console.warn('⚠️ No username provided, using default east OAuth URL')
     }
     
     const params = new URLSearchParams({
@@ -135,6 +170,8 @@ export class BullhornAPI {
 
     console.log('🔑 Exchanging code for token (NO redirect_uri):', {
       codeLength: finalCode.length,
+      codePreview: finalCode.substring(0, 20) + '...' + finalCode.substring(finalCode.length - 10),
+      hasColon: finalCode.includes(':'),
       clientIdPreview: clientId.substring(0, 10) + '...',
       oauthUrl: oauthUrl
     })
@@ -163,12 +200,34 @@ export class BullhornAPI {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('❌ Token exchange failed:', errorText)
+      console.error('❌ Token exchange failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText,
+        codeUsed: finalCode.substring(0, 20) + '...',
+        tokenUrl: tokenUrl
+      })
+      
+      let errorObj
+      try {
+        errorObj = JSON.parse(errorText)
+      } catch {
+        errorObj = { error: 'unknown', error_description: errorText }
+      }
+      
+      if (errorObj.error === 'invalid_grant' && errorObj.error_description?.includes('expired')) {
+        throw new Error(`Authorization code expired or already used. Please try authenticating again. The code must be exchanged within 60 seconds of generation.`)
+      }
+      
       throw new Error(`Failed to exchange code for token: ${errorText}`)
     }
 
     const data = await response.json()
-    console.log('✅ Token exchange successful')
+    console.log('✅ Token exchange successful:', {
+      hasAccessToken: !!data.access_token,
+      hasRefreshToken: !!data.refresh_token,
+      expiresIn: data.expires_in
+    })
     
     return {
       accessToken: data.access_token,

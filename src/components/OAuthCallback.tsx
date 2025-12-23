@@ -37,12 +37,9 @@ export function OAuthCallback({
       }
     }, 30000)
 
-    const extractCodeFromUrl = async (retryCount: number = 0): Promise<{ code: string | null, error: string | null }> => {
-      const maxRetries = 5
-      const backoffDelay = Math.min(500 * Math.pow(2, retryCount), 3000)
-      
+    const extractCodeFromUrl = async (): Promise<{ code: string | null, error: string | null }> => {
       try {
-        console.log(`🔍 [Attempt ${retryCount + 1}/${maxRetries}] Extracting code from URL...`)
+        console.log(`🔍 Extracting code from URL IMMEDIATELY to prevent expiration...`)
         
         const urlParams = new URLSearchParams(window.location.search)
         const code = urlParams.get('code')
@@ -51,7 +48,8 @@ export function OAuthCallback({
         console.log('OAuth Callback - URL params:', { 
           code: code ? code.substring(0, 20) + '...' : null, 
           errorParam,
-          fullUrl: window.location.href.substring(0, 150)
+          fullUrl: window.location.href.substring(0, 150),
+          hasColon: code ? code.includes(':') || code.includes('%3A') || code.includes('%3a') : false
         })
         
         if (errorParam) {
@@ -59,27 +57,20 @@ export function OAuthCallback({
         }
         
         if (code) {
+          console.log('⚡ Code found immediately - processing without delay (codes expire in 60 seconds)')
           return { code, error: null }
         }
         
-        if (window.location.href.includes('welcome.bullhornstaffing.com') && retryCount < maxRetries - 1) {
-          console.log('🎉 WELCOME TO BULLHORN page detected - "Thank you for using Bullhorn"')
-          console.log(`⏳ Code not found on welcome page yet, retrying in ${backoffDelay}ms...`)
-          await new Promise(resolve => setTimeout(resolve, backoffDelay))
-          return extractCodeFromUrl(retryCount + 1)
+        if (window.location.href.includes('welcome.bullhornstaffing.com')) {
+          console.log('⚠️ WELCOME TO BULLHORN page detected but NO CODE parameter')
+          console.log('⚠️ This indicates the OAuth flow failed silently or the code was already consumed')
+          return { code: null, error: 'No code found on welcome page' }
         }
         
         return { code: null, error: null }
       } catch (error) {
-        console.error(`❌ [Attempt ${retryCount + 1}] Error extracting code:`, error)
-        
-        if (retryCount < maxRetries - 1) {
-          console.log(`⏳ Retrying after error in ${backoffDelay}ms...`)
-          await new Promise(resolve => setTimeout(resolve, backoffDelay))
-          return extractCodeFromUrl(retryCount + 1)
-        }
-        
-        return { code: null, error: 'Failed to extract code after multiple attempts' }
+        console.error(`❌ Error extracting code:`, error)
+        return { code: null, error: 'Failed to extract code from URL' }
       }
     }
 
@@ -131,13 +122,51 @@ export function OAuthCallback({
         if (isMounted) setProgress(prev => [...prev, 'Authorization code detected'])
 
         let codeToUse = code
-        if (code.includes('%3A') || code.includes('%2F') || code.includes('%3a')) {
-          codeToUse = decodeURIComponent(code)
-          if (isMounted) setProgress(prev => [...prev, 'Code was URL-encoded, decoded successfully'])
-          console.log('OAuth Callback - Decoded code:', { original: code.substring(0, 30), decoded: codeToUse.substring(0, 30) })
-        } else {
-          if (isMounted) setProgress(prev => [...prev, 'Code format validated'])
+        
+        let decodedOnce = code
+        try {
+          decodedOnce = decodeURIComponent(code)
+        } catch (e) {
+          console.log('⚠️ Code is not URL-encoded or already decoded')
         }
+        
+        if (decodedOnce !== code) {
+          console.log('🔓 Code was URL-encoded (1st decode):', { 
+            original: code.substring(0, 40), 
+            decoded: decodedOnce.substring(0, 40),
+            hasColon: decodedOnce.includes(':')
+          })
+          codeToUse = decodedOnce
+          if (isMounted) setProgress(prev => [...prev, 'Code was URL-encoded, decoded successfully'])
+        }
+        
+        while (codeToUse.includes('%3A') || codeToUse.includes('%3a') || codeToUse.includes('%2F') || codeToUse.includes('%2f')) {
+          try {
+            const furtherDecoded = decodeURIComponent(codeToUse)
+            if (furtherDecoded === codeToUse) {
+              break
+            }
+            console.log('🔓 Code had multiple encoding layers, decoded again:', {
+              before: codeToUse.substring(0, 40),
+              after: furtherDecoded.substring(0, 40)
+            })
+            codeToUse = furtherDecoded
+            if (isMounted) setProgress(prev => [...prev, 'Code had multiple encoding layers, decoded again'])
+          } catch (e) {
+            console.log('⚠️ Could not decode further, using current value')
+            break
+          }
+        }
+        
+        if (codeToUse === code) {
+          if (isMounted) setProgress(prev => [...prev, 'Code format validated (no encoding detected)'])
+        }
+        
+        console.log('✅ Final code to exchange:', {
+          length: codeToUse.length,
+          preview: codeToUse.substring(0, 20) + '...' + codeToUse.substring(codeToUse.length - 10),
+          hasColon: codeToUse.includes(':')
+        })
 
         const pendingAuth = await window.spark.kv.get<{
           clientId: string
