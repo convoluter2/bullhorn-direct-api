@@ -115,6 +115,9 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         
         console.log('🎫 Using extracted code (length:', codeToUse.length, ')')
         
+        console.log('🔍 Fetching loginInfo to get correct region URLs...')
+        await bullhornAPI.prepareForAuth(manualAuth.username)
+        
         setAuthProgress(60)
         const tokenData = await bullhornAPI.exchangeCodeForToken(
           codeToUse,
@@ -539,6 +542,9 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         hasSecret: !!manualAuth.clientSecret,
         username: manualAuth.username
       })
+
+      console.log('🔍 Ensuring loginInfo is cached for correct region...')
+      await bullhornAPI.prepareForAuth(manualAuth.username)
 
       setAuthProgress(70)
       console.log('⏱️  Attempting token exchange - this must complete within 60 seconds of code generation')
