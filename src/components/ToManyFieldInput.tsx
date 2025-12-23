@@ -94,25 +94,49 @@ export function ToManyFieldInput({
   }
 
   return (
-    <Card className={cn("p-4 space-y-4", className)}>
+    <Card className={cn("p-4 space-y-4 border-2", className)}>
+      <div className="flex items-start justify-between">
+        <div className="space-y-1">
+          <Label className="text-base font-bold">To-Many Association Configuration</Label>
+          <p className="text-xs text-muted-foreground">
+            Configure how to update this to-many field {field?.associatedEntity?.entity ? `(associates with ${field.associatedEntity.entity})` : ''}
+          </p>
+        </div>
+      </div>
+
       <div className="space-y-2">
-        <Label>To-Many Operation</Label>
+        <Label className="font-semibold">Operation Type</Label>
         <Select value={operation} onValueChange={(val) => setOperation(val as ToManyOperation)} disabled={disabled}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="add">Add - Add these IDs to existing associations</SelectItem>
-            <SelectItem value="remove">Remove - Remove these IDs from existing associations</SelectItem>
-            <SelectItem value="replace">Replace - Replace all associations with these IDs</SelectItem>
+            <SelectItem value="add">
+              <div className="space-y-1">
+                <div className="font-semibold">➕ Add</div>
+                <div className="text-xs text-muted-foreground">Add associations while keeping existing ones</div>
+              </div>
+            </SelectItem>
+            <SelectItem value="remove">
+              <div className="space-y-1">
+                <div className="font-semibold">➖ Remove</div>
+                <div className="text-xs text-muted-foreground">Remove specific associations only</div>
+              </div>
+            </SelectItem>
+            <SelectItem value="replace">
+              <div className="space-y-1">
+                <div className="font-semibold">🔄 Replace</div>
+                <div className="text-xs text-muted-foreground">Replace all associations with new ones</div>
+              </div>
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {associatedEntity && subEntityMetadata && (
         <div className="space-y-2">
-          <Label>
-            Field to Set (from {associatedEntity})
+          <Label className="font-semibold">
+            Association Mode - Select Field from {associatedEntity}
             {subEntityLoading && <span className="text-xs text-muted-foreground ml-2">Loading...</span>}
           </Label>
           <Select value={subField} onValueChange={setSubField} disabled={disabled || subEntityLoading}>
@@ -120,34 +144,62 @@ export function ToManyFieldInput({
               <SelectValue placeholder="Select field..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="id">id (Use direct association IDs)</SelectItem>
+              <SelectItem value="id">
+                <div className="space-y-1">
+                  <div className="font-semibold">id - Direct Association (Most Common)</div>
+                  <div className="text-xs text-muted-foreground">Associate using {associatedEntity} record IDs</div>
+                </div>
+              </SelectItem>
               {subEntityMetadata.fields
                 .filter(f => f.type !== 'TO_MANY')
                 .map(f => (
                   <SelectItem key={f.name} value={f.name}>
-                    {f.label} ({f.name}) - {f.type}
+                    <div className="space-y-1">
+                      <div className="font-semibold">{f.label} ({f.name})</div>
+                      <div className="text-xs text-muted-foreground">{f.type} field on {associatedEntity}</div>
+                    </div>
                   </SelectItem>
                 ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">
-            {subField === 'id' 
-              ? `Direct association: Enter the IDs of ${associatedEntity} records to associate`
-              : `Sub-field mode: The value will be used to set the ${subField} field when creating/updating the association`
-            }
-          </p>
+          <div className="rounded-lg bg-accent/10 p-3 space-y-2 text-xs">
+            {subField === 'id' ? (
+              <>
+                <p className="font-semibold text-accent-foreground">✓ Direct Association Mode</p>
+                <p className="text-muted-foreground">
+                  You'll provide {associatedEntity} record IDs. These records will be directly associated with the parent entity.
+                </p>
+                <p className="text-muted-foreground italic">
+                  Example: For JobSubmission.job, provide JobOrder IDs like: 12345, 67890
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold text-accent-foreground">⚠ Sub-Field Mode (Advanced)</p>
+                <p className="text-muted-foreground">
+                  You'll provide values for the <span className="font-mono">{subField}</span> field. The system will use these to identify or create {associatedEntity} records.
+                </p>
+                <p className="text-muted-foreground italic">
+                  Example: If you select "name" and provide "Software Engineer", the system will find/create a {associatedEntity} with name="Software Engineer"
+                </p>
+              </>
+            )}
+          </div>
         </div>
       )}
 
       <div className="space-y-2">
-        <Label>{subField === 'id' ? 'Association IDs' : `Values for ${subField}`}</Label>
+        <Label className="font-semibold">
+          {subField === 'id' ? `${associatedEntity} IDs` : `Values for "${subField}" Field`}
+        </Label>
         <div className="flex gap-2">
           <Input
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={subField === 'id' ? "Enter IDs (comma or space separated)" : `Enter values for ${subField}`}
+            placeholder={subField === 'id' ? "e.g., 12345, 67890, 11111" : `e.g., value1, value2, value3`}
             disabled={disabled}
+            className="font-mono"
           />
           <Button
             onClick={handleAddId}
@@ -160,8 +212,8 @@ export function ToManyFieldInput({
         </div>
         <p className="text-xs text-muted-foreground">
           {subField === 'id' 
-            ? 'Enter one or more IDs separated by commas or spaces'
-            : `Enter values separated by commas or spaces - these will be used to set ${subField} on ${associatedEntity} records`
+            ? `Enter ${associatedEntity} record IDs separated by commas or spaces (e.g., "123, 456, 789")`
+            : `Enter values for the ${subField} field separated by commas or spaces`
           }
         </p>
       </div>
@@ -169,7 +221,9 @@ export function ToManyFieldInput({
       {ids.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label>{ids.length} {subField === 'id' ? 'ID(s)' : 'value(s)'} selected</Label>
+            <Label className="font-semibold">
+              {ids.length} {subField === 'id' ? `${associatedEntity} Record(s)` : `Value(s)`} Selected
+            </Label>
             <Button
               variant="ghost"
               size="sm"
@@ -180,15 +234,15 @@ export function ToManyFieldInput({
               Clear all
             </Button>
           </div>
-          <ScrollArea className="h-32 rounded border p-2">
+          <ScrollArea className="h-32 rounded border p-2 bg-muted/30">
             <div className="flex flex-wrap gap-2">
               {ids.map((id) => (
                 <Badge
                   key={id}
                   variant="secondary"
-                  className="gap-1 pr-1"
+                  className="gap-1 pr-1 font-mono"
                 >
-                  {id}
+                  {subField === 'id' ? `ID: ${id}` : id}
                   <button
                     onClick={() => handleRemoveId(id)}
                     disabled={disabled}
@@ -203,26 +257,36 @@ export function ToManyFieldInput({
         </div>
       )}
 
-      <div className="rounded-lg bg-muted/50 p-3 space-y-1 text-xs text-muted-foreground">
-        <p className="font-semibold">Operation Details:</p>
+      <div className="rounded-lg bg-muted/50 p-3 space-y-1 text-xs text-muted-foreground border border-border">
+        <p className="font-semibold text-foreground">📋 Operation Summary:</p>
         {operation === 'add' && (
           <>
-            <p>• {subField === 'id' ? 'IDs' : 'Values'} will be added to existing {field?.name || 'associations'}. Existing associations remain unchanged.</p>
+            <p>• <span className="font-semibold">Add Operation:</span> {subField === 'id' ? `Associate ${ids.length} existing ${associatedEntity} record(s)` : `Create and associate ${ids.length} new ${associatedEntity} record(s)`}</p>
+            <p>• Existing {field?.name || 'associations'} will be preserved</p>
             {subField !== 'id' && (
-              <p className="text-xs italic mt-1">Note: For sub-field mode, new {associatedEntity} records will be created with the specified {subField} values and associated with the parent entity.</p>
+              <p className="text-xs italic mt-1 text-accent-foreground">⚠ New {associatedEntity} records will be created with <span className="font-mono">{subField}</span> set to the provided values</p>
             )}
           </>
         )}
         {operation === 'remove' && (
-          <p>• {subField === 'id' ? 'IDs' : 'Records matching these values'} will be removed from {field?.name || 'associations'}. Other associations remain unchanged.</p>
+          <>
+            <p>• <span className="font-semibold">Remove Operation:</span> {subField === 'id' ? `Disassociate ${ids.length} ${associatedEntity} record(s) by ID` : `Find and remove records where ${subField} matches these values`}</p>
+            <p>• Other {field?.name || 'associations'} will remain unchanged</p>
+          </>
         )}
         {operation === 'replace' && (
           <>
-            <p>• All existing {field?.name || 'associations'} will be removed and replaced with these {subField === 'id' ? 'IDs' : 'values'} only.</p>
+            <p>• <span className="font-semibold text-destructive">Replace Operation (Destructive):</span> All existing {field?.name || 'associations'} will be removed first</p>
+            <p>• {subField === 'id' ? `Then associate these ${ids.length} ${associatedEntity} record(s)` : `Then create ${ids.length} new ${associatedEntity} record(s)`}</p>
             {subField !== 'id' && (
-              <p className="text-xs italic mt-1">Note: Existing associations will be removed and new {associatedEntity} records will be created.</p>
+              <p className="text-xs italic mt-1 text-accent-foreground">⚠ All existing associations will be cleared, then new {associatedEntity} records will be created</p>
             )}
           </>
+        )}
+        {subField === 'id' && ids.length > 0 && (
+          <p className="pt-2 border-t border-border mt-2 text-foreground">
+            <span className="font-semibold">Will affect:</span> {associatedEntity} IDs: {ids.slice(0, 5).join(', ')}{ids.length > 5 ? ` and ${ids.length - 5} more` : ''}
+          </p>
         )}
       </div>
     </Card>
