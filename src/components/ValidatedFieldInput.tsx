@@ -107,6 +107,18 @@ export function ValidatedFieldInput({
     return <BooleanInput value={value} onChange={onChange} className={className} />
   }
 
+  if (field?.type === 'TO_MANY' || field?.associationType === 'TO_MANY') {
+    return (
+      <ToManyFilterInput
+        field={field}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={className}
+      />
+    )
+  }
+
   if (hasOptions) {
     return (
       <OptionsInput
@@ -399,6 +411,74 @@ function BooleanInput({
       >
         False
       </Button>
+    </div>
+  )
+}
+
+function ToManyFilterInput({
+  field,
+  value,
+  onChange,
+  placeholder,
+  className
+}: {
+  field: EntityField
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  className?: string
+}) {
+  const associatedEntity = field?.associatedEntity?.entity || 'related records'
+  const [fieldSuffix, setFieldSuffix] = useState('.id')
+  const [idsValue, setIdsValue] = useState('')
+  
+  useEffect(() => {
+    if (value) {
+      if (value.includes('.')) {
+        const parts = value.split('.')
+        if (parts.length === 2) {
+          setFieldSuffix('.' + parts[1])
+          return
+        }
+      }
+      setIdsValue(value)
+    }
+  }, [])
+  
+  useEffect(() => {
+    onChange(idsValue)
+  }, [idsValue, fieldSuffix, onChange])
+  
+  return (
+    <div className="space-y-2">
+      <div className="flex gap-2 items-center">
+        <div className="flex-1">
+          <Input
+            value={idsValue}
+            onChange={(e) => setIdsValue(e.target.value)}
+            placeholder={placeholder || `Enter ${associatedEntity} ID(s), comma-separated`}
+            className={className}
+          />
+        </div>
+      </div>
+      <div className="text-xs space-y-1">
+        <p className="text-muted-foreground">
+          <span className="font-semibold">To-Many field:</span> Enter one or more IDs separated by commas (e.g., "123,456,789").
+          {associatedEntity !== 'related records' && ` These should be ${associatedEntity} IDs.`}
+        </p>
+        <div className="bg-accent/10 border border-accent/20 p-2 rounded space-y-1">
+          <p className="font-semibold text-accent-foreground">Recommended operators for to-many fields:</p>
+          <ul className="ml-4 list-disc space-y-0.5 text-muted-foreground">
+            <li><span className="font-mono bg-muted px-1 rounded">in_list [...]</span> - Entity has association with ANY of these IDs (most common)</li>
+            <li><span className="font-mono bg-muted px-1 rounded">equals</span> - Entity has association with exactly this ONE ID</li>
+            <li><span className="font-mono bg-muted px-1 rounded">is_null</span> - Entity has NO associations (leave value empty)</li>
+            <li><span className="font-mono bg-muted px-1 rounded">is_not_null</span> - Entity has at least ONE association (leave value empty)</li>
+          </ul>
+          <p className="text-xs italic mt-2">
+            💡 Tip: For multiple IDs, use the <span className="font-mono bg-muted px-1 rounded">in_list [...]</span> operator and enter comma-separated IDs like: 100,200,300
+          </p>
+        </div>
+      </div>
     </div>
   )
 }
