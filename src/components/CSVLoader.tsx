@@ -136,6 +136,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     setLoading(true)
     setProgress(0)
     const importResults: ImportResult[] = []
+    const errorDetails: string[] = []
 
     let successCount = 0
     let errorCount = 0
@@ -469,6 +470,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           message: errorMessage,
           action: 'error'
         })
+        errorDetails.push(`Row ${i + 1}: ${errorMessage}`)
         errorCount++
       }
 
@@ -517,6 +519,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         mappings: validMappings, 
         lookupField, 
         dryRun,
+        errors: errorDetails.length > 0 ? errorDetails : undefined,
         rollbackData: !dryRun && snapshotUpdates.length > 0 ? {
           updates: snapshotUpdates.map(u => ({
             entityId: u.entityId,

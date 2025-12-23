@@ -534,7 +534,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
             failed: failedCount,
             updateFilters,
             updates: fieldUpdates,
-            errors: errors.slice(0, 10),
+            errors: errors,
             rollbackData: snapshotUpdates.length > 0 ? {
               updates: snapshotUpdates.map(u => ({
                 entityId: u.entityId,

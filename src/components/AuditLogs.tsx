@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { ClockCounterClockwise, DownloadSimple, MagnifyingGlass, Trash, ArrowCounterClockwise, ArrowBendUpLeft } from '@phosphor-icons/react'
+import { ClockCounterClockwise, DownloadSimple, MagnifyingGlass, Trash, ArrowCounterClockwise, ArrowBendUpLeft, XCircle } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
 import { bullhornAPI } from '@/lib/bullhorn-api'
@@ -334,6 +334,80 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground">{log.message}</p>
+                        
+                        {(log.details?.errors && log.details.errors.length > 0) && (
+                          <div className="mt-2 p-3 bg-destructive/10 rounded border border-destructive/30">
+                            <div className="flex items-center gap-2 mb-2">
+                              <XCircle size={14} className="text-destructive" weight="fill" />
+                              <span className="text-xs font-semibold text-destructive">
+                                Failed Records ({log.details.errors.length})
+                              </span>
+                            </div>
+                            <ScrollArea className="max-h-32">
+                              <div className="space-y-1 pr-3">
+                                {log.details.errors.map((error: string, idx: number) => (
+                                  <div key={idx} className="text-xs font-mono text-destructive/90 bg-background/50 p-1.5 rounded border border-destructive/20">
+                                    {error}
+                                  </div>
+                                ))}
+                              </div>
+                            </ScrollArea>
+                          </div>
+                        )}
+                        
+                        {(log.details?.rollbackErrors && log.details.rollbackErrors.length > 0) && (
+                          <div className="mt-2 p-3 bg-destructive/10 rounded border border-destructive/30">
+                            <div className="flex items-center gap-2 mb-2">
+                              <XCircle size={14} className="text-destructive" weight="fill" />
+                              <span className="text-xs font-semibold text-destructive">
+                                Rollback Failures ({log.details.rollbackErrors.length})
+                              </span>
+                            </div>
+                            <ScrollArea className="max-h-32">
+                              <div className="space-y-1 pr-3">
+                                {log.details.rollbackErrors.map((error: string, idx: number) => (
+                                  <div key={idx} className="text-xs font-mono text-destructive/90 bg-background/50 p-1.5 rounded border border-destructive/20">
+                                    {error}
+                                  </div>
+                                ))}
+                              </div>
+                            </ScrollArea>
+                          </div>
+                        )}
+                        
+                        {(log.details?.failed > 0 && !log.details?.errors && !log.details?.rollbackErrors) && (
+                          <div className="mt-2 p-2 bg-destructive/10 rounded border border-destructive/30">
+                            <div className="flex items-center gap-2">
+                              <XCircle size={14} className="text-destructive" weight="fill" />
+                              <span className="text-xs text-destructive">
+                                {log.details.failed} record(s) failed (details not available in this log)
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {(log.details?.errorCount > 0 && !log.details?.errors && !log.details?.rollbackErrors && !log.details?.failed) && (
+                          <div className="mt-2 p-2 bg-destructive/10 rounded border border-destructive/30">
+                            <div className="flex items-center gap-2">
+                              <XCircle size={14} className="text-destructive" weight="fill" />
+                              <span className="text-xs text-destructive">
+                                {log.details.errorCount} record(s) failed (details not available in this log)
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {(log.status === 'error' && log.details?.error) && (
+                          <div className="mt-2 p-2 bg-destructive/10 rounded border border-destructive/30">
+                            <div className="flex items-center gap-2">
+                              <XCircle size={14} className="text-destructive" weight="fill" />
+                              <span className="text-xs text-destructive font-mono">
+                                {typeof log.details.error === 'string' ? log.details.error : JSON.stringify(log.details.error)}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        
                         {isRollbackLog && originalLog && (
                           <div className="mt-2 p-2 bg-muted/50 rounded border border-accent/30">
                             <div className="flex items-center gap-2">
