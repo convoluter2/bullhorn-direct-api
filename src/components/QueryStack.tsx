@@ -361,6 +361,13 @@ export function QueryStack({ onLog }: QueryStackProps) {
               } catch {
                 updateData[update.field] = update.value
               }
+            } else if (fieldMeta?.associationType === 'TO_ONE') {
+              const trimmedValue = update.value.trim()
+              if (trimmedValue && /^\d+$/.test(trimmedValue)) {
+                updateData[update.field] = { id: parseInt(trimmedValue, 10) }
+              } else {
+                updateData[update.field] = update.value
+              }
             } else {
               updateData[update.field] = update.value
             }

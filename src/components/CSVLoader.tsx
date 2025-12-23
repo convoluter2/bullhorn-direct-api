@@ -193,6 +193,13 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                   }
                 }
               }
+            } else if (fieldMeta?.associationType === 'TO_ONE') {
+              const trimmedValue = transformedValue.trim()
+              if (trimmedValue && /^\d+$/.test(trimmedValue)) {
+                data[mapping.bullhornField] = { id: parseInt(trimmedValue, 10) }
+              } else {
+                data[mapping.bullhornField] = transformedValue
+              }
             } else {
               data[mapping.bullhornField] = transformedValue
             }
