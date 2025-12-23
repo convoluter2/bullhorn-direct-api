@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { MagnifyingGlass, Plus, Trash, Lightning, DownloadSimple, X, CaretLeft, CaretRight, ArrowsClockwise, ListBullets, TreeStructure } from '@phosphor-icons/react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { MagnifyingGlass, Plus, Trash, Lightning, DownloadSimple, X, CaretLeft, CaretRight, ArrowsClockwise, ListBullets, TreeStructure, FloppyDisk, PencilSimple, Warning } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
@@ -23,6 +24,11 @@ import type { QueryFilter, QueryConfig, FilterGroup } from '@/lib/types'
 
 interface QueryBlastProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
+}
+
+interface FieldUpdate {
+  field: string
+  value: string
 }
 
 export function QueryBlast({ onLog }: QueryBlastProps) {
@@ -41,6 +47,11 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
   const [allResults, setAllResults] = useState<any[]>([])
   const [loadingAll, setLoadingAll] = useState(false)
   const [manualEntityDialogOpen, setManualEntityDialogOpen] = useState(false)
+  
+  const [operationMode, setOperationMode] = useState<'update' | 'create'>('update')
+  const [fieldUpdates, setFieldUpdates] = useState<FieldUpdate[]>([])
+  const [dryRunResults, setDryRunResults] = useState<any[] | null>(null)
+  const [showDryRun, setShowDryRun] = useState(false)
 
   const { entities, loading: entitiesLoading, error: entitiesError, refresh: refreshEntities, addEntity } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
@@ -211,6 +222,198 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
     exportToJSON(dataToExport, `${entity}_export_${Date.now()}.json`)
     toast.success(`Exported ${dataToExport.length} records to JSON`)
     onLog('Export', 'success', `Exported ${dataToExport.length} records to JSON`, { entity, count: dataToExport.length })
+  }
+
+  const addFieldUpdate = () => {
+    setFieldUpdates([...fieldUpdates, { field: '', value: '' }])
+  }
+
+  const removeFieldUpdate = (index: number) => {
+    setFieldUpdates(fieldUpdates.filter((_, i) => i !== index))
+  }
+
+  const updateFieldUpdate = (index: number, key: keyof FieldUpdate, value: string) => {
+    const newUpdates = [...fieldUpdates]
+    newUpdates[index][key] = value
+    setFieldUpdates(newUpdates)
+  }
+
+  const handleDryRun = async () => {
+    if (!entity) {
+      toast.error('Please select an entity')
+      return
+    }
+
+    if (operationMode === 'update' && results.length === 0) {
+      toast.error('Please execute a query first to find records to update')
+      return
+    }
+
+    if (fieldUpdates.length === 0 || fieldUpdates.some(u => !u.field)) {
+      toast.error('Please add at least one field to update/create')
+      return
+    }
+
+    const updateData: Record<string, any> = {}
+    fieldUpdates.forEach(update => {
+      if (update.field && update.value !== '') {
+        const fieldMeta = fieldsMap[update.field]
+        if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
+          updateData[update.field] = Number(update.value)
+        } else if (fieldMeta?.type === 'Boolean') {
+          updateData[update.field] = update.value === 'true' || update.value === '1'
+        } else {
+          updateData[update.field] = update.value
+        }
+      }
+    })
+
+    if (operationMode === 'create') {
+      setDryRunResults([{
+        operation: 'CREATE',
+        entity,
+        data: updateData,
+        preview: updateData
+      }])
+      setShowDryRun(true)
+      toast.success('Dry run complete - review the changes below')
+    } else {
+      const recordsToUpdate = results.slice(0, Math.min(results.length, 100))
+      const dryRun = recordsToUpdate.map(record => ({
+        id: record.id,
+        operation: 'UPDATE',
+        entity,
+        current: record,
+        changes: updateData,
+        preview: { ...record, ...updateData }
+      }))
+      
+      setDryRunResults(dryRun)
+      setShowDryRun(true)
+      toast.success(`Dry run complete - showing preview of ${recordsToUpdate.length} records (max 100)`)
+    }
+
+    onLog(
+      'Dry Run',
+      'success',
+      `Dry run completed for ${operationMode} operation`,
+      { entity, mode: operationMode, recordCount: operationMode === 'create' ? 1 : results.length }
+    )
+  }
+
+  const handleExecuteOperation = async () => {
+    if (!dryRunResults || dryRunResults.length === 0) {
+      toast.error('Please run a dry run first')
+      return
+    }
+
+    const confirmMessage = operationMode === 'create' 
+      ? `Are you sure you want to CREATE 1 new ${entity} record?`
+      : `Are you sure you want to UPDATE ${results.length} ${entity} records? This action cannot be undone.`
+
+    if (!confirm(confirmMessage)) {
+      return
+    }
+
+    setLoading(true)
+    const startTime = Date.now()
+
+    try {
+      if (operationMode === 'create') {
+        const updateData: Record<string, any> = {}
+        fieldUpdates.forEach(update => {
+          if (update.field && update.value !== '') {
+            const fieldMeta = fieldsMap[update.field]
+            if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
+              updateData[update.field] = Number(update.value)
+            } else if (fieldMeta?.type === 'Boolean') {
+              updateData[update.field] = update.value === 'true' || update.value === '1'
+            } else {
+              updateData[update.field] = update.value
+            }
+          }
+        })
+
+        const result = await bullhornAPI.createEntity(entity, updateData)
+        const duration = Date.now() - startTime
+        
+        toast.success(`Created new ${entity} record with ID ${result.changedEntityId} in ${duration}ms`)
+        onLog(
+          'Create Record',
+          'success',
+          `Created new ${entity} record`,
+          { entity, id: result.changedEntityId, data: updateData }
+        )
+        
+        setDryRunResults(null)
+        setShowDryRun(false)
+        setFieldUpdates([])
+      } else {
+        const updateData: Record<string, any> = {}
+        fieldUpdates.forEach(update => {
+          if (update.field && update.value !== '') {
+            const fieldMeta = fieldsMap[update.field]
+            if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
+              updateData[update.field] = Number(update.value)
+            } else if (fieldMeta?.type === 'Boolean') {
+              updateData[update.field] = update.value === 'true' || update.value === '1'
+            } else {
+              updateData[update.field] = update.value
+            }
+          }
+        })
+
+        let successCount = 0
+        let errorCount = 0
+        const errors: any[] = []
+
+        for (const record of results) {
+          try {
+            await bullhornAPI.updateEntity(entity, record.id, updateData)
+            successCount++
+          } catch (error) {
+            errorCount++
+            errors.push({ id: record.id, error: error instanceof Error ? error.message : 'Unknown error' })
+          }
+        }
+
+        const duration = Date.now() - startTime
+        
+        if (errorCount === 0) {
+          toast.success(`Updated ${successCount} ${entity} records in ${duration}ms`)
+          onLog(
+            'Bulk Update',
+            'success',
+            `Updated ${successCount} ${entity} records`,
+            { entity, successCount, data: updateData }
+          )
+        } else {
+          toast.warning(`Updated ${successCount} records, ${errorCount} failed`)
+          onLog(
+            'Bulk Update',
+            errorCount === results.length ? 'error' : 'success',
+            `Updated ${successCount} records, ${errorCount} failed`,
+            { entity, successCount, errorCount, errors, data: updateData }
+          )
+        }
+
+        setDryRunResults(null)
+        setShowDryRun(false)
+        
+        executeQuery(currentStart)
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Operation failed'
+      toast.error(errorMessage)
+      onLog(
+        operationMode === 'create' ? 'Create Record' : 'Bulk Update',
+        'error',
+        errorMessage,
+        { entity, mode: operationMode }
+      )
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -457,6 +660,211 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
           )}
         </CardContent>
       </Card>
+
+      {entity && metadata && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FloppyDisk className="text-accent" size={24} />
+              Update or Create Records
+            </CardTitle>
+            <CardDescription>
+              {operationMode === 'update' 
+                ? 'Update fields on records from your query results'
+                : 'Create a new record with specified field values'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label>Operation Mode</Label>
+              <div className="flex gap-2">
+                <Button
+                  variant={operationMode === 'update' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setOperationMode('update')
+                    setDryRunResults(null)
+                    setShowDryRun(false)
+                  }}
+                  className="flex-1 gap-2"
+                >
+                  <PencilSimple />
+                  Update Records
+                </Button>
+                <Button
+                  variant={operationMode === 'create' ? 'default' : 'outline'}
+                  onClick={() => {
+                    if (operationMode !== 'create') {
+                      toast.warning('Creating new records - please ensure all required fields are filled', {
+                        duration: 4000
+                      })
+                    }
+                    setOperationMode('create')
+                    setDryRunResults(null)
+                    setShowDryRun(false)
+                  }}
+                  className="flex-1 gap-2"
+                >
+                  <Plus />
+                  Create New Record
+                </Button>
+              </div>
+            </div>
+
+            {operationMode === 'create' && (
+              <Alert>
+                <Warning className="h-4 w-4" />
+                <AlertDescription>
+                  You are creating a new record. Make sure to include all required fields for the {entity} entity.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-base">Field Values to {operationMode === 'update' ? 'Update' : 'Set'}</Label>
+                <Button size="sm" variant="outline" onClick={addFieldUpdate}>
+                  <Plus size={16} />
+                  Add Field
+                </Button>
+              </div>
+              
+              <div className="space-y-2">
+                {fieldUpdates.map((update, index) => (
+                  <div key={index} className="flex gap-2 items-end">
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs">Field</Label>
+                      <Select value={update.field || undefined} onValueChange={(v) => updateFieldUpdate(index, 'field', v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select field" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableFields.map((field) => (
+                            <SelectItem key={field.name} value={field.name}>
+                              {field.label} ({field.type})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex-1 space-y-1">
+                      <Label className="text-xs">Value</Label>
+                      <ValidatedFieldInput
+                        field={fieldsMap[update.field] || null}
+                        value={update.value}
+                        onChange={(v) => updateFieldUpdate(index, 'value', v)}
+                        placeholder="Enter value"
+                      />
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => removeFieldUpdate(index)}
+                      className="text-destructive"
+                    >
+                      <Trash size={18} />
+                    </Button>
+                  </div>
+                ))}
+                
+                {fieldUpdates.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No fields added yet. Click "Add Field" to begin.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button 
+                onClick={handleDryRun} 
+                disabled={loading || fieldUpdates.length === 0 || (operationMode === 'update' && results.length === 0)}
+                variant="outline"
+                className="flex-1"
+              >
+                <MagnifyingGlass />
+                Dry Run Preview
+              </Button>
+              
+              {showDryRun && dryRunResults && (
+                <Button 
+                  onClick={handleExecuteOperation} 
+                  disabled={loading}
+                  className="flex-1"
+                >
+                  <Lightning />
+                  {loading ? 'Executing...' : `Execute ${operationMode === 'create' ? 'Create' : 'Updates'}`}
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {showDryRun && dryRunResults && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MagnifyingGlass className="text-accent" size={24} />
+              Dry Run Preview
+            </CardTitle>
+            <CardDescription>
+              {operationMode === 'create' 
+                ? 'Preview of the new record that will be created'
+                : `Preview of changes that will be applied to ${results.length} records (showing first ${Math.min(100, results.length)})`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-[400px] w-full">
+              {operationMode === 'create' ? (
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm">New {entity} Record:</h4>
+                  <div className="bg-muted/50 rounded-lg p-4 space-y-1 font-mono text-xs">
+                    {Object.entries(dryRunResults[0].preview).map(([key, value]) => (
+                      <div key={key} className="flex gap-2">
+                        <span className="text-muted-foreground">{key}:</span>
+                        <span className="text-accent font-semibold">{String(value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-20">ID</TableHead>
+                      <TableHead>Field</TableHead>
+                      <TableHead>Current Value</TableHead>
+                      <TableHead>New Value</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dryRunResults.slice(0, 100).map((record) => (
+                      fieldUpdates.map((update, idx) => (
+                        <TableRow key={`${record.id}-${idx}`}>
+                          {idx === 0 && (
+                            <TableCell rowSpan={fieldUpdates.length} className="font-mono text-xs">
+                              {record.id}
+                            </TableCell>
+                          )}
+                          <TableCell className="font-mono text-xs">{update.field}</TableCell>
+                          <TableCell className="font-mono text-xs text-muted-foreground">
+                            {record.current[update.field] !== null && record.current[update.field] !== undefined 
+                              ? String(record.current[update.field]) 
+                              : '-'}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs text-accent font-semibold">
+                            {update.value}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
 
       {results.length > 0 && (
         <Card>
