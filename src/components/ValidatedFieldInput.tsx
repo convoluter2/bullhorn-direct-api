@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { CalendarBlank, CaretDown, MagnifyingGlass, Warning } from '@phosphor-icons/react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { ToOneFieldInput } from '@/components/ToOneFieldInput'
 import type { EntityField } from '@/hooks/use-entity-metadata'
 
 interface ValidatedFieldInputProps {
@@ -113,6 +114,19 @@ export function ValidatedFieldInput({
         field={field}
         value={value}
         onChange={onChange}
+        placeholder={placeholder}
+        className={className}
+      />
+    )
+  }
+
+  if (field?.type === 'TO_ONE' || field?.associationType === 'TO_ONE') {
+    return (
+      <ToOneFieldInput
+        field={field}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
         placeholder={placeholder}
         className={className}
       />

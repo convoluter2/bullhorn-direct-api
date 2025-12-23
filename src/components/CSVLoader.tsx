@@ -276,14 +276,67 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                   toast.success(result.message)
                 }
               }
+              
+              importResults.push({
+                row: i + 1,
+                status: 'success',
+                message: `Updated existing record (ID: ${existingRecord.id})`,
+                action: 'updated'
+              })
+            } else {
+              const displayData: any = {}
+              
+              for (const key of Object.keys(data)) {
+                if (key.startsWith('__tomany_')) {
+                  const fieldName = key.replace('__tomany_', '')
+                  const toManyValue = data[key]
+                  if (toManyValue.operation && toManyValue.ids) {
+                    displayData[fieldName] = `${toManyValue.operation}: [${toManyValue.ids.join(', ')}]`
+                  }
+                } else {
+                  const fieldMeta = metadata?.fieldsMap[key]
+                  if (fieldMeta?.associationType === 'TO_ONE' && data[key]?.id) {
+                    try {
+                      const associatedEntity = fieldMeta.associatedEntity?.entity
+                      if (associatedEntity) {
+                        const lookupResult = await bullhornAPI.getEntity(
+                          associatedEntity, 
+                          data[key].id, 
+                          ['id', 'name', 'title', 'firstName', 'lastName']
+                        )
+                        if (lookupResult?.data) {
+                          const title = lookupResult.data.title || 
+                                       lookupResult.data.name || 
+                                       (lookupResult.data.firstName && lookupResult.data.lastName 
+                                         ? `${lookupResult.data.firstName} ${lookupResult.data.lastName}` 
+                                         : undefined)
+                          displayData[key] = {
+                            id: data[key].id,
+                            title: title || '(No title)'
+                          }
+                        } else {
+                          displayData[key] = data[key]
+                        }
+                      } else {
+                        displayData[key] = data[key]
+                      }
+                    } catch {
+                      displayData[key] = data[key]
+                    }
+                  } else {
+                    displayData[key] = data[key]
+                  }
+                }
+              }
+              
+              importResults.push({
+                row: i + 1,
+                status: 'success',
+                message: `Would update existing record (ID: ${existingRecord.id})`,
+                action: 'updated',
+                data: { existing: existingRecord, changes: displayData }
+              })
             }
-            importResults.push({
-              row: i + 1,
-              status: 'success',
-              message: dryRun ? `Would update existing record (ID: ${existingRecord.id})` : `Updated existing record (ID: ${existingRecord.id})`,
-              action: 'updated',
-              data: dryRun ? { existing: existingRecord, changes: data } : undefined
-            })
             updatedCount++
             successCount++
           } else {
@@ -343,12 +396,57 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                 action: 'created'
               })
             } else {
+              const displayData: any = {}
+              
+              for (const key of Object.keys(data)) {
+                if (key.startsWith('__tomany_')) {
+                  const fieldName = key.replace('__tomany_', '')
+                  const toManyValue = data[key]
+                  if (toManyValue.operation && toManyValue.ids) {
+                    displayData[fieldName] = `${toManyValue.operation}: [${toManyValue.ids.join(', ')}]`
+                  }
+                } else {
+                  const fieldMeta = metadata?.fieldsMap[key]
+                  if (fieldMeta?.associationType === 'TO_ONE' && data[key]?.id) {
+                    try {
+                      const associatedEntity = fieldMeta.associatedEntity?.entity
+                      if (associatedEntity) {
+                        const lookupResult = await bullhornAPI.getEntity(
+                          associatedEntity, 
+                          data[key].id, 
+                          ['id', 'name', 'title', 'firstName', 'lastName']
+                        )
+                        if (lookupResult?.data) {
+                          const title = lookupResult.data.title || 
+                                       lookupResult.data.name || 
+                                       (lookupResult.data.firstName && lookupResult.data.lastName 
+                                         ? `${lookupResult.data.firstName} ${lookupResult.data.lastName}` 
+                                         : undefined)
+                          displayData[key] = {
+                            id: data[key].id,
+                            title: title || '(No title)'
+                          }
+                        } else {
+                          displayData[key] = data[key]
+                        }
+                      } else {
+                        displayData[key] = data[key]
+                      }
+                    } catch {
+                      displayData[key] = data[key]
+                    }
+                  } else {
+                    displayData[key] = data[key]
+                  }
+                }
+              }
+              
               importResults.push({
                 row: i + 1,
                 status: 'success',
                 message: 'Would create new record',
                 action: 'created',
-                data
+                data: displayData
               })
             }
             createdCount++

@@ -392,7 +392,43 @@ export function QueryStack({ onLog }: QueryStackProps) {
           }
 
           if (dryRun) {
-            const previewNewValues: any = { ...updateData }
+            const previewNewValues: any = {}
+            
+            for (const key of Object.keys(updateData)) {
+              const fieldMeta = targetFieldsMap[key]
+              if (fieldMeta?.associationType === 'TO_ONE' && updateData[key]?.id) {
+                try {
+                  const associatedEntity = fieldMeta.associatedEntity?.entity
+                  if (associatedEntity) {
+                    const lookupResult = await bullhornAPI.getEntity(
+                      associatedEntity, 
+                      updateData[key].id, 
+                      ['id', 'name', 'title', 'firstName', 'lastName']
+                    )
+                    if (lookupResult?.data) {
+                      const title = lookupResult.data.title || 
+                                   lookupResult.data.name || 
+                                   (lookupResult.data.firstName && lookupResult.data.lastName 
+                                     ? `${lookupResult.data.firstName} ${lookupResult.data.lastName}` 
+                                     : undefined)
+                      previewNewValues[key] = {
+                        id: updateData[key].id,
+                        title: title || '(No title)'
+                      }
+                    } else {
+                      previewNewValues[key] = updateData[key]
+                    }
+                  } else {
+                    previewNewValues[key] = updateData[key]
+                  }
+                } catch {
+                  previewNewValues[key] = updateData[key]
+                }
+              } else {
+                previewNewValues[key] = updateData[key]
+              }
+            }
+            
             toManyUpdates.forEach(tmu => {
               const subFieldInfo = tmu.subField && tmu.subField !== 'id' ? ` (${tmu.subField})` : ''
               previewNewValues[tmu.field] = `${tmu.operation}: [${tmu.ids.join(', ')}]${subFieldInfo}`

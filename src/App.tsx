@@ -19,6 +19,7 @@ import { OperatorTestSuite } from '@/components/OperatorTestSuite'
 import { OAuthTestSuite } from '@/components/OAuthTestSuite'
 import { OAuthDiagnostics } from '@/components/OAuthDiagnostics'
 import { ConsoleMonitor } from '@/components/ConsoleMonitor'
+import { ToOneFieldTest } from '@/components/ToOneFieldTest'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { toast } from 'sonner'
@@ -359,7 +360,7 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -379,6 +380,10 @@ function App() {
               <TabsTrigger value="operators" className="gap-2">
                 <Flask size={18} />
                 <span className="hidden sm:inline">Operators</span>
+              </TabsTrigger>
+              <TabsTrigger value="toone-test" className="gap-2">
+                <TestTube size={18} />
+                <span className="hidden sm:inline">To-One Test</span>
               </TabsTrigger>
               <TabsTrigger value="oauth-test" className="gap-2">
                 <TestTube size={18} />
@@ -413,6 +418,10 @@ function App() {
 
             <TabsContent value="operators" className="space-y-6">
               <OperatorTestSuite />
+            </TabsContent>
+
+            <TabsContent value="toone-test" className="space-y-6">
+              <ToOneFieldTest />
             </TabsContent>
 
             <TabsContent value="oauth-test" className="space-y-6">
