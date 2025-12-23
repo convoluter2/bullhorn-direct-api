@@ -188,7 +188,8 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                 if (ids.length > 0) {
                   data[`__tomany_${mapping.bullhornField}`] = {
                     operation: 'add',
-                    ids: ids
+                    ids: ids,
+                    subField: 'id'
                   }
                 }
               }
@@ -225,7 +226,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           if (updateExisting) {
             if (!dryRun) {
               const regularData: any = {}
-              const toManyUpdates: Array<{ field: string; operation: string; ids: number[] }> = []
+              const toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField?: string }> = []
               
               Object.keys(data).forEach(key => {
                 if (key.startsWith('__tomany_')) {
@@ -235,7 +236,8 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                     toManyUpdates.push({
                       field: fieldName,
                       operation: toManyValue.operation,
-                      ids: toManyValue.ids
+                      ids: toManyValue.ids,
+                      subField: toManyValue.subField || 'id'
                     })
                   }
                 } else {
@@ -259,7 +261,8 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                   existingRecord.id,
                   toManyUpdate.field,
                   toManyUpdate.ids,
-                  toManyUpdate.operation as 'add' | 'remove' | 'replace'
+                  toManyUpdate.operation as 'add' | 'remove' | 'replace',
+                  toManyUpdate.subField || 'id'
                 )
                 
                 if (result?.changeType === 'ASSOCIATE_INVERSE' || result?.changeType === 'DISASSOCIATE_INVERSE') {
@@ -289,7 +292,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           if (createNew) {
             if (!dryRun) {
               const regularData: any = {}
-              const toManyUpdates: Array<{ field: string; operation: string; ids: number[] }> = []
+              const toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField?: string }> = []
               
               Object.keys(data).forEach(key => {
                 if (key.startsWith('__tomany_')) {
@@ -299,7 +302,8 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                     toManyUpdates.push({
                       field: fieldName,
                       operation: toManyValue.operation,
-                      ids: toManyValue.ids
+                      ids: toManyValue.ids,
+                      subField: toManyValue.subField || 'id'
                     })
                   }
                 } else {
@@ -316,7 +320,8 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                   newEntityId,
                   toManyUpdate.field,
                   toManyUpdate.ids,
-                  toManyUpdate.operation as 'add' | 'remove' | 'replace'
+                  toManyUpdate.operation as 'add' | 'remove' | 'replace',
+                  toManyUpdate.subField || 'id'
                 )
                 
                 if (toManyResult?.changeType === 'ASSOCIATE_INVERSE' || toManyResult?.changeType === 'DISASSOCIATE_INVERSE') {

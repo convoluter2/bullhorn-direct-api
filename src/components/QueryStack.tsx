@@ -342,7 +342,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
           }
 
           const updateData: any = {}
-          const toManyUpdates: Array<{ field: string; operation: string; ids: number[] }> = []
+          const toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField?: string }> = []
           
           fieldUpdates.forEach(update => {
             const fieldMeta = targetMetadata?.fieldsMap[update.field]
@@ -354,7 +354,8 @@ export function QueryStack({ onLog }: QueryStackProps) {
                   toManyUpdates.push({
                     field: update.field,
                     operation: toManyValue.operation,
-                    ids: toManyValue.ids
+                    ids: toManyValue.ids,
+                    subField: toManyValue.subField || 'id'
                   })
                 }
               } catch {
@@ -377,7 +378,8 @@ export function QueryStack({ onLog }: QueryStackProps) {
               toManyUpdates.push({
                 field: action.field,
                 operation: action.operation,
-                ids: action.ids
+                ids: action.ids,
+                subField: 'id'
               })
             })
           }
@@ -385,7 +387,8 @@ export function QueryStack({ onLog }: QueryStackProps) {
           if (dryRun) {
             const previewNewValues: any = { ...updateData }
             toManyUpdates.forEach(tmu => {
-              previewNewValues[tmu.field] = `${tmu.operation}: [${tmu.ids.join(', ')}]`
+              const subFieldInfo = tmu.subField && tmu.subField !== 'id' ? ` (${tmu.subField})` : ''
+              previewNewValues[tmu.field] = `${tmu.operation}: [${tmu.ids.join(', ')}]${subFieldInfo}`
             })
             
             preview.push({
@@ -412,7 +415,8 @@ export function QueryStack({ onLog }: QueryStackProps) {
                 numericId,
                 toManyUpdate.field,
                 toManyUpdate.ids,
-                toManyUpdate.operation as 'add' | 'remove' | 'replace'
+                toManyUpdate.operation as 'add' | 'remove' | 'replace',
+                toManyUpdate.subField || 'id'
               )
               
               if (result?.changeType === 'ASSOCIATE_INVERSE' || result?.changeType === 'DISASSOCIATE_INVERSE') {

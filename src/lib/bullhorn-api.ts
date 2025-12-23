@@ -976,10 +976,16 @@ export class BullhornAPI {
     entityId: number,
     association: string,
     associationIds: number[],
-    operation: 'add' | 'remove' | 'replace' = 'add'
+    operation: 'add' | 'remove' | 'replace' = 'add',
+    subField: string = 'id'
   ): Promise<any> {
     if (!this.session) {
       throw new Error('Not authenticated')
+    }
+
+    if (subField !== 'id') {
+      console.log(`Using sub-field mode: ${subField} on association ${association}`)
+      toast.info(`Sub-field mode: Using ${subField} for ${association} association`)
     }
 
     switch (operation) {
