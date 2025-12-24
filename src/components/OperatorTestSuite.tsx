@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -10,6 +10,9 @@ import { Separator } from '@/components/ui/separator'
 import { Flask, Play, CheckCircle, XCircle, Clock } from '@phosphor-icons/react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { toast } from 'sonner'
+import { useEntities } from '@/hooks/use-entities'
+import { useEntityMetadata } from '@/hooks/use-entity-metadata'
+import { useKV } from '@github/spark/hooks'
 
 interface OperatorTest {
   operator: string
@@ -175,19 +178,36 @@ interface TestResult {
   error?: string
   queryUsed?: string
   duration?: number
+  hasResults?: boolean
 }
 
 export function OperatorTestSuite() {
+  const { entities, loading: entitiesLoading } = useEntities()
   const [entity, setEntity] = useState('Candidate')
+  const { metadata, loading: fieldsLoading } = useEntityMetadata(entity)
   const [field, setField] = useState('status')
   const [testValue, setTestValue] = useState('Active')
   const [results, setResults] = useState<Record<string, TestResult>>({})
   const [isRunning, setIsRunning] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [validatedOperators, setValidatedOperators] = useKV<string[]>('validated-operators', [])
 
   const filteredOperators = selectedCategory === 'all' 
     ? OPERATORS_TO_TEST 
     : OPERATORS_TO_TEST.filter(op => op.category === selectedCategory)
+
+  const availableFields = useMemo(() => {
+    if (!metadata) return []
+    return metadata.fields.filter(f => 
+      f.type !== 'TO_MANY' && 
+      !f.name.includes('.')
+    )
+  }, [metadata])
+
+  const selectedFieldInfo = useMemo(() => {
+    if (!metadata || !field) return null
+    return metadata.fieldsMap[field] || null
+  }, [metadata, field])
 
   const testOperator = async (operator: OperatorTest) => {
     const testId = operator.operator
@@ -246,11 +266,12 @@ export function OperatorTestSuite() {
         entity,
         fields: ['id'],
         filters: [],
-        count: 1,
+        count: 100,
         start: 0
       }, query)
 
       const duration = Date.now() - startTime
+      const hasResults = searchResult.total > 0
 
       setResults(prev => ({
         ...prev,
@@ -259,11 +280,22 @@ export function OperatorTestSuite() {
           status: 'success',
           resultCount: searchResult.total,
           queryUsed: query,
-          duration
+          duration,
+          hasResults
         }
       }))
 
-      return { success: true, count: searchResult.total }
+      if (hasResults) {
+        setValidatedOperators(current => {
+          const ops = current || []
+          if (!ops.includes(operator.operator)) {
+            return [...ops, operator.operator]
+          }
+          return ops
+        })
+      }
+
+      return { success: true, count: searchResult.total, hasResults }
     } catch (error) {
       const duration = Date.now() - startTime
       
@@ -365,11 +397,42 @@ export function OperatorTestSuite() {
   }
 
   const workingOperators = Object.entries(results)
-    .filter(([_, result]) => result.status === 'success')
+    .filter(([_, result]) => result.status === 'success' && result.hasResults && (result.resultCount || 0) > 0)
+    .map(([op, result]) => ({ operator: op, count: result.resultCount || 0 }))
+
+  const workingButNoResults = Object.entries(results)
+    .filter(([_, result]) => result.status === 'success' && !result.hasResults && (result.resultCount || 0) === 0)
     .map(([op, _]) => op)
 
   return (
     <div className="space-y-6">
+      {validatedOperators && validatedOperators.length > 0 && (
+        <Card className="border-accent/50">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Current Validation Status</CardTitle>
+                <CardDescription className="text-sm">
+                  {validatedOperators.length} operators validated and available in filter forms
+                </CardDescription>
+              </div>
+              <Badge variant="outline" className="bg-accent/10 text-accent">
+                {validatedOperators.length} Validated
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-1">
+              {validatedOperators.map((op) => (
+                <Badge key={op} variant="secondary" className="text-xs">
+                  {OPERATORS_TO_TEST.find(o => o.operator === op)?.displayName || op}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
@@ -386,27 +449,82 @@ export function OperatorTestSuite() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
               <Label>Entity</Label>
-              <Input
-                value={entity}
-                onChange={(e) => setEntity(e.target.value)}
-                placeholder="Entity name"
-              />
+              <Select value={entity} onValueChange={setEntity}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select entity" />
+                </SelectTrigger>
+                <SelectContent>
+                  {entitiesLoading ? (
+                    <SelectItem value="_loading" disabled>Loading entities...</SelectItem>
+                  ) : entities.length === 0 ? (
+                    <SelectItem value="_empty" disabled>No entities available</SelectItem>
+                  ) : (
+                    entities.map(e => (
+                      <SelectItem key={e} value={e}>
+                        {e}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Field</Label>
-              <Input
-                value={field}
-                onChange={(e) => setField(e.target.value)}
-                placeholder="Field name"
-              />
+              <Select value={field} onValueChange={setField}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select field" />
+                </SelectTrigger>
+                <SelectContent>
+                  {fieldsLoading ? (
+                    <SelectItem value="_loading" disabled>Loading fields...</SelectItem>
+                  ) : availableFields.length === 0 ? (
+                    <SelectItem value="_empty" disabled>No fields available</SelectItem>
+                  ) : (
+                    availableFields.map(f => (
+                      <SelectItem key={f.name} value={f.name}>
+                        {f.label} ({f.dataType})
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Test Value</Label>
-              <Input
-                value={testValue}
-                onChange={(e) => setTestValue(e.target.value)}
-                placeholder="Value to test"
-              />
+              {selectedFieldInfo?.options && selectedFieldInfo.options.length > 0 ? (
+                <Select value={testValue} onValueChange={setTestValue}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select or enter value" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectedFieldInfo.options.map((opt) => (
+                      <SelectItem key={opt.value} value={String(opt.value)}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  value={testValue}
+                  onChange={(e) => setTestValue(e.target.value)}
+                  placeholder={
+                    selectedFieldInfo?.dataType === 'Timestamp' 
+                      ? 'e.g., 1609459200000'
+                      : selectedFieldInfo?.dataType === 'Integer'
+                      ? 'e.g., 1000'
+                      : selectedFieldInfo?.dataType === 'Double'
+                      ? 'e.g., 50000.00'
+                      : 'Value to test'
+                  }
+                />
+              )}
+              {selectedFieldInfo && (
+                <p className="text-xs text-muted-foreground">
+                  Type: {selectedFieldInfo.dataType}
+                  {selectedFieldInfo.dataSpecialization && ` (${selectedFieldInfo.dataSpecialization})`}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Category Filter</Label>
@@ -432,7 +550,8 @@ export function OperatorTestSuite() {
               {filteredOperators.length} operators to test
               {Object.keys(results).length > 0 && (
                 <span className="ml-2">
-                  • {workingOperators.length} working
+                  • {workingOperators.length} working with results
+                  {workingButNoResults.length > 0 && ` • ${workingButNoResults.length} working but no data`}
                 </span>
               )}
             </div>
@@ -489,13 +608,26 @@ export function OperatorTestSuite() {
                         )}
                         
                         {result.status === 'success' && (
-                          <div className="flex items-center gap-3 text-xs">
-                            <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
-                              ✓ Working
-                            </Badge>
-                            <span className="text-muted-foreground">
-                              Found {result.resultCount} records
-                            </span>
+                          <div className="flex items-center gap-3 text-xs flex-wrap">
+                            {result.hasResults && result.resultCount! > 0 ? (
+                              <>
+                                <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
+                                  ✓ Working with Data
+                                </Badge>
+                                <span className="text-muted-foreground">
+                                  Found {result.resultCount} records
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
+                                  ⚠ Working (No Results)
+                                </Badge>
+                                <span className="text-muted-foreground">
+                                  Query succeeded but returned 0 records
+                                </span>
+                              </>
+                            )}
                             {result.duration && (
                               <span className="text-muted-foreground">
                                 • {result.duration}ms
@@ -535,17 +667,59 @@ export function OperatorTestSuite() {
       </div>
 
       {workingOperators.length > 0 && (
-        <Card className="border-2 border-accent/50">
+        <Card className="border-2 border-green-500/50">
           <CardHeader>
-            <CardTitle className="text-lg">Working Operators Summary</CardTitle>
+            <CardTitle className="text-lg">✅ Validated Operators (Working with Results)</CardTitle>
+            <CardDescription>
+              These operators executed successfully and returned data - they are available in all filter forms across the application
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {workingOperators.map((op) => (
-                <Badge key={op} variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
-                  {op}
-                </Badge>
-              ))}
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {workingOperators.map(({ operator, count }) => (
+                  <div key={operator} className="flex items-center gap-1">
+                    <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
+                      {OPERATORS_TO_TEST.find(o => o.operator === operator)?.displayName || operator}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">({count})</span>
+                  </div>
+                ))}
+              </div>
+              <div className="pt-2 border-t border-border">
+                <p className="text-xs text-muted-foreground">
+                  💡 Tip: Only validated operators are shown in QueryBlast, SmartStack, and QueryStack filter dropdowns. 
+                  Run tests with different test values to validate more operators.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {workingButNoResults.length > 0 && (
+        <Card className="border-2 border-yellow-500/50">
+          <CardHeader>
+            <CardTitle className="text-lg">⚠️ Working But No Results</CardTitle>
+            <CardDescription>
+              These operators executed successfully but returned 0 records with the current test parameters
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {workingButNoResults.map((op) => (
+                  <Badge key={op} variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">
+                    {OPERATORS_TO_TEST.find(o => o.operator === op)?.displayName || op}
+                  </Badge>
+                ))}
+              </div>
+              <div className="pt-2 border-t border-border">
+                <p className="text-xs text-muted-foreground">
+                  💡 Tip: Try testing with different entities, fields, or values to find data that matches. 
+                  These operators will NOT be available in filter dropdowns until they return results.
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
