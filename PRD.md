@@ -73,6 +73,21 @@ This is a sophisticated enterprise data management tool with multiple modules (Q
 - **Progression**: User selects format → System generates file → Download initiated
 - **Success criteria**: Exports complete datasets accurately, proper formatting, no data loss
 
+### WFN Placements Export
+- **Functionality**: Secure export of placements with rate cards, candidate demographics, and tax information - supports filtering by specific Placement IDs or active placements
+- **Purpose**: Generate WFN/ADP-ready payroll data with hashed sensitive fields (SSN, DOB) for compliance
+- **Trigger**: User selects filter mode (Active Placements or By IDs), configures settings, and clicks "Start Export"
+- **Progression**: 
+  - **Active Mode**: Configure hash salt → Set earn codes → Execute → Fetch approved placements in date window → Join candidate/tax data → Fetch rate cards → Hash SSN/DOB → Generate CSV → Download
+  - **IDs Mode**: Configure hash salt → Paste Placement IDs (comma or newline separated) → Set earn codes → Execute → Fetch specific placements → Join candidate/tax data → Fetch rate cards → Hash SSN/DOB → Generate CSV → Download
+- **Success criteria**: 
+  - CSV contains only requested placements when using ID filter
+  - SSN and DOB are SHA-256 hashed with salt, never written in plaintext
+  - Rate selection logic correctly identifies primary (Regular/Base) and secondary (OT/Holiday) rates
+  - Candidate demographics and W-4 2020+ tax info correctly joined
+  - Progress tracking shows current status and record counts
+  - Export statistics display total/processed/errors accurately
+
 ## Edge Case Handling
 - **Rate Limiting**: Intelligent throttling based on Bullhorn response headers tracking calls per minute and remaining quota
   - Parse `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` headers from all API responses

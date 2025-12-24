@@ -7,7 +7,9 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
-import { DownloadSimple, Play, Database, Users, CurrencyDollar, ShieldCheck, Hash } from '@phosphor-icons/react'
+import { Textarea } from '@/components/ui/textarea'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DownloadSimple, Play, Database, Users, CurrencyDollar, ShieldCheck, Hash, ListNumbers, CalendarCheck } from '@phosphor-icons/react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { toast } from 'sonner'
 
@@ -90,6 +92,8 @@ export function WFNExport({ onLog }: WFNExportProps) {
   const [secondaryEarnCodes, setSecondaryEarnCodes] = useState('OT,OVERTIME,HOLIDAY,PREMIUM')
   const [pageSize, setPageSize] = useState(500)
   const [exportData, setExportData] = useState<ExportRecord[]>([])
+  const [filterMode, setFilterMode] = useState<'active' | 'ids'>('active')
+  const [placementIds, setPlacementIds] = useState('')
   const [stats, setStats] = useState({
     totalPlacements: 0,
     processedPlacements: 0,
@@ -97,7 +101,26 @@ export function WFNExport({ onLog }: WFNExportProps) {
     errors: 0
   })
 
-  const buildActivePlacementQuery = (): string => {
+  const parsePlacementIds = (input: string): number[] => {
+    const cleaned = input
+      .replace(/[\s\n\r]+/g, ',')
+      .split(',')
+      .map(id => id.trim())
+      .filter(id => id && /^\d+$/.test(id))
+      .map(id => parseInt(id, 10))
+    
+    return Array.from(new Set(cleaned))
+  }
+
+  const buildPlacementQuery = (): string => {
+    if (filterMode === 'ids' && placementIds.trim()) {
+      const ids = parsePlacementIds(placementIds)
+      if (ids.length === 0) {
+        throw new Error('No valid Placement IDs found. Please enter numeric IDs.')
+      }
+      return `id IN (${ids.join(',')})`
+    }
+    
     const now = Date.now()
     return `status='Approved' AND startDate<=${now} AND (endDate IS NULL OR endDate>=${now})`
   }
@@ -137,12 +160,19 @@ export function WFNExport({ onLog }: WFNExportProps) {
       return
     }
 
+    if (filterMode === 'ids' && !placementIds.trim()) {
+      toast.error('Please enter Placement IDs to export')
+      return
+    }
+
     setIsLoading(true)
     setProgress(0)
     setStats({ totalPlacements: 0, processedPlacements: 0, candidatesJoined: 0, errors: 0 })
     setExportData([])
 
-    const toastId = toast.loading('Fetching active placements...')
+    const toastId = toast.loading(
+      filterMode === 'ids' ? 'Fetching placements by ID...' : 'Fetching active placements...'
+    )
 
     try {
       const placementFields = [
@@ -155,10 +185,13 @@ export function WFNExport({ onLog }: WFNExportProps) {
         'jobOrder(id,title)'
       ]
 
-      const where = buildActivePlacementQuery()
+      const where = buildPlacementQuery()
+      const parsedIds = filterMode === 'ids' ? parsePlacementIds(placementIds) : []
       
-      onLog('WFN Export', 'success', 'Starting WFN export for active placements', {
+      onLog('WFN Export', 'success', `Starting WFN export (${filterMode === 'ids' ? 'by IDs' : 'active placements'})`, {
+        filterMode,
         where,
+        placementCount: parsedIds.length || 'all active',
         fields: placementFields,
         pageSize
       })
@@ -313,11 +346,17 @@ export function WFNExport({ onLog }: WFNExportProps) {
       setExportData(allRecords)
       setProgress(100)
       
-      toast.success(`Export complete: ${allRecords.length} records ready`, { id: toastId })
+      const successMsg = filterMode === 'ids' 
+        ? `Export complete: ${allRecords.length} of ${parsedIds.length} placements ready`
+        : `Export complete: ${allRecords.length} records ready`
+      
+      toast.success(successMsg, { id: toastId })
       
       onLog('WFN Export', 'success', `Export completed successfully`, {
+        filterMode,
         recordCount: allRecords.length,
         totalPlacements: totalCount,
+        requestedIds: parsedIds.length || 'N/A',
         candidatesJoined: stats.candidatesJoined,
         errors: stats.errors
       })
@@ -371,10 +410,10 @@ export function WFNExport({ onLog }: WFNExportProps) {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Database size={24} className="text-accent" weight="duotone" />
-                WFN Active Placements Export
+                WFN Placements Export
               </CardTitle>
               <CardDescription>
-                Export active placements with rate cards, candidate demographics, and tax information with hashed SSN/DOB
+                Export placements with rate cards, candidate demographics, and tax information with hashed SSN/DOB
               </CardDescription>
             </div>
             <Badge variant="secondary" className="gap-2">
@@ -388,9 +427,55 @@ export function WFNExport({ onLog }: WFNExportProps) {
             <ShieldCheck className="h-4 w-4" />
             <AlertDescription>
               This export includes <strong>hashed SSN and DOB</strong> using SHA-256. Raw sensitive data is never written to the CSV.
-              The export targets <strong>Active Placements</strong> (Approved status + current date window).
             </AlertDescription>
           </Alert>
+
+          <Tabs value={filterMode} onValueChange={(v) => setFilterMode(v as 'active' | 'ids')} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="active" className="gap-2">
+                <CalendarCheck size={18} />
+                Active Placements
+              </TabsTrigger>
+              <TabsTrigger value="ids" className="gap-2">
+                <ListNumbers size={18} />
+                By Placement IDs
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="active" className="space-y-4">
+              <Alert>
+                <AlertDescription>
+                  Exports placements with <strong>status='Approved'</strong> and current date within start/end range.
+                </AlertDescription>
+              </Alert>
+            </TabsContent>
+
+            <TabsContent value="ids" className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="placement-ids" className="flex items-center gap-2">
+                  <ListNumbers size={16} />
+                  Placement IDs (comma-separated or one per line)
+                </Label>
+                <Textarea
+                  id="placement-ids"
+                  placeholder="12345,67890,34567&#10;or one ID per line&#10;12345&#10;67890&#10;34567"
+                  value={placementIds}
+                  onChange={(e) => setPlacementIds(e.target.value)}
+                  disabled={isLoading}
+                  rows={6}
+                  className="font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {placementIds.trim() && (
+                    <>
+                      {parsePlacementIds(placementIds).length} valid ID(s) detected
+                    </>
+                  )}
+                  {!placementIds.trim() && 'Paste your Placement IDs here (comma-separated or newline-separated)'}
+                </p>
+              </div>
+            </TabsContent>
+          </Tabs>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
@@ -462,11 +547,11 @@ export function WFNExport({ onLog }: WFNExportProps) {
             <Button
               size="lg"
               onClick={executeExport}
-              disabled={isLoading || !hashSalt}
+              disabled={isLoading || !hashSalt || (filterMode === 'ids' && !placementIds.trim())}
               className="gap-2"
             >
               <Play size={20} />
-              {isLoading ? 'Exporting...' : 'Start Export'}
+              {isLoading ? 'Exporting...' : `Start Export ${filterMode === 'ids' ? '(By IDs)' : '(Active)'}`}
             </Button>
 
             {exportData.length > 0 && (
