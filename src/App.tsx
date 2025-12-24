@@ -20,6 +20,7 @@ import { OAuthTestSuite } from '@/components/OAuthTestSuite'
 import { OAuthDiagnostics } from '@/components/OAuthDiagnostics'
 import { ConsoleMonitor } from '@/components/ConsoleMonitor'
 import { ToOneFieldTest } from '@/components/ToOneFieldTest'
+import { ComprehensiveFieldTest } from '@/components/ComprehensiveFieldTest'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { toast } from 'sonner'
@@ -360,7 +361,7 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -384,6 +385,10 @@ function App() {
               <TabsTrigger value="toone-test" className="gap-2">
                 <TestTube size={18} />
                 <span className="hidden sm:inline">To-One Test</span>
+              </TabsTrigger>
+              <TabsTrigger value="comprehensive-test" className="gap-2">
+                <TestTube size={18} />
+                <span className="hidden sm:inline">Field Tests</span>
               </TabsTrigger>
               <TabsTrigger value="oauth-test" className="gap-2">
                 <TestTube size={18} />
@@ -422,6 +427,10 @@ function App() {
 
             <TabsContent value="toone-test" className="space-y-6">
               <ToOneFieldTest />
+            </TabsContent>
+
+            <TabsContent value="comprehensive-test" className="space-y-6">
+              <ComprehensiveFieldTest />
             </TabsContent>
 
             <TabsContent value="oauth-test" className="space-y-6">

@@ -104,20 +104,20 @@ const OPERATORS_TO_TEST: OperatorTest[] = [
     category: 'text'
   },
   {
-    operator: ':IS NULL',
+    operator: ' IS NULL',
     displayName: 'Is Null',
     description: 'Field is null/empty',
-    syntax: 'field:IS NULL',
-    example: 'customText1:IS NULL',
+    syntax: 'field IS NULL',
+    example: 'customText1 IS NULL',
     requiresValue: false,
     category: 'null'
   },
   {
-    operator: ':IS NOT NULL',
+    operator: ' IS NOT NULL',
     displayName: 'Is Not Null',
     description: 'Field has a value',
-    syntax: 'field:IS NOT NULL',
-    example: 'customText1:IS NOT NULL',
+    syntax: 'field IS NOT NULL',
+    example: 'customText1 IS NOT NULL',
     requiresValue: false,
     category: 'null'
   },
@@ -203,7 +203,11 @@ export function OperatorTestSuite() {
       let query: string
       
       if (!operator.requiresValue) {
-        query = `${field}${operator.operator}`
+        if (operator.operator === ' IS NULL' || operator.operator === ' IS NOT NULL') {
+          query = `${field}${operator.operator}`
+        } else {
+          query = `${field}${operator.operator}`
+        }
       } else {
         let value = testValue
         
@@ -231,7 +235,7 @@ export function OperatorTestSuite() {
         } else if (operator.operator === '~') {
           query = `${field}~"${value}"`
         } else {
-          if (value.includes(' ') || value.includes(',')) {
+          if (value && (value.includes(' ') || value.includes(','))) {
             value = `"${value}"`
           }
           query = `${field}${operator.operator}${value}`

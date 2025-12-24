@@ -539,8 +539,12 @@ export class BullhornAPI {
   private buildFilterCondition(filter: any): string {
     const operator = this.mapOperator(filter.operator)
     
-    if (filter.operator === 'is_null' || filter.operator === 'is_not_null') {
-      return `${filter.field}${operator}`
+    if (filter.operator === 'is_null') {
+      return `${filter.field} IS NULL`
+    }
+    
+    if (filter.operator === 'is_not_null') {
+      return `${filter.field} IS NOT NULL`
     }
     
     if (filter.operator === 'in_list' || filter.operator === 'in_list_parens') {
@@ -573,7 +577,11 @@ export class BullhornAPI {
     }
     
     if (filter.operator === 'contains') {
-      return `${filter.field}:*${filter.value}*`
+      const val = filter.value.trim()
+      if (!val.startsWith('*')) {
+        return `${filter.field}:*${val}*`
+      }
+      return `${filter.field}:${val}`
     }
     
     if (filter.operator === 'lucene') {
@@ -581,7 +589,7 @@ export class BullhornAPI {
     }
     
     let value = filter.value
-    if (value.includes(' ') || value.includes(',')) {
+    if (value && (value.includes(' ') || value.includes(','))) {
       value = `"${value}"`
     }
     
@@ -599,8 +607,8 @@ export class BullhornAPI {
       'less_than': ':<',
       'greater_equal': ':>=',
       'less_equal': ':<=',
-      'is_null': ':IS NULL',
-      'is_not_null': ':IS NOT NULL',
+      'is_null': ' IS NULL',
+      'is_not_null': ' IS NOT NULL',
       'in_list': ':[',
       'in_list_parens': ':(',
       'between_inclusive': ':..[',
