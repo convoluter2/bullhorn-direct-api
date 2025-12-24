@@ -72,12 +72,13 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           console.error('❌ CLIENT ID MISMATCH DETECTED!')
           console.error('   Expected client_id:', manualAuth.clientId)
           console.error('   Code belongs to:', extractedClientId)
+          console.error('   Connection:', preselectedConnection?.name || 'Unknown')
           console.error('   This means Bullhorn returned a cached code for a different connection!')
-          console.error('   🔧 Solution: Open the auth link in an Incognito/Private window to avoid browser cache.')
+          console.error('   🔧 Solution: Use Incognito/Private window OR clear cookies for bullhornstaffing.com')
           
           toast.error(
-            `Wrong authorization code! This code belongs to a different client ID. Please use Incognito mode to get a fresh code.`,
-            { duration: 10000 }
+            `❌ Wrong Connection! This code is for a different tenant (client_id mismatch). Clear your browser cookies for bullhornstaffing.com or use Incognito mode.`,
+            { duration: 12000 }
           )
           return null
         }
@@ -146,15 +147,35 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         console.log('✅ Authentication complete. Session details:', {
           corporationId: session.corporationId,
           restUrl: session.restUrl,
-          BhRestToken: session.BhRestToken?.substring(0, 20) + '...'
+          userId: session.userId,
+          BhRestToken: session.BhRestToken?.substring(0, 20) + '...',
+          expectedConnection: preselectedConnection?.name,
+          expectedTenant: preselectedConnection?.tenant
         })
         
-        if (preselectedConnection?.tenant && !session.restUrl.includes(preselectedConnection.tenant)) {
-          console.warn('⚠️ TENANT MISMATCH DETECTED:', {
-            expected: preselectedConnection.tenant,
-            actual: session.restUrl
-          })
-          toast.warning(`Tenant may not match! Expected: ${preselectedConnection.tenant}. Verify the connection.`, { duration: 8000 })
+        if (preselectedConnection) {
+          const restUrlTenant = session.restUrl.match(/rest-services\/([^/]+)/)?.[1]
+          const expectedTenant = preselectedConnection.tenant?.toLowerCase()
+          
+          if (restUrlTenant && expectedTenant && !restUrlTenant.toLowerCase().includes(expectedTenant) && !expectedTenant.includes(restUrlTenant.toLowerCase())) {
+            console.error('❌ TENANT MISMATCH DETECTED:', {
+              expected: preselectedConnection.tenant,
+              expectedNormalized: expectedTenant,
+              actual: restUrlTenant,
+              sessionRestUrl: session.restUrl,
+              connectionName: preselectedConnection.name
+            })
+            
+            toast.error(
+              `❌ WRONG TENANT! You authenticated to "${restUrlTenant}" but expected "${preselectedConnection.tenant}". This is likely due to browser cookie caching. Please disconnect, clear cookies for bullhornstaffing.com, and try again in Incognito mode.`,
+              { duration: 15000 }
+            )
+            
+            setLoading(false)
+            setAuthStep('idle')
+            setAuthProgress(0)
+            return
+          }
         }
         
         setAuthStep('complete')
@@ -184,15 +205,35 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         console.log('✅ Authentication complete. Session details:', {
           corporationId: session.corporationId,
           restUrl: session.restUrl,
-          BhRestToken: session.BhRestToken?.substring(0, 20) + '...'
+          userId: session.userId,
+          BhRestToken: session.BhRestToken?.substring(0, 20) + '...',
+          expectedConnection: preselectedConnection?.name,
+          expectedTenant: preselectedConnection?.tenant
         })
         
-        if (preselectedConnection?.tenant && !session.restUrl.includes(preselectedConnection.tenant)) {
-          console.warn('⚠️ TENANT MISMATCH DETECTED:', {
-            expected: preselectedConnection.tenant,
-            actual: session.restUrl
-          })
-          toast.warning(`Tenant may not match! Expected: ${preselectedConnection.tenant}. Verify the connection.`, { duration: 8000 })
+        if (preselectedConnection) {
+          const restUrlTenant = session.restUrl.match(/rest-services\/([^/]+)/)?.[1]
+          const expectedTenant = preselectedConnection.tenant?.toLowerCase()
+          
+          if (restUrlTenant && expectedTenant && !restUrlTenant.toLowerCase().includes(expectedTenant) && !expectedTenant.includes(restUrlTenant.toLowerCase())) {
+            console.error('❌ TENANT MISMATCH DETECTED:', {
+              expected: preselectedConnection.tenant,
+              expectedNormalized: expectedTenant,
+              actual: restUrlTenant,
+              sessionRestUrl: session.restUrl,
+              connectionName: preselectedConnection.name
+            })
+            
+            toast.error(
+              `❌ WRONG TENANT! You authenticated to "${restUrlTenant}" but expected "${preselectedConnection.tenant}". This is likely due to browser cookie caching. Please disconnect, clear cookies for bullhornstaffing.com, and try again.`,
+              { duration: 15000, id: 'auto-auth' }
+            )
+            
+            setLoading(false)
+            setAuthStep('idle')
+            setAuthProgress(0)
+            return
+          }
         }
         
         setAuthStep('complete')
@@ -255,6 +296,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       timestamp: Date.now()
     })
 
+    await bullhornAPI.prepareForAuth(manualAuth.username)
     const authUrl = getAuthUrl()
     const popupWidth = 600
     const popupHeight = 700
@@ -262,6 +304,14 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     const top = (window.screen.height - popupHeight) / 2
 
     const uniqueWindowName = `bullhorn-oauth-${Date.now()}-${Math.random().toString(36).substring(7)}`
+    
+    console.log('🪟 Opening OAuth popup with cache-busting:', {
+      username: manualAuth.username,
+      clientId: manualAuth.clientId.substring(0, 8) + '...',
+      connectionName: preselectedConnection?.name,
+      expectedTenant: preselectedConnection?.tenant,
+      windowName: uniqueWindowName
+    })
 
     const popup = window.open(
       authUrl,
@@ -274,7 +324,10 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       return
     }
 
-    toast.success('Copy the entire URL from the popup after the welcome page loads', { duration: 5000 })
+    toast.info(
+      `Opening OAuth for ${preselectedConnection?.name || manualAuth.username}. Copy the URL from the popup after logging in.`,
+      { duration: 6000 }
+    )
   }
 
   return (
@@ -343,10 +396,18 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                 Enter your credentials, then click the button to open the Bullhorn authorization page in a popup. 
                 After logging in, copy the entire URL from the popup and paste it in the "Authorization Code or URL" field below.
               </p>
-              <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mt-2">
-                ⚠️ Browser Cache Issue: If you get the wrong authorization code, Bullhorn may be using cached credentials from a previous connection. 
-                To fix: Open the authorization link in an <strong>Incognito/Private window</strong>, or clear your browser cookies for bullhornstaffing.com before authenticating.
-              </p>
+              <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded">
+                <p className="text-xs text-amber-700 dark:text-amber-300 font-semibold">
+                  ⚠️ IMPORTANT: Browser Cookie Cache Issue
+                </p>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  Bullhorn may cache your login session in browser cookies. If you get an error about "wrong client_id" or see data from a different tenant, 
+                  you must clear your browser cookies for <strong>bullhornstaffing.com</strong> or use an <strong>Incognito/Private window</strong>.
+                </p>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-medium">
+                  💡 Recommended: Always use Incognito mode when switching between different Bullhorn connections.
+                </p>
+              </div>
             </AlertDescription>
           </Alert>
 

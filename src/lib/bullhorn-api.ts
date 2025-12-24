@@ -142,6 +142,7 @@ export class BullhornAPI {
     params.append('_t', timestamp.toString())
     params.append('_r', randomSalt)
     params.append('prompt', 'login')
+    params.append('max_age', '0')
     
     const authUrl = `${oauthUrl}/authorize?${params.toString()}`
     console.log('🔗 Generated authorization URL with cache-busting:', {
@@ -149,6 +150,8 @@ export class BullhornAPI {
       usedCache: this.loginInfoCache.has(username),
       timestamp,
       randomSalt,
+      clientId: clientId.substring(0, 8) + '...',
+      username,
       authUrlPreview: authUrl.substring(0, 100) + '...'
     })
     

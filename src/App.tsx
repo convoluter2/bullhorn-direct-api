@@ -164,12 +164,54 @@ function App() {
     console.log('App - handleAuthenticated called:', { 
       hasSession: !!newSession, 
       connectionId,
-      hasToken: !!newSession?.BhRestToken 
+      hasToken: !!newSession?.BhRestToken,
+      corporationId: newSession?.corporationId,
+      restUrl: newSession?.restUrl
     })
     
     try {
       console.log('🧹 Clearing old session before setting new one')
+      const oldSession = bullhornAPI.getSession()
+      if (oldSession) {
+        console.log('   Old session:', {
+          corporationId: oldSession.corporationId,
+          restUrl: oldSession.restUrl
+        })
+      }
+      
       bullhornAPI.clearSession()
+      
+      if (connectionId) {
+        const connection = savedConnections.find(c => c.id === connectionId)
+        if (connection) {
+          const newSessionTenant = newSession.restUrl.match(/rest-services\/([^/]+)/)?.[1]
+          console.log('🔍 Validating connection:', {
+            connectionName: connection.name,
+            expectedTenant: connection.tenant,
+            actualTenant: newSessionTenant,
+            corporationId: newSession.corporationId
+          })
+          
+          if (newSessionTenant && connection.tenant) {
+            const expectedTenant = connection.tenant.toLowerCase()
+            if (!newSessionTenant.toLowerCase().includes(expectedTenant) && !expectedTenant.includes(newSessionTenant.toLowerCase())) {
+              console.error('❌ TENANT MISMATCH in handleAuthenticated!', {
+                expected: connection.tenant,
+                actual: newSessionTenant,
+                connectionName: connection.name
+              })
+              
+              toast.error(
+                `Connection mismatch! Expected ${connection.tenant} but got ${newSessionTenant}. Browser cookies may be causing this. Clear cookies and try again.`,
+                { duration: 15000 }
+              )
+              
+              setIsOAuthCallback(false)
+              return
+            }
+          }
+        }
+      }
       
       setSession(() => newSession)
       bullhornAPI.setSession(newSession)
@@ -188,7 +230,9 @@ function App() {
           addLog('Authentication', 'success', `Authenticated to ${connection.name}`, {
             connectionId,
             tenant: connection.tenant,
-            environment: connection.environment
+            environment: connection.environment,
+            corporationId: newSession.corporationId,
+            restUrl: newSession.restUrl
           })
         }
       }
@@ -256,9 +300,22 @@ function App() {
     try {
       toast.loading('Switching connection...', { id: 'switch-connection' })
 
-      console.log('🔄 Switching connection - clearing old session first')
+      console.log('🔄 Switching connection - clearing old session completely')
+      console.log('   Previous session:', {
+        corporationId: session?.corporationId,
+        restUrl: session?.restUrl
+      })
+      console.log('   Target connection:', {
+        name: connection.name,
+        tenant: connection.tenant,
+        environment: connection.environment
+      })
+      
       bullhornAPI.clearSession()
       setSession(() => null)
+      setCurrentConnectionId(() => null)
+      
+      await new Promise(resolve => setTimeout(resolve, 100))
 
       const credentials = await secureCredentialsAPI.getCredentials(connection.id)
       if (!credentials) {
@@ -272,6 +329,33 @@ function App() {
         username: credentials.username,
         password: credentials.password
       })
+      
+      const newSessionTenant = newSession.restUrl.match(/rest-services\/([^/]+)/)?.[1]
+      console.log('✅ New session established:', {
+        corporationId: newSession.corporationId,
+        restUrl: newSession.restUrl,
+        tenant: newSessionTenant,
+        expectedTenant: connection.tenant
+      })
+      
+      if (newSessionTenant && connection.tenant) {
+        const expectedTenant = connection.tenant.toLowerCase()
+        if (!newSessionTenant.toLowerCase().includes(expectedTenant) && !expectedTenant.includes(newSessionTenant.toLowerCase())) {
+          console.error('❌ TENANT MISMATCH after connection switch!', {
+            expected: connection.tenant,
+            actual: newSessionTenant
+          })
+          
+          bullhornAPI.clearSession()
+          setSession(() => null)
+          
+          toast.error(
+            `Failed to switch: Connected to wrong tenant (${newSessionTenant} instead of ${connection.tenant}). Please clear browser cookies and try again.`,
+            { duration: 15000, id: 'switch-connection' }
+          )
+          return
+        }
+      }
 
       setSession(() => newSession)
       bullhornAPI.setSession(newSession)
@@ -285,10 +369,14 @@ function App() {
       addLog('Connection Switch', 'success', `Switched to connection: ${connection.name}`, { 
         connectionId: connection.id,
         tenant: connection.tenant,
-        environment: connection.environment
+        environment: connection.environment,
+        corporationId: newSession.corporationId
       })
     } catch (error) {
       console.error('❌ Connection switch failed:', error)
+      bullhornAPI.clearSession()
+      setSession(() => null)
+      setCurrentConnectionId(() => null)
       toast.error('Failed to switch connection. Please try again.', { id: 'switch-connection' })
       addLog('Connection Switch', 'error', `Failed to switch to ${connection.name}`, { error: String(error) })
     }
