@@ -13,6 +13,7 @@ import { SmartStack } from '@/components/SmartStack'
 import { QueryStack } from '@/components/QueryStack'
 import { AuditLogs } from '@/components/AuditLogs'
 import { WFNExport } from '@/components/WFNExport'
+import { SessionDebugPanel } from '@/components/SessionDebugPanel'
 import { ConnectionManager, type SavedConnection, type SecureCredentials } from '@/components/ConnectionManager'
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { ProxyStatus } from '@/components/ProxyStatus'
@@ -409,6 +410,14 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <SessionDebugPanel 
+              session={session}
+              currentConnectionId={currentConnectionId || null}
+              connectionName={savedConnections.find(c => c.id === currentConnectionId)?.name}
+              tenant={savedConnections.find(c => c.id === currentConnectionId)?.tenant}
+              environment={savedConnections.find(c => c.id === currentConnectionId)?.environment}
+            />
+            
             <TabsList className="grid w-full grid-cols-11 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />

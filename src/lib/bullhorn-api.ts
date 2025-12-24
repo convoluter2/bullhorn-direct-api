@@ -504,6 +504,16 @@ export class BullhornAPI {
     return this.session
   }
 
+  getCurrentCorporationId(): number | undefined {
+    return this.session?.corporationId
+  }
+
+  getCurrentTenant(): string | undefined {
+    if (!this.session?.restUrl) return undefined
+    const match = this.session.restUrl.match(/rest-services\/([^/]+)/)
+    return match ? match[1] : undefined
+  }
+
   clearSession() {
     console.log('🧹 Clearing Bullhorn session and cache:', {
       hadSession: !!this.session,
@@ -515,9 +525,73 @@ export class BullhornAPI {
     this.currentUsername = null
   }
 
-  async search(config: QueryConfig, rawQuery?: string): Promise<QueryResult> {
+  validateConnection(expectedCorporationId?: number, expectedTenant?: string): { 
+    valid: boolean
+    message?: string
+    currentCorporationId?: number
+    currentRestUrl?: string
+  } {
+    if (!this.session) {
+      return {
+        valid: false,
+        message: 'No active session. Please connect to Bullhorn first.'
+      }
+    }
+
+    const currentCorporationId = this.session.corporationId
+    const currentRestUrl = this.session.restUrl
+
+    if (expectedCorporationId && currentCorporationId !== expectedCorporationId) {
+      return {
+        valid: false,
+        message: `Connection mismatch detected! Expected Corporation ID ${expectedCorporationId}, but currently connected to ${currentCorporationId}. Please disconnect and reconnect to the correct tenant.`,
+        currentCorporationId,
+        currentRestUrl
+      }
+    }
+
+    if (expectedTenant) {
+      const currentTenantMatch = currentRestUrl?.match(/rest-services\/([^/]+)/)
+      const currentTenant = currentTenantMatch ? currentTenantMatch[1] : ''
+      
+      if (currentTenant && !currentTenant.includes(expectedTenant.toLowerCase()) && !expectedTenant.toLowerCase().includes(currentTenant)) {
+        return {
+          valid: false,
+          message: `Connection mismatch detected! Expected tenant "${expectedTenant}", but currently connected to "${currentTenant}". Please disconnect and reconnect to the correct tenant.`,
+          currentCorporationId,
+          currentRestUrl
+        }
+      }
+    }
+
+    return {
+      valid: true,
+      currentCorporationId,
+      currentRestUrl
+    }
+  }
+
+  ensureCorrectConnection(expectedCorporationId?: number, expectedTenant?: string): void {
+    const validation = this.validateConnection(expectedCorporationId, expectedTenant)
+    
+    if (!validation.valid) {
+      console.error('❌ Connection validation failed:', validation)
+      throw new Error(validation.message || 'Connection validation failed')
+    }
+
+    console.log('✅ Connection validated:', {
+      corporationId: validation.currentCorporationId,
+      restUrl: validation.currentRestUrl
+    })
+  }
+
+  async search(config: QueryConfig, rawQuery?: string, expectedCorporationId?: number): Promise<QueryResult> {
     if (!this.session) {
       throw new Error('Not authenticated')
+    }
+
+    if (expectedCorporationId) {
+      this.ensureCorrectConnection(expectedCorporationId)
     }
 
     console.log('🔍 Executing search:', {
@@ -690,9 +764,13 @@ export class BullhornAPI {
     return operatorMap[operator] || ':'
   }
 
-  async query(entity: string, fields: string[], where?: string, params?: Record<string, any>): Promise<any> {
+  async query(entity: string, fields: string[], where?: string, params?: Record<string, any>, expectedCorporationId?: number): Promise<any> {
     if (!this.session) {
       throw new Error('Not authenticated')
+    }
+
+    if (expectedCorporationId) {
+      this.ensureCorrectConnection(expectedCorporationId)
     }
 
     const queryParams = new URLSearchParams({
@@ -748,9 +826,13 @@ export class BullhornAPI {
     return await response.json()
   }
 
-  async createEntity(entity: string, data: any): Promise<any> {
+  async createEntity(entity: string, data: any, expectedCorporationId?: number): Promise<any> {
     if (!this.session) {
       throw new Error('Not authenticated')
+    }
+
+    if (expectedCorporationId) {
+      this.ensureCorrectConnection(expectedCorporationId)
     }
 
     const params = new URLSearchParams({
@@ -777,9 +859,13 @@ export class BullhornAPI {
     return await response.json()
   }
 
-  async updateEntity(entity: string, id: number, data: any): Promise<any> {
+  async updateEntity(entity: string, id: number, data: any, expectedCorporationId?: number): Promise<any> {
     if (!this.session) {
       throw new Error('Not authenticated')
+    }
+
+    if (expectedCorporationId) {
+      this.ensureCorrectConnection(expectedCorporationId)
     }
 
     const params = new URLSearchParams({

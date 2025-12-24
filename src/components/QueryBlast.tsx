@@ -96,6 +96,8 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
     const startTime = Date.now()
 
     try {
+      const currentCorporationId = bullhornAPI.getCurrentCorporationId()
+      
       const config: QueryConfig = {
         entity,
         fields: selectedFields,
@@ -107,7 +109,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
         orderBy: orderBy && orderBy !== '__none__' ? orderBy : undefined
       }
 
-      const result = await bullhornAPI.search(config)
+      const result = await bullhornAPI.search(config, undefined, currentCorporationId)
       setResults(result.data)
       setTotalCount(result.total)
       setCurrentStart(start)
@@ -150,6 +152,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
     const allData: any[] = []
 
     try {
+      const currentCorporationId = bullhornAPI.getCurrentCorporationId()
       const totalBatches = Math.ceil(totalCount / batchSize)
       
       for (let i = 0; i < totalBatches; i++) {
@@ -165,7 +168,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
           orderBy: orderBy && orderBy !== '__none__' ? orderBy : undefined
         }
 
-        const result = await bullhornAPI.search(config)
+        const result = await bullhornAPI.search(config, undefined, currentCorporationId)
         allData.push(...result.data)
         
         toast.loading(`Loading batch ${i + 1} of ${totalBatches}...`, { id: 'batch-load' })
@@ -319,6 +322,8 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
     const startTime = Date.now()
 
     try {
+      const currentCorporationId = bullhornAPI.getCurrentCorporationId()
+      
       if (operationMode === 'create') {
         const updateData: Record<string, any> = {}
         fieldUpdates.forEach(update => {
@@ -334,7 +339,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
           }
         })
 
-        const result = await bullhornAPI.createEntity(entity, updateData)
+        const result = await bullhornAPI.createEntity(entity, updateData, currentCorporationId)
         const duration = Date.now() - startTime
         
         toast.success(`Created new ${entity} record with ID ${result.changedEntityId} in ${duration}ms`)
@@ -369,7 +374,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
 
         for (const record of results) {
           try {
-            await bullhornAPI.updateEntity(entity, record.id, updateData)
+            await bullhornAPI.updateEntity(entity, record.id, updateData, currentCorporationId)
             successCount++
           } catch (error) {
             errorCount++
