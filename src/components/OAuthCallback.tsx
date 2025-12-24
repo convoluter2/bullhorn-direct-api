@@ -286,7 +286,7 @@ export function OAuthCallback({
         clearTimeout(timeoutRef.current)
       }
     }
-  }, [onAuthenticated, onCancel, status])
+  }, [onAuthenticated, onCancel])
 
   if (status === 'timeout') {
     return (
