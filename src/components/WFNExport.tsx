@@ -121,8 +121,7 @@ export function WFNExport({ onLog }: WFNExportProps) {
       return `id IN (${ids.join(',')})`
     }
     
-    const now = Date.now()
-    return `status='Approved' AND dateBegin<=${now} AND (dateEnd IS NULL OR dateEnd>=${now})`
+    return `status='Approved'`
   }
 
   const selectRateLine = (
@@ -200,9 +199,11 @@ export function WFNExport({ onLog }: WFNExportProps) {
       const allRecords: ExportRecord[] = []
       let hasMore = true
       let totalCount = 0
+      let processedCount = 0
 
       while (hasMore) {
-        toast.loading(`Fetching placements (${start + 1}+)...`, { id: toastId })
+        const currentBatch = start + 1
+        toast.loading(`Fetching placements (${currentBatch}+)... Progress: ${processedCount} processed`, { id: toastId })
         
         const response = await bullhornAPI.query('Placement', placementFields, where, {
           count: pageSize,
@@ -217,69 +218,109 @@ export function WFNExport({ onLog }: WFNExportProps) {
 
         const placements: PlacementData[] = response.data || []
         
+        console.log(`📦 Fetched ${placements.length} placements (batch starting at ${start})`)
+        
         if (placements.length === 0) {
           hasMore = false
           break
         }
 
-        for (const placement of placements) {
+        const candidateIds = placements
+          .map(p => p.candidate?.id)
+          .filter((id): id is number => id !== undefined)
+
+        let taxInfoMap = new Map<number, any>()
+        
+        if (candidateIds.length > 0) {
           try {
-            let candidateTaxInfo: any = null
+            toast.loading(`Processing batch: Fetching tax info for ${candidateIds.length} candidates...`, { id: toastId })
             
-            if (placement.candidate?.id) {
-              try {
-                const taxInfoResponse = await bullhornAPI.query(
-                  'CandidateTaxInfo',
-                  ['id', 'filingStatus', 'exemptions', 'additionalWithholding'],
-                  `candidate.id=${placement.candidate.id}`,
-                  { count: 1 }
-                )
-                
-                if (taxInfoResponse.data && taxInfoResponse.data.length > 0) {
-                  candidateTaxInfo = taxInfoResponse.data[0]
-                }
-              } catch (taxError) {
-                console.warn(`Failed to fetch tax info for candidate ${placement.candidate.id}`, taxError)
+            const taxInfoResponse = await bullhornAPI.query(
+              'CandidateTaxInfo',
+              ['id', 'candidate(id)', 'filingStatus', 'exemptions', 'additionalWithholding'],
+              `candidate.id IN (${candidateIds.join(',')})`,
+              { count: 500 }
+            )
+            
+            for (const taxInfo of taxInfoResponse.data || []) {
+              if (taxInfo.candidate?.id) {
+                taxInfoMap.set(taxInfo.candidate.id, taxInfo)
               }
             }
+            
+            console.log(`✅ Fetched tax info for ${taxInfoMap.size} candidates`)
+          } catch (taxError) {
+            console.warn('Failed to batch fetch tax info:', taxError)
+          }
+        }
 
-            let rateCard: { id: number; lines: Array<{ earnCode?: string; alias?: string; payRate?: number; billRate?: number }> } | null = null
-            try {
-              const rateCardResponse = await bullhornAPI.query(
-                'PlacementRateCard',
-                ['id'],
-                `placement.id=${placement.id}`,
-                { count: 1 }
+        const placementIds = placements.map(p => p.id)
+        let rateCardMap = new Map<number, { id: number; lines: Array<{ earnCode?: string; alias?: string; payRate?: number; billRate?: number }> }>()
+        
+        try {
+          toast.loading(`Processing batch: Fetching rate cards for ${placementIds.length} placements...`, { id: toastId })
+          
+          const rateCardResponse = await bullhornAPI.query(
+            'PlacementRateCard',
+            ['id', 'placement(id)'],
+            `placement.id IN (${placementIds.join(',')})`,
+            { count: 500 }
+          )
+
+          const rateCardIds = (rateCardResponse.data || []).map((rc: any) => rc.id)
+          
+          if (rateCardIds.length > 0) {
+            const lineGroupsResponse = await bullhornAPI.query(
+              'PlacementRateCardLineGroup',
+              ['id', 'placementRateCard(id)'],
+              `placementRateCard.id IN (${rateCardIds.join(',')})`,
+              { count: 500 }
+            )
+
+            const groupIds = (lineGroupsResponse.data || []).map((g: any) => g.id)
+            
+            if (groupIds.length > 0) {
+              const linesResponse = await bullhornAPI.query(
+                'PlacementRateCardLine',
+                ['id', 'placementRateCardLineGroup(id,placementRateCard(id,placement(id)))', 'earnCode', 'alias', 'payRate', 'billRate'],
+                `placementRateCardLineGroup.id IN (${groupIds.join(',')})`,
+                { count: 1000 }
               )
 
-              if (rateCardResponse.data && rateCardResponse.data.length > 0) {
-                const cardId = rateCardResponse.data[0].id
+              for (const line of linesResponse.data || []) {
+                const placementId = line.placementRateCardLineGroup?.placementRateCard?.placement?.id
+                const cardId = line.placementRateCardLineGroup?.placementRateCard?.id
                 
-                const lineGroupsResponse = await bullhornAPI.query(
-                  'PlacementRateCardLineGroup',
-                  ['id'],
-                  `placementRateCard.id=${cardId}`,
-                  { count: 500 }
-                )
-
-                const lines: Array<{ earnCode?: string; alias?: string; payRate?: number; billRate?: number }> = []
-                
-                for (const group of lineGroupsResponse.data || []) {
-                  const linesResponse = await bullhornAPI.query(
-                    'PlacementRateCardLine',
-                    ['id', 'earnCode', 'alias', 'payRate', 'billRate'],
-                    `placementRateCardLineGroup.id=${group.id}`,
-                    { count: 100 }
-                  )
+                if (placementId && cardId) {
+                  if (!rateCardMap.has(placementId)) {
+                    rateCardMap.set(placementId, { id: cardId, lines: [] })
+                  }
                   
-                  lines.push(...(linesResponse.data || []))
+                  rateCardMap.get(placementId)!.lines.push({
+                    earnCode: line.earnCode,
+                    alias: line.alias,
+                    payRate: line.payRate,
+                    billRate: line.billRate
+                  })
                 }
-
-                rateCard = { id: cardId, lines }
               }
-            } catch (rateError) {
-              console.warn(`Failed to fetch rate card for placement ${placement.id}`, rateError)
             }
+          }
+          
+          console.log(`✅ Fetched rate cards for ${rateCardMap.size} placements`)
+        } catch (rateError) {
+          console.warn('Failed to batch fetch rate cards:', rateError)
+        }
+
+        for (let i = 0; i < placements.length; i++) {
+          const placement = placements[i]
+          
+          try {
+            const candidateTaxInfo = placement.candidate?.id 
+              ? taxInfoMap.get(placement.candidate.id)
+              : null
+
+            const rateCard = rateCardMap.get(placement.id) || null
 
             const primaryRate = rateCard ? selectRateLine(rateCard.lines, primaryEarnCodes) : null
             const secondaryRate = rateCard ? selectRateLine(rateCard.lines, secondaryEarnCodes) : null
@@ -315,16 +356,17 @@ export function WFNExport({ onLog }: WFNExportProps) {
             }
 
             allRecords.push(record)
+            processedCount++
             
             setStats(prev => ({
               ...prev,
-              processedPlacements: prev.processedPlacements + 1,
+              processedPlacements: processedCount,
               candidatesJoined: placement.candidate?.id ? prev.candidatesJoined + 1 : prev.candidatesJoined
             }))
 
             const progressPercent = totalCount > 0 
-              ? Math.round(((start + allRecords.length) / totalCount) * 100)
-              : 0
+              ? Math.round((processedCount / totalCount) * 100)
+              : Math.round(((start + i + 1) / (start + placements.length)) * 100)
             setProgress(progressPercent)
 
           } catch (recordError) {
@@ -341,6 +383,8 @@ export function WFNExport({ onLog }: WFNExportProps) {
         if (placements.length < pageSize) {
           hasMore = false
         }
+        
+        setExportData([...allRecords])
       }
 
       setExportData(allRecords)
