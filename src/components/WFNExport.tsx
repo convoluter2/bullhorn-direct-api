@@ -27,8 +27,8 @@ interface PlacementData {
     dateOfBirth?: number
   }
   status?: string
-  startDate?: number
-  endDate?: number
+  dateBegin?: number
+  dateEnd?: number
   employmentType?: string
   jobOrder?: {
     id: number
@@ -122,7 +122,7 @@ export function WFNExport({ onLog }: WFNExportProps) {
     }
     
     const now = Date.now()
-    return `status='Approved' AND startDate<=${now} AND (endDate IS NULL OR endDate>=${now})`
+    return `status='Approved' AND dateBegin<=${now} AND (dateEnd IS NULL OR dateEnd>=${now})`
   }
 
   const selectRateLine = (
@@ -178,8 +178,8 @@ export function WFNExport({ onLog }: WFNExportProps) {
       const placementFields = [
         'id',
         'status',
-        'startDate',
-        'endDate',
+        'dateBegin',
+        'dateEnd',
         'employmentType',
         'candidate(id,firstName,lastName,ssn,dateOfBirth)',
         'jobOrder(id,title)'
@@ -300,8 +300,8 @@ export function WFNExport({ onLog }: WFNExportProps) {
               'Hashed SSN': hashedSSN,
               'Hashed DOB': hashedDOB,
               'Status': placement.status || '',
-              'Start Date': formatDate(placement.startDate),
-              'End Date': formatDate(placement.endDate),
+              'Start Date': formatDate(placement.dateBegin),
+              'End Date': formatDate(placement.dateEnd),
               'Employment Type': placement.employmentType || '',
               'Job Order ID': placement.jobOrder?.id || 0,
               'Job Title': placement.jobOrder?.title || '',
