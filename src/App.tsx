@@ -110,28 +110,46 @@ function App() {
 
       if (timeUntilExpiry < 60000 && timeUntilExpiry > 0) {
         try {
+          console.log('🔄 Token expiring soon, refreshing...', {
+            currentConnectionId,
+            corporationId: session.corporationId
+          })
+          
           const credentials = await secureCredentialsAPI.getCredentials(currentConnectionId)
           if (!credentials) {
             toast.error('Failed to retrieve credentials for token refresh')
+            console.error('❌ No credentials found for connection:', currentConnectionId)
             return
           }
 
+          console.log('🔑 Refreshing token with credentials for:', credentials.username)
           const tokenData = await bullhornAPI.refreshAccessToken(
             session.refreshToken,
             credentials.clientId,
             credentials.clientSecret,
             credentials.username
           )
+          
           const newSession = await bullhornAPI.login(tokenData.accessToken, credentials.username)
           newSession.refreshToken = tokenData.refreshToken
           newSession.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
           
+          console.log('✅ Token refreshed successfully:', {
+            corporationId: newSession.corporationId,
+            restUrl: newSession.restUrl
+          })
+          
           setSession(() => newSession)
           bullhornAPI.setSession(newSession)
           
-          addLog('Token Refresh', 'success', 'Access token refreshed automatically')
+          addLog('Token Refresh', 'success', 'Access token refreshed automatically', {
+            connectionId: currentConnectionId,
+            corporationId: newSession.corporationId
+          })
         } catch (error) {
+          console.error('❌ Token refresh failed:', error)
           toast.error('Failed to refresh access token. Please reconnect.')
+          bullhornAPI.clearSession()
           setSession(() => null)
         }
       }
@@ -149,6 +167,9 @@ function App() {
     })
     
     try {
+      console.log('🧹 Clearing old session before setting new one')
+      bullhornAPI.clearSession()
+      
       setSession(() => newSession)
       bullhornAPI.setSession(newSession)
       setIsOAuthCallback(false)
@@ -160,6 +181,15 @@ function App() {
         )
         setSavedConnections(updatedConnections)
         secureCredentialsAPI.updateConnection(connectionId, { lastUsed: Date.now() })
+        
+        const connection = savedConnections.find(c => c.id === connectionId)
+        if (connection) {
+          addLog('Authentication', 'success', `Authenticated to ${connection.name}`, {
+            connectionId,
+            tenant: connection.tenant,
+            environment: connection.environment
+          })
+        }
       }
       
       console.log('App - Authentication handling complete')
@@ -179,8 +209,11 @@ function App() {
 
   const handleDisconnect = () => {
     if (confirm('Are you sure you want to disconnect?')) {
+      console.log('🔌 Disconnecting - clearing session and cache')
+      bullhornAPI.clearSession()
       setSession(() => null)
       setCurrentConnectionId(() => null)
+      addLog('Disconnect', 'success', 'Disconnected from Bullhorn and cleared session cache')
     }
   }
 
@@ -222,11 +255,16 @@ function App() {
     try {
       toast.loading('Switching connection...', { id: 'switch-connection' })
 
+      console.log('🔄 Switching connection - clearing old session first')
+      bullhornAPI.clearSession()
+      setSession(() => null)
+
       const credentials = await secureCredentialsAPI.getCredentials(connection.id)
       if (!credentials) {
         throw new Error('Credentials not found for this connection')
       }
 
+      console.log('🔑 Authenticating with new connection:', connection.name)
       const newSession = await bullhornAPI.authenticate({
         clientId: credentials.clientId,
         clientSecret: credentials.clientSecret,
@@ -243,8 +281,13 @@ function App() {
       setSavedConnections(connections)
 
       toast.success(`Switched to ${connection.name}`, { id: 'switch-connection' })
-      addLog('Connection Switch', 'success', `Switched to connection: ${connection.name}`)
+      addLog('Connection Switch', 'success', `Switched to connection: ${connection.name}`, { 
+        connectionId: connection.id,
+        tenant: connection.tenant,
+        environment: connection.environment
+      })
     } catch (error) {
+      console.error('❌ Connection switch failed:', error)
       toast.error('Failed to switch connection. Please try again.', { id: 'switch-connection' })
       addLog('Connection Switch', 'error', `Failed to switch to ${connection.name}`, { error: String(error) })
     }

@@ -491,6 +491,12 @@ export class BullhornAPI {
   }
 
   setSession(session: BullhornSession) {
+    console.log('📝 Setting new Bullhorn session:', {
+      restUrl: session.restUrl,
+      corporationId: session.corporationId,
+      userId: session.userId,
+      hasToken: !!session.BhRestToken
+    })
     this.session = session
   }
 
@@ -498,10 +504,28 @@ export class BullhornAPI {
     return this.session
   }
 
+  clearSession() {
+    console.log('🧹 Clearing Bullhorn session and cache:', {
+      hadSession: !!this.session,
+      corporationId: this.session?.corporationId,
+      cachedUsernames: Array.from(this.loginInfoCache.keys())
+    })
+    this.session = null
+    this.loginInfoCache.clear()
+    this.currentUsername = null
+  }
+
   async search(config: QueryConfig, rawQuery?: string): Promise<QueryResult> {
     if (!this.session) {
       throw new Error('Not authenticated')
     }
+
+    console.log('🔍 Executing search:', {
+      entity: config.entity,
+      corporationId: this.session.corporationId,
+      restUrl: this.session.restUrl,
+      query: rawQuery || this.buildQuery(config)
+    })
 
     const query = rawQuery || this.buildQuery(config)
     const fields = config.fields.join(',')
@@ -532,6 +556,13 @@ export class BullhornAPI {
     }
 
     const result = await response.json()
+    
+    console.log('✅ Search complete:', {
+      entity: config.entity,
+      total: result.total,
+      count: result.count,
+      corporationId: this.session.corporationId
+    })
     
     return {
       data: result.data || [],
