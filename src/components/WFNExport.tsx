@@ -84,6 +84,7 @@ interface PlacementData {
     customText8?: string
     customText9?: string
     customText10?: string
+    customText30?: string
   }
   clientCorporation?: {
     id: number
@@ -298,7 +299,7 @@ export function WFNExport({ onLog }: WFNExportProps) {
   const [exportData, setExportData] = useState<ExportRecord[]>([])
   const [filterMode, setFilterMode] = useState<'active' | 'ids'>('active')
   const [placementIds, setPlacementIds] = useState('')
-  const [adpAssociateIdField, setAdpAssociateIdField] = useState('customText1')
+  const [adpAssociateIdField, setAdpAssociateIdField] = useState('customText30')
   const [encryptionPassword, setEncryptionPassword] = useState('')
   const [usePlaintextPII, setUsePlaintextPII] = useState(false)
   const [stats, setStats] = useState({
@@ -392,7 +393,7 @@ export function WFNExport({ onLog }: WFNExportProps) {
         'isMultirate',
         'placementRateCardID',
         'placementRateCardStatus',
-        'candidate(id,firstName,middleName,lastName,nameSuffix,externalID,ssn,dateOfBirth,email,email2,email3,phone,phone2,phone3,mobile,preferredContact,address(address1,address2,city,state,zip,countryID),gender,ethnicity,maritalStatus,veteran,tobaccoUser,status,payrollStatus,employeeType,type,payrollClientStartDate,federalFilingStatus,federalExemptions,federalExtraWithholdingAmount,stateFilingStatus,stateExemptions,stateAddtionalWitholdingsAmount,localFilingStatus,localExemptions,localAddtionalWitholdingsAmount,localTaxCode,customText1,customText2,customText3,customText4,customText5,customText6,customText7,customText8,customText9,customText10)',
+        'candidate(id,firstName,middleName,lastName,nameSuffix,externalID,ssn,dateOfBirth,email,email2,email3,phone,phone2,phone3,mobile,preferredContact,address(address1,address2,city,state,zip,countryID),gender,ethnicity,maritalStatus,veteran,tobaccoUser,status,payrollStatus,employeeType,type,payrollClientStartDate,federalFilingStatus,federalExemptions,federalExtraWithholdingAmount,stateFilingStatus,stateExemptions,stateAddtionalWitholdingsAmount,localFilingStatus,localExemptions,localAddtionalWitholdingsAmount,localTaxCode,customText1,customText2,customText3,customText4,customText5,customText6,customText7,customText8,customText9,customText10,customText30)',
         'clientCorporation(id,name)',
         'clientContact(id,name)',
         'jobOrder(id,title,clientCorporation(id,name))'
@@ -1064,6 +1065,7 @@ export function WFNExport({ onLog }: WFNExportProps) {
                 <option value="customText8">Candidate.customText8</option>
                 <option value="customText9">Candidate.customText9</option>
                 <option value="customText10">Candidate.customText10</option>
+                <option value="customText30">Candidate.customText30</option>
                 <option value="externalID">Candidate.externalID</option>
               </select>
               <p className="text-xs text-muted-foreground">
