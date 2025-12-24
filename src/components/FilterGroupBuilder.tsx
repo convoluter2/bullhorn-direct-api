@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Trash, Unite, Intersect } from '@phosphor-icons/react'
 import { ValidatedFieldInput } from '@/components/ValidatedFieldInput'
+import { formatFieldLabel } from '@/lib/utils'
 import type { FilterGroup, QueryFilter } from '@/lib/types'
 import type { EntityField } from '@/hooks/use-entity-metadata'
 import { useKV } from '@github/spark/hooks'
@@ -209,7 +210,7 @@ export function FilterGroupBuilder({
                           <SelectContent>
                             {availableFields.map((field) => (
                               <SelectItem key={field.name} value={field.name}>
-                                {field.label}
+                                {formatFieldLabel(field.label, field.name)}
                               </SelectItem>
                             ))}
                           </SelectContent>

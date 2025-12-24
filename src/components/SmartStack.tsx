@@ -17,6 +17,7 @@ import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Ey
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV } from '@/lib/csv-utils'
+import { formatFieldLabel } from '@/lib/utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { ValidatedFieldInput } from '@/components/ValidatedFieldInput'
@@ -796,7 +797,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
                             <SelectContent>
                               {availableFields.map((field) => (
                                 <SelectItem key={field.name} value={field.name}>
-                                  {field.label}
+                                  {formatFieldLabel(field.label, field.name)}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -895,7 +896,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
                               <SelectContent>
                                 {availableFields.map((field) => (
                                   <SelectItem key={field.name} value={field.name}>
-                                    {field.label} {field.associationType === 'TO_MANY' ? '(To-Many)' : ''}
+                                    {formatFieldLabel(field.label, field.name)} {field.associationType === 'TO_MANY' ? '(To-Many)' : ''}
                                   </SelectItem>
                                 ))}
                               </SelectContent>

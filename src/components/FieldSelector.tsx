@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { MagnifyingGlass, X } from '@phosphor-icons/react'
+import { formatFieldLabel } from '@/lib/utils'
 import type { EntityField } from '@/hooks/use-entity-metadata'
 
 interface FieldSelectorProps {
@@ -31,6 +32,10 @@ export function FieldSelector({
       field.label.toLowerCase().includes(term)
     )
   }, [fields, searchTerm])
+
+  const getFieldDisplayLabel = (field: EntityField) => {
+    return formatFieldLabel(field.label, field.name)
+  }
 
   const hasSearch = fields.length > 15
 
@@ -87,9 +92,8 @@ export function FieldSelector({
                 variant={selectedFields.includes(field.name) ? 'default' : 'outline'}
                 className="cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
                 onClick={() => onToggleField(field.name)}
-                title={field.label !== field.name ? field.label : undefined}
               >
-                {field.name}
+                {getFieldDisplayLabel(field)}
               </Badge>
             ))
           )}

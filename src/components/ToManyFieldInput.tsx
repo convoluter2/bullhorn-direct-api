@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Plus, Trash, X } from '@phosphor-icons/react'
-import { cn } from '@/lib/utils'
+import { cn, formatFieldLabel } from '@/lib/utils'
 import type { EntityField } from '@/hooks/use-entity-metadata'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 
@@ -166,7 +166,7 @@ export function ToManyFieldInput({
                 .map(f => (
                   <SelectItem key={f.name} value={f.name}>
                     <div className="space-y-1">
-                      <div className="font-semibold">{f.label} ({f.name})</div>
+                      <div className="font-semibold">{formatFieldLabel(f.label, f.name)}</div>
                       <div className="text-xs text-muted-foreground">{f.type} field on {associatedEntity}</div>
                     </div>
                   </SelectItem>

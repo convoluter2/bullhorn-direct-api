@@ -14,6 +14,7 @@ import { MagnifyingGlass, Plus, Trash, Lightning, DownloadSimple, X, CaretLeft, 
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
+import { formatFieldLabel } from '@/lib/utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { FieldSelector } from '@/components/FieldSelector'
@@ -576,7 +577,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                                   <SelectContent>
                                     {availableFields.map((field) => (
                                       <SelectItem key={field.name} value={field.name}>
-                                        {field.label}
+                                        {formatFieldLabel(field.label, field.name)}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
@@ -658,7 +659,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                         <SelectItem value="__none__">None</SelectItem>
                         {availableFields.map((field) => (
                           <SelectItem key={field.name} value={field.name}>
-                            {field.label}
+                            {formatFieldLabel(field.label, field.name)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -757,7 +758,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                         <SelectContent>
                           {availableFields.map((field) => (
                             <SelectItem key={field.name} value={field.name}>
-                              {field.label} ({field.type})
+                              {formatFieldLabel(field.label, field.name)} ({field.type})
                             </SelectItem>
                           ))}
                         </SelectContent>

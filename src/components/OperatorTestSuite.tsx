@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { Flask, Play, CheckCircle, XCircle, Clock } from '@phosphor-icons/react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { toast } from 'sonner'
+import { formatFieldLabel } from '@/lib/utils'
 import { useEntities } from '@/hooks/use-entities'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useKV } from '@github/spark/hooks'
@@ -482,7 +483,7 @@ export function OperatorTestSuite() {
                   ) : (
                     availableFields.map(f => (
                       <SelectItem key={f.name} value={f.name}>
-                        {f.label} ({f.dataType})
+                        {formatFieldLabel(f.label, f.name)} ({f.dataType})
                       </SelectItem>
                     ))
                   )}

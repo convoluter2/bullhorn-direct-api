@@ -20,6 +20,7 @@ import {
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
+import { formatFieldLabel } from '@/lib/utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { ValidatedFieldInput } from '@/components/ValidatedFieldInput'
@@ -812,7 +813,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
                                     <SelectContent>
                                       {availableFields.map((field) => (
                                         <SelectItem key={field.name} value={field.name}>
-                                          {field.label}
+                                          {formatFieldLabel(field.label, field.name)}
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
@@ -879,7 +880,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
                           <SelectItem value="__none__">None</SelectItem>
                           {availableFields.map((field) => (
                             <SelectItem key={field.name} value={field.name}>
-                              {field.label}
+                              {formatFieldLabel(field.label, field.name)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1063,7 +1064,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
                               <SelectContent>
                                 {(targetEntity ? targetAvailableFields : availableFields).map((field) => (
                                   <SelectItem key={field.name} value={field.name}>
-                                    {field.label}
+                                    {formatFieldLabel(field.label, field.name)}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -1150,7 +1151,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
                                   <SelectContent>
                                     {(targetEntity ? targetAvailableFields : availableFields).map((field) => (
                                       <SelectItem key={field.name} value={field.name}>
-                                        {field.label} {field.associationType === 'TO_MANY' ? '(To-Many)' : ''}
+                                        {formatFieldLabel(field.label, field.name)} {field.associationType === 'TO_MANY' ? '(To-Many)' : ''}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
