@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Swap, Flask, TestTube } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Swap, Flask, TestTube, Gauge } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -16,6 +16,7 @@ import { ConnectionManager, type SavedConnection, type SecureCredentials } from 
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { ProxyStatus } from '@/components/ProxyStatus'
 import { RateLimitStatus } from '@/components/RateLimitStatus'
+import { RateLimitAnalytics } from '@/components/RateLimitAnalytics'
 import { OperatorTestSuite } from '@/components/OperatorTestSuite'
 import { OAuthTestSuite } from '@/components/OAuthTestSuite'
 import { OAuthDiagnostics } from '@/components/OAuthDiagnostics'
@@ -364,7 +365,7 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-10 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -396,6 +397,10 @@ function App() {
               <TabsTrigger value="oauth-test" className="gap-2">
                 <TestTube size={18} />
                 <span className="hidden sm:inline">OAuth Test</span>
+              </TabsTrigger>
+              <TabsTrigger value="rate-limits" className="gap-2">
+                <Gauge size={18} />
+                <span className="hidden sm:inline">Rate Limits</span>
               </TabsTrigger>
               <TabsTrigger value="logs" className="gap-2">
                 <ClockCounterClockwise size={18} />
@@ -440,6 +445,10 @@ function App() {
               <ConsoleMonitor />
               <OAuthDiagnostics />
               <OAuthTestSuite />
+            </TabsContent>
+
+            <TabsContent value="rate-limits" className="space-y-6">
+              <RateLimitAnalytics />
             </TabsContent>
 
             <TabsContent value="logs" className="space-y-6">
