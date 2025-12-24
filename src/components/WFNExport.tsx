@@ -20,8 +20,8 @@ interface WFNExportProps {
 interface PlacementData {
   id: number
   status?: string
-  startDate?: number
-  endDate?: number
+  dateBegin?: number
+  dateEnd?: number
   workWeekStart?: number
   employmentType?: string
   isMultirate?: boolean
@@ -333,8 +333,8 @@ export function WFNExport({ onLog }: WFNExportProps) {
       const placementFields = [
         'id',
         'status',
-        'startDate',
-        'endDate',
+        'dateBegin',
+        'dateEnd',
         'workWeekStart',
         'isMultirate',
         'placementRateCardID',
@@ -536,8 +536,8 @@ export function WFNExport({ onLog }: WFNExportProps) {
             const record: ExportRecord = {
               'Placement ID': placement.id,
               'Placement Status': placement.status || '',
-              'Placement Start Date': formatDate(placement.startDate),
-              'Placement End Date': formatDate(placement.endDate),
+              'Placement Start Date': formatDate(placement.dateBegin),
+              'Placement End Date': formatDate(placement.dateEnd),
               'Work Week Start': placement.workWeekStart?.toString() || '',
               'Is Multirate': placement.isMultirate ? 'Yes' : 'No',
               'Rate Card ID': placement.placementRateCardID?.toString() || '',
