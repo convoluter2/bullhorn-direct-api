@@ -76,7 +76,7 @@ export function useEntities() {
     }
 
     loadEntities()
-  }, [entitiesCache])
+  }, [])
 
   const refresh = useCallback(() => {
     cacheCheckedRef.current = false
@@ -124,7 +124,7 @@ export function useEntities() {
     }
 
     loadEntities()
-  }, [])
+  }, [setEntitiesCache])
 
   const addEntity = useCallback((entityName: string) => {
     const trimmedName = entityName.trim()
@@ -144,7 +144,7 @@ export function useEntities() {
     }))
     
     return true
-  }, [entities])
+  }, [entities, setEntitiesCache])
 
   return { entities, loading, error, refresh, addEntity }
 }
