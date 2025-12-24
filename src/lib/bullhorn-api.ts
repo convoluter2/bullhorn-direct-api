@@ -1,6 +1,7 @@
 import type { BullhornCredentials, BullhornSession, QueryConfig, QueryResult } from './types'
 import { toast } from 'sonner'
 import { fetchWithCorsProxy } from './cors-proxy'
+import { bullhornRateLimiter } from './rate-limiter'
 
 const BULLHORN_LOGIN_INFO_URL = 'https://rest.bullhornstaffing.com/rest-services/loginInfo'
 const BULLHORN_LOGIN_URL = 'https://rest.bullhornstaffing.com/rest-services/login'
@@ -27,6 +28,44 @@ export class BullhornAPI {
   private session: BullhornSession | null = null
   private loginInfoCache: Map<string, LoginInfo> = new Map()
   private currentUsername: string | null = null
+
+  private async throttledFetch(
+    url: string, 
+    options?: RequestInit,
+    priority: number = 0
+  ): Promise<Response> {
+    return bullhornRateLimiter.executeRequest(
+      () => fetch(url, options),
+      priority
+    )
+  }
+
+  private async throttledFetchWithCorsProxy(
+    url: string,
+    options?: RequestInit,
+    priority: number = 0
+  ): Promise<Response> {
+    return bullhornRateLimiter.executeRequest(
+      () => fetchWithCorsProxy(url, options),
+      priority
+    )
+  }
+
+  getRateLimiterStatus() {
+    return bullhornRateLimiter.getQueueStatus()
+  }
+
+  getRateLimitInfo() {
+    return bullhornRateLimiter.getRateLimitInfo()
+  }
+
+  setMaxConcurrentRequests(max: number) {
+    bullhornRateLimiter.setMaxConcurrentRequests(max)
+  }
+
+  setMinDelay(delayMs: number) {
+    bullhornRateLimiter.setMinDelay(delayMs)
+  }
 
   async getLoginInfo(username: string): Promise<LoginInfo> {
     if (this.loginInfoCache.has(username)) {
@@ -481,8 +520,10 @@ export class BullhornAPI {
       params.append('orderBy', config.orderBy)
     }
 
-    const response = await fetch(
-      `${this.session.restUrl}search/${config.entity}?${params.toString()}`
+    const response = await this.throttledFetch(
+      `${this.session.restUrl}search/${config.entity}?${params.toString()}`,
+      undefined,
+      1
     )
 
     if (!response.ok) {
@@ -638,8 +679,10 @@ export class BullhornAPI {
       })
     }
 
-    const response = await fetch(
-      `${this.session.restUrl}query/${entity}?${queryParams.toString()}`
+    const response = await this.throttledFetch(
+      `${this.session.restUrl}query/${entity}?${queryParams.toString()}`,
+      undefined,
+      1
     )
 
     if (!response.ok) {
@@ -660,8 +703,10 @@ export class BullhornAPI {
       BhRestToken: this.session.BhRestToken
     })
 
-    const response = await fetch(
-      `${this.session.restUrl}entity/${entity}/${id}?${params.toString()}`
+    const response = await this.throttledFetch(
+      `${this.session.restUrl}entity/${entity}/${id}?${params.toString()}`,
+      undefined,
+      2
     )
 
     if (!response.ok) {
@@ -681,7 +726,7 @@ export class BullhornAPI {
       BhRestToken: this.session.BhRestToken
     })
 
-    const response = await fetch(
+    const response = await this.throttledFetch(
       `${this.session.restUrl}entity/${entity}?${params.toString()}`,
       {
         method: 'PUT',
@@ -689,7 +734,8 @@ export class BullhornAPI {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(data)
-      }
+      },
+      3
     )
 
     if (!response.ok) {
@@ -709,7 +755,7 @@ export class BullhornAPI {
       BhRestToken: this.session.BhRestToken
     })
 
-    const response = await fetch(
+    const response = await this.throttledFetch(
       `${this.session.restUrl}entity/${entity}/${id}?${params.toString()}`,
       {
         method: 'POST',
@@ -717,7 +763,8 @@ export class BullhornAPI {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(data)
-      }
+      },
+      3
     )
 
     if (!response.ok) {
@@ -737,11 +784,12 @@ export class BullhornAPI {
       BhRestToken: this.session.BhRestToken
     })
 
-    const response = await fetch(
+    const response = await this.throttledFetch(
       `${this.session.restUrl}entity/${entity}/${id}?${params.toString()}`,
       {
         method: 'DELETE'
-      }
+      },
+      3
     )
 
     if (!response.ok) {
@@ -809,7 +857,7 @@ export class BullhornAPI {
           [secondFieldName]: { id: owningId }
         }
 
-        let response = await fetch(
+        let response = await this.throttledFetch(
           `${this.session.restUrl}entity/${owningEntity}/${owningId}?${params.toString()}`,
           {
             method: 'POST',
@@ -817,7 +865,8 @@ export class BullhornAPI {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify(firstData)
-          }
+          },
+          2
         )
 
         if (!response.ok) {
@@ -829,7 +878,7 @@ export class BullhornAPI {
               console.warn(`UPDATE not allowed on ${owningEntity} id ${owningId}, creating new association record instead...`)
               toast.info(`Creating new ${owningEntity} association record...`)
               
-              response = await fetch(
+              response = await this.throttledFetch(
                 `${this.session.restUrl}entity/${owningEntity}?${params.toString()}`,
                 {
                   method: 'PUT',
@@ -837,7 +886,8 @@ export class BullhornAPI {
                     'Content-Type': 'application/json'
                   },
                   body: JSON.stringify(createData)
-                }
+                },
+                2
               )
               
               if (!response.ok) {
@@ -917,11 +967,12 @@ export class BullhornAPI {
 
     const idsParam = associationIds.join(',')
 
-    const response = await fetch(
+    const response = await this.throttledFetch(
       `${this.session.restUrl}entity/${entity}/${entityId}/${association}/${idsParam}?${params.toString()}`,
       {
         method: 'PUT'
-      }
+      },
+      2
     )
 
     if (!response.ok) {
@@ -966,11 +1017,12 @@ export class BullhornAPI {
         console.warn(`Attempting to delete ${owningEntity} association record id ${owningId}...`)
         toast.info(`Deleting ${owningEntity} association record...`)
         
-        const response = await fetch(
+        const response = await this.throttledFetch(
           `${this.session.restUrl}entity/${owningEntity}/${owningId}?${params.toString()}`,
           {
             method: 'DELETE'
-          }
+          },
+          2
         )
 
         if (!response.ok) {
@@ -1017,11 +1069,12 @@ export class BullhornAPI {
 
     const idsParam = associationIds.join(',')
 
-    const response = await fetch(
+    const response = await this.throttledFetch(
       `${this.session.restUrl}entity/${entity}/${entityId}/${association}/${idsParam}?${params.toString()}`,
       {
         method: 'DELETE'
-      }
+      },
+      2
     )
 
     if (!response.ok) {
@@ -1115,8 +1168,10 @@ export class BullhornAPI {
       params.append('count', count.toString())
     }
 
-    const response = await fetch(
-      `${this.session.restUrl}entity/${entity}/${entityId}/${association}?${params.toString()}`
+    const response = await this.throttledFetch(
+      `${this.session.restUrl}entity/${entity}/${entityId}/${association}?${params.toString()}`,
+      undefined,
+      1
     )
 
     if (!response.ok) {
@@ -1178,7 +1233,7 @@ export class BullhornAPI {
       effectiveDate: effectiveDate
     }
 
-    const response = await fetch(
+    const response = await this.throttledFetch(
       `${this.session.restUrl}entity/${entity}?${params.toString()}`,
       {
         method: 'PUT',
@@ -1186,7 +1241,8 @@ export class BullhornAPI {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
-      }
+      },
+      3
     )
 
     if (!response.ok) {
@@ -1212,7 +1268,7 @@ export class BullhornAPI {
       effectiveDate: effectiveDate.toString()
     })
 
-    const response = await fetch(
+    const response = await this.throttledFetch(
       `${this.session.restUrl}entity/${entity}/${entityId}?${params.toString()}`,
       {
         method: 'POST',
@@ -1220,7 +1276,8 @@ export class BullhornAPI {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(data)
-      }
+      },
+      3
     )
 
     if (!response.ok) {
@@ -1245,11 +1302,12 @@ export class BullhornAPI {
       effectiveDate: effectiveDate.toString()
     })
 
-    const response = await fetch(
+    const response = await this.throttledFetch(
       `${this.session.restUrl}entity/${entity}/${entityId}?${params.toString()}`,
       {
         method: 'DELETE'
-      }
+      },
+      3
     )
 
     if (!response.ok) {
@@ -1274,8 +1332,10 @@ export class BullhornAPI {
     console.log(`Fetching metadata for entity: ${entity}`)
     console.log(`URL: ${this.session.restUrl}meta/${entity}?${params.toString()}`)
 
-    const response = await fetch(
-      `${this.session.restUrl}meta/${entity}?${params.toString()}`
+    const response = await this.throttledFetch(
+      `${this.session.restUrl}meta/${entity}?${params.toString()}`,
+      undefined,
+      0
     )
 
     if (!response.ok) {
@@ -1301,8 +1361,10 @@ export class BullhornAPI {
         BhRestToken: this.session.BhRestToken
       })
       
-      const altResponse = await fetch(
-        `${this.session.restUrl}meta/${entity}?${altParams.toString()}`
+      const altResponse = await this.throttledFetch(
+        `${this.session.restUrl}meta/${entity}?${altParams.toString()}`,
+        undefined,
+        0
       )
       
       if (altResponse.ok) {
@@ -1332,8 +1394,10 @@ export class BullhornAPI {
       count: '500'
     })
 
-    const response = await fetch(
-      `${this.session.restUrl}options/${entity}/${field}?${params.toString()}`
+    const response = await this.throttledFetch(
+      `${this.session.restUrl}options/${entity}/${field}?${params.toString()}`,
+      undefined,
+      0
     )
 
     if (!response.ok) {
@@ -1359,8 +1423,10 @@ export class BullhornAPI {
       BhRestToken: this.session.BhRestToken
     })
 
-    const response = await fetch(
-      `${this.session.restUrl}settings?${params.toString()}`
+    const response = await this.throttledFetch(
+      `${this.session.restUrl}settings?${params.toString()}`,
+      undefined,
+      0
     )
 
     if (!response.ok) {

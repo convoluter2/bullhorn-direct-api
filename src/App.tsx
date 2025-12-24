@@ -15,6 +15,7 @@ import { AuditLogs } from '@/components/AuditLogs'
 import { ConnectionManager, type SavedConnection, type SecureCredentials } from '@/components/ConnectionManager'
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { ProxyStatus } from '@/components/ProxyStatus'
+import { RateLimitStatus } from '@/components/RateLimitStatus'
 import { OperatorTestSuite } from '@/components/OperatorTestSuite'
 import { OAuthTestSuite } from '@/components/OAuthTestSuite'
 import { OAuthDiagnostics } from '@/components/OAuthDiagnostics'
@@ -309,6 +310,7 @@ function App() {
             </div>
             <div className="flex items-center gap-3">
               <ProxyStatus />
+              {session && <RateLimitStatus />}
               {session ? (
                 <>
                   <ConnectionSwitcher

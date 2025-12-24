@@ -74,7 +74,13 @@ This is a sophisticated enterprise data management tool with multiple modules (Q
 - **Success criteria**: Exports complete datasets accurately, proper formatting, no data loss
 
 ## Edge Case Handling
-- **Rate Limiting**: Implement exponential backoff and request queuing to respect Bullhorn API limits
+- **Rate Limiting**: Intelligent throttling based on Bullhorn response headers tracking calls per minute and remaining quota
+  - Parse `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` headers from all API responses
+  - Automatically queue requests when approaching limits (buffer at 20% remaining)
+  - Implement backoff multiplier for consecutive errors (up to 5x delay)
+  - Visual rate limit status indicator in header showing usage, queue size, and time until reset
+  - Prevent 429 errors through proactive throttling with configurable concurrent request limits
+  - Pause request processing when limit exhausted and auto-resume after reset window
 - **Large Datasets**: Pagination support with configurable page sizes, streaming for exports
 - **Network Failures**: Retry logic with user notification, operation resumption where possible
 - **Invalid Data**: Pre-validation before API calls, clear error messages with field-level feedback
