@@ -70,7 +70,31 @@ export function ValidatedFieldInput({
 
   useEffect(() => {
     if (value && field) {
-      validateAndChange(value)
+      const dataType = field?.dataType?.toLowerCase()
+      const dataSpecialization = field?.dataSpecialization?.toLowerCase()
+      let validationError: string | null = null
+
+      if (dataType === 'integer' || dataSpecialization === 'integer') {
+        if (!/^-?\d+$/.test(value)) {
+          validationError = 'Must be a whole number'
+        }
+      } else if (dataType === 'double' || dataType === 'bigdecimal' || dataSpecialization === 'numeric') {
+        if (!/^-?\d*\.?\d+$/.test(value)) {
+          validationError = 'Must be a number'
+        }
+      } else if (dataType === 'timestamp' || dataSpecialization === 'date' || dataSpecialization === 'datetime') {
+        const timestamp = parseInt(value)
+        if (isNaN(timestamp) || timestamp < 0) {
+          validationError = 'Must be a valid timestamp'
+        }
+      } else if (dataSpecialization === 'email') {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(value)) {
+          validationError = 'Must be a valid email address'
+        }
+      }
+
+      setError(validationError)
     }
   }, [])
 
@@ -444,10 +468,10 @@ function ToManyFilterInput({
 }) {
   const associatedEntity = field?.associatedEntity?.entity || 'related records'
   const [fieldSuffix, setFieldSuffix] = useState('.id')
-  const [idsValue, setIdsValue] = useState('')
+  const [idsValue, setIdsValue] = useState(value || '')
   
   useEffect(() => {
-    if (value) {
+    if (value && !idsValue) {
       if (value.includes('.')) {
         const parts = value.split('.')
         if (parts.length === 2) {
@@ -457,11 +481,7 @@ function ToManyFilterInput({
       }
       setIdsValue(value)
     }
-  }, [])
-  
-  useEffect(() => {
-    onChange(idsValue)
-  }, [idsValue, fieldSuffix, onChange])
+  }, [value, idsValue])
   
   return (
     <div className="space-y-2">
@@ -469,7 +489,11 @@ function ToManyFilterInput({
         <div className="flex-1">
           <Input
             value={idsValue}
-            onChange={(e) => setIdsValue(e.target.value)}
+            onChange={(e) => {
+              const newValue = e.target.value
+              setIdsValue(newValue)
+              onChange(newValue)
+            }}
             placeholder={placeholder || `Enter ${associatedEntity} ID(s), comma-separated`}
             className={className}
           />

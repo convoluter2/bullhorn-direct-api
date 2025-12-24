@@ -52,9 +52,10 @@ export function ConditionalAssociationBuilder({
     setAssociations(value)
   }, [value])
 
-  useEffect(() => {
-    onChange(associations)
-  }, [associations])
+  const updateAndNotify = (newAssociations: ConditionalAssociation[]) => {
+    setAssociations(newAssociations)
+    onChange(newAssociations)
+  }
 
   const toManyFields = fields.filter(f => f.dataType === 'TO_MANY')
 
@@ -69,23 +70,23 @@ export function ConditionalAssociationBuilder({
       ids: [],
       description: ''
     }
-    setAssociations([...associations, newAssociation])
+    updateAndNotify([...associations, newAssociation])
     setExpandedId(newAssociation.id)
   }
 
   const removeAssociation = (id: string) => {
-    setAssociations(associations.filter(a => a.id !== id))
+    updateAndNotify(associations.filter(a => a.id !== id))
     if (expandedId === id) {
       setExpandedId(null)
     }
   }
 
   const updateAssociation = (id: string, updates: Partial<ConditionalAssociation>) => {
-    setAssociations(associations.map(a => a.id === id ? { ...a, ...updates } : a))
+    updateAndNotify(associations.map(a => a.id === id ? { ...a, ...updates } : a))
   }
 
   const addCondition = (associationId: string) => {
-    setAssociations(associations.map(a => {
+    updateAndNotify(associations.map(a => {
       if (a.id === associationId) {
         return {
           ...a,
@@ -102,7 +103,7 @@ export function ConditionalAssociationBuilder({
   }
 
   const removeCondition = (associationId: string, conditionId: string) => {
-    setAssociations(associations.map(a => {
+    updateAndNotify(associations.map(a => {
       if (a.id === associationId) {
         return {
           ...a,
@@ -114,7 +115,7 @@ export function ConditionalAssociationBuilder({
   }
 
   const updateCondition = (associationId: string, conditionId: string, updates: Partial<ConditionalRule>) => {
-    setAssociations(associations.map(a => {
+    updateAndNotify(associations.map(a => {
       if (a.id === associationId) {
         return {
           ...a,
@@ -132,7 +133,7 @@ export function ConditionalAssociationBuilder({
       .filter(id => !isNaN(id))
 
     if (parsedIds.length > 0) {
-      setAssociations(associations.map(a => {
+      updateAndNotify(associations.map(a => {
         if (a.id === associationId) {
           const existingIds = a.ids
           const newIds = parsedIds.filter(id => !existingIds.includes(id))
@@ -144,7 +145,7 @@ export function ConditionalAssociationBuilder({
   }
 
   const removeIdFromAssociation = (associationId: string, id: number) => {
-    setAssociations(associations.map(a => {
+    updateAndNotify(associations.map(a => {
       if (a.id === associationId) {
         return { ...a, ids: a.ids.filter(existingId => existingId !== id) }
       }

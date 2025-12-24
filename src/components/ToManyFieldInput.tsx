@@ -56,19 +56,16 @@ export function ToManyFieldInput({
         }
       }
     }
-  }, [])
+  }, [value])
 
-  useEffect(() => {
+  const updateParent = (newOperation: ToManyOperation, newIds: number[], newSubField: string) => {
     const toManyValue: ToManyValue = {
-      operation,
-      ids,
-      subField
+      operation: newOperation,
+      ids: newIds,
+      subField: newSubField
     }
-    const newValue = JSON.stringify(toManyValue)
-    if (newValue !== value) {
-      onChange(newValue)
-    }
-  }, [operation, ids, subField])
+    onChange(JSON.stringify(toManyValue))
+  }
 
   const handleAddId = () => {
     const parsedIds = inputValue
@@ -77,13 +74,27 @@ export function ToManyFieldInput({
       .filter(id => !isNaN(id) && !ids.includes(id))
 
     if (parsedIds.length > 0) {
-      setIds([...ids, ...parsedIds])
+      const newIds = [...ids, ...parsedIds]
+      setIds(newIds)
+      updateParent(operation, newIds, subField)
       setInputValue('')
     }
   }
 
   const handleRemoveId = (id: number) => {
-    setIds(ids.filter(existingId => existingId !== id))
+    const newIds = ids.filter(existingId => existingId !== id)
+    setIds(newIds)
+    updateParent(operation, newIds, subField)
+  }
+
+  const handleOperationChange = (newOperation: ToManyOperation) => {
+    setOperation(newOperation)
+    updateParent(newOperation, ids, subField)
+  }
+
+  const handleSubFieldChange = (newSubField: string) => {
+    setSubField(newSubField)
+    updateParent(operation, ids, newSubField)
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -106,7 +117,7 @@ export function ToManyFieldInput({
 
       <div className="space-y-2">
         <Label className="font-semibold">Operation Type</Label>
-        <Select value={operation} onValueChange={(val) => setOperation(val as ToManyOperation)} disabled={disabled}>
+        <Select value={operation} onValueChange={handleOperationChange} disabled={disabled}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
@@ -139,7 +150,7 @@ export function ToManyFieldInput({
             Association Mode - Select Field from {associatedEntity}
             {subEntityLoading && <span className="text-xs text-muted-foreground ml-2">Loading...</span>}
           </Label>
-          <Select value={subField} onValueChange={setSubField} disabled={disabled || subEntityLoading}>
+          <Select value={subField} onValueChange={handleSubFieldChange} disabled={disabled || subEntityLoading}>
             <SelectTrigger>
               <SelectValue placeholder="Select field..." />
             </SelectTrigger>
