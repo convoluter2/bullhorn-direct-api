@@ -253,6 +253,18 @@ export function QueryStack({ onLog }: QueryStackProps) {
       previousValues: Record<string, any>
       newValues: Record<string, any>
     }> = []
+    const failedOperations: Array<{
+      entityId: number
+      operation: 'update' | 'add'
+      data: Record<string, any>
+      error: string
+      toManyUpdates?: Array<{
+        field: string
+        operation: string
+        ids: number[]
+        subField?: string
+      }>
+    }> = []
 
     try {
       const fieldsToFetch = Array.from(new Set([
@@ -265,6 +277,9 @@ export function QueryStack({ onLog }: QueryStackProps) {
         const record = queryResults[i]
         const id = record.id
         const numericId = parseInt(id)
+        
+        let updateData: any = {}
+        let toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField?: string }> = []
 
         if (isNaN(numericId)) {
           errors.push(`Invalid ID: ${id}`)
@@ -341,9 +356,6 @@ export function QueryStack({ onLog }: QueryStackProps) {
             }
           }
 
-          const updateData: any = {}
-          const toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField?: string }> = []
-          
           fieldUpdates.forEach(update => {
             const fieldMeta = targetMetadata?.fieldsMap[update.field]
             
@@ -481,6 +493,14 @@ export function QueryStack({ onLog }: QueryStackProps) {
               currentValues: {},
               newValues: {}
             })
+          } else {
+            failedOperations.push({
+              entityId: numericId,
+              operation: 'update',
+              data: updateData,
+              error: errorMessage,
+              toManyUpdates: toManyUpdates.length > 0 ? toManyUpdates : undefined
+            })
           }
         }
 
@@ -540,7 +560,8 @@ export function QueryStack({ onLog }: QueryStackProps) {
                 entityId: u.entityId,
                 previousValues: u.previousValues
               }))
-            } : undefined
+            } : undefined,
+            failedOperations: failedOperations.length > 0 ? failedOperations : undefined
           }
         )
 

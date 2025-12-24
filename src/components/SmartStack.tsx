@@ -195,6 +195,18 @@ export function SmartStack({ onLog }: SmartStackProps) {
       previousValues: Record<string, any>
       newValues: Record<string, any>
     }> = []
+    const failedOperations: Array<{
+      entityId: number
+      operation: 'update' | 'add'
+      data: Record<string, any>
+      error: string
+      toManyUpdates?: Array<{
+        field: string
+        operation: string
+        ids: number[]
+        subField?: string
+      }>
+    }> = []
 
     try {
       const fieldsToFetch = Array.from(new Set([
@@ -221,6 +233,9 @@ export function SmartStack({ onLog }: SmartStackProps) {
           }
           continue
         }
+
+        let updateData: any = {}
+        let toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField?: string }> = []
 
         try {
           const entity = await bullhornAPI.getEntity(selectedEntity, numericId, fieldsToFetch)
@@ -316,9 +331,6 @@ export function SmartStack({ onLog }: SmartStackProps) {
             }
             continue
           }
-
-          const updateData: any = {}
-          const toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField?: string }> = []
           
           fieldUpdates.forEach(update => {
             const fieldMeta = fieldsMap[update.field]
@@ -457,6 +469,14 @@ export function SmartStack({ onLog }: SmartStackProps) {
               currentValues: {},
               newValues: {}
             })
+          } else {
+            failedOperations.push({
+              entityId: numericId,
+              operation: 'update',
+              data: updateData,
+              error: errorMessage,
+              toManyUpdates: toManyUpdates.length > 0 ? toManyUpdates : undefined
+            })
           }
         }
 
@@ -514,7 +534,8 @@ export function SmartStack({ onLog }: SmartStackProps) {
                 entityId: u.entityId,
                 previousValues: u.previousValues
               }))
-            } : undefined
+            } : undefined,
+            failedOperations: failedOperations.length > 0 ? failedOperations : undefined
           }
         )
 

@@ -55,7 +55,8 @@ function App() {
       details,
       entity: details?.entity,
       recordCount: details?.successCount || details?.updatedCount || details?.recordCount,
-      rollbackData: details?.rollbackData
+      rollbackData: details?.rollbackData,
+      failedOperations: details?.failedOperations
     }
     setLogs((currentLogs) => [newLog, ...(currentLogs || [])])
   }, [setLogs])

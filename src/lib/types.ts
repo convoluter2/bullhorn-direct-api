@@ -76,6 +76,24 @@ export interface AuditLog {
     errors?: string[]
   }>
   originalLogId?: string
+  failedOperations?: Array<{
+    entityId: number
+    operation: 'update' | 'add'
+    data: Record<string, any>
+    error: string
+    toManyUpdates?: Array<{
+      field: string
+      operation: string
+      ids: number[]
+      subField?: string
+    }>
+  }>
+  retryHistory?: Array<{
+    timestamp: number
+    successCount: number
+    failedCount: number
+    errors?: string[]
+  }>
 }
 
 export interface CSVMapping {

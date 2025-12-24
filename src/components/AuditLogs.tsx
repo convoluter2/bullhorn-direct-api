@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { ClockCounterClockwise, DownloadSimple, MagnifyingGlass, Trash, ArrowCounterClockwise, ArrowBendUpLeft, XCircle } from '@phosphor-icons/react'
+import { ClockCounterClockwise, DownloadSimple, MagnifyingGlass, Trash, ArrowCounterClockwise, ArrowBendUpLeft, XCircle, ArrowsClockwise } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
 import { bullhornAPI } from '@/lib/bullhorn-api'
@@ -37,6 +37,11 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
     log: null
   })
   const [isRollingBack, setIsRollingBack] = useState(false)
+  const [retryDialog, setRetryDialog] = useState<{ open: boolean; log: AuditLog | null }>({
+    open: false,
+    log: null
+  })
+  const [isRetrying, setIsRetrying] = useState(false)
 
   const filteredLogs = logs.filter(log => {
     const matchesSearch = log.operation.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -80,6 +85,10 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
 
   const handleRollbackClick = (log: AuditLog) => {
     setRollbackDialog({ open: true, log })
+  }
+
+  const handleRetryClick = (log: AuditLog) => {
+    setRetryDialog({ open: true, log })
   }
 
   const handleScrollToLog = (logId: string) => {
@@ -224,6 +233,157 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
     } finally {
       setIsRollingBack(false)
       setRollbackDialog({ open: false, log: null })
+    }
+  }
+
+  const handleRetryConfirm = async () => {
+    const log = retryDialog.log
+    if (!log || !log.failedOperations || !log.entity) {
+      return
+    }
+
+    setIsRetrying(true)
+    const toastId = toast.loading(`Retrying ${log.failedOperations.length} failed operation(s)...`)
+
+    try {
+      let successCount = 0
+      let failedCount = 0
+      const errors: string[] = []
+      const stillFailedOperations: typeof log.failedOperations = []
+
+      for (const failedOp of log.failedOperations) {
+        try {
+          if (failedOp.operation === 'update') {
+            await bullhornAPI.updateEntity(log.entity, failedOp.entityId, failedOp.data)
+            
+            if (failedOp.toManyUpdates) {
+              for (const toManyUpdate of failedOp.toManyUpdates) {
+                await bullhornAPI.updateToManyAssociation(
+                  log.entity,
+                  failedOp.entityId,
+                  toManyUpdate.field,
+                  toManyUpdate.ids,
+                  toManyUpdate.operation as 'add' | 'remove' | 'replace',
+                  toManyUpdate.subField || 'id'
+                )
+              }
+            }
+          } else if (failedOp.operation === 'add') {
+            await bullhornAPI.createEntity(log.entity, failedOp.data)
+          }
+          
+          successCount++
+        } catch (error) {
+          failedCount++
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+          errors.push(`ID ${failedOp.entityId}: ${errorMessage}`)
+          stillFailedOperations.push({
+            ...failedOp,
+            error: errorMessage
+          })
+        }
+      }
+
+      const retryHistoryEntry = {
+        timestamp: Date.now(),
+        successCount,
+        failedCount,
+        errors: failedCount > 0 ? errors : undefined
+      }
+
+      const existingRetryHistory = log.retryHistory || []
+      const updatedRetryHistory = [...existingRetryHistory, retryHistoryEntry]
+
+      if (failedCount === 0) {
+        toast.success(`Successfully retried all ${successCount} operation(s)`, { id: toastId })
+        
+        onUpdateLog(log.id, { 
+          failedOperations: [],
+          retryHistory: updatedRetryHistory,
+          status: 'success'
+        })
+
+        onLog(
+          'Retry Success',
+          'success',
+          `Successfully retried ${successCount} failed operation(s) from "${log.operation}"`,
+          {
+            originalOperation: log.operation,
+            originalLogId: log.id,
+            entity: log.entity,
+            successCount,
+            recordCount: successCount
+          }
+        )
+      } else if (successCount > 0) {
+        toast.warning(`Retried ${successCount} operation(s), ${failedCount} still failed`, { id: toastId })
+        
+        onUpdateLog(log.id, { 
+          failedOperations: stillFailedOperations,
+          retryHistory: updatedRetryHistory,
+          details: {
+            ...log.details,
+            errors: errors
+          }
+        })
+
+        onLog(
+          'Retry Partial',
+          'error',
+          `Partially successful retry: ${successCount} succeeded, ${failedCount} still failed from "${log.operation}"`,
+          {
+            originalOperation: log.operation,
+            originalLogId: log.id,
+            entity: log.entity,
+            successCount,
+            failedCount,
+            errors,
+            recordCount: successCount
+          }
+        )
+      } else {
+        toast.error(`Retry failed for all ${failedCount} operation(s)`, { id: toastId })
+        
+        onUpdateLog(log.id, { 
+          failedOperations: stillFailedOperations,
+          retryHistory: updatedRetryHistory,
+          details: {
+            ...log.details,
+            errors: errors
+          }
+        })
+
+        onLog(
+          'Retry Failed',
+          'error',
+          `Failed to retry ${failedCount} operation(s) from "${log.operation}"`,
+          {
+            originalOperation: log.operation,
+            originalLogId: log.id,
+            entity: log.entity,
+            failedCount,
+            errors,
+            recordCount: 0
+          }
+        )
+      }
+    } catch (error) {
+      toast.error(`Retry failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { id: toastId })
+      
+      onLog(
+        'Retry Failed',
+        'error',
+        `Retry operation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        {
+          originalOperation: log.operation,
+          originalLogId: log.id,
+          entity: log.entity,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      )
+    } finally {
+      setIsRetrying(false)
+      setRetryDialog({ open: false, log: null })
     }
   }
 
@@ -448,6 +608,49 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                             </div>
                           </div>
                         )}
+                        {log.retryHistory && log.retryHistory.length > 0 && (
+                          <div className="mt-2 p-2 bg-muted/50 rounded border border-border/50">
+                            <p className="text-xs font-semibold text-muted-foreground mb-1">
+                              Retry History ({log.retryHistory.length})
+                            </p>
+                            <div className="space-y-1">
+                              {log.retryHistory.map((history, idx) => (
+                                <div key={idx} className="text-xs flex items-center gap-2">
+                                  <span className="text-muted-foreground">
+                                    {new Date(history.timestamp).toLocaleString()}
+                                  </span>
+                                  <span className="text-accent">
+                                    ✓ {history.successCount} success
+                                  </span>
+                                  {history.failedCount > 0 && (
+                                    <span className="text-destructive">
+                                      ✗ {history.failedCount} failed
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {log.failedOperations && log.failedOperations.length > 0 && (
+                          <div className="mt-2 p-3 bg-amber-500/10 rounded border border-amber-500/30">
+                            <div className="flex items-center gap-2 mb-2">
+                              <ArrowsClockwise size={14} className="text-amber-500" weight="fill" />
+                              <span className="text-xs font-semibold text-amber-500">
+                                {log.failedOperations.length} Operation(s) Available for Retry
+                              </span>
+                            </div>
+                            <ScrollArea className="max-h-32">
+                              <div className="space-y-1 pr-3">
+                                {log.failedOperations.map((failedOp, idx) => (
+                                  <div key={idx} className="text-xs font-mono text-amber-500/90 bg-background/50 p-1.5 rounded border border-amber-500/20">
+                                    ID {failedOp.entityId} ({failedOp.operation}): {failedOp.error}
+                                  </div>
+                                ))}
+                              </div>
+                            </ScrollArea>
+                          </div>
+                        )}
                         {log.details && (
                           <details className="mt-2">
                             <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
@@ -463,17 +666,30 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                         <div className="text-xs text-muted-foreground whitespace-nowrap">
                           {new Date(log.timestamp).toLocaleString()}
                         </div>
-                        {log.rollbackData && !log.rolledBack && log.status === 'success' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleRollbackClick(log)}
-                            className="gap-1"
-                          >
-                            <ArrowCounterClockwise size={14} />
-                            Rollback
-                          </Button>
-                        )}
+                        <div className="flex flex-col gap-1">
+                          {log.rollbackData && !log.rolledBack && log.status === 'success' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRollbackClick(log)}
+                              className="gap-1"
+                            >
+                              <ArrowCounterClockwise size={14} />
+                              Rollback
+                            </Button>
+                          )}
+                          {log.failedOperations && log.failedOperations.length > 0 && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRetryClick(log)}
+                              className="gap-1 border-amber-500/50 text-amber-500 hover:bg-amber-500/10"
+                            >
+                              <ArrowsClockwise size={14} />
+                              Retry ({log.failedOperations.length})
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -508,6 +724,35 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
               className="bg-destructive hover:bg-destructive/90"
             >
               {isRollingBack ? 'Rolling back...' : 'Rollback'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={retryDialog.open} onOpenChange={(open) => !isRetrying && setRetryDialog({ open, log: null })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Retry</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>
+                This will retry <strong>{retryDialog.log?.failedOperations?.length || 0} failed operation(s)</strong> on the <strong>{retryDialog.log?.entity}</strong> entity.
+              </p>
+              <p className="text-muted-foreground">
+                The Bullhorn API may have been overloaded when these operations initially failed. This retry will attempt to execute them again.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRetrying}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                handleRetryConfirm()
+              }}
+              disabled={isRetrying}
+              className="bg-amber-500 hover:bg-amber-600"
+            >
+              {isRetrying ? 'Retrying...' : 'Retry'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

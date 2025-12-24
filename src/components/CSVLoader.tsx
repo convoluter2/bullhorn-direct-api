@@ -149,12 +149,25 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       previousValues: Record<string, any>
       newValues: Record<string, any>
     }> = []
+    const failedOperations: Array<{
+      entityId: number
+      operation: 'update' | 'add'
+      data: Record<string, any>
+      error: string
+      toManyUpdates?: Array<{
+        field: string
+        operation: string
+        ids: number[]
+        subField?: string
+      }>
+    }> = []
 
     for (let i = 0; i < csvData.rows.length; i++) {
       const row = csvData.rows[i]
+      let existingRecord: any = null
+      let data: any = {}
       
       try {
-        const data: any = {}
         let lookupValue: string | null = null
 
         if (lookupField && lookupField !== '__none__') {
@@ -206,8 +219,6 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
             }
           }
         })
-
-        let existingRecord: any = null
 
         if (lookupField && lookupField !== '__none__' && lookupValue) {
           try {
@@ -472,6 +483,64 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         })
         errorDetails.push(`Row ${i + 1}: ${errorMessage}`)
         errorCount++
+        
+        if (!dryRun && existingRecord) {
+          const regularData: any = {}
+          const toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField?: string }> = []
+          
+          Object.keys(data).forEach(key => {
+            if (key.startsWith('__tomany_')) {
+              const fieldName = key.replace('__tomany_', '')
+              const toManyValue = data[key]
+              if (toManyValue.operation && toManyValue.ids) {
+                toManyUpdates.push({
+                  field: fieldName,
+                  operation: toManyValue.operation,
+                  ids: toManyValue.ids,
+                  subField: toManyValue.subField || 'id'
+                })
+              }
+            } else {
+              regularData[key] = data[key]
+            }
+          })
+          
+          failedOperations.push({
+            entityId: existingRecord.id,
+            operation: 'update',
+            data: regularData,
+            error: errorMessage,
+            toManyUpdates: toManyUpdates.length > 0 ? toManyUpdates : undefined
+          })
+        } else if (!dryRun) {
+          const regularData: any = {}
+          const toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField?: string }> = []
+          
+          Object.keys(data).forEach(key => {
+            if (key.startsWith('__tomany_')) {
+              const fieldName = key.replace('__tomany_', '')
+              const toManyValue = data[key]
+              if (toManyValue.operation && toManyValue.ids) {
+                toManyUpdates.push({
+                  field: fieldName,
+                  operation: toManyValue.operation,
+                  ids: toManyValue.ids,
+                  subField: toManyValue.subField || 'id'
+                })
+              }
+            } else {
+              regularData[key] = data[key]
+            }
+          })
+          
+          failedOperations.push({
+            entityId: 0,
+            operation: 'add',
+            data: regularData,
+            error: errorMessage,
+            toManyUpdates: toManyUpdates.length > 0 ? toManyUpdates : undefined
+          })
+        }
       }
 
       setProgress(((i + 1) / csvData.rows.length) * 100)
@@ -525,7 +594,8 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
             entityId: u.entityId,
             previousValues: u.previousValues
           }))
-        } : undefined
+        } : undefined,
+        failedOperations: !dryRun && failedOperations.length > 0 ? failedOperations : undefined
       }
     )
   }
