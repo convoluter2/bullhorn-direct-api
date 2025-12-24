@@ -56,13 +56,30 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
   const extractCodeFromUrl = (input: string): string | null => {
     try {
       let codeToExtract = input.trim()
+      let extractedClientId: string | null = null
       
       if (codeToExtract.includes('code=')) {
         const url = new URL(codeToExtract)
         const codeParam = url.searchParams.get('code')
+        extractedClientId = url.searchParams.get('client_id')
+        
         if (codeParam) {
           codeToExtract = codeParam
           console.log('📋 Extracted code from URL parameter')
+        }
+        
+        if (extractedClientId && manualAuth.clientId && extractedClientId !== manualAuth.clientId) {
+          console.error('❌ CLIENT ID MISMATCH DETECTED!')
+          console.error('   Expected client_id:', manualAuth.clientId)
+          console.error('   Code belongs to:', extractedClientId)
+          console.error('   This means Bullhorn returned a cached code for a different connection!')
+          console.error('   🔧 Solution: Open the auth link in an Incognito/Private window to avoid browser cache.')
+          
+          toast.error(
+            `Wrong authorization code! This code belongs to a different client ID. Please use Incognito mode to get a fresh code.`,
+            { duration: 10000 }
+          )
+          return null
         }
       }
       
@@ -102,6 +119,12 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         }
         
         console.log('🎫 Using extracted code (length:', codeToUse.length, ')')
+        console.log('🔑 Expected credentials:', {
+          username: manualAuth.username,
+          clientId: manualAuth.clientId.substring(0, 8) + '...',
+          connectionName: preselectedConnection?.name,
+          expectedTenant: preselectedConnection?.tenant
+        })
         
         console.log('🔍 Fetching loginInfo to get correct region URLs...')
         await bullhornAPI.prepareForAuth(manualAuth.username)
@@ -119,6 +142,20 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         const session = await bullhornAPI.login(tokenData.accessToken, manualAuth.username)
         session.refreshToken = tokenData.refreshToken
         session.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
+        
+        console.log('✅ Authentication complete. Session details:', {
+          corporationId: session.corporationId,
+          restUrl: session.restUrl,
+          BhRestToken: session.BhRestToken?.substring(0, 20) + '...'
+        })
+        
+        if (preselectedConnection?.tenant && !session.restUrl.includes(preselectedConnection.tenant)) {
+          console.warn('⚠️ TENANT MISMATCH DETECTED:', {
+            expected: preselectedConnection.tenant,
+            actual: session.restUrl
+          })
+          toast.warning(`Tenant may not match! Expected: ${preselectedConnection.tenant}. Verify the connection.`, { duration: 8000 })
+        }
         
         setAuthStep('complete')
         setAuthProgress(100)
@@ -143,6 +180,20 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           username: manualAuth.username,
           password: manualAuth.password
         })
+        
+        console.log('✅ Authentication complete. Session details:', {
+          corporationId: session.corporationId,
+          restUrl: session.restUrl,
+          BhRestToken: session.BhRestToken?.substring(0, 20) + '...'
+        })
+        
+        if (preselectedConnection?.tenant && !session.restUrl.includes(preselectedConnection.tenant)) {
+          console.warn('⚠️ TENANT MISMATCH DETECTED:', {
+            expected: preselectedConnection.tenant,
+            actual: session.restUrl
+          })
+          toast.warning(`Tenant may not match! Expected: ${preselectedConnection.tenant}. Verify the connection.`, { duration: 8000 })
+        }
         
         setAuthStep('complete')
         setAuthProgress(100)
@@ -172,7 +223,10 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     const state = Math.random().toString(36).substring(7)
     const clientId = manualAuth.clientId || 'YOUR_CLIENT_ID'
     
-    console.log('🔗 Generating auth URL (NO redirect_uri)')
+    console.log('🔗 Generating auth URL (NO redirect_uri to avoid caching issues)')
+    console.log('⚠️ BROWSER CACHE WARNING: Bullhorn OAuth may cache previous logins.')
+    console.log('   If you get a code for the wrong tenant, use an Incognito/Private window.')
+    
     return bullhornAPI.getAuthorizationUrl(manualAuth.username, clientId, state, manualAuth.password)
   }
 
@@ -207,9 +261,11 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     const left = (window.screen.width - popupWidth) / 2
     const top = (window.screen.height - popupHeight) / 2
 
+    const uniqueWindowName = `bullhorn-oauth-${Date.now()}-${Math.random().toString(36).substring(7)}`
+
     const popup = window.open(
       authUrl,
-      'bullhorn-oauth-manual',
+      uniqueWindowName,
       `width=${popupWidth},height=${popupHeight},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no`
     )
 
@@ -218,7 +274,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       return
     }
 
-    toast.success('Copy the code from the popup URL after logging in')
+    toast.success('Copy the entire URL from the popup after the welcome page loads', { duration: 5000 })
   }
 
   return (
@@ -286,6 +342,10 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
               <p className="text-xs">
                 Enter your credentials, then click the button to open the Bullhorn authorization page in a popup. 
                 After logging in, copy the entire URL from the popup and paste it in the "Authorization Code or URL" field below.
+              </p>
+              <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mt-2">
+                ⚠️ Browser Cache Issue: If you get the wrong authorization code, Bullhorn may be using cached credentials from a previous connection. 
+                To fix: Open the authorization link in an <strong>Incognito/Private window</strong>, or clear your browser cookies for bullhornstaffing.com before authenticating.
               </p>
             </AlertDescription>
           </Alert>
@@ -368,20 +428,36 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                   size="sm"
                   variant="outline"
                   onClick={copyAuthUrl}
+                  title="Copy link to clipboard"
                 >
                   <Copy size={16} />
                 </Button>
               </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={handleOpenAuthUrl}
-                className="w-full mt-2"
-                disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password}
-              >
-                Open Authorization Popup
-              </Button>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleOpenAuthUrl}
+                  className="flex-1"
+                  disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password}
+                >
+                  Open in Popup
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    await copyAuthUrl()
+                    toast.info('Link copied! Open an Incognito/Private window and paste this link to avoid cached credentials', { duration: 6000 })
+                  }}
+                  className="flex-1"
+                  disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password}
+                >
+                  Copy for Incognito
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground mt-2">
                 After the popup redirects, copy the entire URL from the address bar and paste it in the field below.
               </p>

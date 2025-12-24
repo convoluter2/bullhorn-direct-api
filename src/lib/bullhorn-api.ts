@@ -124,6 +124,7 @@ export class BullhornAPI {
       : 'https://auth-east.bullhornstaffing.com/oauth'
     
     const timestamp = Date.now()
+    const randomSalt = Math.random().toString(36).substring(2, 15)
     const uniqueState = `${state}_${timestamp}`
     
     const params = new URLSearchParams({
@@ -139,12 +140,15 @@ export class BullhornAPI {
     }
     
     params.append('_t', timestamp.toString())
+    params.append('_r', randomSalt)
+    params.append('prompt', 'login')
     
     const authUrl = `${oauthUrl}/authorize?${params.toString()}`
     console.log('🔗 Generated authorization URL with cache-busting:', {
       oauthUrl,
       usedCache: this.loginInfoCache.has(username),
       timestamp,
+      randomSalt,
       authUrlPreview: authUrl.substring(0, 100) + '...'
     })
     
