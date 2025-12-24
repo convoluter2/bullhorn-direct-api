@@ -211,9 +211,15 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
       toast.error('No results to export')
       return
     }
-    exportToCSV(dataToExport, `${entity}_export_${Date.now()}.csv`)
-    toast.success(`Exported ${dataToExport.length} records to CSV`)
-    onLog('Export', 'success', `Exported ${dataToExport.length} records to CSV`, { entity, count: dataToExport.length })
+    try {
+      exportToCSV(dataToExport, `${entity}_export_${Date.now()}.csv`)
+      toast.success(`Exported ${dataToExport.length} records to CSV`)
+      onLog('Export', 'success', `Exported ${dataToExport.length} records to CSV`, { entity, count: dataToExport.length })
+    } catch (error) {
+      console.error('CSV export error:', error)
+      toast.error(`Failed to export CSV: ${error}`)
+      onLog('Export', 'error', `CSV export failed`, { entity, error: String(error) })
+    }
   }
 
   const handleExportJSON = () => {
@@ -222,9 +228,15 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
       toast.error('No results to export')
       return
     }
-    exportToJSON(dataToExport, `${entity}_export_${Date.now()}.json`)
-    toast.success(`Exported ${dataToExport.length} records to JSON`)
-    onLog('Export', 'success', `Exported ${dataToExport.length} records to JSON`, { entity, count: dataToExport.length })
+    try {
+      exportToJSON(dataToExport, `${entity}_export_${Date.now()}.json`)
+      toast.success(`Exported ${dataToExport.length} records to JSON`)
+      onLog('Export', 'success', `Exported ${dataToExport.length} records to JSON`, { entity, count: dataToExport.length })
+    } catch (error) {
+      console.error('JSON export error:', error)
+      toast.error(`Failed to export JSON: ${error}`)
+      onLog('Export', 'error', `JSON export failed`, { entity, error: String(error) })
+    }
   }
 
   const addFieldUpdate = () => {

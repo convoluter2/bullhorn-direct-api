@@ -55,16 +55,21 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
       toast.error('No logs to export')
       return
     }
-    const exportData = filteredLogs.map(log => ({
-      timestamp: new Date(log.timestamp).toISOString(),
-      operation: log.operation,
-      status: log.status,
-      message: log.message,
-      entity: log.entity || '',
-      recordCount: log.recordCount || 0
-    }))
-    exportToCSV(exportData, `audit_logs_${Date.now()}.csv`)
-    toast.success('Logs exported to CSV')
+    try {
+      const exportData = filteredLogs.map(log => ({
+        timestamp: new Date(log.timestamp).toISOString(),
+        operation: log.operation,
+        status: log.status,
+        message: log.message,
+        entity: log.entity || '',
+        recordCount: log.recordCount || 0
+      }))
+      exportToCSV(exportData, `audit_logs_${Date.now()}.csv`)
+      toast.success('Logs exported to CSV')
+    } catch (error) {
+      console.error('CSV export error:', error)
+      toast.error(`Failed to export logs to CSV: ${error}`)
+    }
   }
 
   const handleExportJSON = () => {
@@ -72,8 +77,13 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
       toast.error('No logs to export')
       return
     }
-    exportToJSON(filteredLogs, `audit_logs_${Date.now()}.json`)
-    toast.success('Logs exported to JSON')
+    try {
+      exportToJSON(filteredLogs, `audit_logs_${Date.now()}.json`)
+      toast.success('Logs exported to JSON')
+    } catch (error) {
+      console.error('JSON export error:', error)
+      toast.error(`Failed to export logs to JSON: ${error}`)
+    }
   }
 
   const handleClear = () => {

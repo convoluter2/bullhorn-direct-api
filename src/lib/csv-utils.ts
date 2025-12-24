@@ -40,45 +40,75 @@ function parseCSVLine(line: string): string[] {
 }
 
 export function exportToCSV(data: any[], filename: string = 'export.csv') {
-  if (data.length === 0) return
+  if (data.length === 0) {
+    console.warn('exportToCSV: No data to export')
+    return
+  }
 
-  const headers = Object.keys(data[0])
-  const csvLines = [
-    headers.join(','),
-    ...data.map(row => 
-      headers.map(header => {
-        const value = row[header]
-        const stringValue = value === null || value === undefined ? '' : String(value)
-        return stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')
-          ? `"${stringValue.replace(/"/g, '""')}"`
-          : stringValue
-      }).join(',')
-    )
-  ]
+  try {
+    const headers = Object.keys(data[0])
+    const csvLines = [
+      headers.join(','),
+      ...data.map(row => 
+        headers.map(header => {
+          const value = row[header]
+          const stringValue = value === null || value === undefined ? '' : String(value)
+          return stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')
+            ? `"${stringValue.replace(/"/g, '""')}"`
+            : stringValue
+        }).join(',')
+      )
+    ]
 
-  const csvContent = csvLines.join('\n')
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-  const link = document.createElement('a')
-  const url = URL.createObjectURL(blob)
-  
-  link.setAttribute('href', url)
-  link.setAttribute('download', filename)
-  link.style.visibility = 'hidden'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
+    const csvContent = csvLines.join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    
+    link.setAttribute('href', url)
+    link.setAttribute('download', filename)
+    link.style.display = 'none'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    setTimeout(() => {
+      URL.revokeObjectURL(url)
+    }, 100)
+    
+    console.log(`✅ CSV exported: ${filename} (${data.length} records)`)
+  } catch (error) {
+    console.error('exportToCSV error:', error)
+    throw error
+  }
 }
 
 export function exportToJSON(data: any[], filename: string = 'export.json') {
-  const jsonContent = JSON.stringify(data, null, 2)
-  const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' })
-  const link = document.createElement('a')
-  const url = URL.createObjectURL(blob)
-  
-  link.setAttribute('href', url)
-  link.setAttribute('download', filename)
-  link.style.visibility = 'hidden'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
+  if (data.length === 0) {
+    console.warn('exportToJSON: No data to export')
+    return
+  }
+
+  try {
+    const jsonContent = JSON.stringify(data, null, 2)
+    const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    
+    link.setAttribute('href', url)
+    link.setAttribute('download', filename)
+    link.style.display = 'none'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    setTimeout(() => {
+      URL.revokeObjectURL(url)
+    }, 100)
+    
+    console.log(`✅ JSON exported: ${filename} (${data.length} records)`)
+  } catch (error) {
+    console.error('exportToJSON error:', error)
+    throw error
+  }
 }

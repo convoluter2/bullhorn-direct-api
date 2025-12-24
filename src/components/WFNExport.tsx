@@ -421,29 +421,43 @@ export function WFNExport({ onLog }: WFNExportProps) {
       return
     }
 
-    const headers = Object.keys(exportData[0])
-    const csvRows = [
-      headers.join(','),
-      ...exportData.map(record => 
-        headers.map(header => {
-          const value = record[header as keyof ExportRecord]
-          const stringValue = typeof value === 'string' ? value : String(value)
-          return stringValue.includes(',') ? `"${stringValue}"` : stringValue
-        }).join(',')
-      )
-    ]
+    try {
+      const headers = Object.keys(exportData[0])
+      const csvRows = [
+        headers.join(','),
+        ...exportData.map(record => 
+          headers.map(header => {
+            const value = record[header as keyof ExportRecord]
+            const stringValue = typeof value === 'string' ? value : String(value)
+            return stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')
+              ? `"${stringValue.replace(/"/g, '""')}"`
+              : stringValue
+          }).join(',')
+        )
+      ]
 
-    const csvContent = csvRows.join('\n')
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `wfn_active_placements_export_${Date.now()}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
+      const csvContent = csvRows.join('\n')
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `wfn_active_placements_export_${Date.now()}.csv`
+      link.style.display = 'none'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      setTimeout(() => {
+        URL.revokeObjectURL(url)
+      }, 100)
 
-    toast.success('CSV downloaded successfully')
-    onLog('WFN Export', 'success', 'CSV file downloaded', { recordCount: exportData.length })
+      toast.success('CSV downloaded successfully')
+      onLog('WFN Export', 'success', 'CSV file downloaded', { recordCount: exportData.length })
+    } catch (error) {
+      console.error('CSV download error:', error)
+      toast.error(`Failed to download CSV: ${error}`)
+      onLog('WFN Export', 'error', 'CSV download failed', { error: String(error) })
+    }
   }
 
   return (
