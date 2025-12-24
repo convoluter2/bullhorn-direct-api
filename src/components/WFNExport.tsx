@@ -9,9 +9,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DownloadSimple, Play, Database, Users, CurrencyDollar, ShieldCheck, Hash, ListNumbers, CalendarCheck } from '@phosphor-icons/react'
+import { Switch } from '@/components/ui/switch'
+import { DownloadSimple, Play, Database, Users, CurrencyDollar, ShieldCheck, Hash, ListNumbers, CalendarCheck, LockKey, Warning } from '@phosphor-icons/react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { toast } from 'sonner'
+import { FileDecryptor } from '@/components/FileDecryptor'
 
 interface WFNExportProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -243,6 +245,49 @@ const normalizePhoneNumber = (phone: string | null | undefined): string => {
   return phone
 }
 
+const encryptData = async (plaintext: string, password: string): Promise<ArrayBuffer> => {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(plaintext)
+  
+  const passwordKey = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(password),
+    'PBKDF2',
+    false,
+    ['deriveBits', 'deriveKey']
+  )
+  
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+  
+  const key = await crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt,
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
+    passwordKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt']
+  )
+  
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  
+  const encryptedData = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    data
+  )
+  
+  const result = new Uint8Array(salt.length + iv.length + encryptedData.byteLength)
+  result.set(salt, 0)
+  result.set(iv, salt.length)
+  result.set(new Uint8Array(encryptedData), salt.length + iv.length)
+  
+  return result.buffer
+}
+
 export function WFNExport({ onLog }: WFNExportProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -254,6 +299,8 @@ export function WFNExport({ onLog }: WFNExportProps) {
   const [filterMode, setFilterMode] = useState<'active' | 'ids'>('active')
   const [placementIds, setPlacementIds] = useState('')
   const [adpAssociateIdField, setAdpAssociateIdField] = useState('customText1')
+  const [encryptionPassword, setEncryptionPassword] = useState('')
+  const [usePlaintextPII, setUsePlaintextPII] = useState(false)
   const [stats, setStats] = useState({
     totalPlacements: 0,
     processedPlacements: 0,
@@ -311,7 +358,12 @@ export function WFNExport({ onLog }: WFNExportProps) {
   }
 
   const executeExport = async () => {
-    if (!hashSalt) {
+    if (usePlaintextPII && !encryptionPassword) {
+      toast.error('Password is required when exporting unencrypted PII')
+      return
+    }
+
+    if (!usePlaintextPII && !hashSalt) {
       toast.error('Please enter a hash salt for security')
       return
     }
@@ -356,7 +408,9 @@ export function WFNExport({ onLog }: WFNExportProps) {
         fields: placementFields,
         pageSize,
         adpAssociateIdField,
-        hashingSalt: '***REDACTED***'
+        piiMode: usePlaintextPII ? 'plaintext-encrypted' : 'hashed',
+        encrypted: usePlaintextPII,
+        hashingSalt: usePlaintextPII ? 'N/A' : '***REDACTED***'
       })
 
       let start = 0
@@ -528,9 +582,18 @@ export function WFNExport({ onLog }: WFNExportProps) {
             const primaryRate = rateCard ? selectRateLine(rateCard.lines, primaryEarnCodes) : null
             const secondaryRate = rateCard ? selectRateLine(rateCard.lines, secondaryEarnCodes) : null
 
-            const hashedSSN = placement.candidate?.ssn 
-              ? await hashValue(placement.candidate.ssn, hashSalt)
-              : ''
+            let taxIdNumber = ''
+            let birthDate = ''
+
+            if (usePlaintextPII) {
+              taxIdNumber = placement.candidate?.ssn || ''
+              birthDate = formatDate(placement.candidate?.dateOfBirth)
+            } else {
+              taxIdNumber = placement.candidate?.ssn 
+                ? await hashValue(placement.candidate.ssn, hashSalt)
+                : ''
+              birthDate = ''
+            }
 
             const getAdpAssociateId = (): string => {
               if (!placement.candidate) return ''
@@ -556,10 +619,10 @@ export function WFNExport({ onLog }: WFNExportProps) {
               'Co Code': '',
               'First Name': placement.candidate?.firstName || '',
               'Last Name': placement.candidate?.lastName || '',
-              'Birth Date': '',
+              'Birth Date': birthDate,
               'Gender': '',
               'Tax ID Type': taxIdType,
-              'Tax ID Number': hashedSSN,
+              'Tax ID Number': taxIdNumber,
               'Hire Date': formatDate(placement.dateBegin),
               'Is Primary': '',
               'Is Paid By WFN': '',
@@ -660,7 +723,9 @@ export function WFNExport({ onLog }: WFNExportProps) {
         totalPlacements: totalCount,
         requestedIds: parsedIds.length || 'N/A',
         candidatesJoined: stats.candidatesJoined,
-        errors: stats.errors
+        errors: stats.errors,
+        piiMode: usePlaintextPII ? 'plaintext-encrypted' : 'hashed',
+        encrypted: usePlaintextPII
       })
 
     } catch (error) {
@@ -673,9 +738,14 @@ export function WFNExport({ onLog }: WFNExportProps) {
     }
   }
 
-  const downloadCSV = () => {
+  const downloadCSV = async () => {
     if (exportData.length === 0) {
       toast.error('No data to export')
+      return
+    }
+
+    if (usePlaintextPII && !encryptionPassword) {
+      toast.error('Password is required for encrypted export with unencrypted PII')
       return
     }
 
@@ -758,22 +828,59 @@ export function WFNExport({ onLog }: WFNExportProps) {
       ]
 
       const csvContent = csvRows.join('\n')
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `wfn_export_${Date.now()}.csv`
-      link.style.display = 'none'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      
-      setTimeout(() => {
-        URL.revokeObjectURL(url)
-      }, 100)
 
-      toast.success('CSV downloaded successfully')
-      onLog('WFN Export', 'success', 'CSV file downloaded', { recordCount: exportData.length })
+      if (usePlaintextPII && encryptionPassword) {
+        const toastId = toast.loading('Encrypting file with password...')
+        
+        try {
+          const encryptedData = await encryptData(csvContent, encryptionPassword)
+          const blob = new Blob([encryptedData], { type: 'application/octet-stream' })
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `wfn_export_encrypted_${Date.now()}.enc`
+          link.style.display = 'none'
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          
+          setTimeout(() => {
+            URL.revokeObjectURL(url)
+          }, 100)
+
+          toast.success('Encrypted file downloaded successfully', { id: toastId })
+          onLog('WFN Export', 'success', 'Encrypted CSV file downloaded (plaintext PII, password-protected)', { 
+            recordCount: exportData.length,
+            encrypted: true,
+            plaintextPII: true
+          })
+        } catch (encryptError) {
+          console.error('Encryption error:', encryptError)
+          toast.error(`Failed to encrypt file: ${encryptError}`, { id: toastId })
+          onLog('WFN Export', 'error', 'File encryption failed', { error: String(encryptError) })
+        }
+      } else {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `wfn_export_${Date.now()}.csv`
+        link.style.display = 'none'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        setTimeout(() => {
+          URL.revokeObjectURL(url)
+        }, 100)
+
+        toast.success('CSV downloaded successfully')
+        onLog('WFN Export', 'success', 'CSV file downloaded (hashed PII)', { 
+          recordCount: exportData.length,
+          encrypted: false,
+          plaintextPII: false
+        })
+      }
     } catch (error) {
       console.error('CSV download error:', error)
       toast.error(`Failed to download CSV: ${error}`)
@@ -805,7 +912,11 @@ export function WFNExport({ onLog }: WFNExportProps) {
           <Alert>
             <ShieldCheck className="h-4 w-4" />
             <AlertDescription>
-              This export includes <strong>hashed SSN</strong> using SHA-256. Raw sensitive data is never written to the CSV.
+              <strong>Export Options:</strong>
+              <br />
+              • <strong>Hashed PII (Default):</strong> SSN is hashed using SHA-256. Birth date is excluded. Standard CSV download.
+              <br />
+              • <strong>Unencrypted PII (Password Required):</strong> SSN and birth date included in plaintext. File is encrypted with AES-256-GCM and requires password to decrypt.
               <br />
               <strong>Employee ID:</strong> Uses Candidate.{adpAssociateIdField} (ADP Associate ID)
               <br />
@@ -814,6 +925,77 @@ export function WFNExport({ onLog }: WFNExportProps) {
               <strong>Work Mail Stop:</strong> Contains the Candidate ID
             </AlertDescription>
           </Alert>
+
+          <Card className="border-2 border-primary/20 bg-primary/5">
+            <CardContent className="pt-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="plaintext-pii" className="text-base font-semibold flex items-center gap-2">
+                    <LockKey size={18} className="text-primary" />
+                    Export with Unencrypted PII (Password Protected)
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    When enabled, SSN and birth date will be included in plaintext, but the entire file will be encrypted with a password.
+                  </p>
+                </div>
+                <Switch
+                  id="plaintext-pii"
+                  checked={usePlaintextPII}
+                  onCheckedChange={setUsePlaintextPII}
+                  disabled={isLoading}
+                />
+              </div>
+
+              {usePlaintextPII && (
+                <Alert className="border-destructive/50 bg-destructive/10">
+                  <Warning className="h-4 w-4 text-destructive" />
+                  <AlertDescription className="text-destructive">
+                    <strong>Warning:</strong> This export will contain unencrypted SSN and birth date. The file will be encrypted, but ensure you keep the password secure and share it only through secure channels.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {usePlaintextPII && (
+                <div className="space-y-2">
+                  <Label htmlFor="encryption-password" className="flex items-center gap-2">
+                    <LockKey size={16} className="text-primary" />
+                    Encryption Password (Required)
+                  </Label>
+                  <Input
+                    id="encryption-password"
+                    type="password"
+                    placeholder="Enter a strong password to encrypt the file"
+                    value={encryptionPassword}
+                    onChange={(e) => setEncryptionPassword(e.target.value)}
+                    disabled={isLoading}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This password will be required to decrypt the file. Keep it secure and share it only through approved secure channels.
+                  </p>
+                </div>
+              )}
+
+              {!usePlaintextPII && (
+                <div className="space-y-2">
+                  <Label htmlFor="hash-salt" className="flex items-center gap-2">
+                    <Hash size={16} />
+                    Hash Salt (Required)
+                  </Label>
+                  <Input
+                    id="hash-salt"
+                    type="password"
+                    placeholder="Enter corporate salt value"
+                    value={hashSalt}
+                    onChange={(e) => setHashSalt(e.target.value)}
+                    disabled={isLoading}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Required for hashing SSN. Keep this value secure and consistent.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <Tabs value={filterMode} onValueChange={(v) => setFilterMode(v as 'active' | 'ids')} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
@@ -863,24 +1045,6 @@ export function WFNExport({ onLog }: WFNExportProps) {
           </Tabs>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="hash-salt" className="flex items-center gap-2">
-                <Hash size={16} />
-                Hash Salt (Required)
-              </Label>
-              <Input
-                id="hash-salt"
-                type="password"
-                placeholder="Enter corporate salt value"
-                value={hashSalt}
-                onChange={(e) => setHashSalt(e.target.value)}
-                disabled={isLoading}
-              />
-              <p className="text-xs text-muted-foreground">
-                Required for hashing SSN and DOB. Keep this value secure and consistent.
-              </p>
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="adp-field">ADP Associate ID Field</Label>
               <select
@@ -958,7 +1122,7 @@ export function WFNExport({ onLog }: WFNExportProps) {
             <Button
               size="lg"
               onClick={executeExport}
-              disabled={isLoading || !hashSalt || (filterMode === 'ids' && !placementIds.trim())}
+              disabled={isLoading || (usePlaintextPII && !encryptionPassword) || (!usePlaintextPII && !hashSalt) || (filterMode === 'ids' && !placementIds.trim())}
               className="gap-2"
             >
               <Play size={20} />
@@ -973,7 +1137,9 @@ export function WFNExport({ onLog }: WFNExportProps) {
                 className="gap-2"
               >
                 <DownloadSimple size={20} />
-                Download CSV ({exportData.length} records)
+                {usePlaintextPII 
+                  ? `Download Encrypted File (${exportData.length} records)` 
+                  : `Download CSV (${exportData.length} records)`}
               </Button>
             )}
           </div>
@@ -1073,6 +1239,8 @@ export function WFNExport({ onLog }: WFNExportProps) {
           </CardContent>
         </Card>
       )}
+
+      <FileDecryptor />
     </div>
   )
 }
