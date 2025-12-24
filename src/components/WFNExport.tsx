@@ -145,91 +145,67 @@ interface RateCardLine {
 }
 
 interface ExportRecord {
-  'Placement ID': number
-  'Placement Status': string
-  'Placement Start Date': string
-  'Placement End Date': string
-  'Work Week Start': string
-  'Is Multirate': string
-  'Rate Card ID': string
-  'Rate Card Status': string
-  'Candidate ID': number
-  'Candidate External ID': string
+  'Change Effective On': string
+  'Employee ID': string
+  'Position ID': string
+  'Co Code': string
   'First Name': string
-  'Middle Name': string
   'Last Name': string
-  'Name Suffix': string
-  'Hashed SSN': string
-  'Hashed DOB': string
-  'Email': string
-  'Email 2': string
-  'Email 3': string
-  'Phone': string
-  'Phone 2': string
-  'Phone 3': string
-  'Mobile': string
-  'Preferred Contact': string
-  'Address 1': string
-  'Address 2': string
-  'City': string
-  'State': string
-  'Zip': string
-  'Country ID': string
+  'Birth Date': string
   'Gender': string
-  'Ethnicity': string
-  'Marital Status': string
-  'Veteran': string
-  'Tobacco User': string
-  'Candidate Status': string
-  'Payroll Status': string
+  'Tax ID Type': string
+  'Tax ID Number': string
+  'Hire Date': string
+  'Is Primary': string
+  'Is Paid By WFN': string
+  'Pay Frequency Code': string
+  'SUI/SDI Tax Jurisdiction Code': string
+  'Worked State Tax Code': string
+  'Address 1 Line 1': string
+  'Address 1 Line 2': string
+  'Address 1 City': string
+  'Address 1 State Postal Code': string
+  'Address 1 Zip Code': string
+  'Address 1 Use as Legal': string
+  'Middle Name': string
+  'Generation Suffix': string
+  'Professional Suffix': string
+  'EEO Ethnic Code': string
+  'Personal E-mail': string
+  'E-Mail to Use For Notification': string
+  'Employee Status': string
+  'Rehire Date': string
+  'Rehire Reason': string
+  'Leave of Absence Return Date': string
+  'Leave of Absence Return Reason': string
   'Employee Type': string
-  'Candidate Type': string
-  'Payroll Client Start Date': string
-  'Federal Filing Status': string
-  'Federal Exemptions': string
-  'Federal Extra Withholding': string
-  'State Filing Status': string
+  'Home Department': string
+  'EEOC Job Code': string
+  'FLSA Code': string
+  'NAICS Workers Comp Code': string
+  'Home Phone Number': string
+  'Compensation Change Reason': string
+  'Rate Type': string
+  'Rate 1 Amount': string
+  'Rate 2 Amount': string
+  'Standard Hours': string
+  'Federal Tax Filing Status': string
+  'Federal Tax Form Year': string
+  'Federal Tax Multiple Jobs': string
+  'Federal Tax Dependents Amount': string
+  'Federal Tax Other Income Amount': string
+  'Federal Tax Deductions Amount': string
+  'Federal Tax Additional Amount': string
+  'Federal Tax Non-Resident Alien': string
+  'Federal Tax Exemptions': string
+  'Lived State Tax Code': string
   'State Exemptions': string
-  'State Additional Withholdings': string
-  'Local Filing Status': string
-  'Local Exemptions': string
-  'Local Additional Withholdings': string
-  'Local Tax Code': string
-  'Tax Info - Two Jobs': string
-  'Tax Info - Dependent Claim Amount': string
-  'Tax Info - Other Income Amount': string
-  'Tax Info - Other Deductions Amount': string
-  'Tax Info - Federal Extra Withholding': string
-  'Client Corporation ID': string
-  'Client Corporation Name': string
-  'Client Contact ID': string
-  'Client Contact Name': string
-  'Job Order ID': number
-  'Job Title': string
-  'Job Client Corp ID': string
-  'Job Client Corp Name': string
-  'Primary Earn Code': string
-  'Primary Alias': string
-  'Primary Pay Rate': string
-  'Primary Bill Rate': string
-  'Primary Pay Multiplier': string
-  'Primary Bill Multiplier': string
-  'Primary Markup Percent': string
-  'Primary Markup Value': string
-  'Primary Pay Currency': string
-  'Primary Bill Currency': string
-  'Primary Taxable Margin': string
-  'Secondary Earn Code': string
-  'Secondary Alias': string
-  'Secondary Pay Rate': string
-  'Secondary Bill Rate': string
-  'Secondary Pay Multiplier': string
-  'Secondary Bill Multiplier': string
-  'Secondary Markup Percent': string
-  'Secondary Markup Value': string
-  'Secondary Pay Currency': string
-  'Secondary Bill Currency': string
-  'Secondary Taxable Margin': string
+  'State Extra Tax $': string
+  'State Extra Tax %': string
+  'State Marital Status': string
+  'Worker Category': string
+  'Work Mail Stop': string
+  'Employer Match Eligibility Date': string
 }
 
 const hashValue = async (value: string | null | undefined, salt: string): Promise<string> => {
@@ -528,97 +504,69 @@ export function WFNExport({ onLog }: WFNExportProps) {
             const hashedSSN = placement.candidate?.ssn 
               ? await hashValue(placement.candidate.ssn, hashSalt)
               : ''
-            
-            const hashedDOB = placement.candidate?.dateOfBirth 
-              ? await hashValue(placement.candidate.dateOfBirth.toString(), hashSalt)
-              : ''
 
             const record: ExportRecord = {
-              'Placement ID': placement.id,
-              'Placement Status': placement.status || '',
-              'Placement Start Date': formatDate(placement.dateBegin),
-              'Placement End Date': formatDate(placement.dateEnd),
-              'Work Week Start': placement.workWeekStart?.toString() || '',
-              'Is Multirate': placement.isMultirate ? 'Yes' : 'No',
-              'Rate Card ID': placement.placementRateCardID?.toString() || '',
-              'Rate Card Status': placement.placementRateCardStatus || '',
-              'Candidate ID': placement.candidate?.id || 0,
-              'Candidate External ID': placement.candidate?.externalID || '',
+              'Change Effective On': formatDate(placement.dateBegin),
+              'Employee ID': placement.candidate?.externalID || '',
+              'Position ID': placement.id.toString(),
+              'Co Code': '',
               'First Name': placement.candidate?.firstName || '',
-              'Middle Name': placement.candidate?.middleName || '',
               'Last Name': placement.candidate?.lastName || '',
-              'Name Suffix': placement.candidate?.nameSuffix || '',
-              'Hashed SSN': hashedSSN,
-              'Hashed DOB': hashedDOB,
-              'Email': placement.candidate?.email || '',
-              'Email 2': placement.candidate?.email2 || '',
-              'Email 3': placement.candidate?.email3 || '',
-              'Phone': placement.candidate?.phone || '',
-              'Phone 2': placement.candidate?.phone2 || '',
-              'Phone 3': placement.candidate?.phone3 || '',
-              'Mobile': placement.candidate?.mobile || '',
-              'Preferred Contact': placement.candidate?.preferredContact || '',
-              'Address 1': placement.candidate?.address?.address1 || '',
-              'Address 2': placement.candidate?.address?.address2 || '',
-              'City': placement.candidate?.address?.city || '',
-              'State': placement.candidate?.address?.state || '',
-              'Zip': placement.candidate?.address?.zip || '',
-              'Country ID': placement.candidate?.address?.countryID?.toString() || '',
-              'Gender': placement.candidate?.gender || '',
-              'Ethnicity': placement.candidate?.ethnicity || '',
-              'Marital Status': placement.candidate?.maritalStatus || '',
-              'Veteran': placement.candidate?.veteran || '',
-              'Tobacco User': placement.candidate?.tobaccoUser ? 'Yes' : 'No',
-              'Candidate Status': placement.candidate?.status || '',
-              'Payroll Status': placement.candidate?.payrollStatus || '',
+              'Birth Date': '',
+              'Gender': '',
+              'Tax ID Type': '',
+              'Tax ID Number': hashedSSN,
+              'Hire Date': formatDate(placement.dateBegin),
+              'Is Primary': '',
+              'Is Paid By WFN': '',
+              'Pay Frequency Code': '',
+              'SUI/SDI Tax Jurisdiction Code': '',
+              'Worked State Tax Code': placement.candidate?.address?.state || '',
+              'Address 1 Line 1': placement.candidate?.address?.address1 || '',
+              'Address 1 Line 2': placement.candidate?.address?.address2 || '',
+              'Address 1 City': placement.candidate?.address?.city || '',
+              'Address 1 State Postal Code': placement.candidate?.address?.state || '',
+              'Address 1 Zip Code': placement.candidate?.address?.zip || '',
+              'Address 1 Use as Legal': placement.candidate?.address?.address1 ? 'Y' : '',
+              'Middle Name': placement.candidate?.middleName || '',
+              'Generation Suffix': '',
+              'Professional Suffix': '',
+              'EEO Ethnic Code': '',
+              'Personal E-mail': placement.candidate?.email || '',
+              'E-Mail to Use For Notification': '',
+              'Employee Status': placement.status || '',
+              'Rehire Date': '',
+              'Rehire Reason': '',
+              'Leave of Absence Return Date': '',
+              'Leave of Absence Return Reason': '',
               'Employee Type': placement.candidate?.employeeType || '',
-              'Candidate Type': placement.candidate?.type || '',
-              'Payroll Client Start Date': formatDate(placement.candidate?.payrollClientStartDate),
-              'Federal Filing Status': placement.candidate?.federalFilingStatus || '',
-              'Federal Exemptions': placement.candidate?.federalExemptions?.toString() || '',
-              'Federal Extra Withholding': placement.candidate?.federalExtraWithholdingAmount?.toString() || '',
-              'State Filing Status': placement.candidate?.stateFilingStatus || '',
+              'Home Department': '',
+              'EEOC Job Code': '',
+              'FLSA Code': '',
+              'NAICS Workers Comp Code': '',
+              'Home Phone Number': placement.candidate?.phone || '',
+              'Compensation Change Reason': '',
+              'Rate Type': '',
+              'Rate 1 Amount': primaryRate?.payRate?.toFixed(2) || '',
+              'Rate 2 Amount': secondaryRate?.payRate?.toFixed(2) || '',
+              'Standard Hours': '',
+              'Federal Tax Filing Status': placement.candidate?.federalFilingStatus || '',
+              'Federal Tax Form Year': candidateTaxInfo ? '2025' : '',
+              'Federal Tax Multiple Jobs': candidateTaxInfo?.twoJobs ? 'Y' : '',
+              'Federal Tax Dependents Amount': candidateTaxInfo?.totalDependentClaimAmount?.toString() || '',
+              'Federal Tax Other Income Amount': candidateTaxInfo?.otherIncomeAmount?.toString() || '',
+              'Federal Tax Deductions Amount': candidateTaxInfo?.otherDeductionsAmount?.toString() || '',
+              'Federal Tax Additional Amount': candidateTaxInfo?.federalExtraWithholdingAmount?.toString() || '',
+              'Federal Tax Non-Resident Alien': '',
+              'Federal Tax Exemptions': placement.candidate?.federalExemptions?.toString() || '',
+              'Lived State Tax Code': '',
               'State Exemptions': placement.candidate?.stateExemptions?.toString() || '',
-              'State Additional Withholdings': placement.candidate?.stateAddtionalWitholdingsAmount?.toString() || '',
-              'Local Filing Status': placement.candidate?.localFilingStatus || '',
-              'Local Exemptions': placement.candidate?.localExemptions?.toString() || '',
-              'Local Additional Withholdings': placement.candidate?.localAddtionalWitholdingsAmount?.toString() || '',
-              'Local Tax Code': placement.candidate?.localTaxCode || '',
-              'Tax Info - Two Jobs': candidateTaxInfo?.twoJobs ? 'Yes' : 'No',
-              'Tax Info - Dependent Claim Amount': candidateTaxInfo?.totalDependentClaimAmount?.toString() || '',
-              'Tax Info - Other Income Amount': candidateTaxInfo?.otherIncomeAmount?.toString() || '',
-              'Tax Info - Other Deductions Amount': candidateTaxInfo?.otherDeductionsAmount?.toString() || '',
-              'Tax Info - Federal Extra Withholding': candidateTaxInfo?.federalExtraWithholdingAmount?.toString() || '',
-              'Client Corporation ID': placement.clientCorporation?.id?.toString() || '',
-              'Client Corporation Name': placement.clientCorporation?.name || '',
-              'Client Contact ID': placement.clientContact?.id?.toString() || '',
-              'Client Contact Name': placement.clientContact?.name || '',
-              'Job Order ID': placement.jobOrder?.id || 0,
-              'Job Title': placement.jobOrder?.title || '',
-              'Job Client Corp ID': placement.jobOrder?.clientCorporation?.id?.toString() || '',
-              'Job Client Corp Name': placement.jobOrder?.clientCorporation?.name || '',
-              'Primary Earn Code': primaryRate?.earnCode || '',
-              'Primary Alias': primaryRate?.alias || '',
-              'Primary Pay Rate': primaryRate?.payRate?.toFixed(2) || '',
-              'Primary Bill Rate': primaryRate?.billRate?.toFixed(2) || '',
-              'Primary Pay Multiplier': primaryRate?.payMultiplier?.toString() || '',
-              'Primary Bill Multiplier': primaryRate?.billMultiplier?.toString() || '',
-              'Primary Markup Percent': primaryRate?.markupPercent?.toString() || '',
-              'Primary Markup Value': primaryRate?.markupValue?.toString() || '',
-              'Primary Pay Currency': primaryRate?.payCurrencyUnit || '',
-              'Primary Bill Currency': primaryRate?.billCurrencyUnit || '',
-              'Primary Taxable Margin': primaryRate?.taxableMargin?.toString() || '',
-              'Secondary Earn Code': secondaryRate?.earnCode || '',
-              'Secondary Alias': secondaryRate?.alias || '',
-              'Secondary Pay Rate': secondaryRate?.payRate?.toFixed(2) || '',
-              'Secondary Bill Rate': secondaryRate?.billRate?.toFixed(2) || '',
-              'Secondary Pay Multiplier': secondaryRate?.payMultiplier?.toString() || '',
-              'Secondary Bill Multiplier': secondaryRate?.billMultiplier?.toString() || '',
-              'Secondary Markup Percent': secondaryRate?.markupPercent?.toString() || '',
-              'Secondary Markup Value': secondaryRate?.markupValue?.toString() || '',
-              'Secondary Pay Currency': secondaryRate?.payCurrencyUnit || '',
-              'Secondary Bill Currency': secondaryRate?.billCurrencyUnit || '',
-              'Secondary Taxable Margin': secondaryRate?.taxableMargin?.toString() || ''
+              'State Extra Tax $': placement.candidate?.stateAddtionalWitholdingsAmount?.toString() || '',
+              'State Extra Tax %': '',
+              'State Marital Status': placement.candidate?.maritalStatus || '',
+              'Worker Category': '',
+              'Work Mail Stop': '',
+              'Employer Match Eligibility Date': formatDate(placement.candidate?.payrollClientStartDate)
             }
 
             allRecords.push(record)
@@ -688,7 +636,70 @@ export function WFNExport({ onLog }: WFNExportProps) {
     }
 
     try {
-      const headers = Object.keys(exportData[0])
+      const headers = [
+        'Change Effective On',
+        'Employee ID',
+        'Position ID',
+        'Co Code',
+        'First Name',
+        'Last Name',
+        'Birth Date',
+        'Gender',
+        'Tax ID Type',
+        'Tax ID Number',
+        'Hire Date',
+        'Is Primary',
+        'Is Paid By WFN',
+        'Pay Frequency Code',
+        'SUI/SDI Tax Jurisdiction Code',
+        'Worked State Tax Code',
+        'Address 1 Line 1',
+        'Address 1 Line 2',
+        'Address 1 City',
+        'Address 1 State Postal Code',
+        'Address 1 Zip Code',
+        'Address 1 Use as Legal',
+        'Middle Name',
+        'Generation Suffix',
+        'Professional Suffix',
+        'EEO Ethnic Code',
+        'Personal E-mail',
+        'E-Mail to Use For Notification',
+        'Employee Status',
+        'Rehire Date',
+        'Rehire Reason',
+        'Leave of Absence Return Date',
+        'Leave of Absence Return Reason',
+        'Employee Type',
+        'Home Department',
+        'EEOC Job Code',
+        'FLSA Code',
+        'NAICS Workers Comp Code',
+        'Home Phone Number',
+        'Compensation Change Reason',
+        'Rate Type',
+        'Rate 1 Amount',
+        'Rate 2 Amount',
+        'Standard Hours',
+        'Federal Tax Filing Status',
+        'Federal Tax Form Year',
+        'Federal Tax Multiple Jobs',
+        'Federal Tax Dependents Amount',
+        'Federal Tax Other Income Amount',
+        'Federal Tax Deductions Amount',
+        'Federal Tax Additional Amount',
+        'Federal Tax Non-Resident Alien',
+        'Federal Tax Exemptions',
+        'Lived State Tax Code',
+        'State Exemptions',
+        'State Extra Tax $',
+        'State Extra Tax %',
+        'State Marital Status',
+        'Worker Category',
+        'Work Mail Stop',
+        'Employer Match Eligibility Date'
+      ]
+      
       const csvRows = [
         headers.join(','),
         ...exportData.map(record => 
@@ -707,7 +718,7 @@ export function WFNExport({ onLog }: WFNExportProps) {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `wfn_active_placements_export_${Date.now()}.csv`
+      link.download = `wfn_export_${Date.now()}.csv`
       link.style.display = 'none'
       document.body.appendChild(link)
       link.click()
@@ -737,7 +748,7 @@ export function WFNExport({ onLog }: WFNExportProps) {
                 WFN Placements Export
               </CardTitle>
               <CardDescription>
-                Export placements with rate cards, candidate demographics, and tax information with hashed SSN/DOB
+                Export placements in WFN format with employee demographics, tax information, and rate data
               </CardDescription>
             </div>
             <Badge variant="secondary" className="gap-2">
@@ -750,7 +761,7 @@ export function WFNExport({ onLog }: WFNExportProps) {
           <Alert>
             <ShieldCheck className="h-4 w-4" />
             <AlertDescription>
-              This export includes <strong>hashed SSN and DOB</strong> using SHA-256. Raw sensitive data is never written to the CSV.
+              This export includes <strong>hashed SSN</strong> using SHA-256. Raw sensitive data is never written to the CSV.
             </AlertDescription>
           </Alert>
 
@@ -947,31 +958,29 @@ export function WFNExport({ onLog }: WFNExportProps) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left p-2">Placement ID</th>
+                    <th className="text-left p-2">Position ID</th>
                     <th className="text-left p-2">Name</th>
-                    <th className="text-left p-2">External ID</th>
+                    <th className="text-left p-2">Employee ID</th>
                     <th className="text-left p-2">Hashed SSN</th>
-                    <th className="text-left p-2">Job Title</th>
-                    <th className="text-left p-2">Client</th>
                     <th className="text-left p-2">Status</th>
-                    <th className="text-left p-2">Start Date</th>
-                    <th className="text-left p-2">Primary Pay</th>
+                    <th className="text-left p-2">Hire Date</th>
+                    <th className="text-left p-2">Rate 1</th>
+                    <th className="text-left p-2">Rate 2</th>
                   </tr>
                 </thead>
                 <tbody>
                   {exportData.slice(0, 10).map((record, idx) => (
                     <tr key={idx} className="border-b hover:bg-muted/50">
-                      <td className="p-2 font-mono">{record['Placement ID']}</td>
+                      <td className="p-2 font-mono">{record['Position ID']}</td>
                       <td className="p-2">{record['First Name']} {record['Last Name']}</td>
-                      <td className="p-2 font-mono text-xs">{record['Candidate External ID']}</td>
-                      <td className="p-2 font-mono text-xs">{record['Hashed SSN'].substring(0, 12)}...</td>
-                      <td className="p-2">{record['Job Title']}</td>
-                      <td className="p-2">{record['Client Corporation Name']}</td>
+                      <td className="p-2 font-mono text-xs">{record['Employee ID']}</td>
+                      <td className="p-2 font-mono text-xs">{record['Tax ID Number'] ? record['Tax ID Number'].substring(0, 12) + '...' : ''}</td>
                       <td className="p-2">
-                        <Badge variant="outline">{record['Placement Status']}</Badge>
+                        <Badge variant="outline">{record['Employee Status']}</Badge>
                       </td>
-                      <td className="p-2">{record['Placement Start Date']}</td>
-                      <td className="p-2">${record['Primary Pay Rate']}</td>
+                      <td className="p-2">{record['Hire Date']}</td>
+                      <td className="p-2">{record['Rate 1 Amount'] ? '$' + record['Rate 1 Amount'] : ''}</td>
+                      <td className="p-2">{record['Rate 2 Amount'] ? '$' + record['Rate 2 Amount'] : ''}</td>
                     </tr>
                   ))}
                 </tbody>
