@@ -72,6 +72,16 @@ interface PlacementData {
     localExemptions?: number
     localAddtionalWitholdingsAmount?: number
     localTaxCode?: string
+    customText1?: string
+    customText2?: string
+    customText3?: string
+    customText4?: string
+    customText5?: string
+    customText6?: string
+    customText7?: string
+    customText8?: string
+    customText9?: string
+    customText10?: string
   }
   clientCorporation?: {
     id: number
@@ -219,6 +229,20 @@ const hashValue = async (value: string | null | undefined, salt: string): Promis
   return hashHex
 }
 
+const normalizePhoneNumber = (phone: string | null | undefined): string => {
+  if (!phone) return ''
+  
+  const cleaned = phone.replace(/\D/g, '')
+  
+  if (cleaned.length === 10) {
+    return `(${cleaned.substring(0, 3)}) ${cleaned.substring(3, 6)}-${cleaned.substring(6)}`
+  } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
+    return `(${cleaned.substring(1, 4)}) ${cleaned.substring(4, 7)}-${cleaned.substring(7)}`
+  }
+  
+  return phone
+}
+
 export function WFNExport({ onLog }: WFNExportProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -229,6 +253,7 @@ export function WFNExport({ onLog }: WFNExportProps) {
   const [exportData, setExportData] = useState<ExportRecord[]>([])
   const [filterMode, setFilterMode] = useState<'active' | 'ids'>('active')
   const [placementIds, setPlacementIds] = useState('')
+  const [adpAssociateIdField, setAdpAssociateIdField] = useState('customText1')
   const [stats, setStats] = useState({
     totalPlacements: 0,
     processedPlacements: 0,
@@ -315,7 +340,7 @@ export function WFNExport({ onLog }: WFNExportProps) {
         'isMultirate',
         'placementRateCardID',
         'placementRateCardStatus',
-        'candidate(id,firstName,middleName,lastName,nameSuffix,externalID,ssn,dateOfBirth,email,email2,email3,phone,phone2,phone3,mobile,preferredContact,address(address1,address2,city,state,zip,countryID),gender,ethnicity,maritalStatus,veteran,tobaccoUser,status,payrollStatus,employeeType,type,payrollClientStartDate,federalFilingStatus,federalExemptions,federalExtraWithholdingAmount,stateFilingStatus,stateExemptions,stateAddtionalWitholdingsAmount,localFilingStatus,localExemptions,localAddtionalWitholdingsAmount,localTaxCode)',
+        'candidate(id,firstName,middleName,lastName,nameSuffix,externalID,ssn,dateOfBirth,email,email2,email3,phone,phone2,phone3,mobile,preferredContact,address(address1,address2,city,state,zip,countryID),gender,ethnicity,maritalStatus,veteran,tobaccoUser,status,payrollStatus,employeeType,type,payrollClientStartDate,federalFilingStatus,federalExemptions,federalExtraWithholdingAmount,stateFilingStatus,stateExemptions,stateAddtionalWitholdingsAmount,localFilingStatus,localExemptions,localAddtionalWitholdingsAmount,localTaxCode,customText1,customText2,customText3,customText4,customText5,customText6,customText7,customText8,customText9,customText10)',
         'clientCorporation(id,name)',
         'clientContact(id,name)',
         'jobOrder(id,title,clientCorporation(id,name))'
@@ -329,7 +354,9 @@ export function WFNExport({ onLog }: WFNExportProps) {
         where,
         placementCount: parsedIds.length || 'all active',
         fields: placementFields,
-        pageSize
+        pageSize,
+        adpAssociateIdField,
+        hashingSalt: '***REDACTED***'
       })
 
       let start = 0
@@ -505,16 +532,33 @@ export function WFNExport({ onLog }: WFNExportProps) {
               ? await hashValue(placement.candidate.ssn, hashSalt)
               : ''
 
+            const getAdpAssociateId = (): string => {
+              if (!placement.candidate) return ''
+              
+              const fieldValue = placement.candidate[adpAssociateIdField as keyof typeof placement.candidate]
+              if (fieldValue && typeof fieldValue === 'string') {
+                return fieldValue
+              }
+              
+              return placement.candidate.externalID || ''
+            }
+
+            const adpAssociateId = getAdpAssociateId()
+            const taxIdType = placement.candidate?.ssn ? 'SSN' : ''
+            
+            const normalizedHomePhone = normalizePhoneNumber(placement.candidate?.phone)
+            const candidateIdForMailStop = placement.candidate?.id?.toString() || ''
+
             const record: ExportRecord = {
               'Change Effective On': formatDate(placement.dateBegin),
-              'Employee ID': placement.candidate?.externalID || '',
+              'Employee ID': adpAssociateId,
               'Position ID': placement.id.toString(),
               'Co Code': '',
               'First Name': placement.candidate?.firstName || '',
               'Last Name': placement.candidate?.lastName || '',
               'Birth Date': '',
               'Gender': '',
-              'Tax ID Type': '',
+              'Tax ID Type': taxIdType,
               'Tax ID Number': hashedSSN,
               'Hire Date': formatDate(placement.dateBegin),
               'Is Primary': '',
@@ -544,7 +588,7 @@ export function WFNExport({ onLog }: WFNExportProps) {
               'EEOC Job Code': '',
               'FLSA Code': '',
               'NAICS Workers Comp Code': '',
-              'Home Phone Number': placement.candidate?.phone || '',
+              'Home Phone Number': normalizedHomePhone,
               'Compensation Change Reason': '',
               'Rate Type': '',
               'Rate 1 Amount': primaryRate?.payRate?.toFixed(2) || '',
@@ -565,7 +609,7 @@ export function WFNExport({ onLog }: WFNExportProps) {
               'State Extra Tax %': '',
               'State Marital Status': placement.candidate?.maritalStatus || '',
               'Worker Category': '',
-              'Work Mail Stop': '',
+              'Work Mail Stop': candidateIdForMailStop,
               'Employer Match Eligibility Date': formatDate(placement.candidate?.payrollClientStartDate)
             }
 
@@ -762,6 +806,12 @@ export function WFNExport({ onLog }: WFNExportProps) {
             <ShieldCheck className="h-4 w-4" />
             <AlertDescription>
               This export includes <strong>hashed SSN</strong> using SHA-256. Raw sensitive data is never written to the CSV.
+              <br />
+              <strong>Employee ID:</strong> Uses Candidate.{adpAssociateIdField} (ADP Associate ID)
+              <br />
+              <strong>Tax ID Type:</strong> Set to "SSN" for all candidates with an SSN
+              <br />
+              <strong>Work Mail Stop:</strong> Contains the Candidate ID
             </AlertDescription>
           </Alert>
 
@@ -828,6 +878,32 @@ export function WFNExport({ onLog }: WFNExportProps) {
               />
               <p className="text-xs text-muted-foreground">
                 Required for hashing SSN and DOB. Keep this value secure and consistent.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="adp-field">ADP Associate ID Field</Label>
+              <select
+                id="adp-field"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={adpAssociateIdField}
+                onChange={(e) => setAdpAssociateIdField(e.target.value)}
+                disabled={isLoading}
+              >
+                <option value="customText1">Candidate.customText1</option>
+                <option value="customText2">Candidate.customText2</option>
+                <option value="customText3">Candidate.customText3</option>
+                <option value="customText4">Candidate.customText4</option>
+                <option value="customText5">Candidate.customText5</option>
+                <option value="customText6">Candidate.customText6</option>
+                <option value="customText7">Candidate.customText7</option>
+                <option value="customText8">Candidate.customText8</option>
+                <option value="customText9">Candidate.customText9</option>
+                <option value="customText10">Candidate.customText10</option>
+                <option value="externalID">Candidate.externalID</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Field containing the ADP Associate ID (used as Employee ID in export)
               </p>
             </div>
 
@@ -960,10 +1036,12 @@ export function WFNExport({ onLog }: WFNExportProps) {
                   <tr className="border-b">
                     <th className="text-left p-2">Position ID</th>
                     <th className="text-left p-2">Name</th>
-                    <th className="text-left p-2">Employee ID</th>
-                    <th className="text-left p-2">Hashed SSN</th>
+                    <th className="text-left p-2">Employee ID (ADP)</th>
+                    <th className="text-left p-2">Candidate ID</th>
+                    <th className="text-left p-2">Tax ID Type</th>
                     <th className="text-left p-2">Status</th>
                     <th className="text-left p-2">Hire Date</th>
+                    <th className="text-left p-2">Phone</th>
                     <th className="text-left p-2">Rate 1</th>
                     <th className="text-left p-2">Rate 2</th>
                   </tr>
@@ -974,11 +1052,17 @@ export function WFNExport({ onLog }: WFNExportProps) {
                       <td className="p-2 font-mono">{record['Position ID']}</td>
                       <td className="p-2">{record['First Name']} {record['Last Name']}</td>
                       <td className="p-2 font-mono text-xs">{record['Employee ID']}</td>
-                      <td className="p-2 font-mono text-xs">{record['Tax ID Number'] ? record['Tax ID Number'].substring(0, 12) + '...' : ''}</td>
+                      <td className="p-2 font-mono text-xs">{record['Work Mail Stop']}</td>
+                      <td className="p-2">
+                        <Badge variant={record['Tax ID Type'] ? 'default' : 'outline'}>
+                          {record['Tax ID Type'] || 'N/A'}
+                        </Badge>
+                      </td>
                       <td className="p-2">
                         <Badge variant="outline">{record['Employee Status']}</Badge>
                       </td>
                       <td className="p-2">{record['Hire Date']}</td>
+                      <td className="p-2 text-xs">{record['Home Phone Number']}</td>
                       <td className="p-2">{record['Rate 1 Amount'] ? '$' + record['Rate 1 Amount'] : ''}</td>
                       <td className="p-2">{record['Rate 2 Amount'] ? '$' + record['Rate 2 Amount'] : ''}</td>
                     </tr>
