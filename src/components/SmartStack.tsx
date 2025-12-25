@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -46,6 +46,25 @@ interface PreviewRecord {
   newValues: Record<string, any>
 }
 
+interface PersistedSmartStackState {
+  csvIds: string[]
+  csvFileName: string
+  selectedEntity: string
+  filters: QueryFilter[]
+  filterGroups: FilterGroup[]
+  groupLogic: 'AND' | 'OR'
+  filterMode: 'simple' | 'grouped'
+  fieldUpdates: FieldUpdate[]
+  dryRun: boolean
+  currentIndex: number
+  results: { success: number; failed: number; errors: string[] }
+  previewData: PreviewRecord[]
+  progress: number
+  conditionalAssociations: ConditionalAssociation[]
+  useConditionalLogic: boolean
+  timestamp: number
+}
+
 export function SmartStack({ onLog }: SmartStackProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [csvIds, setCsvIds] = useState<string[]>([])
@@ -78,12 +97,56 @@ export function SmartStack({ onLog }: SmartStackProps) {
     shouldPause: false,
     shouldStop: false
   })
+  
+  const [persistedState, setPersistedState, deletePersistedState] = useKV<PersistedSmartStackState | null>('smartstack-paused-state', null)
+  const [showRestorePrompt, setShowRestorePrompt] = useState(false)
 
   const { entities, loading: entitiesLoading, refresh: refreshEntities, addEntity } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(selectedEntity || undefined)
   
   const availableFields = metadata?.fields || []
   const fieldsMap = metadata?.fieldsMap || {}
+  
+  useEffect(() => {
+    if (persistedState && csvIds.length === 0) {
+      const ageInMinutes = (Date.now() - persistedState.timestamp) / 1000 / 60
+      if (ageInMinutes < 1440) {
+        setShowRestorePrompt(true)
+      } else {
+        deletePersistedState()
+      }
+    }
+  }, [persistedState, csvIds, deletePersistedState])
+  
+  const restorePersistedState = () => {
+    if (!persistedState) return
+    
+    setCsvIds(persistedState.csvIds)
+    setCsvFileName(persistedState.csvFileName)
+    setSelectedEntity(persistedState.selectedEntity)
+    setFilters(persistedState.filters)
+    setFilterGroups(persistedState.filterGroups)
+    setGroupLogic(persistedState.groupLogic)
+    setFilterMode(persistedState.filterMode)
+    setFieldUpdates(persistedState.fieldUpdates)
+    setDryRun(persistedState.dryRun)
+    setCurrentIndex(persistedState.currentIndex)
+    setResults(persistedState.results)
+    setPreviewData(persistedState.previewData)
+    setProgress(persistedState.progress)
+    setConditionalAssociations(persistedState.conditionalAssociations)
+    setUseConditionalLogic(persistedState.useConditionalLogic)
+    setExecutionState('paused')
+    setShowRestorePrompt(false)
+    
+    toast.success(`Restored paused SmartStack: ${persistedState.currentIndex} of ${persistedState.csvIds.length} records processed`)
+  }
+  
+  const discardPersistedState = () => {
+    deletePersistedState()
+    setShowRestorePrompt(false)
+    toast.info('Discarded paused SmartStack')
+  }
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -255,6 +318,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
         if (executionControlRef.current.shouldStop) {
           setExecutionState('stopped')
           setLoading(false)
+          deletePersistedState()
           toast.warning(`SmartStack stopped at record ${i + 1} of ${csvIds.length}`)
           onLog(
             'SmartStack Stopped',
@@ -270,7 +334,28 @@ export function SmartStack({ onLog }: SmartStackProps) {
           setResults({ success: successCount, failed: failedCount, errors })
           setPreviewData(preview)
           setLoading(false)
-          toast.info(`SmartStack paused at record ${i + 1} of ${csvIds.length}`)
+          
+          const state: PersistedSmartStackState = {
+            csvIds,
+            csvFileName,
+            selectedEntity,
+            filters,
+            filterGroups,
+            groupLogic,
+            filterMode,
+            fieldUpdates,
+            dryRun,
+            currentIndex: i,
+            results: { success: successCount, failed: failedCount, errors },
+            previewData: preview,
+            progress: ((i) / csvIds.length) * 100,
+            conditionalAssociations,
+            useConditionalLogic,
+            timestamp: Date.now()
+          }
+          setPersistedState(() => state)
+          
+          toast.info(`SmartStack paused at record ${i + 1} of ${csvIds.length}. Progress saved - safe to refresh page.`)
           onLog(
             'SmartStack Paused',
             'success',
@@ -625,6 +710,9 @@ export function SmartStack({ onLog }: SmartStackProps) {
       )
     } finally {
       setLoading(false)
+      setExecutionState('idle')
+      setCurrentIndex(0)
+      deletePersistedState()
     }
   }
 
@@ -688,7 +776,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
       )
     }
   }
-
+  
   const resetStack = () => {
     setCsvIds([])
     setCsvFileName('')
@@ -706,6 +794,31 @@ export function SmartStack({ onLog }: SmartStackProps) {
 
   return (
     <div className="space-y-6">
+      {showRestorePrompt && persistedState && (
+        <Card className="border-accent bg-accent/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-accent">
+              <Play className="text-accent" size={24} />
+              Resume Paused SmartStack
+            </CardTitle>
+            <CardDescription>
+              Found a paused SmartStack operation from {new Date(persistedState.timestamp).toLocaleString()} - 
+              {' '}{persistedState.currentIndex} of {persistedState.csvIds.length} records processed 
+              ({Math.round((persistedState.currentIndex / persistedState.csvIds.length) * 100)}% complete)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex gap-3">
+            <Button onClick={restorePersistedState} className="flex-1">
+              <Play />
+              Resume SmartStack
+            </Button>
+            <Button onClick={discardPersistedState} variant="outline">
+              Discard
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+      
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

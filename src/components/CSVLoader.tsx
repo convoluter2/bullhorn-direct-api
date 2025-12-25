@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,6 +33,20 @@ interface ImportResult {
   data?: any
 }
 
+interface PersistedImportState {
+  entity: string
+  csvData: { headers: string[]; rows: string[][] }
+  mappings: CSVMapping[]
+  lookupField: string
+  updateExisting: boolean
+  createNew: boolean
+  dryRun: boolean
+  currentIndex: number
+  results: ImportResult[]
+  progress: number
+  timestamp: number
+}
+
 export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [entity, setEntity] = useState('')
   const [csvData, setCsvData] = useState<{ headers: string[]; rows: string[][] } | null>(null)
@@ -54,11 +68,50 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     shouldPause: false,
     shouldStop: false
   })
+  
+  const [persistedState, setPersistedState, deletePersistedState] = useKV<PersistedImportState | null>('csv-import-paused-state', null)
+  const [showRestorePrompt, setShowRestorePrompt] = useState(false)
 
   const { entities, loading: entitiesLoading, refresh: refreshEntities, addEntity } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
   
   const availableFields = metadata?.fields || []
+  
+  useEffect(() => {
+    if (persistedState && !csvData) {
+      const ageInMinutes = (Date.now() - persistedState.timestamp) / 1000 / 60
+      if (ageInMinutes < 1440) {
+        setShowRestorePrompt(true)
+      } else {
+        deletePersistedState()
+      }
+    }
+  }, [persistedState, csvData, deletePersistedState])
+  
+  const restorePersistedState = () => {
+    if (!persistedState) return
+    
+    setEntity(persistedState.entity)
+    setCsvData(persistedState.csvData)
+    setMappings(persistedState.mappings)
+    setLookupField(persistedState.lookupField)
+    setUpdateExisting(persistedState.updateExisting)
+    setCreateNew(persistedState.createNew)
+    setDryRun(persistedState.dryRun)
+    setCurrentIndex(persistedState.currentIndex)
+    setResults(persistedState.results)
+    setProgress(persistedState.progress)
+    setExecutionState('paused')
+    setShowRestorePrompt(false)
+    
+    toast.success(`Restored paused import: ${persistedState.currentIndex} of ${persistedState.csvData.rows.length} rows processed`)
+  }
+  
+  const discardPersistedState = () => {
+    deletePersistedState()
+    setShowRestorePrompt(false)
+    toast.info('Discarded paused import')
+  }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -120,6 +173,26 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     executionControlRef.current.shouldPause = true
     setExecutionState('paused')
     toast.info('Pausing after current record completes...')
+  }
+  
+  const saveProgressState = () => {
+    if (!csvData || !entity) return
+    
+    const state: PersistedImportState = {
+      entity,
+      csvData,
+      mappings,
+      lookupField,
+      updateExisting,
+      createNew,
+      dryRun,
+      currentIndex,
+      results,
+      progress,
+      timestamp: Date.now()
+    }
+    
+    setPersistedState(() => state)
   }
 
   const handleResume = () => {
@@ -204,6 +277,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       if (executionControlRef.current.shouldStop) {
         setExecutionState('stopped')
         setLoading(false)
+        deletePersistedState()
         toast.warning(`Import stopped at row ${i + 1} of ${csvData.rows.length}`)
         onLog(
           'CSV Import Stopped',
@@ -218,7 +292,23 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         setCurrentIndex(i)
         setResults(importResults)
         setLoading(false)
-        toast.info(`Import paused at row ${i + 1} of ${csvData.rows.length}`)
+        
+        const state: PersistedImportState = {
+          entity,
+          csvData,
+          mappings,
+          lookupField,
+          updateExisting,
+          createNew,
+          dryRun,
+          currentIndex: i,
+          results: importResults,
+          progress: ((i) / csvData.rows.length) * 100,
+          timestamp: Date.now()
+        }
+        setPersistedState(() => state)
+        
+        toast.info(`Import paused at row ${i + 1} of ${csvData.rows.length}. Progress saved - safe to refresh page.`)
         onLog(
           'CSV Import Paused',
           'success',
@@ -617,6 +707,8 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     setLoading(false)
     setExecutionState('idle')
     setCurrentIndex(0)
+    
+    deletePersistedState()
 
     if (!dryRun && snapshotUpdates.length > 0) {
       const snapshot: UpdateSnapshot = {
@@ -732,6 +824,31 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
 
   return (
     <div className="space-y-6">
+      {showRestorePrompt && persistedState && (
+        <Card className="border-accent bg-accent/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-accent">
+              <Play className="text-accent" size={24} />
+              Resume Paused Import
+            </CardTitle>
+            <CardDescription>
+              Found a paused import from {new Date(persistedState.timestamp).toLocaleString()} - 
+              {' '}{persistedState.currentIndex} of {persistedState.csvData.rows.length} rows processed 
+              ({Math.round((persistedState.currentIndex / persistedState.csvData.rows.length) * 100)}% complete)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex gap-3">
+            <Button onClick={restorePersistedState} className="flex-1">
+              <Play />
+              Resume Import
+            </Button>
+            <Button onClick={discardPersistedState} variant="outline">
+              Discard
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+      
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
