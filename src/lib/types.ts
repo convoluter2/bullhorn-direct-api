@@ -134,3 +134,14 @@ export interface UpdateSnapshot {
     newValues: Record<string, any>
   }>
 }
+
+export type ExecutionState = 'idle' | 'running' | 'paused' | 'stopping' | 'stopped'
+
+export interface ExecutionControl {
+  state: ExecutionState
+  currentIndex: number
+  totalRecords: number
+  successCount: number
+  failedCount: number
+  canResume: boolean
+}

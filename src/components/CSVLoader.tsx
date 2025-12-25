@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye, ArrowsClockwise, ArrowCounterClockwise } from '@phosphor-icons/react'
+import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye, ArrowsClockwise, ArrowCounterClockwise, Pause, Play, Stop } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV } from '@/lib/csv-utils'
@@ -19,7 +19,7 @@ import { formatFieldLabel } from '@/lib/utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
-import type { CSVMapping, UpdateSnapshot } from '@/lib/types'
+import type { CSVMapping, UpdateSnapshot, ExecutionState } from '@/lib/types'
 
 interface CSVLoaderProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -47,6 +47,13 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [manualEntityDialogOpen, setManualEntityDialogOpen] = useState(false)
   const [snapshots, setSnapshots] = useKV<UpdateSnapshot[]>('csv-import-snapshots', [])
   const [lastSnapshotId, setLastSnapshotId] = useState<string | null>(null)
+  
+  const [executionState, setExecutionState] = useState<ExecutionState>('idle')
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const executionControlRef = useRef<{ shouldPause: boolean; shouldStop: boolean }>({
+    shouldPause: false,
+    shouldStop: false
+  })
 
   const { entities, loading: entitiesLoading, refresh: refreshEntities, addEntity } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
@@ -109,7 +116,25 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     }
   }
 
-  const executeImport = async () => {
+  const handlePause = () => {
+    executionControlRef.current.shouldPause = true
+    setExecutionState('paused')
+    toast.info('Pausing after current record completes...')
+  }
+
+  const handleResume = () => {
+    executionControlRef.current.shouldPause = false
+    setExecutionState('running')
+    executeImport(true)
+  }
+
+  const handleStop = () => {
+    executionControlRef.current.shouldStop = true
+    setExecutionState('stopping')
+    toast.info('Stopping after current record completes...')
+  }
+
+  const executeImport = async (isResume: boolean = false) => {
     if (!csvData || !entity) {
       toast.error('Please upload a CSV and select an entity')
       return
@@ -134,16 +159,26 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       return
     }
 
+    if (!isResume) {
+      setCurrentIndex(0)
+      setResults([])
+      executionControlRef.current = { shouldPause: false, shouldStop: false }
+    }
+    
+    setExecutionState('running')
     setLoading(true)
-    setProgress(0)
-    const importResults: ImportResult[] = []
+    if (!isResume) {
+      setProgress(0)
+    }
+    
+    const importResults: ImportResult[] = isResume ? [...results] : []
     const errorDetails: string[] = []
 
-    let successCount = 0
-    let errorCount = 0
-    let createdCount = 0
-    let updatedCount = 0
-    let skippedCount = 0
+    let successCount = isResume ? results.filter(r => r.status === 'success').length : 0
+    let errorCount = isResume ? results.filter(r => r.status === 'error').length : 0
+    let createdCount = isResume ? results.filter(r => r.action === 'created').length : 0
+    let updatedCount = isResume ? results.filter(r => r.action === 'updated').length : 0
+    let skippedCount = isResume ? results.filter(r => r.action === 'skipped').length : 0
 
     const snapshotUpdates: Array<{
       entityId: number
@@ -163,7 +198,37 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       }>
     }> = []
 
-    for (let i = 0; i < csvData.rows.length; i++) {
+    const startIndex = isResume ? currentIndex : 0
+
+    for (let i = startIndex; i < csvData.rows.length; i++) {
+      if (executionControlRef.current.shouldStop) {
+        setExecutionState('stopped')
+        setLoading(false)
+        toast.warning(`Import stopped at row ${i + 1} of ${csvData.rows.length}`)
+        onLog(
+          'CSV Import Stopped',
+          'success',
+          `Stopped at row ${i + 1}: ${successCount} success, ${errorCount} errors`,
+          { entity, currentRow: i + 1, totalRows: csvData.rows.length }
+        )
+        return
+      }
+
+      if (executionControlRef.current.shouldPause) {
+        setCurrentIndex(i)
+        setResults(importResults)
+        setLoading(false)
+        toast.info(`Import paused at row ${i + 1} of ${csvData.rows.length}`)
+        onLog(
+          'CSV Import Paused',
+          'success',
+          `Paused at row ${i + 1}: ${successCount} success, ${errorCount} errors`,
+          { entity, currentRow: i + 1, totalRows: csvData.rows.length }
+        )
+        return
+      }
+
+      setCurrentIndex(i + 1)
       const row = csvData.rows[i]
       let existingRecord: any = null
       let data: any = {}
@@ -545,10 +610,13 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       }
 
       setProgress(((i + 1) / csvData.rows.length) * 100)
+      setResults([...importResults])
     }
 
     setResults(importResults)
     setLoading(false)
+    setExecutionState('idle')
+    setCurrentIndex(0)
 
     if (!dryRun && snapshotUpdates.length > 0) {
       const snapshot: UpdateSnapshot = {
@@ -907,15 +975,68 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               </div>
 
               <div className="flex gap-2 pt-2">
-                <Button
-                  onClick={executeImport}
-                  disabled={loading || mappings.filter(m => m.bullhornField && m.bullhornField !== '__skip__').length === 0}
-                  className="flex-1"
-                  variant={dryRun ? "secondary" : "default"}
-                >
-                  {dryRun ? <Eye /> : <Lightning />}
-                  {loading ? (dryRun ? 'Previewing...' : 'Importing...') : dryRun ? 'Preview Import' : (lookupField && lookupField !== '__none__') ? 'Start Import/Update' : 'Start Import'}
-                </Button>
+                {executionState === 'idle' || executionState === 'stopped' ? (
+                  <Button
+                    onClick={() => executeImport(false)}
+                    disabled={loading || mappings.filter(m => m.bullhornField && m.bullhornField !== '__skip__').length === 0}
+                    className="flex-1"
+                    variant={dryRun ? "secondary" : "default"}
+                  >
+                    {dryRun ? <Eye /> : <Lightning />}
+                    {loading ? (dryRun ? 'Previewing...' : 'Importing...') : dryRun ? 'Preview Import' : (lookupField && lookupField !== '__none__') ? 'Start Import/Update' : 'Start Import'}
+                  </Button>
+                ) : null}
+                
+                {executionState === 'running' && (
+                  <>
+                    <Button
+                      onClick={handlePause}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      <Pause />
+                      Pause
+                    </Button>
+                    <Button
+                      onClick={handleStop}
+                      variant="destructive"
+                    >
+                      <Stop />
+                      Stop
+                    </Button>
+                  </>
+                )}
+                
+                {executionState === 'paused' && (
+                  <>
+                    <Button
+                      onClick={handleResume}
+                      variant="default"
+                      className="flex-1"
+                    >
+                      <Play />
+                      Resume ({currentIndex} / {csvData?.rows.length || 0})
+                    </Button>
+                    <Button
+                      onClick={handleStop}
+                      variant="destructive"
+                    >
+                      <Stop />
+                      Stop
+                    </Button>
+                  </>
+                )}
+                
+                {executionState === 'stopping' && (
+                  <Button
+                    disabled
+                    variant="destructive"
+                    className="flex-1"
+                  >
+                    <Stop />
+                    Stopping...
+                  </Button>
+                )}
               </div>
 
               {loading && (

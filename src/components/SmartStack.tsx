@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Eye, ArrowCounterClockwise, ListBullets, TreeStructure } from '@phosphor-icons/react'
+import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Eye, ArrowCounterClockwise, ListBullets, TreeStructure, Pause, Play, Stop } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV } from '@/lib/csv-utils'
@@ -26,7 +26,7 @@ import { ManualEntityDialog } from '@/components/ManualEntityDialog'
 import { ConditionalAssociationBuilder, type ConditionalAssociation } from '@/components/ConditionalAssociationBuilder'
 import { getAssociationsForRecord, mergeAssociationActions, describeAssociation } from '@/lib/conditional-logic'
 import { FilterGroupBuilder } from '@/components/FilterGroupBuilder'
-import type { QueryFilter, UpdateSnapshot, FilterGroup } from '@/lib/types'
+import type { QueryFilter, UpdateSnapshot, FilterGroup, ExecutionState } from '@/lib/types'
 
 interface SmartStackProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -71,6 +71,13 @@ export function SmartStack({ onLog }: SmartStackProps) {
   const [lastSnapshotId, setLastSnapshotId] = useState<string | null>(null)
   const [conditionalAssociations, setConditionalAssociations] = useState<ConditionalAssociation[]>([])
   const [useConditionalLogic, setUseConditionalLogic] = useState(false)
+  
+  const [executionState, setExecutionState] = useState<ExecutionState>('idle')
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const executionControlRef = useRef<{ shouldPause: boolean; shouldStop: boolean }>({
+    shouldPause: false,
+    shouldStop: false
+  })
 
   const { entities, loading: entitiesLoading, refresh: refreshEntities, addEntity } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(selectedEntity || undefined)
@@ -158,7 +165,25 @@ export function SmartStack({ onLog }: SmartStackProps) {
     ))
   }
 
-  const executeSmartStack = async () => {
+  const handlePause = () => {
+    executionControlRef.current.shouldPause = true
+    setExecutionState('paused')
+    toast.info('Pausing after current record completes...')
+  }
+
+  const handleResume = () => {
+    executionControlRef.current.shouldPause = false
+    setExecutionState('running')
+    executeSmartStack(true)
+  }
+
+  const handleStop = () => {
+    executionControlRef.current.shouldStop = true
+    setExecutionState('stopping')
+    toast.info('Stopping after current record completes...')
+  }
+
+  const executeSmartStack = async (isResume: boolean = false) => {
     if (csvIds.length === 0) {
       toast.error('Please upload a CSV file with IDs')
       return
@@ -180,17 +205,25 @@ export function SmartStack({ onLog }: SmartStackProps) {
       return
     }
 
+    if (!isResume) {
+      setCurrentIndex(0)
+      setPreviewData([])
+      setShowPreview(false)
+      executionControlRef.current = { shouldPause: false, shouldStop: false }
+    }
+    
+    setExecutionState('running')
     setLoading(true)
-    setProgress(0)
-    setResults({ success: 0, failed: 0, errors: [] })
-    setPreviewData([])
-    setShowPreview(false)
+    if (!isResume) {
+      setProgress(0)
+      setResults({ success: 0, failed: 0, errors: [] })
+    }
 
     const startTime = Date.now()
-    let successCount = 0
-    let failedCount = 0
-    const errors: string[] = []
-    const preview: PreviewRecord[] = []
+    let successCount = isResume ? results.success : 0
+    let failedCount = isResume ? results.failed : 0
+    const errors: string[] = isResume ? [...results.errors] : []
+    const preview: PreviewRecord[] = isResume ? [...previewData] : []
     const snapshotUpdates: Array<{
       entityId: number
       previousValues: Record<string, any>
@@ -216,7 +249,38 @@ export function SmartStack({ onLog }: SmartStackProps) {
         ...fieldUpdates.map(u => u.field)
       ]))
 
-      for (let i = 0; i < csvIds.length; i++) {
+      const startIndex = isResume ? currentIndex : 0
+
+      for (let i = startIndex; i < csvIds.length; i++) {
+        if (executionControlRef.current.shouldStop) {
+          setExecutionState('stopped')
+          setLoading(false)
+          toast.warning(`SmartStack stopped at record ${i + 1} of ${csvIds.length}`)
+          onLog(
+            'SmartStack Stopped',
+            'success',
+            `Stopped at record ${i + 1}: ${successCount} success, ${failedCount} failed`,
+            { entity: selectedEntity, currentRecord: i + 1, totalRecords: csvIds.length }
+          )
+          return
+        }
+
+        if (executionControlRef.current.shouldPause) {
+          setCurrentIndex(i)
+          setResults({ success: successCount, failed: failedCount, errors })
+          setPreviewData(preview)
+          setLoading(false)
+          toast.info(`SmartStack paused at record ${i + 1} of ${csvIds.length}`)
+          onLog(
+            'SmartStack Paused',
+            'success',
+            `Paused at record ${i + 1}: ${successCount} success, ${failedCount} failed`,
+            { entity: selectedEntity, currentRecord: i + 1, totalRecords: csvIds.length }
+          )
+          return
+        }
+
+        setCurrentIndex(i + 1)
         const id = csvIds[i]
         const numericId = parseInt(id)
 
@@ -486,6 +550,9 @@ export function SmartStack({ onLog }: SmartStackProps) {
       }
 
       const duration = Date.now() - startTime
+      
+      setExecutionState('idle')
+      setCurrentIndex(0)
 
       if (dryRun) {
         setPreviewData(preview)
@@ -988,38 +1055,98 @@ export function SmartStack({ onLog }: SmartStackProps) {
             <Separator />
 
             <div className="flex gap-2">
-              <Button
-                onClick={executeSmartStack}
-                disabled={loading || csvIds.length === 0 || !selectedEntity || fieldUpdates.length === 0}
-                className="flex-1"
-                size="lg"
-                variant={dryRun ? "secondary" : "default"}
-              >
-                {loading ? (
-                  <>
-                    <ArrowsClockwise className="animate-spin" />
-                    {dryRun ? 'Previewing...' : 'Processing...'}
-                  </>
-                ) : dryRun ? (
-                  <>
-                    <Eye />
-                    Preview Changes
-                  </>
-                ) : (
-                  <>
-                    <Lightning />
-                    Execute SmartStack
-                  </>
-                )}
-              </Button>
-              <Button
-                onClick={resetStack}
-                variant="outline"
-                disabled={loading}
-                size="lg"
-              >
-                Reset
-              </Button>
+              {executionState === 'idle' || executionState === 'stopped' ? (
+                <>
+                  <Button
+                    onClick={() => executeSmartStack(false)}
+                    disabled={loading || csvIds.length === 0 || !selectedEntity || fieldUpdates.length === 0}
+                    className="flex-1"
+                    size="lg"
+                    variant={dryRun ? "secondary" : "default"}
+                  >
+                    {loading ? (
+                      <>
+                        <ArrowsClockwise className="animate-spin" />
+                        {dryRun ? 'Previewing...' : 'Processing...'}
+                      </>
+                    ) : dryRun ? (
+                      <>
+                        <Eye />
+                        Preview Changes
+                      </>
+                    ) : (
+                      <>
+                        <Lightning />
+                        Execute SmartStack
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={resetStack}
+                    variant="outline"
+                    disabled={loading}
+                    size="lg"
+                  >
+                    Reset
+                  </Button>
+                </>
+              ) : null}
+              
+              {executionState === 'running' && (
+                <>
+                  <Button
+                    onClick={handlePause}
+                    variant="outline"
+                    size="lg"
+                    className="flex-1"
+                  >
+                    <Pause />
+                    Pause
+                  </Button>
+                  <Button
+                    onClick={handleStop}
+                    variant="destructive"
+                    size="lg"
+                  >
+                    <Stop />
+                    Stop
+                  </Button>
+                </>
+              )}
+              
+              {executionState === 'paused' && (
+                <>
+                  <Button
+                    onClick={handleResume}
+                    variant="default"
+                    size="lg"
+                    className="flex-1"
+                  >
+                    <Play />
+                    Resume ({currentIndex} / {csvIds.length})
+                  </Button>
+                  <Button
+                    onClick={handleStop}
+                    variant="destructive"
+                    size="lg"
+                  >
+                    <Stop />
+                    Stop
+                  </Button>
+                </>
+              )}
+              
+              {executionState === 'stopping' && (
+                <Button
+                  disabled
+                  variant="destructive"
+                  size="lg"
+                  className="flex-1"
+                >
+                  <Stop />
+                  Stopping...
+                </Button>
+              )}
             </div>
 
             {loading && (
