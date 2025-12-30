@@ -378,22 +378,43 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
 
         if (lookupField && lookupField !== '__none__' && lookupValue) {
           try {
-            const searchResult = await bullhornAPI.search({
-              entity,
-              fields: ['id', ...validMappings.map(m => m.bullhornField)],
-              filters: [{
-                field: lookupField,
-                operator: 'equals',
-                value: lookupValue
-              }],
-              count: 1
-            })
+            if (lookupField.toLowerCase() === 'id') {
+              const recordId = parseInt(lookupValue, 10)
+              if (!isNaN(recordId)) {
+                console.log(`🔍 CSV Loader - Looking up ${entity} by ID: ${recordId}`)
+                const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f !== 'id')]
+                const record = await bullhornAPI.getEntity(entity, recordId, fieldsToFetch)
+                if (record && record.id) {
+                  console.log(`✅ CSV Loader - Found ${entity} record:`, record.id)
+                  existingRecord = record
+                } else {
+                  console.log(`❌ CSV Loader - No ${entity} record found with ID: ${recordId}`)
+                }
+              } else {
+                console.warn(`⚠️ CSV Loader - Invalid ID value for lookup: ${lookupValue}`)
+              }
+            } else {
+              console.log(`🔍 CSV Loader - Looking up ${entity} by ${lookupField}: ${lookupValue}`)
+              const searchResult = await bullhornAPI.search({
+                entity,
+                fields: ['id', ...validMappings.map(m => m.bullhornField)],
+                filters: [{
+                  field: lookupField,
+                  operator: 'equals',
+                  value: lookupValue
+                }],
+                count: 1
+              })
 
-            if (searchResult.data && searchResult.data.length > 0) {
-              existingRecord = searchResult.data[0]
+              if (searchResult.data && searchResult.data.length > 0) {
+                console.log(`✅ CSV Loader - Found ${entity} record:`, searchResult.data[0].id)
+                existingRecord = searchResult.data[0]
+              } else {
+                console.log(`❌ CSV Loader - No ${entity} record found with ${lookupField}: ${lookupValue}`)
+              }
             }
           } catch (lookupError) {
-            console.warn(`Lookup failed for ${lookupField}=${lookupValue}:`, lookupError)
+            console.warn(`❌ CSV Loader - Lookup failed for ${lookupField}=${lookupValue}:`, lookupError)
           }
         }
 

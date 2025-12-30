@@ -814,6 +814,13 @@ export class BullhornAPI {
       throw new Error('Not authenticated')
     }
 
+    console.log(`🔍 Fetching ${entity} entity by ID:`, {
+      id,
+      fields: fields.join(','),
+      restUrl: this.session.restUrl,
+      corporationId: this.session.corporationId
+    })
+
     const params = new URLSearchParams({
       fields: fields.join(','),
       BhRestToken: this.session.BhRestToken
@@ -827,10 +834,13 @@ export class BullhornAPI {
 
     if (!response.ok) {
       const error = await response.text()
+      console.error(`❌ Get entity failed for ${entity}/${id}:`, error)
       throw new Error(`Get entity failed: ${error}`)
     }
 
-    return await response.json()
+    const result = await response.json()
+    console.log(`✅ Successfully fetched ${entity}/${id}:`, result)
+    return result
   }
 
   async createEntity(entity: string, data: any, expectedCorporationId?: number): Promise<any> {
