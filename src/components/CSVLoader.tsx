@@ -19,6 +19,7 @@ import { formatFieldLabel } from '@/lib/utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
+import { LookupFieldSelector } from '@/components/LookupFieldSelector'
 import type { CSVMapping, UpdateSnapshot, ExecutionState } from '@/lib/types'
 
 interface CSVLoaderProps {
@@ -954,32 +955,21 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                 </div>
               )}
               <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border">
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <MagnifyingGlass size={16} />
-                    Lookup Field (for updates)
-                  </Label>
-                  {metadataLoading ? (
+                {metadataLoading ? (
+                  <div className="space-y-2">
+                    <Label>Lookup Field (for updates)</Label>
                     <Skeleton className="h-10 w-full" />
-                  ) : (
-                    <Select value={lookupField || undefined} onValueChange={setLookupField}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a field to lookup existing records" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">None (Create only)</SelectItem>
-                        {availableFields.map((field) => (
-                          <SelectItem key={field.name} value={field.name}>
-                            {formatFieldLabel(field.label, field.name)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    If specified, the loader will search for existing records using this field and update them
-                  </p>
-                </div>
+                  </div>
+                ) : (
+                  <LookupFieldSelector
+                    fields={availableFields}
+                    selectedField={lookupField || '__none__'}
+                    onSelectField={setLookupField}
+                    label="Lookup Field (for updates)"
+                    placeholder="Select a field to lookup existing records"
+                    showEndpointInfo={true}
+                  />
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-center justify-between space-x-2 p-3 rounded-md border bg-card">

@@ -3,8 +3,10 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { MagnifyingGlass, X } from '@phosphor-icons/react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { MagnifyingGlass, X, Database, CheckCircle } from '@phosphor-icons/react'
 import { formatFieldLabel } from '@/lib/utils'
+import { getFieldEndpointCapability } from '@/lib/field-endpoint-validator'
 import type { EntityField } from '@/hooks/use-entity-metadata'
 
 interface FieldSelectorProps {
@@ -13,6 +15,7 @@ interface FieldSelectorProps {
   onToggleField: (fieldName: string) => void
   label?: string
   placeholder?: string
+  showEndpointInfo?: boolean
 }
 
 export function FieldSelector({ 
@@ -20,21 +23,40 @@ export function FieldSelector({
   selectedFields, 
   onToggleField,
   label = 'Select Fields',
-  placeholder = 'Search fields...'
+  placeholder = 'Search fields...',
+  showEndpointInfo = false
 }: FieldSelectorProps) {
   const [searchTerm, setSearchTerm] = useState('')
 
+  const fieldsWithCapabilities = useMemo(() => {
+    return fields.map(field => ({
+      ...field,
+      capability: getFieldEndpointCapability(field.name, field.label, field.dataType)
+    }))
+  }, [fields])
+
   const filteredFields = useMemo(() => {
-    if (!searchTerm) return fields
+    if (!searchTerm) return fieldsWithCapabilities
     const term = searchTerm.toLowerCase()
-    return fields.filter(field => 
+    return fieldsWithCapabilities.filter(field => 
       field.name.toLowerCase().includes(term) || 
       field.label.toLowerCase().includes(term)
     )
-  }, [fields, searchTerm])
+  }, [fieldsWithCapabilities, searchTerm])
 
-  const getFieldDisplayLabel = (field: EntityField) => {
+  const getFieldDisplayLabel = (field: EntityField & { capability?: ReturnType<typeof getFieldEndpointCapability> }) => {
     return formatFieldLabel(field.label, field.name)
+  }
+
+  const getEndpointIcon = (capability: ReturnType<typeof getFieldEndpointCapability>) => {
+    if (capability.recommendation === 'search') {
+      return <MagnifyingGlass size={10} className="text-blue-500" />
+    } else if (capability.recommendation === 'entity') {
+      return <Database size={10} className="text-green-500" />
+    } else if (capability.recommendation === 'both') {
+      return <CheckCircle size={10} className="text-purple-500" />
+    }
+    return null
   }
 
   const hasSearch = fields.length > 15
@@ -87,14 +109,41 @@ export function FieldSelector({
             </p>
           ) : (
             filteredFields.map((field) => (
-              <Badge
-                key={field.name}
-                variant={selectedFields.includes(field.name) ? 'default' : 'outline'}
-                className="cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
-                onClick={() => onToggleField(field.name)}
-              >
-                {getFieldDisplayLabel(field)}
-              </Badge>
+              <TooltipProvider key={field.name}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge
+                      variant={selectedFields.includes(field.name) ? 'default' : 'outline'}
+                      className="cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors flex items-center gap-1.5"
+                      onClick={() => onToggleField(field.name)}
+                    >
+                      {showEndpointInfo && field.capability && getEndpointIcon(field.capability)}
+                      {getFieldDisplayLabel(field)}
+                    </Badge>
+                  </TooltipTrigger>
+                  {showEndpointInfo && field.capability && (
+                    <TooltipContent side="top" className="max-w-xs">
+                      <div className="space-y-1">
+                        <p className="font-semibold text-xs">Endpoint Support:</p>
+                        <div className="flex gap-2 text-xs">
+                          <span className={field.capability.searchSupported ? 'text-green-400' : 'text-red-400 line-through'}>
+                            Search
+                          </span>
+                          <span className="text-muted-foreground">•</span>
+                          <span className={field.capability.entitySupported ? 'text-green-400' : 'text-red-400 line-through'}>
+                            Entity
+                          </span>
+                        </div>
+                        {field.capability.notes && (
+                          <p className="text-xs text-muted-foreground italic mt-1">
+                            {field.capability.notes}
+                          </p>
+                        )}
+                      </div>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
             ))
           )}
         </div>
