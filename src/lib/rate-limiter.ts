@@ -18,8 +18,8 @@ export class BullhornRateLimiter {
   private requestQueue: QueuedRequest[] = []
   private isProcessing = false
   private requestsInProgress = 0
-  private maxConcurrentRequests = 10
-  private minDelayBetweenRequests = 40
+  private maxConcurrentRequests = 20
+  private minDelayBetweenRequests = 0
   private lastRequestTime = 0
   private consecutiveErrors = 0
   private backoffMultiplier = 1
@@ -282,7 +282,7 @@ export class BullhornRateLimiter {
   }
 
   setMaxConcurrentRequests(max: number): void {
-    this.maxConcurrentRequests = Math.max(1, Math.min(20, max))
+    this.maxConcurrentRequests = Math.max(1, Math.min(30, max))
     console.log(`⚙️ Max concurrent requests set to ${this.maxConcurrentRequests}`)
   }
 
@@ -310,13 +310,13 @@ export class BullhornRateLimiter {
     )
     
     const baseMinDelay = Math.floor(60000 / effectiveCallsPerMinute)
-    this.minDelayBetweenRequests = Math.max(20, baseMinDelay)
+    this.minDelayBetweenRequests = Math.max(0, baseMinDelay)
     
     const baseConcurrency = Math.max(
-      5,
-      Math.ceil(effectiveCallsPerMinute / 150)
+      10,
+      Math.ceil(effectiveCallsPerMinute / 100)
     )
-    this.maxConcurrentRequests = Math.max(5, Math.min(20, baseConcurrency))
+    this.maxConcurrentRequests = Math.max(10, Math.min(30, baseConcurrency))
     
     console.log(`📊 Speed settings updated:`, {
       targetCPM: this.targetCallsPerMinute,
@@ -324,7 +324,7 @@ export class BullhornRateLimiter {
       effectiveCPM: Math.round(effectiveCallsPerMinute),
       minDelay: this.minDelayBetweenRequests,
       maxConcurrent: this.maxConcurrentRequests,
-      theoreticalMaxCPM: Math.round(60000 / this.minDelayBetweenRequests * this.maxConcurrentRequests)
+      theoreticalMaxCPM: Math.round(60000 / Math.max(1, this.minDelayBetweenRequests) * this.maxConcurrentRequests)
     })
   }
 
