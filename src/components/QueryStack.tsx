@@ -16,11 +16,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Stack, Plus, Trash, Lightning, MagnifyingGlass, 
   ArrowsClockwise, Eye, ArrowCounterClockwise, 
-  ListBullets, TreeStructure 
+  ListBullets, TreeStructure, DownloadSimple 
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { formatFieldLabel } from '@/lib/utils'
+import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { ValidatedFieldInput } from '@/components/ValidatedFieldInput'
@@ -913,6 +914,42 @@ export function QueryStack({ onLog }: QueryStackProps) {
                                 <Button
                                   size="sm"
                                   variant="outline"
+                                  onClick={() => {
+                                    try {
+                                      exportToCSV(queryResults, `querystack_results_${Date.now()}.csv`)
+                                      toast.success(`Exported ${queryResults.length} query results to CSV`)
+                                      onLog('Export', 'success', `Exported ${queryResults.length} query results to CSV`, { count: queryResults.length })
+                                    } catch (error) {
+                                      console.error('CSV export error:', error)
+                                      toast.error(`Failed to export CSV: ${error}`)
+                                      onLog('Export', 'error', `CSV export failed`, { error: String(error) })
+                                    }
+                                  }}
+                                >
+                                  <DownloadSimple size={16} />
+                                  CSV
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    try {
+                                      exportToJSON(queryResults, `querystack_results_${Date.now()}.json`)
+                                      toast.success(`Exported ${queryResults.length} query results to JSON`)
+                                      onLog('Export', 'success', `Exported ${queryResults.length} query results to JSON`, { count: queryResults.length })
+                                    } catch (error) {
+                                      console.error('JSON export error:', error)
+                                      toast.error(`Failed to export JSON: ${error}`)
+                                      onLog('Export', 'error', `JSON export failed`, { error: String(error) })
+                                    }
+                                  }}
+                                >
+                                  <DownloadSimple size={16} />
+                                  JSON
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
                                   onClick={() => setShowQueryPreview(!showQueryPreview)}
                                 >
                                   <Eye size={16} />
@@ -1332,10 +1369,52 @@ export function QueryStack({ onLog }: QueryStackProps) {
                 {showPreview && previewData.length > 0 && (
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg">Preview Results</CardTitle>
-                      <CardDescription>
-                        Showing what would change if executed
-                      </CardDescription>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-lg">Preview Results</CardTitle>
+                          <CardDescription>
+                            Showing what would change if executed
+                          </CardDescription>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => {
+                              try {
+                                exportToCSV(previewData, `querystack_preview_${Date.now()}.csv`)
+                                toast.success(`Exported ${previewData.length} preview records to CSV`)
+                                onLog('Export', 'success', `Exported ${previewData.length} preview records to CSV`, { count: previewData.length })
+                              } catch (error) {
+                                console.error('CSV export error:', error)
+                                toast.error(`Failed to export CSV: ${error}`)
+                                onLog('Export', 'error', `CSV export failed`, { error: String(error) })
+                              }
+                            }}
+                          >
+                            <DownloadSimple />
+                            Export CSV
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => {
+                              try {
+                                exportToJSON(previewData, `querystack_preview_${Date.now()}.json`)
+                                toast.success(`Exported ${previewData.length} preview records to JSON`)
+                                onLog('Export', 'success', `Exported ${previewData.length} preview records to JSON`, { count: previewData.length })
+                              } catch (error) {
+                                console.error('JSON export error:', error)
+                                toast.error(`Failed to export JSON: ${error}`)
+                                onLog('Export', 'error', `JSON export failed`, { error: String(error) })
+                              }
+                            }}
+                          >
+                            <DownloadSimple />
+                            Export JSON
+                          </Button>
+                        </div>
+                      </div>
                     </CardHeader>
                     <CardContent>
                       <ScrollArea className="h-[400px]">

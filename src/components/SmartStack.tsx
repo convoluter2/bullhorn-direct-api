@@ -13,10 +13,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Eye, ArrowCounterClockwise, ListBullets, TreeStructure, Pause, Play, Stop } from '@phosphor-icons/react'
+import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Eye, ArrowCounterClockwise, ListBullets, TreeStructure, Pause, Play, Stop, DownloadSimple } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import { parseCSV } from '@/lib/csv-utils'
+import { parseCSV, exportToCSV, exportToJSON } from '@/lib/csv-utils'
 import { formatFieldLabel } from '@/lib/utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
@@ -1317,10 +1317,52 @@ export function SmartStack({ onLog }: SmartStackProps) {
             {showPreview && previewData.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Preview Results</CardTitle>
-                  <CardDescription>
-                    Showing what would change if executed
-                  </CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg">Preview Results</CardTitle>
+                      <CardDescription>
+                        Showing what would change if executed
+                      </CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => {
+                          try {
+                            exportToCSV(previewData, `smartstack_preview_${Date.now()}.csv`)
+                            toast.success(`Exported ${previewData.length} preview records to CSV`)
+                            onLog('Export', 'success', `Exported ${previewData.length} preview records to CSV`, { count: previewData.length })
+                          } catch (error) {
+                            console.error('CSV export error:', error)
+                            toast.error(`Failed to export CSV: ${error}`)
+                            onLog('Export', 'error', `CSV export failed`, { error: String(error) })
+                          }
+                        }}
+                      >
+                        <DownloadSimple />
+                        Export CSV
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => {
+                          try {
+                            exportToJSON(previewData, `smartstack_preview_${Date.now()}.json`)
+                            toast.success(`Exported ${previewData.length} preview records to JSON`)
+                            onLog('Export', 'success', `Exported ${previewData.length} preview records to JSON`, { count: previewData.length })
+                          } catch (error) {
+                            console.error('JSON export error:', error)
+                            toast.error(`Failed to export JSON: ${error}`)
+                            onLog('Export', 'error', `JSON export failed`, { error: String(error) })
+                          }
+                        }}
+                      >
+                        <DownloadSimple />
+                        Export JSON
+                      </Button>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-[400px]">

@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -10,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { MagnifyingGlass, Plus, Trash, Lightning, DownloadSimple, X, CaretLeft, CaretRight, ArrowsClockwise, ListBullets, TreeStructure, FloppyDisk, PencilSimple, Warning } from '@phosphor-icons/react'
+import { MagnifyingGlass, Plus, Trash, Lightning, DownloadSimple, X, CaretLeft, CaretRight, ArrowsClockwise, ListBullets, TreeStructure, FloppyDisk, PencilSimple, Warning, Pause, Play, Stop } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
@@ -21,7 +22,9 @@ import { FieldSelector } from '@/components/FieldSelector'
 import { ValidatedFieldInput } from '@/components/ValidatedFieldInput'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
 import { FilterGroupBuilder } from '@/components/FilterGroupBuilder'
-import type { QueryFilter, QueryConfig, FilterGroup } from '@/lib/types'
+import { OperationProgressControls } from '@/components/OperationProgressControls'
+import { usePausableOperation } from '@/hooks/use-pausable-operation'
+import type { QueryFilter, QueryConfig, FilterGroup, ExecutionState } from '@/lib/types'
 
 interface QueryBlastProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -30,6 +33,16 @@ interface QueryBlastProps {
 interface FieldUpdate {
   field: string
   value: string
+}
+
+interface PersistedQueryBlastState {
+  entity: string
+  results: any[]
+  fieldUpdates: FieldUpdate[]
+  operationMode: 'update' | 'create'
+  currentIndex: number
+  processedResults: { success: number; failed: number; errors: any[] }
+  timestamp: number
 }
 
 export function QueryBlast({ onLog }: QueryBlastProps) {
@@ -53,6 +66,43 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
   const [fieldUpdates, setFieldUpdates] = useState<FieldUpdate[]>([])
   const [dryRunResults, setDryRunResults] = useState<any[] | null>(null)
   const [showDryRun, setShowDryRun] = useState(false)
+  
+  const [executionState, setExecutionState] = useState<ExecutionState>('idle')
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const pausableOp = usePausableOperation('queryblast-update', results.length, {
+    persistProgress: true
+  })
+  const [persistedState, setPersistedState, deletePersistedState] = useKV<PersistedQueryBlastState | null>('queryblast-paused-state', null)
+  const [showRestorePrompt, setShowRestorePrompt] = useState(false)
+  
+  useEffect(() => {
+    if (persistedState && !results.length && executionState === 'idle') {
+      const ageInMinutes = (Date.now() - persistedState.timestamp) / 1000 / 60
+      if (ageInMinutes < 1440) {
+        setShowRestorePrompt(true)
+      } else {
+        deletePersistedState()
+      }
+    }
+  }, [persistedState, results.length, executionState, deletePersistedState])
+  
+  const restorePersistedState = () => {
+    if (!persistedState) return
+    
+    setEntity(persistedState.entity)
+    setResults(persistedState.results)
+    setFieldUpdates(persistedState.fieldUpdates)
+    setOperationMode(persistedState.operationMode)
+    setCurrentIndex(persistedState.currentIndex)
+    setShowRestorePrompt(false)
+    
+    toast.success(`Restored paused operation with ${persistedState.results.length - persistedState.currentIndex} remaining records`)
+  }
+  
+  const dismissRestorePrompt = () => {
+    deletePersistedState()
+    setShowRestorePrompt(false)
+  }
 
   const { entities, loading: entitiesLoading, error: entitiesError, refresh: refreshEntities, addEntity } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
@@ -317,22 +367,31 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
     )
   }
 
-  const handleExecuteOperation = async () => {
+  const handleExecuteOperation = async (resumeFrom = 0) => {
     if (!dryRunResults || dryRunResults.length === 0) {
       toast.error('Please run a dry run first')
       return
     }
 
+    const isResume = resumeFrom > 0
     const confirmMessage = operationMode === 'create' 
       ? `Are you sure you want to CREATE 1 new ${entity} record?`
-      : `Are you sure you want to UPDATE ${results.length} ${entity} records? This action cannot be undone.`
+      : isResume
+        ? `Resume updating ${results.length - resumeFrom} remaining ${entity} records?`
+        : `Are you sure you want to UPDATE ${results.length} ${entity} records? This action cannot be undone.`
 
-    if (!confirm(confirmMessage)) {
+    if (!isResume && !confirm(confirmMessage)) {
       return
     }
 
+    setExecutionState('running')
     setLoading(true)
     const startTime = Date.now()
+    
+    if (!isResume) {
+      pausableOp.reset()
+      setCurrentIndex(0)
+    }
 
     try {
       const currentCorporationId = bullhornAPI.getCurrentCorporationId()
@@ -366,6 +425,9 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
         setDryRunResults(null)
         setShowDryRun(false)
         setFieldUpdates([])
+        setExecutionState('idle')
+        pausableOp.reset()
+        deletePersistedState()
       } else {
         const updateData: Record<string, any> = {}
         fieldUpdates.forEach(update => {
@@ -381,17 +443,43 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
           }
         })
 
-        let successCount = 0
-        let errorCount = 0
+        let successCount = pausableOp.progress.completed
+        let errorCount = pausableOp.progress.failed
         const errors: any[] = []
 
-        for (const record of results) {
+        for (let i = resumeFrom; i < results.length; i++) {
+          if (pausableOp.progress.isStopped) {
+            toast.info('Operation stopped by user')
+            break
+          }
+          
+          if (pausableOp.progress.isPaused) {
+            setPersistedState(() => ({
+              entity,
+              results,
+              fieldUpdates,
+              operationMode,
+              currentIndex: i,
+              processedResults: { success: successCount, failed: errorCount, errors },
+              timestamp: Date.now()
+            }))
+            toast.info(`Operation paused at record ${i + 1} of ${results.length}`)
+            setExecutionState('paused')
+            setLoading(false)
+            return
+          }
+
+          const record = results[i]
+          setCurrentIndex(i)
+          
           try {
             await bullhornAPI.updateEntity(entity, record.id, updateData, currentCorporationId)
             successCount++
+            pausableOp.updateProgress(successCount, errorCount)
           } catch (error) {
             errorCount++
             errors.push({ id: record.id, error: error instanceof Error ? error.message : 'Unknown error' })
+            pausableOp.updateProgress(successCount, errorCount)
           }
         }
 
@@ -417,6 +505,9 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
 
         setDryRunResults(null)
         setShowDryRun(false)
+        setExecutionState('idle')
+        pausableOp.reset()
+        deletePersistedState()
         
         executeQuery(currentStart)
       }
@@ -429,9 +520,29 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
         errorMessage,
         { entity, mode: operationMode }
       )
+      setExecutionState('idle')
     } finally {
-      setLoading(false)
+      if (executionState !== 'paused') {
+        setLoading(false)
+      }
     }
+  }
+  
+  const handlePauseOperation = () => {
+    pausableOp.pause()
+  }
+  
+  const handleResumeOperation = () => {
+    pausableOp.resume()
+    handleExecuteOperation(currentIndex)
+  }
+  
+  const handleStopOperation = () => {
+    pausableOp.stop()
+    setExecutionState('idle')
+    setLoading(false)
+    deletePersistedState()
+    toast.info('Operation stopped')
   }
 
   return (
@@ -803,9 +914,9 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                 Dry Run Preview
               </Button>
               
-              {showDryRun && dryRunResults && (
+              {showDryRun && dryRunResults && executionState === 'idle' && (
                 <Button 
-                  onClick={handleExecuteOperation} 
+                  onClick={() => handleExecuteOperation(0)} 
                   disabled={loading}
                   className="flex-1"
                 >
@@ -814,8 +925,43 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                 </Button>
               )}
             </div>
+            
+            {executionState !== 'idle' && operationMode === 'update' && (
+              <OperationProgressControls
+                progress={pausableOp.progress}
+                onPause={handlePauseOperation}
+                onResume={handleResumeOperation}
+                onStop={handleStopOperation}
+                operationName={`Updating ${entity} records`}
+                canResume={executionState === 'paused'}
+              />
+            )}
           </CardContent>
         </Card>
+      )}
+      
+      {showRestorePrompt && persistedState && (
+        <Alert className="border-accent">
+          <AlertDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <strong>Resume previous operation?</strong>
+                <p className="text-sm text-muted-foreground mt-1">
+                  You have a paused operation with {persistedState.results.length - persistedState.currentIndex} records remaining to process.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={restorePersistedState}>
+                  <Play />
+                  Resume
+                </Button>
+                <Button size="sm" variant="outline" onClick={dismissRestorePrompt}>
+                  Dismiss
+                </Button>
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
       )}
 
       {showDryRun && dryRunResults && (
