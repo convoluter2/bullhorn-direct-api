@@ -286,24 +286,270 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     }> = []
 
     const startIndex = isResume ? currentIndex : 0
+    const CONCURRENT_BATCH_SIZE = 100
 
-    for (let i = startIndex; i < csvData.rows.length; i++) {
+    const processRecord = async (i: number, row: string[]) => {
+      let existingRecord: any = null
+      let data: any = {}
+      
+      let lookupValue: string | null = null
+
+      if (lookupField && lookupField !== '__none__') {
+        const lookupMapping = mappings.find(m => m.bullhornField === lookupField)
+        if (lookupMapping) {
+          const csvIndex = csvData.headers.indexOf(lookupMapping.csvColumn)
+          if (csvIndex !== -1) {
+            const rawValue = row[csvIndex]
+            lookupValue = transformValue(rawValue, lookupMapping.transform)
+          }
+        } else {
+          const csvIndex = csvData.headers.findIndex(h => h.toLowerCase() === lookupField.toLowerCase())
+          if (csvIndex !== -1) {
+            lookupValue = row[csvIndex]
+          }
+        }
+      }
+
+      validMappings.forEach(mapping => {
+        const csvIndex = csvData.headers.indexOf(mapping.csvColumn)
+        if (csvIndex !== -1) {
+          const rawValue = row[csvIndex]
+          const transformedValue = transformValue(rawValue, mapping.transform)
+          
+          const fieldMeta = metadata?.fieldsMap[mapping.bullhornField]
+          if (fieldMeta?.associationType === 'TO_MANY') {
+            try {
+              const parsed = JSON.parse(transformedValue)
+              data[`__tomany_${mapping.bullhornField}`] = parsed
+            } catch {
+              const ids = transformedValue.split(/[,\s]+/).map((id: string) => parseInt(id.trim(), 10)).filter((id: number) => !isNaN(id))
+              if (ids.length > 0) {
+                data[`__tomany_${mapping.bullhornField}`] = {
+                  operation: 'add',
+                  ids: ids,
+                  subField: 'id'
+                }
+              }
+            }
+          } else if (fieldMeta?.associationType === 'TO_ONE') {
+            const trimmedValue = transformedValue.trim()
+            if (trimmedValue && /^\d+$/.test(trimmedValue)) {
+              data[mapping.bullhornField] = { id: parseInt(trimmedValue, 10) }
+            } else {
+              data[mapping.bullhornField] = transformedValue
+            }
+          } else {
+            data[mapping.bullhornField] = transformedValue
+          }
+        }
+      })
+
+      if (lookupField && lookupField !== '__none__' && lookupValue) {
+        try {
+          const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f !== 'id')]
+          const searchResult = await bullhornAPI.search({
+            entity,
+            fields: fieldsToFetch,
+            filters: [{ field: lookupField, operator: 'equals', value: lookupValue }],
+            count: 1,
+            start: 0
+          })
+          
+          if (searchResult.data && searchResult.data.length > 0) {
+            existingRecord = searchResult.data[0]
+          }
+        } catch (searchError) {
+          if (lookupField.toLowerCase() === 'id') {
+            const recordId = parseInt(lookupValue, 10)
+            if (!isNaN(recordId)) {
+              try {
+                const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f !== 'id')]
+                const record = await bullhornAPI.getEntity(entity, recordId, fieldsToFetch)
+                if (record && record.id) {
+                  existingRecord = record
+                }
+              } catch (fallbackError) {
+                console.error(`Fallback entity lookup failed:`, fallbackError)
+              }
+            }
+          }
+        }
+      }
+
+      if (existingRecord) {
+        if (updateExisting) {
+          if (!dryRun) {
+            const regularData: any = {}
+            const toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField?: string }> = []
+            
+            Object.keys(data).forEach(key => {
+              if (key.startsWith('__tomany_')) {
+                const fieldName = key.replace('__tomany_', '')
+                const toManyValue = data[key]
+                if (toManyValue.operation && toManyValue.ids) {
+                  toManyUpdates.push({
+                    field: fieldName,
+                    operation: toManyValue.operation,
+                    ids: toManyValue.ids,
+                    subField: toManyValue.subField || 'id'
+                  })
+                }
+              } else {
+                regularData[key] = data[key]
+              }
+            })
+            
+            if (Object.keys(regularData).length > 0) {
+              await bullhornAPI.updateEntity(entity, existingRecord.id, regularData)
+            }
+            
+            for (const toManyUpdate of toManyUpdates) {
+              await bullhornAPI.updateToManyAssociation(
+                entity,
+                existingRecord.id,
+                toManyUpdate.field,
+                toManyUpdate.ids,
+                toManyUpdate.operation as 'add' | 'remove' | 'replace',
+                toManyUpdate.subField || 'id'
+              )
+            }
+            
+            return {
+              row: i + 1,
+              status: 'success' as const,
+              message: `Updated existing record (ID: ${existingRecord.id})`,
+              action: 'updated' as const,
+              snapshotData: {
+                entityId: existingRecord.id,
+                previousValues: { ...existingRecord },
+                newValues: regularData
+              }
+            }
+          } else {
+            const displayData: any = {}
+            
+            for (const key of Object.keys(data)) {
+              if (key.startsWith('__tomany_')) {
+                const fieldName = key.replace('__tomany_', '')
+                const toManyValue = data[key]
+                if (toManyValue.operation && toManyValue.ids) {
+                  displayData[fieldName] = `${toManyValue.operation}: [${toManyValue.ids.join(', ')}]`
+                }
+              } else {
+                displayData[key] = data[key]
+              }
+            }
+            
+            return {
+              row: i + 1,
+              status: 'success' as const,
+              message: `Would update existing record (ID: ${existingRecord.id})`,
+              action: 'updated' as const,
+              data: { existing: existingRecord, changes: displayData }
+            }
+          }
+        } else {
+          return {
+            row: i + 1,
+            status: 'success' as const,
+            message: `Skipped existing record (ID: ${existingRecord.id})`,
+            action: 'skipped' as const
+          }
+        }
+      } else {
+        if (createNew) {
+          if (!dryRun) {
+            const regularData: any = {}
+            const toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField?: string }> = []
+            
+            Object.keys(data).forEach(key => {
+              if (key.startsWith('__tomany_')) {
+                const fieldName = key.replace('__tomany_', '')
+                const toManyValue = data[key]
+                if (toManyValue.operation && toManyValue.ids) {
+                  toManyUpdates.push({
+                    field: fieldName,
+                    operation: toManyValue.operation,
+                    ids: toManyValue.ids,
+                    subField: toManyValue.subField || 'id'
+                  })
+                }
+              } else {
+                regularData[key] = data[key]
+              }
+            })
+            
+            const result = await bullhornAPI.createEntity(entity, regularData)
+            const newEntityId = result.changedEntityId
+            
+            for (const toManyUpdate of toManyUpdates) {
+              await bullhornAPI.updateToManyAssociation(
+                entity,
+                newEntityId,
+                toManyUpdate.field,
+                toManyUpdate.ids,
+                toManyUpdate.operation as 'add' | 'remove' | 'replace',
+                toManyUpdate.subField || 'id'
+              )
+            }
+            
+            return {
+              row: i + 1,
+              status: 'success' as const,
+              message: `Created new record (ID: ${newEntityId})`,
+              action: 'created' as const
+            }
+          } else {
+            const displayData: any = {}
+            
+            for (const key of Object.keys(data)) {
+              if (key.startsWith('__tomany_')) {
+                const fieldName = key.replace('__tomany_', '')
+                const toManyValue = data[key]
+                if (toManyValue.operation && toManyValue.ids) {
+                  displayData[fieldName] = `${toManyValue.operation}: [${toManyValue.ids.join(', ')}]`
+                }
+              } else {
+                displayData[key] = data[key]
+              }
+            }
+            
+            return {
+              row: i + 1,
+              status: 'success' as const,
+              message: 'Would create new record',
+              action: 'created' as const,
+              data: displayData
+            }
+          }
+        } else {
+          return {
+            row: i + 1,
+            status: 'error' as const,
+            message: 'Record not found and create new is disabled',
+            action: 'skipped' as const
+          }
+        }
+      }
+    }
+
+    for (let batchStart = startIndex; batchStart < csvData.rows.length; batchStart += CONCURRENT_BATCH_SIZE) {
       if (executionControlRef.current.shouldStop) {
         setExecutionState('stopped')
         setLoading(false)
         deletePersistedState()
-        toast.warning(`Import stopped at row ${i + 1} of ${csvData.rows.length}`)
+        toast.warning(`Import stopped at row ${batchStart + 1} of ${csvData.rows.length}`)
         onLog(
           'CSV Import Stopped',
           'success',
-          `Stopped at row ${i + 1}: ${successCount} success, ${errorCount} errors`,
-          { entity, currentRow: i + 1, totalRows: csvData.rows.length }
+          `Stopped at row ${batchStart + 1}: ${successCount} success, ${errorCount} errors`,
+          { entity, currentRow: batchStart + 1, totalRows: csvData.rows.length }
         )
         return
       }
 
       if (executionControlRef.current.shouldPause) {
-        setCurrentIndex(i)
+        setCurrentIndex(batchStart)
         setResults(importResults)
         setLoading(false)
         
@@ -315,443 +561,89 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           updateExisting,
           createNew,
           dryRun,
-          currentIndex: i,
+          currentIndex: batchStart,
           results: importResults,
-          progress: ((i) / csvData.rows.length) * 100,
+          progress: ((batchStart) / csvData.rows.length) * 100,
           timestamp: Date.now()
         }
         setPersistedState(() => state)
         
-        toast.info(`Import paused at row ${i + 1} of ${csvData.rows.length}. Progress saved - safe to refresh page.`)
+        toast.info(`Import paused at row ${batchStart + 1} of ${csvData.rows.length}. Progress saved - safe to refresh page.`)
         onLog(
           'CSV Import Paused',
           'success',
-          `Paused at row ${i + 1}: ${successCount} success, ${errorCount} errors`,
-          { entity, currentRow: i + 1, totalRows: csvData.rows.length }
+          `Paused at row ${batchStart + 1}: ${successCount} success, ${errorCount} errors`,
+          { entity, currentRow: batchStart + 1, totalRows: csvData.rows.length }
         )
         return
       }
 
-      setCurrentIndex(i + 1)
-      const row = csvData.rows[i]
-      let existingRecord: any = null
-      let data: any = {}
+      const batchEnd = Math.min(batchStart + CONCURRENT_BATCH_SIZE, csvData.rows.length)
+      const batch: Promise<any>[] = []
       
-      try {
-        let lookupValue: string | null = null
-
-        if (lookupField && lookupField !== '__none__') {
-          const lookupMapping = mappings.find(m => m.bullhornField === lookupField)
-          if (lookupMapping) {
-            const csvIndex = csvData.headers.indexOf(lookupMapping.csvColumn)
-            if (csvIndex !== -1) {
-              const rawValue = row[csvIndex]
-              lookupValue = transformValue(rawValue, lookupMapping.transform)
-            }
-          } else {
-            const csvIndex = csvData.headers.findIndex(h => h.toLowerCase() === lookupField.toLowerCase())
-            if (csvIndex !== -1) {
-              lookupValue = row[csvIndex]
-            }
-          }
-        }
-
-        validMappings.forEach(mapping => {
-          const csvIndex = csvData.headers.indexOf(mapping.csvColumn)
-          if (csvIndex !== -1) {
-            const rawValue = row[csvIndex]
-            const transformedValue = transformValue(rawValue, mapping.transform)
-            
-            const fieldMeta = metadata?.fieldsMap[mapping.bullhornField]
-            if (fieldMeta?.associationType === 'TO_MANY') {
-              try {
-                const parsed = JSON.parse(transformedValue)
-                data[`__tomany_${mapping.bullhornField}`] = parsed
-              } catch {
-                const ids = transformedValue.split(/[,\s]+/).map((id: string) => parseInt(id.trim(), 10)).filter((id: number) => !isNaN(id))
-                if (ids.length > 0) {
-                  data[`__tomany_${mapping.bullhornField}`] = {
-                    operation: 'add',
-                    ids: ids,
-                    subField: 'id'
-                  }
-                }
-              }
-            } else if (fieldMeta?.associationType === 'TO_ONE') {
-              const trimmedValue = transformedValue.trim()
-              if (trimmedValue && /^\d+$/.test(trimmedValue)) {
-                data[mapping.bullhornField] = { id: parseInt(trimmedValue, 10) }
-              } else {
-                data[mapping.bullhornField] = transformedValue
-              }
-            } else {
-              data[mapping.bullhornField] = transformedValue
-            }
-          }
-        })
-
-        if (lookupField && lookupField !== '__none__' && lookupValue) {
-          try {
-            console.log(`🔍 CSV Loader - Looking up ${entity} by ${lookupField}: ${lookupValue}`)
-            const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f !== 'id')]
-            const searchResult = await bullhornAPI.search({
-              entity,
-              fields: fieldsToFetch,
-              filters: [{ field: lookupField, operator: 'equals', value: lookupValue }],
-              count: 1,
-              start: 0
-            })
-            
-            if (searchResult.data && searchResult.data.length > 0) {
-              console.log(`✅ CSV Loader - Found ${entity} record by ${lookupField}:`, searchResult.data[0].id)
-              existingRecord = searchResult.data[0]
-            } else {
-              console.log(`❌ CSV Loader - No ${entity} record found with ${lookupField}: ${lookupValue}`)
-            }
-          } catch (searchError) {
-            console.error(`❌ CSV Loader - Search error for ${lookupField}:`, searchError)
-            if (lookupField.toLowerCase() === 'id') {
-              const recordId = parseInt(lookupValue, 10)
-              if (!isNaN(recordId)) {
-                try {
-                  console.log(`🔄 CSV Loader - Fallback to direct entity lookup for ID: ${recordId}`)
-                  const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f !== 'id')]
-                  const record = await bullhornAPI.getEntity(entity, recordId, fieldsToFetch)
-                  if (record && record.id) {
-                    console.log(`✅ CSV Loader - Found ${entity} record via fallback:`, record.id)
-                    existingRecord = record
-                  } else {
-                    console.log(`❌ CSV Loader - No ${entity} record found with ID: ${recordId}`)
-                  }
-                } catch (fallbackError) {
-                  console.error(`❌ CSV Loader - Fallback entity lookup also failed:`, fallbackError)
-                }
-              }
-            }
-          }
-        }
-
-        if (existingRecord) {
-          if (updateExisting) {
-            if (!dryRun) {
-              const regularData: any = {}
-              const toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField?: string }> = []
-              
-              Object.keys(data).forEach(key => {
-                if (key.startsWith('__tomany_')) {
-                  const fieldName = key.replace('__tomany_', '')
-                  const toManyValue = data[key]
-                  if (toManyValue.operation && toManyValue.ids) {
-                    toManyUpdates.push({
-                      field: fieldName,
-                      operation: toManyValue.operation,
-                      ids: toManyValue.ids,
-                      subField: toManyValue.subField || 'id'
-                    })
-                  }
-                } else {
-                  regularData[key] = data[key]
-                }
-              })
-              
-              snapshotUpdates.push({
-                entityId: existingRecord.id,
-                previousValues: { ...existingRecord },
-                newValues: regularData
-              })
-              
-              if (Object.keys(regularData).length > 0) {
-                await bullhornAPI.updateEntity(entity, existingRecord.id, regularData)
-              }
-              
-              for (const toManyUpdate of toManyUpdates) {
-                const result = await bullhornAPI.updateToManyAssociation(
-                  entity,
-                  existingRecord.id,
-                  toManyUpdate.field,
-                  toManyUpdate.ids,
-                  toManyUpdate.operation as 'add' | 'remove' | 'replace',
-                  toManyUpdate.subField || 'id'
-                )
-                
-                if (result?.changeType === 'ASSOCIATE_INVERSE' || result?.changeType === 'DISASSOCIATE_INVERSE') {
-                  toast.success(result.message)
-                }
-              }
-              
-              importResults.push({
-                row: i + 1,
-                status: 'success',
-                message: `Updated existing record (ID: ${existingRecord.id})`,
-                action: 'updated'
-              })
-            } else {
-              const displayData: any = {}
-              
-              for (const key of Object.keys(data)) {
-                if (key.startsWith('__tomany_')) {
-                  const fieldName = key.replace('__tomany_', '')
-                  const toManyValue = data[key]
-                  if (toManyValue.operation && toManyValue.ids) {
-                    displayData[fieldName] = `${toManyValue.operation}: [${toManyValue.ids.join(', ')}]`
-                  }
-                } else {
-                  const fieldMeta = metadata?.fieldsMap[key]
-                  if (fieldMeta?.associationType === 'TO_ONE' && data[key]?.id) {
-                    try {
-                      const associatedEntity = fieldMeta.associatedEntity?.entity
-                      if (associatedEntity) {
-                        const lookupResult = await bullhornAPI.getEntity(
-                          associatedEntity, 
-                          data[key].id, 
-                          ['id', 'name', 'title', 'firstName', 'lastName']
-                        )
-                        if (lookupResult?.data) {
-                          const title = lookupResult.data.title || 
-                                       lookupResult.data.name || 
-                                       (lookupResult.data.firstName && lookupResult.data.lastName 
-                                         ? `${lookupResult.data.firstName} ${lookupResult.data.lastName}` 
-                                         : undefined)
-                          displayData[key] = {
-                            id: data[key].id,
-                            title: title || '(No title)'
-                          }
-                        } else {
-                          displayData[key] = data[key]
-                        }
-                      } else {
-                        displayData[key] = data[key]
-                      }
-                    } catch {
-                      displayData[key] = data[key]
-                    }
-                  } else {
-                    displayData[key] = data[key]
-                  }
-                }
-              }
-              
-              importResults.push({
-                row: i + 1,
-                status: 'success',
-                message: `Would update existing record (ID: ${existingRecord.id})`,
-                action: 'updated',
-                data: { existing: existingRecord, changes: displayData }
-              })
-            }
-            updatedCount++
-            successCount++
-          } else {
-            importResults.push({
+      for (let i = batchStart; i < batchEnd; i++) {
+        const row = csvData.rows[i]
+        batch.push(
+          processRecord(i, row).catch(error => {
+            const errorMessage = error instanceof Error ? error.message : 'Import failed'
+            errorDetails.push(`Row ${i + 1}: ${errorMessage}`)
+            return {
               row: i + 1,
-              status: 'success',
-              message: `Skipped existing record (ID: ${existingRecord.id})`,
-              action: 'skipped'
-            })
-            skippedCount++
+              status: 'error' as const,
+              message: errorMessage,
+              action: 'error' as const,
+              failedData: { error: errorMessage }
+            }
+          })
+        )
+      }
+
+      const batchResults = await Promise.all(batch)
+      
+      for (const result of batchResults) {
+        importResults.push(result)
+        
+        if (result.status === 'success') {
+          successCount++
+          if (result.action === 'created') createdCount++
+          if (result.action === 'updated') updatedCount++
+          if (result.action === 'skipped') skippedCount++
+          if (result.snapshotData && !dryRun) {
+            snapshotUpdates.push(result.snapshotData)
           }
         } else {
-          if (createNew) {
-            if (!dryRun) {
-              const regularData: any = {}
-              const toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField?: string }> = []
-              
-              Object.keys(data).forEach(key => {
-                if (key.startsWith('__tomany_')) {
-                  const fieldName = key.replace('__tomany_', '')
-                  const toManyValue = data[key]
-                  if (toManyValue.operation && toManyValue.ids) {
-                    toManyUpdates.push({
-                      field: fieldName,
-                      operation: toManyValue.operation,
-                      ids: toManyValue.ids,
-                      subField: toManyValue.subField || 'id'
-                    })
-                  }
-                } else {
-                  regularData[key] = data[key]
-                }
-              })
-              
-              const result = await bullhornAPI.createEntity(entity, regularData)
-              const newEntityId = result.changedEntityId
-              
-              for (const toManyUpdate of toManyUpdates) {
-                const toManyResult = await bullhornAPI.updateToManyAssociation(
-                  entity,
-                  newEntityId,
-                  toManyUpdate.field,
-                  toManyUpdate.ids,
-                  toManyUpdate.operation as 'add' | 'remove' | 'replace',
-                  toManyUpdate.subField || 'id'
-                )
-                
-                if (toManyResult?.changeType === 'ASSOCIATE_INVERSE' || toManyResult?.changeType === 'DISASSOCIATE_INVERSE') {
-                  toast.success(toManyResult.message)
-                }
-              }
-              
-              importResults.push({
-                row: i + 1,
-                status: 'success',
-                message: `Created new record (ID: ${newEntityId})`,
-                action: 'created'
-              })
-            } else {
-              const displayData: any = {}
-              
-              for (const key of Object.keys(data)) {
-                if (key.startsWith('__tomany_')) {
-                  const fieldName = key.replace('__tomany_', '')
-                  const toManyValue = data[key]
-                  if (toManyValue.operation && toManyValue.ids) {
-                    displayData[fieldName] = `${toManyValue.operation}: [${toManyValue.ids.join(', ')}]`
-                  }
-                } else {
-                  const fieldMeta = metadata?.fieldsMap[key]
-                  if (fieldMeta?.associationType === 'TO_ONE' && data[key]?.id) {
-                    try {
-                      const associatedEntity = fieldMeta.associatedEntity?.entity
-                      if (associatedEntity) {
-                        const lookupResult = await bullhornAPI.getEntity(
-                          associatedEntity, 
-                          data[key].id, 
-                          ['id', 'name', 'title', 'firstName', 'lastName']
-                        )
-                        if (lookupResult?.data) {
-                          const title = lookupResult.data.title || 
-                                       lookupResult.data.name || 
-                                       (lookupResult.data.firstName && lookupResult.data.lastName 
-                                         ? `${lookupResult.data.firstName} ${lookupResult.data.lastName}` 
-                                         : undefined)
-                          displayData[key] = {
-                            id: data[key].id,
-                            title: title || '(No title)'
-                          }
-                        } else {
-                          displayData[key] = data[key]
-                        }
-                      } else {
-                        displayData[key] = data[key]
-                      }
-                    } catch {
-                      displayData[key] = data[key]
-                    }
-                  } else {
-                    displayData[key] = data[key]
-                  }
-                }
-              }
-              
-              importResults.push({
-                row: i + 1,
-                status: 'success',
-                message: 'Would create new record',
-                action: 'created',
-                data: displayData
-              })
-            }
-            createdCount++
-            successCount++
-          } else {
-            importResults.push({
-              row: i + 1,
-              status: 'error',
-              message: 'Record not found and create new is disabled',
-              action: 'skipped'
+          errorCount++
+          if (result.failedData && !dryRun) {
+            failedOperations.push({
+              entityId: 0,
+              operation: 'add',
+              data: {},
+              error: result.message
             })
-            skippedCount++
           }
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Import failed'
-        importResults.push({
-          row: i + 1,
-          status: 'error',
-          message: errorMessage,
-          action: 'error'
-        })
-        errorDetails.push(`Row ${i + 1}: ${errorMessage}`)
-        errorCount++
-        
-        if (!dryRun && existingRecord) {
-          const regularData: any = {}
-          const toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField?: string }> = []
-          
-          Object.keys(data).forEach(key => {
-            if (key.startsWith('__tomany_')) {
-              const fieldName = key.replace('__tomany_', '')
-              const toManyValue = data[key]
-              if (toManyValue.operation && toManyValue.ids) {
-                toManyUpdates.push({
-                  field: fieldName,
-                  operation: toManyValue.operation,
-                  ids: toManyValue.ids,
-                  subField: toManyValue.subField || 'id'
-                })
-              }
-            } else {
-              regularData[key] = data[key]
-            }
-          })
-          
-          failedOperations.push({
-            entityId: existingRecord.id,
-            operation: 'update',
-            data: regularData,
-            error: errorMessage,
-            toManyUpdates: toManyUpdates.length > 0 ? toManyUpdates : undefined
-          })
-        } else if (!dryRun) {
-          const regularData: any = {}
-          const toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField?: string }> = []
-          
-          Object.keys(data).forEach(key => {
-            if (key.startsWith('__tomany_')) {
-              const fieldName = key.replace('__tomany_', '')
-              const toManyValue = data[key]
-              if (toManyValue.operation && toManyValue.ids) {
-                toManyUpdates.push({
-                  field: fieldName,
-                  operation: toManyValue.operation,
-                  ids: toManyValue.ids,
-                  subField: toManyValue.subField || 'id'
-                })
-              }
-            } else {
-              regularData[key] = data[key]
-            }
-          })
-          
-          failedOperations.push({
-            entityId: 0,
-            operation: 'add',
-            data: regularData,
-            error: errorMessage,
-            toManyUpdates: toManyUpdates.length > 0 ? toManyUpdates : undefined
-          })
         }
       }
 
-      setProgress(((i + 1) / csvData.rows.length) * 100)
+      setCurrentIndex(batchEnd)
+      setProgress((batchEnd / csvData.rows.length) * 100)
       setResults([...importResults])
       
       const now = Date.now()
       const timeSinceLastUpdate = now - lastProgressUpdateRef.current.time
       
-      if (timeSinceLastUpdate >= 1000) {
-        const recordsSinceLastUpdate = (i + 1) - lastProgressUpdateRef.current.index
+      if (timeSinceLastUpdate >= 500) {
+        const recordsSinceLastUpdate = batchEnd - lastProgressUpdateRef.current.index
         const recordsPerSecond = recordsSinceLastUpdate / (timeSinceLastUpdate / 1000)
         const recordsPerMinute = Math.round(recordsPerSecond * 60)
         setProcessingSpeed(recordsPerMinute)
         
-        const remainingRecords = csvData.rows.length - (i + 1)
+        const remainingRecords = csvData.rows.length - batchEnd
         if (recordsPerSecond > 0) {
           const secondsRemaining = remainingRecords / recordsPerSecond
           setEstimatedTimeRemaining(Math.round(secondsRemaining))
         }
         
-        lastProgressUpdateRef.current = { time: now, index: i + 1 }
+        lastProgressUpdateRef.current = { time: now, index: batchEnd }
       }
     }
 
