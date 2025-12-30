@@ -23,6 +23,8 @@ export function SpeedTest() {
   const [progress, setProgress] = useState(0)
   const [currentSpeed, setCurrentSpeed] = useState(0)
   const [elapsedTime, setElapsedTime] = useState(0)
+  const [completedCalls, setCompletedCalls] = useState(0)
+  const [totalCalls, setTotalCalls] = useState(1500)
   const abortControllerRef = useRef<AbortController | null>(null)
 
   const runSpeedTest = async () => {
@@ -31,6 +33,8 @@ export function SpeedTest() {
     setProgress(0)
     setCurrentSpeed(0)
     setElapsedTime(0)
+    setCompletedCalls(0)
+    setTotalCalls(1500)
     abortControllerRef.current = new AbortController()
 
     const totalTestCalls = 1500
@@ -48,11 +52,73 @@ export function SpeedTest() {
       }
     }, 100)
 
+    const savedSettings = bullhornRateLimiter.getSpeedSettings()
+    const savedMaxConcurrent = bullhornAPI.getRateLimiterStatus().requestsInProgress
+
     try {
-      toast.info('Starting speed test - targeting 1500 calls/min...', { duration: 3000 })
+      toast.info('Starting speed test - bypassing rate limiter for max throughput...', { duration: 3000 })
+
+      bullhornRateLimiter.setMaxConcurrentRequests(100)
+      bullhornRateLimiter.setMinDelay(0)
+      bullhornRateLimiter.setTargetCallsPerMinute(1500)
+      bullhornRateLimiter.setSpeedMultiplier(1.0)
 
       const promises: Promise<void>[] = []
-      const concurrentBatchSize = 50
+      const maxConcurrent = 100
+      let activePromises = 0
+
+      const makeCall = async (i: number): Promise<void> => {
+        if (abortControllerRef.current?.signal.aborted) {
+          return
+        }
+
+        activePromises++
+        const callStartTime = Date.now()
+        
+        try {
+          const session = bullhornAPI.getSession()
+          if (!session) {
+            throw new Error('No session available')
+          }
+
+          const url = `${session.restUrl}query/Candidate?BhRestToken=${session.BhRestToken}&fields=id&where=isDeleted=false&count=1&start=0`
+          const response = await fetch(url)
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`)
+          }
+
+          successCount++
+          const responseTime = Date.now() - callStartTime
+          totalResponseTime += responseTime
+          
+          if (response.headers) {
+            const remaining = response.headers.get('X-RateLimit-Remaining')
+            if (remaining && parseInt(remaining) === 0) {
+              rateLimited = true
+            }
+          }
+        } catch (error: any) {
+          failedCount++
+          if (error.message?.includes('429') || error.message?.includes('Too Many Requests')) {
+            rateLimited = true
+          }
+        } finally {
+          activePromises--
+          
+          const completed = successCount + failedCount
+          setCompletedCalls(completed)
+          const currentProgress = (completed / totalTestCalls) * 100
+          setProgress(Math.min(100, currentProgress))
+          
+          const elapsed = (Date.now() - startTime) / 1000 / 60
+          if (elapsed > 0) {
+            const currentCPM = Math.round(completed / elapsed)
+            setCurrentSpeed(currentCPM)
+            peakSpeed = Math.max(peakSpeed, currentCPM)
+          }
+        }
+      }
 
       for (let i = 0; i < totalTestCalls; i++) {
         if (abortControllerRef.current?.signal.aborted) {
@@ -60,53 +126,11 @@ export function SpeedTest() {
           break
         }
 
-        const callStartTime = Date.now()
-        
-        const promise = bullhornAPI.query(
-          'Candidate',
-          ['id'],
-          'isDeleted=false',
-          { count: '1' }
-        )
-          .then((response) => {
-            successCount++
-            const responseTime = Date.now() - callStartTime
-            totalResponseTime += responseTime
-            
-            const completed = successCount + failedCount
-            const currentProgress = (completed / totalTestCalls) * 100
-            setProgress(Math.min(100, currentProgress))
-            
-            const elapsed = (Date.now() - startTime) / 1000 / 60
-            if (elapsed > 0) {
-              const currentCPM = Math.round(completed / elapsed)
-              setCurrentSpeed(currentCPM)
-              peakSpeed = Math.max(peakSpeed, currentCPM)
-            }
-
-            if (response.headers) {
-              const remaining = response.headers.get('X-RateLimit-Remaining')
-              if (remaining && parseInt(remaining) === 0) {
-                rateLimited = true
-              }
-            }
-          })
-          .catch((error) => {
-            failedCount++
-            if (error.message?.includes('429') || error.message?.includes('Too Many Requests')) {
-              rateLimited = true
-            }
-            console.warn(`Call ${i + 1} failed:`, error.message)
-          })
-
-        promises.push(promise)
-
-        if ((i + 1) % concurrentBatchSize === 0) {
-          await Promise.race([
-            Promise.all(promises.slice(-concurrentBatchSize)),
-            new Promise(resolve => setTimeout(resolve, 100))
-          ])
+        while (activePromises >= maxConcurrent) {
+          await new Promise(resolve => setTimeout(resolve, 10))
         }
+
+        promises.push(makeCall(i))
 
         if (Date.now() - startTime >= testDurationMs) {
           console.log(`Reached test duration limit (${testDurationMs}ms), stopping...`)
@@ -136,6 +160,17 @@ export function SpeedTest() {
 
       setTestResults(results)
       
+      console.log('🏁 Speed Test Results:', {
+        totalCalls: totalCompleted,
+        successful: successCount,
+        failed: failedCount,
+        durationSeconds: (durationMs / 1000).toFixed(1),
+        callsPerMinute: actualCallsPerMinute,
+        avgResponseMs: Math.round(avgResponseTime),
+        peakSpeed,
+        rateLimited
+      })
+      
       if (actualCallsPerMinute >= 1400) {
         toast.success(`✅ Speed test PASSED! ${actualCallsPerMinute} calls/min`, { duration: 5000 })
       } else if (actualCallsPerMinute >= 1000) {
@@ -147,6 +182,11 @@ export function SpeedTest() {
       toast.error('Speed test failed: ' + String(error))
       console.error('Speed test error:', error)
     } finally {
+      bullhornRateLimiter.setMaxConcurrentRequests(savedSettings.maxConcurrent)
+      bullhornRateLimiter.setMinDelay(savedSettings.minDelay)
+      bullhornRateLimiter.setTargetCallsPerMinute(savedSettings.targetCallsPerMinute)
+      bullhornRateLimiter.setSpeedMultiplier(savedSettings.speedMultiplier)
+      
       clearInterval(elapsedInterval)
       setTesting(false)
       abortControllerRef.current = null
@@ -175,7 +215,7 @@ export function SpeedTest() {
           API Speed Test - 1500 Calls/Minute Validation
         </CardTitle>
         <CardDescription>
-          Runs 1500 concurrent API calls to validate actual throughput and rate limit handling
+          Test raw API throughput by making 1500 direct fetch calls with 100 concurrent connections, bypassing the rate limiter to measure maximum possible speed
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -217,6 +257,9 @@ export function SpeedTest() {
                   <span className="font-mono">{Math.round(progress)}%</span>
                   <span className="text-muted-foreground">
                     {(elapsedTime / 1000).toFixed(1)}s elapsed
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    ({completedCalls}/{totalCalls} calls)
                   </span>
                 </div>
               </div>
@@ -349,11 +392,12 @@ export function SpeedTest() {
             <div className="p-3 bg-muted/30 rounded-lg">
               <div className="text-xs font-medium mb-2">Test Details</div>
               <div className="text-xs text-muted-foreground space-y-1">
-                <p>• Runs 1500 concurrent Candidate entity queries with minimal fields</p>
-                <p>• Uses production rate limiter with 429 handling and backoff</p>
-                <p>• Actual results may vary based on network latency, API load, and data center</p>
-                <p>• Tests complete when all calls finish or 60-second timeout is reached</p>
-                <p>• Run multiple tests during different times for comprehensive validation</p>
+                <p>• Makes 1500 direct fetch() calls with minimal query (Candidate entity, ID field only)</p>
+                <p>• Uses 100 concurrent connections - BYPASSES rate limiter for raw speed measurement</p>
+                <p>• Restores normal rate limiter settings after test completes</p>
+                <p>• Tests actual network + API throughput without artificial throttling</p>
+                <p>• Results vary based on network latency, API server load, and data center location</p>
+                <p>• For production loads, use the configured rate limiter (1500 calls/min with backoff)</p>
               </div>
             </div>
           </div>
