@@ -3,6 +3,7 @@ import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Pause, Play, Stop, Clock, TrendUp } from '@phosphor-icons/react'
+import { SpeedControl } from '@/components/SpeedControl'
 import type { OperationProgress } from '@/hooks/use-pausable-operation'
 
 interface OperationProgressControlsProps {
@@ -12,6 +13,7 @@ interface OperationProgressControlsProps {
   onStop: () => void
   operationName?: string
   canResume?: boolean
+  showSpeedControl?: boolean
 }
 
 function formatTime(seconds: number | null): string {
@@ -42,7 +44,8 @@ export function OperationProgressControls({
   onResume,
   onStop,
   operationName = 'Operation',
-  canResume = false
+  canResume = false,
+  showSpeedControl = true
 }: OperationProgressControlsProps) {
   const percentComplete = progress.total > 0 
     ? Math.round((progress.completed / progress.total) * 100) 
@@ -55,7 +58,9 @@ export function OperationProgressControls({
   const isRunning = !progress.isPaused && !progress.isStopped && !isComplete
 
   return (
-    <Card className="p-4 space-y-4">
+    <Card className="p-4 space-y-4">{showSpeedControl && isRunning && (
+        <SpeedControl compact />
+      )}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -155,6 +160,8 @@ export function OperationProgressControls({
           )}
         </div>
       </div>
+      
+      
     </Card>
   )
 }

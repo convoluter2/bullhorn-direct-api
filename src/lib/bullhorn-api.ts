@@ -67,6 +67,22 @@ export class BullhornAPI {
     bullhornRateLimiter.setMinDelay(delayMs)
   }
 
+  setTargetCallsPerMinute(targetCalls: number) {
+    bullhornRateLimiter.setTargetCallsPerMinute(targetCalls)
+  }
+
+  setSpeedMultiplier(multiplier: number) {
+    bullhornRateLimiter.setSpeedMultiplier(multiplier)
+  }
+
+  getSpeedSettings() {
+    return bullhornRateLimiter.getSpeedSettings()
+  }
+
+  resetRateLimiter() {
+    bullhornRateLimiter.resetToDefaults()
+  }
+
   async getLoginInfo(username: string): Promise<LoginInfo> {
     if (this.loginInfoCache.has(username)) {
       console.log('📦 Using cached loginInfo for:', username)

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Progress } from '@/components/ui/progress'
-import { Clock, Queue, Gauge } from '@phosphor-icons/react'
+import { Separator } from '@/components/ui/separator'
+import { Clock, Queue, Gauge, Lightning } from '@phosphor-icons/react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 
 export function RateLimitStatus() {
@@ -17,11 +18,21 @@ export function RateLimitStatus() {
     } | null
     backoffMultiplier: number
   } | null>(null)
+  
+  const [speedSettings, setSpeedSettings] = useState<{
+    targetCallsPerMinute: number
+    speedMultiplier: number
+    effectiveCallsPerMinute: number
+    minDelay: number
+    maxConcurrent: number
+  } | null>(null)
 
   useEffect(() => {
     const updateStatus = () => {
       const currentStatus = bullhornAPI.getRateLimiterStatus()
+      const currentSpeedSettings = bullhornAPI.getSpeedSettings()
       setStatus(currentStatus)
+      setSpeedSettings(currentSpeedSettings)
     }
 
     updateStatus()
@@ -159,6 +170,44 @@ export function RateLimitStatus() {
                 ⚡ Rate limit usage high. Throttling active.
               </p>
             </div>
+          )}
+
+          {speedSettings && (
+            <>
+              <Separator />
+              <div>
+                <h5 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                  <Lightning size={16} className="text-accent" />
+                  Speed Settings
+                </h5>
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Speed Multiplier</span>
+                    <Badge variant="outline" className="font-mono">
+                      {speedSettings.speedMultiplier.toFixed(1)}x
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Effective Rate</span>
+                    <Badge variant="secondary" className="font-mono">
+                      {speedSettings.effectiveCallsPerMinute}/min
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Concurrency</span>
+                    <Badge variant="outline" className="font-mono">
+                      {speedSettings.maxConcurrent}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Min Delay</span>
+                    <Badge variant="outline" className="font-mono">
+                      {speedSettings.minDelay}ms
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </div>
       </PopoverContent>

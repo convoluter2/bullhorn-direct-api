@@ -23,6 +23,8 @@ export class BullhornRateLimiter {
   private lastRequestTime = 0
   private consecutiveErrors = 0
   private backoffMultiplier = 1
+  private targetCallsPerMinute = 1500
+  private speedMultiplier = 1.0
 
   parseRateLimitHeaders(headers: Headers): void {
     const limitHeader = headers.get('X-RateLimit-Limit') || headers.get('X-Rate-Limit-Limit')
@@ -283,6 +285,67 @@ export class BullhornRateLimiter {
   setMinDelay(delayMs: number): void {
     this.minDelayBetweenRequests = Math.max(0, delayMs)
     console.log(`⚙️ Min delay between requests set to ${this.minDelayBetweenRequests}ms`)
+  }
+
+  setTargetCallsPerMinute(targetCalls: number): void {
+    this.targetCallsPerMinute = Math.max(60, Math.min(1500, targetCalls))
+    this.updateSpeedSettings()
+    console.log(`🎯 Target calls per minute set to ${this.targetCallsPerMinute}`)
+  }
+
+  setSpeedMultiplier(multiplier: number): void {
+    this.speedMultiplier = Math.max(0.1, Math.min(2.0, multiplier))
+    this.updateSpeedSettings()
+    console.log(`⚡ Speed multiplier set to ${this.speedMultiplier}x`)
+  }
+
+  private updateSpeedSettings(): void {
+    const effectiveCallsPerMinute = Math.min(
+      this.targetCallsPerMinute * this.speedMultiplier,
+      1500
+    )
+    
+    const baseMinDelay = Math.ceil(60000 / effectiveCallsPerMinute)
+    this.minDelayBetweenRequests = baseMinDelay
+    
+    const baseConcurrency = Math.ceil(effectiveCallsPerMinute / 600)
+    this.maxConcurrentRequests = Math.max(1, Math.min(10, baseConcurrency))
+    
+    console.log(`📊 Speed settings updated:`, {
+      targetCPM: this.targetCallsPerMinute,
+      speedMultiplier: this.speedMultiplier,
+      effectiveCPM: Math.round(effectiveCallsPerMinute),
+      minDelay: this.minDelayBetweenRequests,
+      maxConcurrent: this.maxConcurrentRequests
+    })
+  }
+
+  getSpeedSettings(): {
+    targetCallsPerMinute: number
+    speedMultiplier: number
+    effectiveCallsPerMinute: number
+    minDelay: number
+    maxConcurrent: number
+  } {
+    const effectiveCallsPerMinute = Math.min(
+      this.targetCallsPerMinute * this.speedMultiplier,
+      1500
+    )
+    
+    return {
+      targetCallsPerMinute: this.targetCallsPerMinute,
+      speedMultiplier: this.speedMultiplier,
+      effectiveCallsPerMinute: Math.round(effectiveCallsPerMinute),
+      minDelay: this.minDelayBetweenRequests,
+      maxConcurrent: this.maxConcurrentRequests
+    }
+  }
+
+  resetToDefaults(): void {
+    this.targetCallsPerMinute = 1500
+    this.speedMultiplier = 1.0
+    this.updateSpeedSettings()
+    console.log(`🔄 Rate limiter reset to defaults`)
   }
 }
 

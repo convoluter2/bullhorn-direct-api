@@ -26,6 +26,7 @@ import {
   Warning
 } from '@phosphor-icons/react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
+import { SpeedControl } from '@/components/SpeedControl'
 import { toast } from 'sonner'
 
 interface RateLimitSnapshot {
@@ -359,6 +360,10 @@ export function RateLimitAnalytics() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="speed" className="gap-2">
+            <Lightning size={16} />
+            Speed
+          </TabsTrigger>
           <TabsTrigger value="details">Detailed Stats</TabsTrigger>
         </TabsList>
 
@@ -583,6 +588,10 @@ export function RateLimitAnalytics() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="speed" className="space-y-4">
+          <SpeedControl />
         </TabsContent>
       </Tabs>
 
