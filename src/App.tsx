@@ -27,6 +27,7 @@ import { ConsoleMonitor } from '@/components/ConsoleMonitor'
 import { ToOneFieldTest } from '@/components/ToOneFieldTest'
 import { ComprehensiveFieldTest } from '@/components/ComprehensiveFieldTest'
 import { PauseResumeTests } from '@/components/PauseResumeTests'
+import { SpeedTest } from '@/components/SpeedTest'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { toast } from 'sonner'
@@ -519,6 +520,10 @@ function App() {
                 <Pause size={18} />
                 <span className="hidden sm:inline">Pause/Resume</span>
               </TabsTrigger>
+              <TabsTrigger value="speed-test" className="gap-2">
+                <Gauge size={18} />
+                <span className="hidden sm:inline">Speed Test</span>
+              </TabsTrigger>
               <TabsTrigger value="rate-limits" className="gap-2">
                 <Gauge size={18} />
                 <span className="hidden sm:inline">Rate Limits</span>
@@ -574,6 +579,10 @@ function App() {
 
             <TabsContent value="pause-resume-test" className="space-y-6">
               <PauseResumeTests />
+            </TabsContent>
+
+            <TabsContent value="speed-test" className="space-y-6">
+              <SpeedTest />
             </TabsContent>
 
             <TabsContent value="rate-limits" className="space-y-6">
