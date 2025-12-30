@@ -379,43 +379,42 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
 
         if (lookupField && lookupField !== '__none__' && lookupValue) {
           try {
+            console.log(`🔍 CSV Loader - Looking up ${entity} by ${lookupField}: ${lookupValue}`)
+            const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f !== 'id')]
+            const searchResult = await bullhornAPI.search({
+              entity,
+              fields: fieldsToFetch,
+              filters: [{ field: lookupField, operator: 'equals', value: lookupValue }],
+              count: 1,
+              start: 0
+            })
+            
+            if (searchResult.data && searchResult.data.length > 0) {
+              console.log(`✅ CSV Loader - Found ${entity} record by ${lookupField}:`, searchResult.data[0].id)
+              existingRecord = searchResult.data[0]
+            } else {
+              console.log(`❌ CSV Loader - No ${entity} record found with ${lookupField}: ${lookupValue}`)
+            }
+          } catch (searchError) {
+            console.error(`❌ CSV Loader - Search error for ${lookupField}:`, searchError)
             if (lookupField.toLowerCase() === 'id') {
               const recordId = parseInt(lookupValue, 10)
               if (!isNaN(recordId)) {
-                console.log(`🔍 CSV Loader - Looking up ${entity} by ID: ${recordId}`)
-                const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f !== 'id')]
-                const record = await bullhornAPI.getEntity(entity, recordId, fieldsToFetch)
-                if (record && record.id) {
-                  console.log(`✅ CSV Loader - Found ${entity} record:`, record.id)
-                  existingRecord = record
-                } else {
-                  console.log(`❌ CSV Loader - No ${entity} record found with ID: ${recordId}`)
+                try {
+                  console.log(`🔄 CSV Loader - Fallback to direct entity lookup for ID: ${recordId}`)
+                  const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f !== 'id')]
+                  const record = await bullhornAPI.getEntity(entity, recordId, fieldsToFetch)
+                  if (record && record.id) {
+                    console.log(`✅ CSV Loader - Found ${entity} record via fallback:`, record.id)
+                    existingRecord = record
+                  } else {
+                    console.log(`❌ CSV Loader - No ${entity} record found with ID: ${recordId}`)
+                  }
+                } catch (fallbackError) {
+                  console.error(`❌ CSV Loader - Fallback entity lookup also failed:`, fallbackError)
                 }
-              } else {
-                console.warn(`⚠️ CSV Loader - Invalid ID value for lookup: ${lookupValue}`)
-              }
-            } else {
-              console.log(`🔍 CSV Loader - Looking up ${entity} by ${lookupField}: ${lookupValue}`)
-              const searchResult = await bullhornAPI.search({
-                entity,
-                fields: ['id', ...validMappings.map(m => m.bullhornField)],
-                filters: [{
-                  field: lookupField,
-                  operator: 'equals',
-                  value: lookupValue
-                }],
-                count: 1
-              })
-
-              if (searchResult.data && searchResult.data.length > 0) {
-                console.log(`✅ CSV Loader - Found ${entity} record:`, searchResult.data[0].id)
-                existingRecord = searchResult.data[0]
-              } else {
-                console.log(`❌ CSV Loader - No ${entity} record found with ${lookupField}: ${lookupValue}`)
               }
             }
-          } catch (lookupError) {
-            console.warn(`❌ CSV Loader - Lookup failed for ${lookupField}=${lookupValue}:`, lookupError)
           }
         }
 
