@@ -58,13 +58,13 @@ export function SpeedTest() {
     try {
       toast.info('Starting speed test - bypassing rate limiter for max throughput...', { duration: 3000 })
 
-      bullhornRateLimiter.setMaxConcurrentRequests(100)
+      bullhornRateLimiter.setMaxConcurrentRequests(500)
       bullhornRateLimiter.setMinDelay(0)
       bullhornRateLimiter.setTargetCallsPerMinute(1500)
       bullhornRateLimiter.setSpeedMultiplier(1.0)
 
       const promises: Promise<void>[] = []
-      const maxConcurrent = 100
+      const maxConcurrent = 500
       let activePromises = 0
 
       const makeCall = async (i: number): Promise<void> => {
@@ -215,7 +215,7 @@ export function SpeedTest() {
           API Speed Test - 1500 Calls/Minute Validation
         </CardTitle>
         <CardDescription>
-          Test raw API throughput by making 1500 direct fetch calls with 100 concurrent connections, bypassing the rate limiter to measure maximum possible speed
+          Test raw API throughput by making 1500 direct fetch calls with up to 500 concurrent connections, bypassing the rate limiter to measure maximum possible speed
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -393,7 +393,7 @@ export function SpeedTest() {
               <div className="text-xs font-medium mb-2">Test Details</div>
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>• Makes 1500 direct fetch() calls with minimal query (Candidate entity, ID field only)</p>
-                <p>• Uses 100 concurrent connections - BYPASSES rate limiter for raw speed measurement</p>
+                <p>• Uses up to 500 concurrent connections - BYPASSES rate limiter for raw speed measurement</p>
                 <p>• Restores normal rate limiter settings after test completes</p>
                 <p>• Tests actual network + API throughput without artificial throttling</p>
                 <p>• Results vary based on network latency, API server load, and data center location</p>
