@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Swap, Flask, TestTube, Gauge, Export } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Swap, Flask, TestTube, Gauge, Export, Pause } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -25,6 +25,7 @@ import { OAuthDiagnostics } from '@/components/OAuthDiagnostics'
 import { ConsoleMonitor } from '@/components/ConsoleMonitor'
 import { ToOneFieldTest } from '@/components/ToOneFieldTest'
 import { ComprehensiveFieldTest } from '@/components/ComprehensiveFieldTest'
+import { PauseResumeTests } from '@/components/PauseResumeTests'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { toast } from 'sonner'
@@ -506,7 +507,7 @@ function App() {
               environment={savedConnections.find(c => c.id === currentConnectionId)?.environment}
             />
             
-            <TabsList className="grid w-full grid-cols-11 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-12 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -542,6 +543,10 @@ function App() {
               <TabsTrigger value="oauth-test" className="gap-2">
                 <TestTube size={18} />
                 <span className="hidden sm:inline">OAuth Test</span>
+              </TabsTrigger>
+              <TabsTrigger value="pause-resume-test" className="gap-2">
+                <Pause size={18} />
+                <span className="hidden sm:inline">Pause/Resume</span>
               </TabsTrigger>
               <TabsTrigger value="rate-limits" className="gap-2">
                 <Gauge size={18} />
@@ -594,6 +599,10 @@ function App() {
               <ConsoleMonitor />
               <OAuthDiagnostics />
               <OAuthTestSuite />
+            </TabsContent>
+
+            <TabsContent value="pause-resume-test" className="space-y-6">
+              <PauseResumeTests />
             </TabsContent>
 
             <TabsContent value="rate-limits" className="space-y-6">
