@@ -23,8 +23,12 @@ export class BullhornRateLimiter {
   private lastRequestTime = 0
   private consecutiveErrors = 0
   private backoffMultiplier = 1
-  private targetCallsPerMinute = 1500
+  private targetCallsPerMinute = 1000
   private speedMultiplier = 1.0
+
+  constructor() {
+    this.updateSpeedSettings()
+  }
 
   parseRateLimitHeaders(headers: Headers): void {
     const limitHeader = headers.get('X-RateLimit-Limit') || headers.get('X-Rate-Limit-Limit')
@@ -342,7 +346,7 @@ export class BullhornRateLimiter {
   }
 
   resetToDefaults(): void {
-    this.targetCallsPerMinute = 1500
+    this.targetCallsPerMinute = 1000
     this.speedMultiplier = 1.0
     this.updateSpeedSettings()
     console.log(`🔄 Rate limiter reset to defaults`)

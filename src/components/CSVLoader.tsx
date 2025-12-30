@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye, ArrowsClockwise, ArrowCounterClockwise, Pause, Play, Stop, DownloadSimple } from '@phosphor-icons/react'
+import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye, ArrowsClockwise, ArrowCounterClockwise, Pause, Play, Stop, DownloadSimple, Gauge } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV, exportToCSV, exportToJSON } from '@/lib/csv-utils'
@@ -20,6 +20,7 @@ import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
 import { LookupFieldSelector } from '@/components/LookupFieldSelector'
+import { SpeedControl } from '@/components/SpeedControl'
 import type { CSVMapping, UpdateSnapshot, ExecutionState } from '@/lib/types'
 
 interface CSVLoaderProps {
@@ -72,6 +73,11 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   
   const [persistedState, setPersistedState, deletePersistedState] = useKV<PersistedImportState | null>('csv-import-paused-state', null)
   const [showRestorePrompt, setShowRestorePrompt] = useState(false)
+
+  const [processingSpeed, setProcessingSpeed] = useState(0)
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null)
+  const processingStartTimeRef = useRef<number>(0)
+  const lastProgressUpdateRef = useRef<{ time: number; index: number }>({ time: 0, index: 0 })
 
   const { entities, loading: entitiesLoading, refresh: refreshEntities, addEntity } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
@@ -237,6 +243,13 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       setCurrentIndex(0)
       setResults([])
       executionControlRef.current = { shouldPause: false, shouldStop: false }
+      processingStartTimeRef.current = Date.now()
+      lastProgressUpdateRef.current = { time: Date.now(), index: 0 }
+      setProcessingSpeed(0)
+      setEstimatedTimeRemaining(null)
+    } else {
+      processingStartTimeRef.current = Date.now() - ((currentIndex / csvData.rows.length) * 60000)
+      lastProgressUpdateRef.current = { time: Date.now(), index: currentIndex }
     }
     
     setExecutionState('running')
@@ -722,12 +735,32 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
 
       setProgress(((i + 1) / csvData.rows.length) * 100)
       setResults([...importResults])
+      
+      const now = Date.now()
+      const timeSinceLastUpdate = now - lastProgressUpdateRef.current.time
+      
+      if (timeSinceLastUpdate >= 1000) {
+        const recordsSinceLastUpdate = (i + 1) - lastProgressUpdateRef.current.index
+        const recordsPerSecond = recordsSinceLastUpdate / (timeSinceLastUpdate / 1000)
+        const recordsPerMinute = Math.round(recordsPerSecond * 60)
+        setProcessingSpeed(recordsPerMinute)
+        
+        const remainingRecords = csvData.rows.length - (i + 1)
+        if (recordsPerSecond > 0) {
+          const secondsRemaining = remainingRecords / recordsPerSecond
+          setEstimatedTimeRemaining(Math.round(secondsRemaining))
+        }
+        
+        lastProgressUpdateRef.current = { time: now, index: i + 1 }
+      }
     }
 
     setResults(importResults)
     setLoading(false)
     setExecutionState('idle')
     setCurrentIndex(0)
+    setProcessingSpeed(0)
+    setEstimatedTimeRemaining(null)
     
     deletePersistedState()
 
@@ -1101,6 +1134,8 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                 </ScrollArea>
               </div>
 
+              <SpeedControl compact={true} />
+
               <div className="flex gap-2 pt-2">
                 {executionState === 'idle' || executionState === 'stopped' ? (
                   <Button
@@ -1167,10 +1202,30 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               </div>
 
               {loading && (
-                <div className="space-y-2">
-                  <Label>Import Progress</Label>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Import Progress</Label>
+                    <div className="flex items-center gap-3">
+                      {processingSpeed > 0 && (
+                        <Badge variant="outline" className="flex items-center gap-1 font-mono">
+                          <Gauge size={14} />
+                          {processingSpeed} records/min
+                        </Badge>
+                      )}
+                      {estimatedTimeRemaining !== null && estimatedTimeRemaining > 0 && (
+                        <Badge variant="secondary" className="font-mono">
+                          ~{estimatedTimeRemaining < 60 
+                            ? `${estimatedTimeRemaining}s` 
+                            : `${Math.floor(estimatedTimeRemaining / 60)}m ${estimatedTimeRemaining % 60}s`} remaining
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
                   <Progress value={progress} />
-                  <p className="text-xs text-muted-foreground text-center">{Math.round(progress)}%</p>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{Math.round(progress)}%</span>
+                    <span>{currentIndex} / {csvData?.rows.length || 0} records</span>
+                  </div>
                 </div>
               )}
             </>

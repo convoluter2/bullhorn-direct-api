@@ -18,8 +18,8 @@ interface SpeedControlProps {
 
 export function SpeedControl({ onSpeedChange, compact = false }: SpeedControlProps) {
   const [speedMultiplier, setSpeedMultiplier] = useState(1.0)
-  const [targetCallsPerMinute, setTargetCallsPerMinute] = useState(1500)
-  const [effectiveCallsPerMinute, setEffectiveCallsPerMinute] = useState(1500)
+  const [targetCallsPerMinute, setTargetCallsPerMinute] = useState(1000)
+  const [effectiveCallsPerMinute, setEffectiveCallsPerMinute] = useState(1000)
 
   useEffect(() => {
     const settings = bullhornAPI.getSpeedSettings()
@@ -61,13 +61,13 @@ export function SpeedControl({ onSpeedChange, compact = false }: SpeedControlPro
   const handleReset = () => {
     bullhornAPI.resetRateLimiter()
     setSpeedMultiplier(1.0)
-    setTargetCallsPerMinute(1500)
-    setEffectiveCallsPerMinute(1500)
+    setTargetCallsPerMinute(1000)
+    setEffectiveCallsPerMinute(1000)
     
     onSpeedChange?.({
-      targetCallsPerMinute: 1500,
+      targetCallsPerMinute: 1000,
       speedMultiplier: 1.0,
-      effectiveCallsPerMinute: 1500
+      effectiveCallsPerMinute: 1000
     })
   }
 
