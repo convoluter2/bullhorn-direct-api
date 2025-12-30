@@ -45,6 +45,27 @@ npm run dev
 **Detailed Help:**
 See [PROXY_TROUBLESHOOTING.md](./PROXY_TROUBLESHOOTING.md)
 
+### OAuth Authentication Issues (404 Errors, Wrong Tenant, etc.)
+
+**Seeing "HTTP Status 404" or Tomcat errors in the OAuth popup?**
+
+This is caused by **browser cookie caching** from previous Bullhorn logins.
+
+**Quick Fixes:**
+1. **Use Incognito Mode** (Recommended):
+   - Click "Copy for Incognito" in the auth dialog
+   - Open an Incognito/Private window
+   - Paste the URL, login, copy the final URL back
+
+2. **Clear Bullhorn Cookies**:
+   - Click "Clear Cookies & Cache" button in the app header
+   - Select "Clear Bullhorn Cookies & Sessions"
+
+3. **Try a different browser**
+
+**Detailed Help:**
+See [OAUTH_TROUBLESHOOTING.md](./OAUTH_TROUBLESHOOTING.md) for comprehensive solutions and technical details.
+
 ### Port Already in Use
 
 ```bash
@@ -58,8 +79,9 @@ fuser -k 5000/tcp  # Vite
 
 ## 📚 Documentation
 
+- **[OAUTH_TROUBLESHOOTING.md](./OAUTH_TROUBLESHOOTING.md)** - ⭐ **Common OAuth/Auth Issues (404 errors, wrong tenant, cookie problems)**
 - [PROXY_STATUS.md](./PROXY_STATUS.md) - Proxy server details
-- [PROXY_TROUBLESHOOTING.md](./PROXY_TROUBLESHOOTING.md) - Detailed troubleshooting
+- [PROXY_TROUBLESHOOTING.md](./PROXY_TROUBLESHOOTING.md) - Proxy troubleshooting
 - [PRD.md](./PRD.md) - Product requirements
 - [README.md](./README.md) - Main project readme
 

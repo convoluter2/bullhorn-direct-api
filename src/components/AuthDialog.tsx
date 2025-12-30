@@ -8,7 +8,7 @@ import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
-import { Copy, Info, CheckCircle, Circle } from '@phosphor-icons/react'
+import { Copy, Info, CheckCircle, Circle, Warning } from '@phosphor-icons/react'
 import type { SavedConnection } from '@/components/ConnectionManager'
 import type { BullhornSession } from '@/lib/types'
 
@@ -407,6 +407,20 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 font-medium">
                   💡 Recommended: Always use Incognito mode when switching between different Bullhorn connections.
                 </p>
+                <details className="mt-2 text-xs">
+                  <summary className="cursor-pointer font-semibold text-amber-700 dark:text-amber-300 hover:underline">
+                    🚨 Seeing HTTP 404 or Tomcat errors? Click for solutions
+                  </summary>
+                  <div className="mt-2 p-2 bg-white/50 dark:bg-black/20 rounded space-y-1">
+                    <p className="font-semibold">Quick Solutions:</p>
+                    <ol className="list-decimal ml-4 space-y-0.5">
+                      <li>Click "Copy for Incognito" → Open Incognito window → Paste URL → Login → Copy final URL back here</li>
+                      <li>Click "Clear Cookies & Cache" in header → Select "Clear Bullhorn Cookies & Sessions"</li>
+                      <li>Try a different browser (if Safari has cached credentials, use Chrome)</li>
+                    </ol>
+                    <p className="mt-1 italic">See <code className="bg-black/10 px-1 rounded">OAUTH_TROUBLESHOOTING.md</code> for detailed explanation</p>
+                  </div>
+                </details>
               </div>
             </AlertDescription>
           </Alert>
@@ -476,7 +490,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             <div className="space-y-2 p-3 bg-muted rounded-lg">
               <Label className="text-sm font-medium">Get Authorization Code</Label>
               <p className="text-xs text-muted-foreground mb-2">
-                Opens Bullhorn login in a popup window. After logging in, copy the entire URL and paste it in the field below.
+                Opens Bullhorn login in a popup window. After logging in, you'll see a "Welcome to Bullhorn" page—copy the entire URL from that page and paste it below.
               </p>
               <div className="flex gap-2">
                 <Input
@@ -519,9 +533,22 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                   Copy for Incognito
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                After the popup redirects, copy the entire URL from the address bar and paste it in the field below.
-              </p>
+              <Alert className="mt-3 bg-green-500/10 border-green-500/30">
+                <CheckCircle className="text-green-500" size={16} weight="fill" />
+                <AlertDescription className="text-xs">
+                  <strong>What to expect:</strong>
+                  <ol className="list-decimal ml-4 mt-1 space-y-0.5">
+                    <li>Popup opens with Bullhorn login (or auto-logs in)</li>
+                    <li>Page redirects to <code className="text-xs bg-black/10 px-1 rounded">https://welcome.bullhornstaffing.com/</code></li>
+                    <li>You'll see "Welcome to Bullhorn - Thank you for using Bullhorn"</li>
+                    <li>Copy the <strong>entire URL</strong> from the address bar (includes code parameter)</li>
+                    <li>Paste it in the field below</li>
+                  </ol>
+                  <p className="mt-2 text-amber-600 dark:text-amber-400 font-semibold">
+                    ⚠️ If you see a 404 error, your browser may have cookie conflicts. Use Incognito mode or clear Bullhorn cookies using the button in the header.
+                  </p>
+                </AlertDescription>
+              </Alert>
             </div>
 
             <div className="space-y-2 p-3 bg-muted rounded-lg">
@@ -541,6 +568,26 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                 ✨ Pro tip: Just paste the full URL from the popup - the colon (:) will be decoded automatically
               </p>
             </div>
+
+            <Alert className="border-destructive/30 bg-destructive/5">
+              <Warning className="text-destructive" size={16} weight="fill" />
+              <AlertDescription className="text-xs space-y-2">
+                <p className="font-semibold text-destructive">🚨 Seeing "HTTP Status 404" or Tomcat errors in the popup?</p>
+                <p><strong>Root Cause:</strong> Browser cookies are cached from a previous Bullhorn login, causing authentication conflicts.</p>
+                <div className="mt-2">
+                  <p className="font-semibold mb-1">Solutions (in order of preference):</p>
+                  <ol className="list-decimal ml-4 space-y-1">
+                    <li><strong>Use Incognito/Private Mode</strong> - Click "Copy for Incognito" above, open a private window, paste the URL, log in, then copy the final URL back here</li>
+                    <li><strong>Clear Bullhorn Cookies</strong> - Click the "Clear Cookies & Cache" button in the header, select "Clear Bullhorn Cookies & Sessions"</li>
+                    <li><strong>Use a different browser</strong> - If Safari has cached credentials, try Chrome or Firefox</li>
+                  </ol>
+                </div>
+                <p className="mt-2 text-destructive font-medium">
+                  💡 Why this happens: Bullhorn's OAuth service remembers your last login via cookies. When switching between different tenants/connections, 
+                  these cookies can return the wrong authorization code, causing 404 errors or authentication to the wrong corporation.
+                </p>
+              </AlertDescription>
+            </Alert>
 
             <div className="flex gap-3 pt-2">
               <Button 
