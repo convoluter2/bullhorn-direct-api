@@ -18,12 +18,12 @@ export class BullhornRateLimiter {
   private requestQueue: QueuedRequest[] = []
   private isProcessing = false
   private requestsInProgress = 0
-  private maxConcurrentRequests = 20
+  private maxConcurrentRequests = 30
   private minDelayBetweenRequests = 0
   private lastRequestTime = 0
   private consecutiveErrors = 0
   private backoffMultiplier = 1
-  private targetCallsPerMinute = 1500
+  private targetCallsPerMinute = 15000
   private speedMultiplier = 1.0
 
   constructor() {
@@ -36,7 +36,7 @@ export class BullhornRateLimiter {
     const resetHeader = headers.get('X-RateLimit-Reset') || headers.get('X-Rate-Limit-Reset')
 
     if (limitHeader || remainingHeader) {
-      const limit = limitHeader ? parseInt(limitHeader, 10) : (this.rateLimitInfo?.limitPerMinute || 60)
+      const limit = limitHeader ? parseInt(limitHeader, 10) : (this.rateLimitInfo?.limitPerMinute || 15000)
       const remaining = remainingHeader ? parseInt(remainingHeader, 10) : (this.rateLimitInfo?.remaining || limit)
       const reset = resetHeader ? parseInt(resetHeader, 10) : Date.now() + 60000
 
@@ -47,12 +47,18 @@ export class BullhornRateLimiter {
         lastUpdated: Date.now()
       }
 
-      console.log('📊 Rate limit info updated:', {
+      console.log('📊 Rate limit info updated from API headers:', {
         limit,
         remaining,
         resetIn: Math.round((reset - Date.now()) / 1000) + 's',
         percentUsed: Math.round(((limit - remaining) / limit) * 100) + '%'
       })
+
+      if (this.targetCallsPerMinute !== limit) {
+        console.log(`🎯 Adjusting target calls/minute from ${this.targetCallsPerMinute} to API limit: ${limit}`)
+        this.targetCallsPerMinute = limit
+        this.updateSpeedSettings()
+      }
 
       if (remaining < limit * 0.2) {
         console.warn('⚠️ API rate limit usage high:', {
@@ -292,7 +298,7 @@ export class BullhornRateLimiter {
   }
 
   setTargetCallsPerMinute(targetCalls: number): void {
-    this.targetCallsPerMinute = Math.max(60, Math.min(1500, targetCalls))
+    this.targetCallsPerMinute = Math.max(60, Math.min(30000, targetCalls))
     this.updateSpeedSettings()
     console.log(`🎯 Target calls per minute set to ${this.targetCallsPerMinute}`)
   }
@@ -304,19 +310,16 @@ export class BullhornRateLimiter {
   }
 
   private updateSpeedSettings(): void {
-    const effectiveCallsPerMinute = Math.min(
-      this.targetCallsPerMinute * this.speedMultiplier,
-      1500
-    )
+    const effectiveCallsPerMinute = this.targetCallsPerMinute * this.speedMultiplier
     
     const baseMinDelay = Math.floor(60000 / effectiveCallsPerMinute)
     this.minDelayBetweenRequests = Math.max(0, baseMinDelay)
     
     const baseConcurrency = Math.max(
-      10,
-      Math.ceil(effectiveCallsPerMinute / 100)
+      20,
+      Math.min(30, Math.ceil(effectiveCallsPerMinute / 100))
     )
-    this.maxConcurrentRequests = Math.max(10, Math.min(30, baseConcurrency))
+    this.maxConcurrentRequests = Math.max(20, Math.min(30, baseConcurrency))
     
     console.log(`📊 Speed settings updated:`, {
       targetCPM: this.targetCallsPerMinute,
@@ -335,10 +338,7 @@ export class BullhornRateLimiter {
     minDelay: number
     maxConcurrent: number
   } {
-    const effectiveCallsPerMinute = Math.min(
-      this.targetCallsPerMinute * this.speedMultiplier,
-      1500
-    )
+    const effectiveCallsPerMinute = this.targetCallsPerMinute * this.speedMultiplier
     
     return {
       targetCallsPerMinute: this.targetCallsPerMinute,
@@ -350,10 +350,10 @@ export class BullhornRateLimiter {
   }
 
   resetToDefaults(): void {
-    this.targetCallsPerMinute = 1500
+    this.targetCallsPerMinute = 15000
     this.speedMultiplier = 1.0
     this.updateSpeedSettings()
-    console.log(`🔄 Rate limiter reset to defaults`)
+    console.log(`🔄 Rate limiter reset to defaults (15000 calls/min)`)
   }
 }
 
