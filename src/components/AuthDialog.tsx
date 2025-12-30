@@ -153,31 +153,6 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           expectedTenant: preselectedConnection?.tenant
         })
         
-        if (preselectedConnection) {
-          const restUrlTenant = session.restUrl.match(/rest-services\/([^/]+)/)?.[1]
-          const expectedTenant = preselectedConnection.tenant?.toLowerCase()
-          
-          if (restUrlTenant && expectedTenant && !restUrlTenant.toLowerCase().includes(expectedTenant) && !expectedTenant.includes(restUrlTenant.toLowerCase())) {
-            console.error('❌ TENANT MISMATCH DETECTED:', {
-              expected: preselectedConnection.tenant,
-              expectedNormalized: expectedTenant,
-              actual: restUrlTenant,
-              sessionRestUrl: session.restUrl,
-              connectionName: preselectedConnection.name
-            })
-            
-            toast.error(
-              `❌ WRONG TENANT! You authenticated to "${restUrlTenant}" but expected "${preselectedConnection.tenant}". This is likely due to browser cookie caching. Please disconnect, clear cookies for bullhornstaffing.com, and try again in Incognito mode.`,
-              { duration: 15000 }
-            )
-            
-            setLoading(false)
-            setAuthStep('idle')
-            setAuthProgress(0)
-            return
-          }
-        }
-        
         setAuthStep('complete')
         setAuthProgress(100)
         toast.success('Successfully authenticated with Bullhorn')
@@ -210,31 +185,6 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
           expectedConnection: preselectedConnection?.name,
           expectedTenant: preselectedConnection?.tenant
         })
-        
-        if (preselectedConnection) {
-          const restUrlTenant = session.restUrl.match(/rest-services\/([^/]+)/)?.[1]
-          const expectedTenant = preselectedConnection.tenant?.toLowerCase()
-          
-          if (restUrlTenant && expectedTenant && !restUrlTenant.toLowerCase().includes(expectedTenant) && !expectedTenant.includes(restUrlTenant.toLowerCase())) {
-            console.error('❌ TENANT MISMATCH DETECTED:', {
-              expected: preselectedConnection.tenant,
-              expectedNormalized: expectedTenant,
-              actual: restUrlTenant,
-              sessionRestUrl: session.restUrl,
-              connectionName: preselectedConnection.name
-            })
-            
-            toast.error(
-              `❌ WRONG TENANT! You authenticated to "${restUrlTenant}" but expected "${preselectedConnection.tenant}". This is likely due to browser cookie caching. Please disconnect, clear cookies for bullhornstaffing.com, and try again.`,
-              { duration: 15000, id: 'auto-auth' }
-            )
-            
-            setLoading(false)
-            setAuthStep('idle')
-            setAuthProgress(0)
-            return
-          }
-        }
         
         setAuthStep('complete')
         setAuthProgress(100)
