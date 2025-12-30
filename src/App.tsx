@@ -187,31 +187,12 @@ function App() {
         const connection = savedConnections.find(c => c.id === connectionId)
         if (connection) {
           const newSessionTenant = newSession.restUrl.match(/rest-services\/([^/]+)/)?.[1]
-          console.log('🔍 Validating connection:', {
+          console.log('✅ Connection authenticated:', {
             connectionName: connection.name,
             expectedTenant: connection.tenant,
             actualTenant: newSessionTenant,
             corporationId: newSession.corporationId
           })
-          
-          if (newSessionTenant && connection.tenant) {
-            const expectedTenant = connection.tenant.toLowerCase()
-            if (!newSessionTenant.toLowerCase().includes(expectedTenant) && !expectedTenant.includes(newSessionTenant.toLowerCase())) {
-              console.error('❌ TENANT MISMATCH in handleAuthenticated!', {
-                expected: connection.tenant,
-                actual: newSessionTenant,
-                connectionName: connection.name
-              })
-              
-              toast.error(
-                `Connection mismatch! Expected ${connection.tenant} but got ${newSessionTenant}. Browser cookies may be causing this. Clear cookies and try again.`,
-                { duration: 15000 }
-              )
-              
-              setIsOAuthCallback(false)
-              return
-            }
-          }
         }
       }
       
@@ -339,25 +320,6 @@ function App() {
         tenant: newSessionTenant,
         expectedTenant: connection.tenant
       })
-      
-      if (newSessionTenant && connection.tenant) {
-        const expectedTenant = connection.tenant.toLowerCase()
-        if (!newSessionTenant.toLowerCase().includes(expectedTenant) && !expectedTenant.includes(newSessionTenant.toLowerCase())) {
-          console.error('❌ TENANT MISMATCH after connection switch!', {
-            expected: connection.tenant,
-            actual: newSessionTenant
-          })
-          
-          bullhornAPI.clearSession()
-          setSession(() => null)
-          
-          toast.error(
-            `Failed to switch: Connected to wrong tenant (${newSessionTenant} instead of ${connection.tenant}). Please clear browser cookies and try again.`,
-            { duration: 15000, id: 'switch-connection' }
-          )
-          return
-        }
-      }
 
       setSession(() => newSession)
       bullhornAPI.setSession(newSession)
