@@ -322,9 +322,12 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
 
     const updateData: Record<string, any> = {}
     fieldUpdates.forEach(update => {
-      if (update.field && update.value !== '') {
+      if (update.field) {
         const fieldMeta = fieldsMap[update.field]
-        if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
+        
+        if (update.value === '' || update.value.toLowerCase() === 'null') {
+          updateData[update.field] = null
+        } else if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
           updateData[update.field] = Number(update.value)
         } else if (fieldMeta?.type === 'Boolean') {
           updateData[update.field] = update.value === 'true' || update.value === '1'
@@ -399,9 +402,12 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
       if (operationMode === 'create') {
         const updateData: Record<string, any> = {}
         fieldUpdates.forEach(update => {
-          if (update.field && update.value !== '') {
+          if (update.field) {
             const fieldMeta = fieldsMap[update.field]
-            if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
+            
+            if (update.value === '' || update.value.toLowerCase() === 'null') {
+              updateData[update.field] = null
+            } else if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
               updateData[update.field] = Number(update.value)
             } else if (fieldMeta?.type === 'Boolean') {
               updateData[update.field] = update.value === 'true' || update.value === '1'
@@ -431,9 +437,12 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
       } else {
         const updateData: Record<string, any> = {}
         fieldUpdates.forEach(update => {
-          if (update.field && update.value !== '') {
+          if (update.field) {
             const fieldMeta = fieldsMap[update.field]
-            if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
+            
+            if (update.value === '' || update.value.toLowerCase() === 'null') {
+              updateData[update.field] = null
+            } else if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
               updateData[update.field] = Number(update.value)
             } else if (fieldMeta?.type === 'Boolean') {
               updateData[update.field] = update.value === 'true' || update.value === '1'
@@ -857,6 +866,12 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                 </Button>
               </div>
               
+              <Alert>
+                <AlertDescription className="text-xs">
+                  <strong>Tip:</strong> Leave a field blank or enter "null" (case-insensitive) to set it to NULL/clear its value. Use timestamps (e.g., 1704067200000) for date comparisons or MM/DD/YYYY format (e.g., 1/1/2024) which will auto-convert.
+                </AlertDescription>
+              </Alert>
+              
               <div className="space-y-2">
                 {fieldUpdates.map((update, index) => (
                   <div key={index} className="flex gap-2 items-end">
@@ -881,7 +896,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                         field={fieldsMap[update.field] || null}
                         value={update.value}
                         onChange={(v) => updateFieldUpdate(index, 'value', v)}
-                        placeholder="Enter value"
+                        placeholder="Enter value (blank/null = clear)"
                       />
                     </div>
                     <Button

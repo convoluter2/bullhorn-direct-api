@@ -361,7 +361,9 @@ export function QueryStack({ onLog }: QueryStackProps) {
           fieldUpdates.forEach(update => {
             const fieldMeta = targetMetadata?.fieldsMap[update.field]
             
-            if (fieldMeta?.associationType === 'TO_MANY') {
+            if (update.value === '' || update.value.toLowerCase() === 'null') {
+              updateData[update.field] = null
+            } else if (fieldMeta?.associationType === 'TO_MANY') {
               try {
                 const toManyValue = JSON.parse(update.value)
                 if (toManyValue.operation && toManyValue.ids) {
@@ -382,6 +384,10 @@ export function QueryStack({ onLog }: QueryStackProps) {
               } else {
                 updateData[update.field] = update.value
               }
+            } else if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
+              updateData[update.field] = Number(update.value)
+            } else if (fieldMeta?.type === 'Boolean') {
+              updateData[update.field] = update.value === 'true' || update.value === '1'
             } else {
               updateData[update.field] = update.value
             }

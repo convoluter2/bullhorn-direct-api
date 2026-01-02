@@ -316,30 +316,38 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           const rawValue = row[csvIndex]
           const transformedValue = transformValue(rawValue, mapping.transform)
           
-          const fieldMeta = metadata?.fieldsMap[mapping.bullhornField]
-          if (fieldMeta?.associationType === 'TO_MANY') {
-            try {
-              const parsed = JSON.parse(transformedValue)
-              data[`__tomany_${mapping.bullhornField}`] = parsed
-            } catch {
-              const ids = transformedValue.split(/[,\s]+/).map((id: string) => parseInt(id.trim(), 10)).filter((id: number) => !isNaN(id))
-              if (ids.length > 0) {
-                data[`__tomany_${mapping.bullhornField}`] = {
-                  operation: 'add',
-                  ids: ids,
-                  subField: 'id'
+          if (transformedValue === '' || transformedValue.toLowerCase() === 'null') {
+            data[mapping.bullhornField] = null
+          } else {
+            const fieldMeta = metadata?.fieldsMap[mapping.bullhornField]
+            if (fieldMeta?.associationType === 'TO_MANY') {
+              try {
+                const parsed = JSON.parse(transformedValue)
+                data[`__tomany_${mapping.bullhornField}`] = parsed
+              } catch {
+                const ids = transformedValue.split(/[,\s]+/).map((id: string) => parseInt(id.trim(), 10)).filter((id: number) => !isNaN(id))
+                if (ids.length > 0) {
+                  data[`__tomany_${mapping.bullhornField}`] = {
+                    operation: 'add',
+                    ids: ids,
+                    subField: 'id'
+                  }
                 }
               }
-            }
-          } else if (fieldMeta?.associationType === 'TO_ONE') {
-            const trimmedValue = transformedValue.trim()
-            if (trimmedValue && /^\d+$/.test(trimmedValue)) {
-              data[mapping.bullhornField] = { id: parseInt(trimmedValue, 10) }
+            } else if (fieldMeta?.associationType === 'TO_ONE') {
+              const trimmedValue = transformedValue.trim()
+              if (trimmedValue && /^\d+$/.test(trimmedValue)) {
+                data[mapping.bullhornField] = { id: parseInt(trimmedValue, 10) }
+              } else {
+                data[mapping.bullhornField] = transformedValue
+              }
+            } else if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
+              data[mapping.bullhornField] = Number(transformedValue)
+            } else if (fieldMeta?.type === 'Boolean') {
+              data[mapping.bullhornField] = transformedValue === 'true' || transformedValue === '1'
             } else {
               data[mapping.bullhornField] = transformedValue
             }
-          } else {
-            data[mapping.bullhornField] = transformedValue
           }
         }
       })

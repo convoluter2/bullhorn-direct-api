@@ -726,9 +726,9 @@ export class BullhornAPI {
     }
     
     if (filter.operator === 'between_inclusive' || filter.operator === 'between_exclusive') {
-      const values = filter.value.split(',').map((v: string) => v.trim())
+      const values = filter.value.split(',').map((v: string) => this.convertToTimestampIfNeeded(v.trim()))
       if (values.length < 2) {
-        return `${filter.field}:${filter.value}`
+        return `${filter.field}:${this.convertToTimestampIfNeeded(filter.value)}`
       }
       if (filter.operator === 'between_inclusive') {
         return `${filter.field}:..[${values[0]},${values[1]}]`
@@ -757,12 +757,29 @@ export class BullhornAPI {
       return `${filter.field}~"${filter.value}"`
     }
     
-    let value = filter.value
-    if (value && (value.includes(' ') || value.includes(','))) {
+    let value = this.convertToTimestampIfNeeded(filter.value)
+    if (value && typeof value === 'string' && (value.includes(' ') || value.includes(','))) {
       value = `"${value}"`
     }
     
     return `${filter.field}${operator}${value}`
+  }
+
+  private convertToTimestampIfNeeded(value: string): string {
+    if (!value || typeof value !== 'string') return value
+    
+    const datePattern = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
+    const match = value.match(datePattern)
+    
+    if (match) {
+      const [, month, day, year] = match
+      const date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00.000Z`)
+      if (!isNaN(date.getTime())) {
+        return date.getTime().toString()
+      }
+    }
+    
+    return value
   }
 
   private mapOperator(operator: string): string {
