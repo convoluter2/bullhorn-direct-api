@@ -2,16 +2,20 @@
 
 A comprehensive Bullhorn ATS/CRM data management platform that enables enterprise users to query, import, export, and manipulate candidate and job data through direct REST API integration.
 
-## 🚨 Important - Published App Known Issue
+## 🚨 Important - Platform 429 Rate Limit
 
-**If you see a 429 error** when accessing the published Spark app, this is a GitHub infrastructure rate limit, not a bug in the application. 
+**If you see a 429 error** when accessing the deployed app URL, this is a **GitHub/Spark platform rate limit**, not an application bug or Bullhorn API issue.
 
 **Quick fixes:**
-- Wait 60 seconds and refresh
-- Clear browser cache or use incognito mode
-- **Best solution**: Run locally with `npm run dev` for full functionality
+- ⏱️ Wait 60-120 seconds before retrying (do NOT spam refresh)
+- 🧹 Clear browser cache and cookies for `*.github.app`
+- 🕵️ Try incognito/private browsing mode
+- 🌐 Use a different browser
+- **💻 Best for development**: Run locally with `npm run dev`
 
-See [DEPLOYMENT_NOTES.md](./DEPLOYMENT_NOTES.md) for details.
+📖 **[Complete guide with solutions](./PLATFORM_429_GUIDE.md)**
+
+This is a platform infrastructure limitation that cannot be fixed in application code. The enhanced error handling will guide you through recovery steps if this occurs.
 
 ## Features
 
