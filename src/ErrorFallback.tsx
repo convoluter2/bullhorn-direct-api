@@ -9,18 +9,25 @@ interface ErrorFallbackProps {
 }
 
 export const ErrorFallback = ({ error, resetErrorBoundary }: ErrorFallbackProps) => {
-  // When encountering an error in the development mode, rethrow it and don't display the boundary.
-  // The parent UI will take care of showing a more helpful dialog.
   if (import.meta.env.DEV) throw error;
+
+  const is429Error = error.message.includes('429') || error.message.toLowerCase().includes('rate limit')
+  const isNetworkError = error.message.toLowerCase().includes('network') || error.message.toLowerCase().includes('fetch')
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Alert variant="destructive" className="mb-6">
           <AlertTriangleIcon />
-          <AlertTitle>This spark has encountered a runtime error</AlertTitle>
+          <AlertTitle>
+            {is429Error ? 'Rate Limit Exceeded' : isNetworkError ? 'Network Error' : 'Runtime Error'}
+          </AlertTitle>
           <AlertDescription>
-            Something unexpected happened while running the application. The error details are shown below. Contact the spark author and let them know about this issue.
+            {is429Error 
+              ? 'The application has exceeded its rate limit. Please wait a moment and try again.'
+              : isNetworkError
+              ? 'Unable to connect to the service. Please check your internet connection and try again.'
+              : 'Something unexpected happened while running the application. The error details are shown below.'}
           </AlertDescription>
         </Alert>
         
@@ -31,14 +38,22 @@ export const ErrorFallback = ({ error, resetErrorBoundary }: ErrorFallbackProps)
           </pre>
         </div>
         
-        <Button 
-          onClick={resetErrorBoundary} 
-          className="w-full"
-          variant="outline"
-        >
-          <RefreshCwIcon />
-          Try Again
-        </Button>
+        <div className="space-y-3">
+          <Button 
+            onClick={resetErrorBoundary} 
+            className="w-full"
+            variant="outline"
+          >
+            <RefreshCwIcon />
+            Try Again
+          </Button>
+          
+          {is429Error && (
+            <p className="text-xs text-center text-muted-foreground">
+              Recommended: Wait 60 seconds before retrying
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

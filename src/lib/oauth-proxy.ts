@@ -9,19 +9,17 @@ export const oauthProxyService = {
     try {
       const response = await fetch(`${PROXY_URL}/health`, {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(2000)
       });
       
       if (!response.ok) {
-        console.error('❌ Proxy health check failed:', response.status);
         return false;
       }
       
       const data = await response.json();
-      console.log('✅ Proxy server healthy:', data);
       return data.status === 'healthy';
     } catch (error) {
-      console.error('❌ Proxy server not reachable:', error);
       return false;
     }
   },
