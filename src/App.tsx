@@ -17,6 +17,7 @@ import { SessionDebugPanel } from '@/components/SessionDebugPanel'
 import { ConnectionManager, type SavedConnection, type SecureCredentials } from '@/components/ConnectionManager'
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { CookieSessionClearer } from '@/components/CookieSessionClearer'
+import { DataStorageClearer } from '@/components/DataStorageClearer'
 import { ProxyStatus } from '@/components/ProxyStatus'
 import { RateLimitStatus } from '@/components/RateLimitStatus'
 import { RateLimitAnalytics } from '@/components/RateLimitAnalytics'
@@ -408,6 +409,7 @@ function App() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <DataStorageClearer />
               <CookieSessionClearer 
                 onClear={() => {
                   console.log('🧹 Cookies cleared, disconnecting session')
