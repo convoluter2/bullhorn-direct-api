@@ -24,41 +24,41 @@ export function DataStorageClearer() {
   useEffect(() => {
     if (open) {
       loadStorageData()
+    }
   }, [open])
-  }, [open])
-lyzeStorageKey = (key: string): StorageItem => {
+
   const analyzeStorageKey = (key: string): StorageItem => {
-    let canDelete = truetype'] = 'other'
+    let canDelete = true
     let type: StorageItem['type'] = 'other'
-ey.includes('audit-log') || key.includes('-logs')) {
+
     if (key.includes('audit-log') || key.includes('-logs')) {
-      type = 'logs' key === 'current-connection-id') {
+      type = 'logs'
     } else if (key.includes('bullhorn-session') || key === 'current-connection-id') {
       canDelete = false
-      type = 'session'n') || key.includes('secure-credentials')) {
+      type = 'session'
     } else if (key.includes('saved-connection') || key.includes('secure-credentials')) {
       canDelete = false
-      type = 'connection'he') || key.includes('entity-metadata') || key.includes('field-cache')) {
+      type = 'connection'
     } else if (key.includes('cache') || key.includes('entity-metadata') || key.includes('field-cache')) {
       type = 'cache'
-      key,
-      type,
+    }
+
     return {
-      key,matedSize: '~0 KB'
+      key,
       type,
       canDelete,
       estimatedSize: '~0 KB'
-    } () => {
+    }
   }
-      setLoading(true)
-  const loadStorageData = async () => {eys()
-    try {st items = await Promise.all(
+
+  const loadStorageData = async () => {
+    try {
       setLoading(true)
       const keys = await window.spark.kv.keys()
       const items = await Promise.all(
         keys.map(async (key) => {
-          const item = analyzeStorageKey(key)value).length
-          try { 1024).toFixed(2)
+          const item = analyzeStorageKey(key)
+          try {
             const value = await window.spark.kv.get(key)
             const sizeEstimate = JSON.stringify(value).length
             const sizeMB = (sizeEstimate / 1024).toFixed(2)
@@ -67,9 +67,9 @@ ey.includes('audit-log') || key.includes('-logs')) {
             console.error(`Failed to estimate size for ${key}:`, error)
           }
           return item
-        })torageItems(items)
-      )bleKeys = items.filter(i => i.canDelete).map(i => i.key)
-(new Set(deletableKeys))
+        })
+      )
+
       setStorageItems(items)
       const deletableKeys = items.filter(i => i.canDelete).map(i => i.key)
       setSelectedKeys(new Set(deletableKeys))
@@ -77,48 +77,61 @@ ey.includes('audit-log') || key.includes('-logs')) {
       console.error('Failed to load storage data:', error)
       toast.error('Failed to load storage data')
     } finally {
-  const toggleKey = (key: string, canDelete: boolean) => {
+      setLoading(false)
     }
+  }
 
- new Set(selectedKeys)
   const toggleKey = (key: string, canDelete: boolean) => {
     if (!canDelete) return
-    } else {
+
     const newSelected = new Set(selectedKeys)
     if (newSelected.has(key)) {
       newSelected.delete(key)
     } else {
       newSelected.add(key)
-    }st selectAll = () => {
-    setSelectedKeys(newSelected)ey)
-  const selectAllLogs = () => {
-t(storageItems.filter(i => i.type === 'logs' && i.canDelete).map(i => i.key)))
+    }
+    setSelectedKeys(newSelected)
+  }
+
   const selectAll = () => {
     const allKeys = storageItems.filter(i => i.canDelete).map(i => i.key)
     setSelectedKeys(new Set(allKeys))
-  } setSelectedKeys(new Set(storageItems.filter(i => i.type === 'cache' && i.canDelete).map(i => i.key)))
+  }
 
   const selectAllLogs = () => {
     setSelectedKeys(new Set(storageItems.filter(i => i.type === 'logs' && i.canDelete).map(i => i.key)))
-  }tSelectedKeys(new Set())
   }
+
   const selectAllCache = () => {
     setSelectedKeys(new Set(storageItems.filter(i => i.type === 'cache' && i.canDelete).map(i => i.key)))
-  } if (selectedKeys.size === 0) {
-   toast.warning('No items selected')
+  }
+
   const clearNone = () => {
     setSelectedKeys(new Set())
   }
 
-  const clearSelected = async () => {{selectedKeys.size} storage item(s)? This cannot be undone.`
+  const clearSelected = async () => {
     if (selectedKeys.size === 0) {
       toast.warning('No items selected')
       return
-    }oading(true)
-    const cleared: string[] = []
+    }
+
     const confirmed = confirm(
       `Are you sure you want to delete ${selectedKeys.size} storage item(s)? This cannot be undone.`
     )
+
+    if (!confirmed) return
+
+    try {
+      setLoading(true)
+      const cleared: string[] = []
+
+      for (const key of selectedKeys) {
+        try {
+          await window.spark.kv.delete(key)
+          cleared.push(key)
+        } catch (error) {
+          console.error(`Failed to delete ${key}:`, error)
         }
       }
 
@@ -248,30 +261,16 @@ t(storageItems.filter(i => i.type === 'logs' && i.canDelete).map(i => i.key)))
                         </div>
                       </div>
                     ))}
-                        className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50"
-              )}
-                        <Checkbox
-                          checked={selectedKeys.has(item.key)}
-                          onCheckedChange={() => toggleKey(item.key, item.canDelete)}
-                          disabled={!item.canDelete}
-                        />"text-purple-500" />
-                        <div className="flex-1 flex items-center gap-2">
-                          {getTypeIcon(item.type)}
-                          <code className="text-sm font-mono">{item.key}</code>
-                          <span className="text-xs text-muted-foreground ml-auto">{item.estimatedSize}</span>
-                        </div>
-                      </div>
-                    ))} items-center gap-3 p-2 rounded-md hover:bg-muted/50"
                   </div>
-                </div>  <Checkbox
-              )}ctedKeys.has(item.key)}
-       onCheckedChange={() => toggleKey(item.key, item.canDelete)}
+                </div>
+              )}
+
               {cacheItems.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="font-semibold flex items-center gap-2">
                     <HardDrives size={18} className="text-purple-500" />
-                    Cache ({cacheItems.length})ey}</code>
-                  </h3><span className="text-xs text-muted-foreground ml-auto">{item.estimatedSize}</span>
+                    Cache ({cacheItems.length})
+                  </h3>
                   <div className="space-y-1">
                     {cacheItems.map((item) => (
                       <div
@@ -281,79 +280,79 @@ t(storageItems.filter(i => i.type === 'logs' && i.canDelete).map(i => i.key)))
                         <Checkbox
                           checked={selectedKeys.has(item.key)}
                           onCheckedChange={() => toggleKey(item.key, item.canDelete)}
-                          disabled={!item.canDelete}items-center gap-2">
-                        />Circle size={18} className="text-green-500" />
+                          disabled={!item.canDelete}
+                        />
                         <div className="flex-1 flex items-center gap-2">
                           {getTypeIcon(item.type)}
                           <code className="text-sm font-mono">{item.key}</code>
                           <span className="text-xs text-muted-foreground ml-auto">{item.estimatedSize}</span>
                         </div>
-                      </div>{item.key}
-                    ))} className="flex items-center gap-3 p-2 rounded-md bg-green-500/5 opacity-50"
+                      </div>
+                    ))}
                   </div>
-                </div>  <Checkbox
-              )}          checked={false}
-                          disabled={true}
+                </div>
+              )}
+
               {sessionItems.length > 0 && (
-                <div className="space-y-2">x-1 flex items-center gap-2">
+                <div className="space-y-2">
                   <h3 className="font-semibold flex items-center gap-2">
-                    <CheckCircle size={18} className="text-green-500" /></code>
-                    Sessions ({sessionItems.length}) - Protectedreground ml-auto">{item.estimatedSize}</span>
-                  </h3> </div>
+                    <CheckCircle size={18} className="text-green-500" />
+                    Sessions ({sessionItems.length}) - Protected
+                  </h3>
                   <div className="space-y-1">
                     {sessionItems.map((item) => (
                       <div
                         key={item.key}
                         className="flex items-center gap-3 p-2 rounded-md bg-green-500/5 opacity-50"
                       >
-                        <Checkboxngth > 0 && (
-                          checked={false}">
-                          disabled={true}ibold flex items-center gap-2">
-                        />ase size={18} className="text-blue-500" />
+                        <Checkbox
+                          checked={false}
+                          disabled={true}
+                        />
                         <div className="flex-1 flex items-center gap-2">
                           {getTypeIcon(item.type)}
                           <code className="text-sm font-mono">{item.key}</code>
                           <span className="text-xs text-muted-foreground ml-auto">{item.estimatedSize}</span>
                         </div>
-                      </div>{item.key}
-                    ))} className="flex items-center gap-3 p-2 rounded-md bg-blue-500/5 opacity-50"
+                      </div>
+                    ))}
                   </div>
-                </div>  <Checkbox
-              )}          checked={false}
-                          disabled={true}
+                </div>
+              )}
+
               {connectionItems.length > 0 && (
-                <div className="space-y-2">x-1 flex items-center gap-2">
+                <div className="space-y-2">
                   <h3 className="font-semibold flex items-center gap-2">
-                    <Database size={18} className="text-blue-500" />key}</code>
-                    Connections ({connectionItems.length}) - Protectednd ml-auto">{item.estimatedSize}</span>
-                  </h3> </div>
+                    <Database size={18} className="text-blue-500" />
+                    Connections ({connectionItems.length}) - Protected
+                  </h3>
                   <div className="space-y-1">
                     {connectionItems.map((item) => (
                       <div
                         key={item.key}
                         className="flex items-center gap-3 p-2 rounded-md bg-blue-500/5 opacity-50"
                       >
-                        <Checkbox> 0 && (
-                          checked={false}">
-                          disabled={true}ibold flex items-center gap-2">
-                        />ase size={18} className="text-muted-foreground" />
+                        <Checkbox
+                          checked={false}
+                          disabled={true}
+                        />
                         <div className="flex-1 flex items-center gap-2">
                           {getTypeIcon(item.type)}
                           <code className="text-sm font-mono">{item.key}</code>
                           <span className="text-xs text-muted-foreground ml-auto">{item.estimatedSize}</span>
                         </div>
-                      </div>{item.key}
-                    ))} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50"
+                      </div>
+                    ))}
                   </div>
-                </div>  <Checkbox
-              )}          checked={selectedKeys.has(item.key)}
-                          onCheckedChange={() => toggleKey(item.key, item.canDelete)}
-              {otherItems.length > 0 && (.canDelete}
+                </div>
+              )}
+
+              {otherItems.length > 0 && (
                 <div className="space-y-2">
                   <h3 className="font-semibold flex items-center gap-2">
                     <Database size={18} className="text-muted-foreground" />
-                    Other ({otherItems.length})-sm font-mono">{item.key}</code>
-                  </h3>   <span className="text-xs text-muted-foreground ml-auto">{item.estimatedSize}</span>
+                    Other ({otherItems.length})
+                  </h3>
                   <div className="space-y-1">
                     {otherItems.map((item) => (
                       <div
@@ -372,26 +371,40 @@ t(storageItems.filter(i => i.type === 'logs' && i.canDelete).map(i => i.key)))
                         </div>
                       </div>
                     ))}
-                  </div>flex items-center justify-between">
-                </div>me="text-sm text-muted-foreground">
-              )}ectedKeys.size} of {storageItems.filter(i => i.canDelete).length} deletable items selected
-          </div>
+                  </div>
+                </div>
+              )}
+
               {storageItems.length === 0 && !loading && (
                 <div className="text-center py-8 text-muted-foreground">
                   No storage data found
                 </div>
-              )}ton 
-            </>ariant="destructive" 
-          )}  onClick={clearSelected}
-        </div>disabled={selectedKeys.size === 0 || loading}
-            >
-        <Separator />/>
-              Delete Selected
+              )}
+            </>
+          )}
+        </div>
+
+        <Separator />
+
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
             {selectedKeys.size} of {storageItems.filter(i => i.canDelete).length} deletable items selected
-          </div>ntent>
+          </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel
-            </Button>            <Button               variant="destructive"               onClick={clearSelected}              disabled={selectedKeys.size === 0 || loading}            >              <Trash />              Delete Selected            </Button>          </div>        </div>      </DialogContent>    </Dialog>  )}
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={clearSelected}
+              disabled={selectedKeys.size === 0 || loading}
+            >
+              <Trash />
+              Delete Selected
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
