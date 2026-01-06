@@ -572,7 +572,11 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                             <div className="flex items-center gap-2">
                               <XCircle size={14} className="text-destructive" weight="fill" />
                               <span className="text-xs text-destructive font-mono">
-                                {typeof log.details.error === 'string' ? log.details.error : JSON.stringify(log.details.error)}
+                                {typeof log.details.error === 'string' 
+                                  ? log.details.error 
+                                  : typeof log.details.error === 'object' && log.details.error !== null
+                                    ? JSON.stringify(log.details.error)
+                                    : String(log.details.error)}
                               </span>
                             </div>
                           </div>
