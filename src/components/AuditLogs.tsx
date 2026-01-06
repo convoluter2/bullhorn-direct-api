@@ -569,14 +569,25 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                         
                         {(log.status === 'error' && log.details?.error) && (
                           <div className="mt-2 p-2 bg-destructive/10 rounded border border-destructive/30">
-                            <div className="flex items-center gap-2">
-                              <XCircle size={14} className="text-destructive" weight="fill" />
-                              <span className="text-xs text-destructive font-mono">
-                                {typeof log.details.error === 'string' 
-                                  ? log.details.error 
-                                  : typeof log.details.error === 'object' && log.details.error !== null
-                                    ? JSON.stringify(log.details.error)
-                                    : String(log.details.error)}
+                            <div className="flex items-start gap-2">
+                              <XCircle size={14} className="text-destructive flex-shrink-0 mt-0.5" weight="fill" />
+                              <span className="text-xs text-destructive font-mono break-all">
+                                {(() => {
+                                  const error = log.details.error
+                                  if (typeof error === 'string') {
+                                    return error
+                                  } else if (typeof error === 'object' && error !== null) {
+                                    try {
+                                      return JSON.stringify(error, null, 2)
+                                    } catch (e) {
+                                      return 'Error: Unable to stringify error object'
+                                    }
+                                  } else if (error === null || error === undefined) {
+                                    return 'Unknown error'
+                                  } else {
+                                    return String(error)
+                                  }
+                                })()}
                               </span>
                             </div>
                           </div>
