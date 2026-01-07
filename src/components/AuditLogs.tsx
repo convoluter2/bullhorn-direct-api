@@ -571,22 +571,24 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                           const error = log.details.error
                           let errorString: string
                           
-                          if (typeof error === 'string') {
-                            errorString = error
-                          } else if (error && typeof error === 'object') {
-                            try {
+                          try {
+                            if (typeof error === 'string') {
+                              errorString = error
+                            } else if (error && typeof error === 'object') {
                               if (error instanceof Error) {
                                 errorString = error.message || error.toString()
+                              } else if ('message' in error && typeof error.message === 'string') {
+                                errorString = error.message
                               } else {
-                                errorString = JSON.stringify(error, null, 2)
+                                errorString = JSON.stringify(error, Object.getOwnPropertyNames(error), 2)
                               }
-                            } catch (e) {
-                              errorString = 'Error: Unable to stringify error object'
+                            } else if (error === null || error === undefined) {
+                              errorString = 'Unknown error'
+                            } else {
+                              errorString = String(error)
                             }
-                          } else if (error === null || error === undefined) {
-                            errorString = 'Unknown error'
-                          } else {
-                            errorString = String(error)
+                          } catch (e) {
+                            errorString = 'Error: Unable to process error object'
                           }
                           
                           return (
@@ -684,16 +686,44 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                             </ScrollArea>
                           </div>
                         )}
-                        {log.details && (
-                          <details className="mt-2">
-                            <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-                              View details
-                            </summary>
-                            <pre className="mt-2 p-2 bg-muted rounded text-xs font-mono overflow-auto">
-                              {JSON.stringify(log.details, null, 2)}
-                            </pre>
-                          </details>
-                        )}
+                        {log.details && (() => {
+                          let detailsString: string
+                          try {
+                            detailsString = JSON.stringify(log.details, (key, value) => {
+                              if (value instanceof Error) {
+                                return {
+                                  message: value.message,
+                                  name: value.name,
+                                  stack: value.stack
+                                }
+                              }
+                              if (typeof value === 'object' && value !== null && !(value instanceof Array)) {
+                                const seen = new WeakSet()
+                                return JSON.parse(JSON.stringify(value, (k, v) => {
+                                  if (typeof v === 'object' && v !== null) {
+                                    if (seen.has(v)) return '[Circular]'
+                                    seen.add(v)
+                                  }
+                                  return v
+                                }))
+                              }
+                              return value
+                            }, 2)
+                          } catch (e) {
+                            detailsString = 'Unable to display details (contains non-serializable data)'
+                          }
+                          
+                          return (
+                            <details className="mt-2">
+                              <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                                View details
+                              </summary>
+                              <pre className="mt-2 p-2 bg-muted rounded text-xs font-mono overflow-auto max-h-64">
+                                {detailsString}
+                              </pre>
+                            </details>
+                          )
+                        })()}
                       </div>
                       <div className="flex flex-col items-end gap-2">
                         <div className="text-xs text-muted-foreground whitespace-nowrap">
