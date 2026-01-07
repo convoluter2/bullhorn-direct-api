@@ -15,6 +15,8 @@ export interface SavedConnection {
 }
 
 class SecureCredentialsAPI {
+  private serverUrl = 'http://localhost:3001'
+
   private async getUserId(): Promise<string> {
     const user = await window.spark.user()
     if (!user) {
@@ -23,28 +25,36 @@ class SecureCredentialsAPI {
     return String(user.id)
   }
 
-  private getCredentialKey(connectionId: string, userId: string): string {
-    return `secure-cred-${userId}-${connectionId}`
-  }
-
-  private getConnectionsKey(userId: string): string {
-    return `connections-${userId}`
-  }
-
   async saveCredentials(connectionId: string, credentials: SecureCredentials): Promise<void> {
     const userId = await this.getUserId()
-    const key = this.getCredentialKey(connectionId, userId)
     
-    await window.spark.kv.set(key, credentials)
+    const response = await fetch(`${this.serverUrl}/api/credentials/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, connectionId, credentials })
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to save credentials')
+    }
   }
 
   async getCredentials(connectionId: string): Promise<SecureCredentials | null> {
     try {
       const userId = await this.getUserId()
-      const key = this.getCredentialKey(connectionId, userId)
       
-      const credentials = await window.spark.kv.get<SecureCredentials>(key)
-      return credentials || null
+      const response = await fetch(`${this.serverUrl}/api/credentials/${userId}/${connectionId}`)
+      
+      if (response.status === 404) {
+        return null
+      }
+
+      if (!response.ok) {
+        throw new Error('Failed to get credentials')
+      }
+
+      const data = await response.json()
+      return data.credentials
     } catch (error) {
       console.error('Failed to get credentials:', error)
       return null
@@ -53,56 +63,69 @@ class SecureCredentialsAPI {
 
   async deleteCredentials(connectionId: string): Promise<void> {
     const userId = await this.getUserId()
-    const key = this.getCredentialKey(connectionId, userId)
     
-    await window.spark.kv.delete(key)
+    const response = await fetch(`${this.serverUrl}/api/credentials/${userId}/${connectionId}`, {
+      method: 'DELETE'
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to delete credentials')
+    }
   }
 
   async saveConnection(connection: SavedConnection): Promise<void> {
     const userId = await this.getUserId()
-    const key = this.getConnectionsKey(userId)
     
-    const connections = await window.spark.kv.get<SavedConnection[]>(key) || []
-    const existingIndex = connections.findIndex(c => c.id === connection.id)
-    
-    if (existingIndex >= 0) {
-      connections[existingIndex] = connection
-    } else {
-      connections.push(connection)
+    const response = await fetch(`${this.serverUrl}/api/connections/save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, connection })
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to save connection')
     }
-    
-    await window.spark.kv.set(key, connections)
   }
 
   async getConnections(): Promise<SavedConnection[]> {
     const userId = await this.getUserId()
-    const key = this.getConnectionsKey(userId)
     
-    const connections = await window.spark.kv.get<SavedConnection[]>(key) || []
-    return connections
+    const response = await fetch(`${this.serverUrl}/api/connections/${userId}`)
+    
+    if (!response.ok) {
+      throw new Error('Failed to get connections')
+    }
+
+    const data = await response.json()
+    return data.connections
   }
 
   async deleteConnection(connectionId: string): Promise<void> {
     const userId = await this.getUserId()
-    const key = this.getConnectionsKey(userId)
     
-    const connections = await window.spark.kv.get<SavedConnection[]>(key) || []
-    const filtered = connections.filter(c => c.id !== connectionId)
-    
-    await window.spark.kv.set(key, filtered)
+    const response = await fetch(`${this.serverUrl}/api/connections/${userId}/${connectionId}`, {
+      method: 'DELETE'
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to delete connection')
+    }
+
     await this.deleteCredentials(connectionId)
   }
 
   async updateConnection(connectionId: string, updates: Partial<SavedConnection>): Promise<void> {
     const userId = await this.getUserId()
-    const key = this.getConnectionsKey(userId)
     
-    const connections = await window.spark.kv.get<SavedConnection[]>(key) || []
-    const updated = connections.map(conn => 
-      conn.id === connectionId ? { ...conn, ...updates } : conn
-    )
-    
-    await window.spark.kv.set(key, updated)
+    const response = await fetch(`${this.serverUrl}/api/connections/${userId}/${connectionId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ updates })
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to update connection')
+    }
   }
 }
 

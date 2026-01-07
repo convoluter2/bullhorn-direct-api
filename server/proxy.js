@@ -12,6 +12,8 @@ app.use(cors({
 app.use(express.json());
 
 const pendingAuths = new Map();
+const credentialsStore = new Map();
+const connectionsStore = new Map();
 
 setInterval(() => {
   const now = Date.now();
@@ -315,6 +317,120 @@ app.post('/start', (req, res) => {
     timestamp: new Date().toISOString(),
     port: PORT
   });
+});
+
+app.post('/api/credentials/save', (req, res) => {
+  const { userId, connectionId, credentials } = req.body;
+  
+  if (!userId || !connectionId || !credentials) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  
+  const key = `${userId}-${connectionId}`;
+  credentialsStore.set(key, credentials);
+  
+  console.log(`🔑 Saved credentials for user ${userId}, connection ${connectionId}`);
+  
+  res.json({ success: true });
+});
+
+app.get('/api/credentials/:userId/:connectionId', (req, res) => {
+  const { userId, connectionId } = req.params;
+  const key = `${userId}-${connectionId}`;
+  
+  const credentials = credentialsStore.get(key);
+  
+  if (!credentials) {
+    return res.status(404).json({ error: 'Credentials not found' });
+  }
+  
+  console.log(`🔑 Retrieved credentials for user ${userId}, connection ${connectionId}`);
+  
+  res.json({ credentials });
+});
+
+app.delete('/api/credentials/:userId/:connectionId', (req, res) => {
+  const { userId, connectionId } = req.params;
+  const key = `${userId}-${connectionId}`;
+  
+  credentialsStore.delete(key);
+  
+  console.log(`🗑️ Deleted credentials for user ${userId}, connection ${connectionId}`);
+  
+  res.json({ success: true });
+});
+
+app.post('/api/connections/save', (req, res) => {
+  const { userId, connection } = req.body;
+  
+  if (!userId || !connection) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  
+  if (!connectionsStore.has(userId)) {
+    connectionsStore.set(userId, []);
+  }
+  
+  const connections = connectionsStore.get(userId);
+  const existingIndex = connections.findIndex(c => c.id === connection.id);
+  
+  if (existingIndex >= 0) {
+    connections[existingIndex] = connection;
+  } else {
+    connections.push(connection);
+  }
+  
+  console.log(`💾 Saved connection for user ${userId}: ${connection.name}`);
+  
+  res.json({ success: true });
+});
+
+app.get('/api/connections/:userId', (req, res) => {
+  const { userId } = req.params;
+  
+  const connections = connectionsStore.get(userId) || [];
+  
+  console.log(`📋 Retrieved ${connections.length} connections for user ${userId}`);
+  
+  res.json({ connections });
+});
+
+app.delete('/api/connections/:userId/:connectionId', (req, res) => {
+  const { userId, connectionId } = req.params;
+  
+  if (!connectionsStore.has(userId)) {
+    return res.json({ success: true });
+  }
+  
+  const connections = connectionsStore.get(userId);
+  const filtered = connections.filter(c => c.id !== connectionId);
+  connectionsStore.set(userId, filtered);
+  
+  const credKey = `${userId}-${connectionId}`;
+  credentialsStore.delete(credKey);
+  
+  console.log(`🗑️ Deleted connection for user ${userId}: ${connectionId}`);
+  
+  res.json({ success: true });
+});
+
+app.put('/api/connections/:userId/:connectionId', (req, res) => {
+  const { userId, connectionId } = req.params;
+  const { updates } = req.body;
+  
+  if (!connectionsStore.has(userId)) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+  
+  const connections = connectionsStore.get(userId);
+  const updated = connections.map(conn => 
+    conn.id === connectionId ? { ...conn, ...updates } : conn
+  );
+  connectionsStore.set(userId, updated);
+  
+  console.log(`✏️ Updated connection for user ${userId}: ${connectionId}`);
+  
+  res.json({ success: true });
 });
 
 app.listen(PORT, '0.0.0.0', () => {
