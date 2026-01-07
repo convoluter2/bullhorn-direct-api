@@ -1,5 +1,11 @@
 import express from 'express';
 import cors from 'cors';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PROXY_PORT || 3001;
@@ -14,6 +20,66 @@ app.use(express.json());
 const pendingAuths = new Map();
 const credentialsStore = new Map();
 const connectionsStore = new Map();
+
+const DATA_DIR = path.join(__dirname, 'data');
+const CREDENTIALS_FILE = path.join(DATA_DIR, 'credentials.json');
+const CONNECTIONS_FILE = path.join(DATA_DIR, 'connections.json');
+
+async function ensureDataDir() {
+  try {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+  } catch (error) {
+    console.error('Failed to create data directory:', error);
+  }
+}
+
+async function loadPersistedData() {
+  await ensureDataDir();
+  
+  try {
+    const credData = await fs.readFile(CREDENTIALS_FILE, 'utf-8');
+    const credentials = JSON.parse(credData);
+    Object.entries(credentials).forEach(([key, value]) => {
+      credentialsStore.set(key, value);
+    });
+    console.log(`📂 Loaded ${credentialsStore.size} credentials from disk`);
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      console.error('Failed to load credentials:', error);
+    }
+  }
+  
+  try {
+    const connData = await fs.readFile(CONNECTIONS_FILE, 'utf-8');
+    const connections = JSON.parse(connData);
+    Object.entries(connections).forEach(([key, value]) => {
+      connectionsStore.set(key, value);
+    });
+    console.log(`📂 Loaded connections for ${connectionsStore.size} users from disk`);
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      console.error('Failed to load connections:', error);
+    }
+  }
+}
+
+async function saveCredentials() {
+  try {
+    const data = Object.fromEntries(credentialsStore);
+    await fs.writeFile(CREDENTIALS_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (error) {
+    console.error('Failed to save credentials:', error);
+  }
+}
+
+async function saveConnections() {
+  try {
+    const data = Object.fromEntries(connectionsStore);
+    await fs.writeFile(CONNECTIONS_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (error) {
+    console.error('Failed to save connections:', error);
+  }
+}
 
 setInterval(() => {
   const now = Date.now();
@@ -319,7 +385,7 @@ app.post('/start', (req, res) => {
   });
 });
 
-app.post('/api/credentials/save', (req, res) => {
+app.post('/api/credentials/save', async (req, res) => {
   const { userId, connectionId, credentials } = req.body;
   
   if (!userId || !connectionId || !credentials) {
@@ -328,6 +394,7 @@ app.post('/api/credentials/save', (req, res) => {
   
   const key = `${userId}-${connectionId}`;
   credentialsStore.set(key, credentials);
+  await saveCredentials();
   
   console.log(`🔑 Saved credentials for user ${userId}, connection ${connectionId}`);
   
@@ -349,18 +416,19 @@ app.get('/api/credentials/:userId/:connectionId', (req, res) => {
   res.json({ credentials });
 });
 
-app.delete('/api/credentials/:userId/:connectionId', (req, res) => {
+app.delete('/api/credentials/:userId/:connectionId', async (req, res) => {
   const { userId, connectionId } = req.params;
   const key = `${userId}-${connectionId}`;
   
   credentialsStore.delete(key);
+  await saveCredentials();
   
   console.log(`🗑️ Deleted credentials for user ${userId}, connection ${connectionId}`);
   
   res.json({ success: true });
 });
 
-app.post('/api/connections/save', (req, res) => {
+app.post('/api/connections/save', async (req, res) => {
   const { userId, connection } = req.body;
   
   if (!userId || !connection) {
@@ -380,6 +448,8 @@ app.post('/api/connections/save', (req, res) => {
     connections.push(connection);
   }
   
+  await saveConnections();
+  
   console.log(`💾 Saved connection for user ${userId}: ${connection.name}`);
   
   res.json({ success: true });
@@ -395,7 +465,7 @@ app.get('/api/connections/:userId', (req, res) => {
   res.json({ connections });
 });
 
-app.delete('/api/connections/:userId/:connectionId', (req, res) => {
+app.delete('/api/connections/:userId/:connectionId', async (req, res) => {
   const { userId, connectionId } = req.params;
   
   if (!connectionsStore.has(userId)) {
@@ -409,12 +479,15 @@ app.delete('/api/connections/:userId/:connectionId', (req, res) => {
   const credKey = `${userId}-${connectionId}`;
   credentialsStore.delete(credKey);
   
+  await saveConnections();
+  await saveCredentials();
+  
   console.log(`🗑️ Deleted connection for user ${userId}: ${connectionId}`);
   
   res.json({ success: true });
 });
 
-app.put('/api/connections/:userId/:connectionId', (req, res) => {
+app.put('/api/connections/:userId/:connectionId', async (req, res) => {
   const { userId, connectionId } = req.params;
   const { updates } = req.body;
   
@@ -428,12 +501,16 @@ app.put('/api/connections/:userId/:connectionId', (req, res) => {
   );
   connectionsStore.set(userId, updated);
   
+  await saveConnections();
+  
   console.log(`✏️ Updated connection for user ${userId}: ${connectionId}`);
   
   res.json({ success: true });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
+  await loadPersistedData();
+  
   console.log('');
   console.log('🚀 ═══════════════════════════════════════════════════');
   console.log('🔐 OAuth Proxy Server Started Successfully');
@@ -442,6 +519,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🔗 Callback: http://localhost:${PORT}/oauth/callback`);
   console.log(`💚 Health: http://localhost:${PORT}/health`);
   console.log(`⏰ Started: ${new Date().toISOString()}`);
+  console.log(`💾 Data Directory: ${DATA_DIR}`);
   console.log('═══════════════════════════════════════════════════');
   console.log('');
 });

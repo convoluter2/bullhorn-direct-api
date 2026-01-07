@@ -32,3 +32,6 @@ pids
 .devcontainer/
 
 .spark-workbench-id
+
+# Server data (contains sensitive credentials)
+server/data/
