@@ -542,8 +542,6 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     }
 
     for (let batchStart = startIndex; batchStart < csvData.rows.length; batchStart += CONCURRENT_BATCH_SIZE) {
-      const batchEnd = Math.min(batchStart + CONCURRENT_BATCH_SIZE, csvData.rows.length)
-      
       if (executionControlRef.current.shouldStop) {
         setExecutionState('stopped')
         setLoading(false)
@@ -578,15 +576,17 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         }
         setPersistedState(() => state)
         
-        toast.info(`Import paused at row ${batchStart} of ${csvData.rows.length}. Progress saved - safe to refresh page.`)
+        toast.info(`Import paused at row ${batchStart + 1} of ${csvData.rows.length}. Progress saved - safe to refresh page.`)
         onLog(
           'CSV Import Paused',
           'success',
-          `Paused at row ${batchStart}: ${successCount} success, ${errorCount} errors`,
-          { entity, currentRow: batchStart, totalRows: csvData.rows.length }
+          `Paused at row ${batchStart + 1}: ${successCount} success, ${errorCount} errors`,
+          { entity, currentRow: batchStart + 1, totalRows: csvData.rows.length }
         )
         return
       }
+
+      const batchEnd = Math.min(batchStart + CONCURRENT_BATCH_SIZE, csvData.rows.length)
       const batch: Promise<any>[] = []
       
       for (let i = batchStart; i < batchEnd; i++) {
@@ -918,23 +918,12 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
 
                   <div className="flex items-center justify-between space-x-2 p-3 rounded-md border bg-card">
                     <div className="space-y-0.5">
-                      <Label className="text-sm font-medium flex items-center gap-2">
-                        Create New
-                        {createNew && <Badge variant="destructive" className="text-xs">Caution</Badge>}
-                      </Label>
+                      <Label className="text-sm font-medium">Create New</Label>
                       <p className="text-xs text-muted-foreground">Create records if not found</p>
                     </div>
                     <Switch
                       checked={createNew}
-                      onCheckedChange={(checked) => {
-                        if (checked && !createNew) {
-                          if (confirm('⚠️ WARNING: Enabling "Create New" will add new records to Bullhorn if they are not found.\n\nAre you sure you want to enable this mode?')) {
-                            setCreateNew(true)
-                          }
-                        } else {
-                          setCreateNew(checked)
-                        }
-                      }}
+                      onCheckedChange={setCreateNew}
                     />
                   </div>
                 </div>
