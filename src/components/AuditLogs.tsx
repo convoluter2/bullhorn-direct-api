@@ -567,31 +567,35 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                           </div>
                         )}
                         
-                        {(log.status === 'error' && log.details?.error) && (
-                          <div className="mt-2 p-2 bg-destructive/10 rounded border border-destructive/30">
-                            <div className="flex items-start gap-2">
-                              <XCircle size={14} className="text-destructive flex-shrink-0 mt-0.5" weight="fill" />
-                              <span className="text-xs text-destructive font-mono break-all">
-                                {(() => {
-                                  const error = log.details.error
-                                  if (typeof error === 'string') {
-                                    return error
-                                  } else if (typeof error === 'object' && error !== null) {
-                                    try {
-                                      return JSON.stringify(error, null, 2)
-                                    } catch (e) {
-                                      return 'Error: Unable to stringify error object'
-                                    }
-                                  } else if (error === null || error === undefined) {
-                                    return 'Unknown error'
-                                  } else {
-                                    return String(error)
-                                  }
-                                })()}
-                              </span>
+                        {(log.status === 'error' && log.details?.error) && (() => {
+                          const error = log.details.error
+                          let errorString: string
+                          
+                          if (typeof error === 'string') {
+                            errorString = error
+                          } else if (typeof error === 'object' && error !== null) {
+                            try {
+                              errorString = JSON.stringify(error, null, 2)
+                            } catch (e) {
+                              errorString = 'Error: Unable to stringify error object'
+                            }
+                          } else if (error === null || error === undefined) {
+                            errorString = 'Unknown error'
+                          } else {
+                            errorString = String(error)
+                          }
+                          
+                          return (
+                            <div className="mt-2 p-2 bg-destructive/10 rounded border border-destructive/30">
+                              <div className="flex items-start gap-2">
+                                <XCircle size={14} className="text-destructive flex-shrink-0 mt-0.5" weight="fill" />
+                                <span className="text-xs text-destructive font-mono break-all">
+                                  {errorString}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )
+                        })()}
                         
                         {isRollbackLog && originalLog && (
                           <div className="mt-2 p-2 bg-muted/50 rounded border border-accent/30">
