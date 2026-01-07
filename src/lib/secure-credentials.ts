@@ -37,14 +37,14 @@ class SecureCredentialsAPI {
     if (!response.ok) {
       throw new Error('Failed to save credentials')
     }
+  }
 
   async getCredentials(connectionId: string): Promise<SecureCredentials | null> {
     try {
       const userId = await this.getUserId()
       
-      ls/${userId}/${connectionId}`)
       const response = await fetch(`${this.serverUrl}/api/credentials/${userId}/${connectionId}`)
-      if (response.status === 404) {
+      
       if (response.status === 404) {
         return null
       }
@@ -55,6 +55,7 @@ class SecureCredentialsAPI {
 
       const data = await response.json()
       return data.credentials
+    } catch (error) {
       console.error('Failed to get credentials:', error)
       return null
     }
@@ -63,7 +64,6 @@ class SecureCredentialsAPI {
   async deleteCredentials(connectionId: string): Promise<void> {
     const userId = await this.getUserId()
     
-      method: 'DELETE'
     const response = await fetch(`${this.serverUrl}/api/credentials/${userId}/${connectionId}`, {
       method: 'DELETE'
     })
@@ -71,11 +71,11 @@ class SecureCredentialsAPI {
     if (!response.ok) {
       throw new Error('Failed to delete credentials')
     }
+  }
+
   async saveConnection(connection: SavedConnection): Promise<void> {
     const userId = await this.getUserId()
     
-    const response = await fetch(`${this.serverUrl}/api/connections/save`, {
-      headers: { 'Content-Type': 'application/json' },
     const response = await fetch(`${this.serverUrl}/api/connections/save`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -84,45 +84,49 @@ class SecureCredentialsAPI {
 
     if (!response.ok) {
       throw new Error('Failed to save connection')
+    }
+  }
+
   async getConnections(): Promise<SavedConnection[]> {
-    const response = await fetch(`${this.serverUrl}/api/connections/${userId}`)
-    
-    if (!response.ok) {
-      throw new Error('Failed to get connections')
+    const userId = await this.getUserId()
     
     const response = await fetch(`${this.serverUrl}/api/connections/${userId}`)
-    const data = await response.json()
+    
     if (!response.ok) {
       throw new Error('Failed to get connections')
     }
 
     const data = await response.json()
     return data.connections
+  }
+
+  async deleteConnection(connectionId: string): Promise<void> {
+    const userId = await this.getUserId()
+    
     const response = await fetch(`${this.serverUrl}/api/connections/${userId}/${connectionId}`, {
       method: 'DELETE'
     })
-
-      throw new Error('Failed to delete connection')
-    const response = await fetch(`${this.serverUrl}/api/connections/${userId}/${connectionId}`, {
-      method: 'DELETE'
-    })this.deleteCredentials(connectionId)
 
     if (!response.ok) {
       throw new Error('Failed to delete connection')
     }
 
+    await this.deleteCredentials(connectionId)
+  }
+
+  async updateConnection(connectionId: string, updates: Partial<SavedConnection>): Promise<void> {
+    const userId = await this.getUserId()
+    
     const response = await fetch(`${this.serverUrl}/api/connections/${userId}/${connectionId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ updates })
     })
-    if (!response.ok) {
-    const response = await fetch(`${this.serverUrl}/api/connections/${userId}/${connectionId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ updates })
-    })
-ureCredentialsAPI()
+
     if (!response.ok) {
       throw new Error('Failed to update connection')
     }
+  }
+}
+
+export const secureCredentialsAPI = new SecureCredentialsAPI()
