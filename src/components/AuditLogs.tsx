@@ -573,9 +573,13 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                           
                           if (typeof error === 'string') {
                             errorString = error
-                          } else if (typeof error === 'object' && error !== null) {
+                          } else if (error && typeof error === 'object') {
                             try {
-                              errorString = JSON.stringify(error, null, 2)
+                              if (error instanceof Error) {
+                                errorString = error.message || error.toString()
+                              } else {
+                                errorString = JSON.stringify(error, null, 2)
+                              }
                             } catch (e) {
                               errorString = 'Error: Unable to stringify error object'
                             }
@@ -589,7 +593,7 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                             <div className="mt-2 p-2 bg-destructive/10 rounded border border-destructive/30">
                               <div className="flex items-start gap-2">
                                 <XCircle size={14} className="text-destructive flex-shrink-0 mt-0.5" weight="fill" />
-                                <span className="text-xs text-destructive font-mono break-all">
+                                <span className="text-xs text-destructive font-mono break-all whitespace-pre-wrap">
                                   {errorString}
                                 </span>
                               </div>
