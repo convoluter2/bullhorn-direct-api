@@ -248,37 +248,105 @@ function App() {
   }
 
   const handleSaveConnection = async (connection: SavedConnection, credentials: SecureCredentials) => {
+    console.log('💾 App - handleSaveConnection called:', {
+      connectionId: connection.id,
+      connectionName: connection.name,
+      hasCredentials: !!credentials
+    })
+    
     await secureCredentialsAPI.saveConnection(connection)
     await secureCredentialsAPI.saveCredentials(connection.id, credentials)
     
     const connections = await secureCredentialsAPI.getConnections()
+    console.log('✅ App - Connection saved, reloaded connections:', connections.length)
     setSavedConnections(connections)
   }
 
   const handleDeleteConnection = async (id: string) => {
+    console.log('🗑️ App - handleDeleteConnection called:', id)
     await secureCredentialsAPI.deleteConnection(id)
     const connections = await secureCredentialsAPI.getConnections()
+    console.log('✅ App - Connection deleted, reloaded connections:', connections.length)
     setSavedConnections(connections)
   }
 
   const handleUpdateConnection = async (id: string, updates: Partial<SavedConnection>, credentials?: SecureCredentials) => {
+    console.log('📝 App - handleUpdateConnection called:', {
+      connectionId: id,
+      updates,
+      hasCredentials: !!credentials
+    })
+    
     await secureCredentialsAPI.updateConnection(id, updates)
     if (credentials) {
       await secureCredentialsAPI.saveCredentials(id, credentials)
     }
     const connections = await secureCredentialsAPI.getConnections()
+    console.log('✅ App - Connection updated, reloaded connections:', connections.length)
     setSavedConnections(connections)
   }
 
   const handleSelectConnectionFromManager = async (connection: SavedConnection) => {
-    await secureCredentialsAPI.updateConnection(connection.id, { lastUsed: Date.now() })
-    const connections = await secureCredentialsAPI.getConnections()
-    setSavedConnections(connections)
+    console.log('🎯 App - handleSelectConnectionFromManager called:', {
+      connectionId: connection.id,
+      connectionName: connection.name,
+      tenant: connection.tenant,
+      environment: connection.environment
+    })
     
-    setConnectionManagerOpen(false)
-    setPreselectedConnection(connection)
-    setAuthDialogOpen(true)
-    toast.success(`Loaded connection: ${connection.name}`)
+    try {
+      const credentials = await secureCredentialsAPI.getCredentials(connection.id)
+      console.log('🔑 App - Retrieved credentials for connection:', {
+        hasCredentials: !!credentials,
+        hasClientId: !!credentials?.clientId,
+        hasClientSecret: !!credentials?.clientSecret,
+        hasUsername: !!credentials?.username,
+        hasPassword: !!credentials?.password
+      })
+      
+      if (!credentials) {
+        console.error('❌ App - No credentials found for connection:', connection.id)
+        toast.error(`No credentials found for "${connection.name}". Please edit the connection and re-save your credentials.`)
+        return
+      }
+      
+      await secureCredentialsAPI.updateConnection(connection.id, { lastUsed: Date.now() })
+      const connections = await secureCredentialsAPI.getConnections()
+      setSavedConnections(connections)
+      
+      console.log('🚀 App - Starting automatic authentication...')
+      toast.loading(`Connecting to ${connection.name}...`, { id: 'auto-connect' })
+      
+      try {
+        const newSession = await bullhornAPI.authenticate({
+          clientId: credentials.clientId,
+          clientSecret: credentials.clientSecret,
+          username: credentials.username,
+          password: credentials.password
+        })
+        
+        console.log('✅ App - Auto-authentication successful:', {
+          corporationId: newSession.corporationId,
+          restUrl: newSession.restUrl,
+          connectionName: connection.name
+        })
+        
+        handleAuthenticated(newSession, connection.id)
+        setConnectionManagerOpen(false)
+        toast.success(`Connected to ${connection.name}`, { id: 'auto-connect' })
+      } catch (authError) {
+        console.error('❌ App - Auto-authentication failed:', authError)
+        console.log('📋 App - Falling back to manual auth dialog')
+        
+        setConnectionManagerOpen(false)
+        setPreselectedConnection(connection)
+        setAuthDialogOpen(true)
+        toast.error(`Auto-connect failed. Please use manual authentication.`, { id: 'auto-connect' })
+      }
+    } catch (error) {
+      console.error('❌ App - Error in handleSelectConnectionFromManager:', error)
+      toast.error('Failed to load connection. Please try again.')
+    }
   }
 
   const handleQuickSwitchConnection = async (connection: SavedConnection) => {

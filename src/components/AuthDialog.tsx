@@ -35,8 +35,26 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
   
   useEffect(() => {
     const loadConnectionCredentials = async () => {
+      console.log('🔄 AuthDialog - useEffect triggered:', {
+        open,
+        hasPreselectedConnection: !!preselectedConnection,
+        connectionName: preselectedConnection?.name,
+        connectionId: preselectedConnection?.id
+      })
+      
       if (open && preselectedConnection) {
+        console.log('🔑 AuthDialog - Loading credentials for connection:', preselectedConnection.id)
         const credentials = await secureCredentialsAPI.getCredentials(preselectedConnection.id)
+        
+        console.log('📦 AuthDialog - Credentials loaded:', {
+          hasCredentials: !!credentials,
+          hasClientId: !!credentials?.clientId,
+          hasClientSecret: !!credentials?.clientSecret,
+          hasUsername: !!credentials?.username,
+          hasPassword: !!credentials?.password,
+          username: credentials?.username
+        })
+        
         if (credentials) {
           setManualAuth({
             clientId: credentials.clientId,
@@ -45,7 +63,12 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             password: credentials.password,
             authCode: ''
           })
+          console.log('✅ AuthDialog - Credentials set in form state')
+        } else {
+          console.warn('⚠️ AuthDialog - No credentials found for preselected connection')
         }
+      } else {
+        console.log('ℹ️ AuthDialog - Clearing credentials (dialog closed or no preselection)')
       }
       setAuthStep('idle')
       setAuthProgress(0)

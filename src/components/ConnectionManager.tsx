@@ -60,7 +60,22 @@ export function ConnectionManager({
   }
 
   const handleSave = async () => {
+    console.log('💾 ConnectionManager - handleSave called:', {
+      formData: {
+        name: formData.name,
+        environment: formData.environment,
+        tenant: formData.tenant,
+        hasClientId: !!formData.clientId,
+        hasClientSecret: !!formData.clientSecret,
+        hasUsername: !!formData.username,
+        hasPassword: !!formData.password
+      },
+      isEditing: !!editingId,
+      editingId
+    })
+    
     if (!formData.name || !formData.tenant || !formData.clientId || !formData.clientSecret || !formData.username || !formData.password) {
+      console.error('❌ ConnectionManager - Validation failed: missing required fields')
       toast.error('All fields are required')
       return
     }
@@ -73,23 +88,28 @@ export function ConnectionManager({
     }
 
     if (editingId) {
+      console.log('📝 ConnectionManager - Updating existing connection:', editingId)
       const connection: Partial<SavedConnection> = {
         name: formData.name,
         environment: formData.environment,
         tenant: formData.tenant
       }
-      onUpdateConnection(editingId, connection, credentials)
+      await onUpdateConnection(editingId, connection, credentials)
       toast.success('Connection updated successfully')
+      console.log('✅ ConnectionManager - Update complete')
     } else {
+      const connectionId = `conn-${Date.now()}-${Math.random().toString(36).substring(7)}`
+      console.log('➕ ConnectionManager - Creating new connection:', connectionId)
       const connection: SavedConnection = {
-        id: `conn-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+        id: connectionId,
         name: formData.name,
         environment: formData.environment,
         tenant: formData.tenant,
         createdAt: Date.now()
       }
-      onSaveConnection(connection, credentials)
+      await onSaveConnection(connection, credentials)
       toast.success('Connection saved securely')
+      console.log('✅ ConnectionManager - Save complete')
     }
     
     resetForm()
@@ -118,7 +138,30 @@ export function ConnectionManager({
     }
   }
 
-  const handleSelect = (connection: SavedConnection) => {
+  const handleSelect = async (connection: SavedConnection) => {
+    console.log('🔌 ConnectionManager - User clicked "Use" on connection:', {
+      id: connection.id,
+      name: connection.name,
+      tenant: connection.tenant,
+      environment: connection.environment
+    })
+    
+    const credentials = await secureCredentialsAPI.getCredentials(connection.id)
+    console.log('🔑 ConnectionManager - Retrieved credentials:', {
+      hasCredentials: !!credentials,
+      hasClientId: !!credentials?.clientId,
+      hasClientSecret: !!credentials?.clientSecret,
+      hasUsername: !!credentials?.username,
+      hasPassword: !!credentials?.password
+    })
+    
+    if (!credentials) {
+      console.error('❌ ConnectionManager - No credentials found for connection:', connection.id)
+      toast.error('Credentials not found for this connection. Please edit and re-save it.')
+      return
+    }
+    
+    console.log('✅ ConnectionManager - Calling onSelectConnection')
     onSelectConnection(connection)
     if (!embedded) {
       onOpenChange(false)
