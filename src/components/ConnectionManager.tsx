@@ -6,20 +6,20 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Trash, PencilSimple, Check, X, Database, ShieldCheck } from '@phosphor-icons/react'
 import { toast } from 'sonner'
-import { secureCredentialsAPI, type SavedConnection, type SecureCredentials } from '@/lib/secure-credentials'
+import { ShieldCheck, Plus, Pencil, Trash } from '@phosphor-icons/react'
+import { secureCredentialsAPI } from '@/lib/secure-credentials'
+import type { SavedConnection, SecureCredentials } from '@/lib/secure-credentials'
 
 interface ConnectionManagerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   connections: SavedConnection[]
-  onSaveConnection: (connection: SavedConnection, credentials: SecureCredentials) => void
-  onDeleteConnection: (id: string) => void
-  onSelectConnection: (connection: SavedConnection) => void
-  onUpdateConnection: (id: string, connection: Partial<SavedConnection>, credentials?: SecureCredentials) => void
+  onSaveConnection: (connection: SavedConnection, credentials: SecureCredentials) => Promise<void>
+  onDeleteConnection: (id: string) => Promise<void>
+  onSelectConnection: (connection: SavedConnection) => Promise<void>
+  onUpdateConnection: (id: string, updates: Partial<SavedConnection>, credentials?: SecureCredentials) => Promise<void>
   embedded?: boolean
 }
 
@@ -37,8 +37,8 @@ export function ConnectionManager({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
-    environment: 'PROD' as 'NPE' | 'PROD',
     tenant: '',
+    environment: 'NPE' as 'NPE' | 'PROD',
     clientId: '',
     clientSecret: '',
     username: '',
@@ -48,80 +48,78 @@ export function ConnectionManager({
   const resetForm = () => {
     setFormData({
       name: '',
-      environment: 'PROD',
       tenant: '',
+      environment: 'NPE',
       clientId: '',
       clientSecret: '',
       username: '',
       password: ''
     })
-    setShowAddForm(false)
     setEditingId(null)
+    setShowAddForm(false)
   }
 
   const handleSave = async () => {
-    console.log('💾 ConnectionManager - handleSave called:', {
-      formData: {
-        name: formData.name,
-        environment: formData.environment,
-        tenant: formData.tenant,
-        hasClientId: !!formData.clientId,
-        hasClientSecret: !!formData.clientSecret,
-        hasUsername: !!formData.username,
-        hasPassword: !!formData.password
-      },
-      isEditing: !!editingId,
-      editingId
-    })
-    
     if (!formData.name || !formData.tenant || !formData.clientId || !formData.clientSecret || !formData.username || !formData.password) {
-      console.error('❌ ConnectionManager - Validation failed: missing required fields')
-      toast.error('All fields are required')
+      toast.error('Please fill in all required fields')
       return
     }
 
-    const credentials: SecureCredentials = {
-      clientId: formData.clientId,
-      clientSecret: formData.clientSecret,
-      username: formData.username,
-      password: formData.password
-    }
-
-    if (editingId) {
-      console.log('📝 ConnectionManager - Updating existing connection:', editingId)
-      const connection: Partial<SavedConnection> = {
+    try {
+      console.log('💾 ConnectionManager - handleSave called:', {
         name: formData.name,
-        environment: formData.environment,
-        tenant: formData.tenant
-      }
-      await onUpdateConnection(editingId, connection, credentials)
-      toast.success('Connection updated successfully')
-      console.log('✅ ConnectionManager - Update complete')
-    } else {
-      const connectionId = `conn-${Date.now()}-${Math.random().toString(36).substring(7)}`
-      console.log('➕ ConnectionManager - Creating new connection:', connectionId)
-      const connection: SavedConnection = {
-        id: connectionId,
-        name: formData.name,
-        environment: formData.environment,
         tenant: formData.tenant,
-        createdAt: Date.now()
+        environment: formData.environment,
+        hasClientId: !!formData.clientId,
+        hasUsername: !!formData.username,
+        editingId
+      })
+
+      const credentials: SecureCredentials = {
+        clientId: formData.clientId,
+        clientSecret: formData.clientSecret,
+        username: formData.username,
+        password: formData.password
       }
-      await onSaveConnection(connection, credentials)
-      toast.success('Connection saved securely')
-      console.log('✅ ConnectionManager - Save complete')
+
+      if (editingId) {
+        const connection: Partial<SavedConnection> = {
+          name: formData.name,
+          tenant: formData.tenant,
+          environment: formData.environment
+        }
+        console.log('📝 ConnectionManager - Updating connection:', editingId)
+        await onUpdateConnection(editingId, connection, credentials)
+        toast.success(`Connection "${formData.name}" updated`)
+      } else {
+        console.log('➕ ConnectionManager - Creating new connection')
+        const connectionId = `conn-${Date.now()}`
+        const connection: SavedConnection = {
+          id: connectionId,
+          name: formData.name,
+          tenant: formData.tenant,
+          environment: formData.environment,
+          createdAt: Date.now()
+        }
+        await onSaveConnection(connection, credentials)
+        toast.success(`Connection "${formData.name}" saved`)
+      }
+
+      resetForm()
+    } catch (error) {
+      console.error('❌ ConnectionManager - Save failed:', error)
+      toast.error('Failed to save connection')
     }
-    
-    resetForm()
   }
 
   const handleEdit = async (connection: SavedConnection) => {
+    console.log('✏️ ConnectionManager - Edit clicked for:', connection.id)
     const credentials = await secureCredentialsAPI.getCredentials(connection.id)
     
     setFormData({
       name: connection.name,
-      environment: connection.environment,
       tenant: connection.tenant,
+      environment: connection.environment,
       clientId: credentials?.clientId || '',
       clientSecret: credentials?.clientSecret || '',
       username: credentials?.username || '',
@@ -131,49 +129,46 @@ export function ConnectionManager({
     setShowAddForm(true)
   }
 
-  const handleDelete = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete "${name}"? This will permanently delete the stored credentials.`)) {
+  const handleDelete = (id: string) => {
+    if (confirm('Are you sure you want to delete this connection? This will also delete the stored credentials.')) {
       onDeleteConnection(id)
-      toast.success('Connection and credentials deleted securely')
     }
   }
 
-  const handleSelect = async (connection: SavedConnection) => {
-    console.log('🔌 ConnectionManager - User clicked "Use" on connection:', {
+  const handleUse = async (connection: SavedConnection) => {
+    console.log('🔌 ConnectionManager - Use clicked:', {
       id: connection.id,
       name: connection.name,
-      tenant: connection.tenant,
-      environment: connection.environment
+      environment: connection.environment,
+      tenant: connection.tenant
     })
     
     const credentials = await secureCredentialsAPI.getCredentials(connection.id)
-    console.log('🔑 ConnectionManager - Retrieved credentials:', {
+    console.log('🔑 ConnectionManager - Retrieved credentials for use:', {
       hasCredentials: !!credentials,
       hasClientId: !!credentials?.clientId,
-      hasClientSecret: !!credentials?.clientSecret,
-      hasUsername: !!credentials?.username,
-      hasPassword: !!credentials?.password
+      hasUsername: !!credentials?.username
     })
     
     if (!credentials) {
-      console.error('❌ ConnectionManager - No credentials found for connection:', connection.id)
-      toast.error('Credentials not found for this connection. Please edit and re-save it.')
+      toast.error('Credentials not found for this connection')
       return
     }
     
     console.log('✅ ConnectionManager - Calling onSelectConnection')
-    onSelectConnection(connection)
+    await onSelectConnection(connection)
+    
     if (!embedded) {
       onOpenChange(false)
     }
   }
 
   const content = (
-    <div className="space-y-4">
-      <Alert className="border-accent/30 bg-accent/5">
+    <div className="space-y-6">
+      <Alert>
         <ShieldCheck className="h-4 w-4 text-accent" />
-        <AlertDescription className="text-xs">
-          <strong>Secure Storage:</strong> Your credentials are encrypted and stored securely on the server, not in your browser.
+        <AlertDescription>
+          <strong>Secure Storage:</strong> Your credentials are encrypted and stored securely using Spark's KV storage.
         </AlertDescription>
       </Alert>
 
@@ -191,7 +186,7 @@ export function ConnectionManager({
               {editingId ? 'Edit Connection' : 'New Connection'}
             </CardTitle>
             <CardDescription>
-              Enter your Bullhorn OAuth credentials
+              Enter your Bullhorn API credentials
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -202,7 +197,7 @@ export function ConnectionManager({
                   id="conn-name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Production, Sandbox, etc."
+                  placeholder="e.g., Trustaff Production"
                 />
               </div>
 
@@ -213,8 +208,8 @@ export function ConnectionManager({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="NPE">NPE (Non-Production)</SelectItem>
-                    <SelectItem value="PROD">PROD (Production)</SelectItem>
+                    <SelectItem value="NPE">NPE</SelectItem>
+                    <SelectItem value="PROD">PROD</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -228,9 +223,8 @@ export function ConnectionManager({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Trustaff/Ingenovis">Trustaff/Ingenovis</SelectItem>
-                  <SelectItem value="Fastaff/USN">Fastaff/USN</SelectItem>
-                  <SelectItem value="Springboard">Springboard</SelectItem>
-                  <SelectItem value="Vista/Vital">Vista/Vital</SelectItem>
+                  <SelectItem value="Fastaff">Fastaff</SelectItem>
+                  <SelectItem value="VistaVital">VistaVital</SelectItem>
                   <SelectItem value="HCS">HCS</SelectItem>
                 </SelectContent>
               </Select>
@@ -242,7 +236,7 @@ export function ConnectionManager({
                 id="conn-clientId"
                 value={formData.clientId}
                 onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                placeholder="a6a33789-1490-4888-994e-345f22808e41"
+                placeholder="Your OAuth Client ID"
               />
             </div>
 
@@ -263,7 +257,7 @@ export function ConnectionManager({
                 id="conn-username"
                 value={formData.username}
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                placeholder="your.email@company.com"
+                placeholder="Bullhorn username"
               />
             </div>
 
@@ -274,17 +268,15 @@ export function ConnectionManager({
                 type="password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="Your Bullhorn password"
+                placeholder="Bullhorn password"
               />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 pt-4">
               <Button onClick={handleSave} className="flex-1">
-                <Check />
-                {editingId ? 'Update' : 'Save Securely'}
+                {editingId ? 'Update Connection' : 'Save Connection'}
               </Button>
               <Button onClick={resetForm} variant="outline">
-                <X />
                 Cancel
               </Button>
             </div>
@@ -292,75 +284,68 @@ export function ConnectionManager({
         </Card>
       )}
 
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">Saved Connections ({connections.length})</Label>
-        <ScrollArea className={embedded ? "h-[400px] pr-4" : "h-[300px] pr-4"}>
-          <div className="space-y-2">
-            {connections.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Database size={48} className="mx-auto mb-3 opacity-30" />
-                <p className="text-sm">No saved connections</p>
-                <p className="text-xs">Add a connection to get started</p>
-              </div>
-            ) : (
-              connections
-                .sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0))
-                .map((conn) => (
-                  <Card key={conn.id} className="hover:border-accent/50 transition-colors">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-semibold truncate">{conn.name}</h4>
-                            <Badge variant={conn.environment === 'PROD' ? 'default' : 'secondary'} className="text-xs">
-                              {conn.environment}
-                            </Badge>
-                            {conn.lastUsed && (
-                              <Badge variant="outline" className="text-xs">
-                                Last used
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="space-y-1 text-xs text-muted-foreground">
-                            <p className="truncate">
-                              <span className="font-medium">Tenant:</span> {conn.tenant}
-                            </p>
-                            <p className="text-xs">
-                              Created: {new Date(conn.createdAt).toLocaleDateString()}
-                            </p>
-                          </div>
+      <div className="space-y-3">
+        <Label className="text-sm font-semibold">Saved Connections ({connections.length})</Label>
+        <div className="space-y-2">
+          {connections.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p className="text-sm">No saved connections yet</p>
+            </div>
+          ) : (
+            connections
+              .sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0))
+              .map((conn) => (
+                <Card key={conn.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold truncate">{conn.name}</h4>
+                          <Badge variant={conn.environment === 'PROD' ? 'default' : 'secondary'} className="text-xs">
+                            {conn.environment}
+                          </Badge>
                         </div>
-                        <div className="flex gap-1 flex-shrink-0">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleSelect(conn)}
-                          >
-                            <Database />
-                            Use
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleEdit(conn)}
-                          >
-                            <PencilSimple />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDelete(conn.id, conn.name)}
-                          >
-                            <Trash />
-                          </Button>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <span>{conn.tenant}</span>
+                          {conn.lastUsed && (
+                            <>
+                              <span>•</span>
+                              <p className="text-xs">
+                                Last used: {new Date(conn.lastUsed).toLocaleDateString()}
+                              </p>
+                            </>
+                          )}
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))
-            )}
-          </div>
-        </ScrollArea>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleUse(conn)}
+                        >
+                          Use
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(conn)}
+                        >
+                          <Pencil />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(conn.id)}
+                        >
+                          <Trash />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+          )}
+        </div>
       </div>
     </div>
   )
@@ -370,11 +355,11 @@ export function ConnectionManager({
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
           <h2 className="text-2xl font-bold flex items-center gap-2 mb-2">
-            <ShieldCheck className="text-accent" />
+            <ShieldCheck size={28} className="text-accent" />
             Saved Connections
           </h2>
           <p className="text-muted-foreground text-sm">
-            Manage your Bullhorn OAuth connection profiles with secure server-side credential storage
+            Manage your Bullhorn API connections securely
           </p>
         </div>
         {content}
@@ -384,14 +369,14 @@ export function ConnectionManager({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[80vh]">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl flex items-center gap-2">
-            <ShieldCheck className="text-accent" />
-            Saved Connections
+          <DialogTitle className="flex items-center gap-2">
+            <ShieldCheck size={24} className="text-accent" />
+            Manage Connections
           </DialogTitle>
           <DialogDescription>
-            Manage your Bullhorn OAuth connection profiles with secure server-side credential storage
+            Save and manage multiple Bullhorn API connections
           </DialogDescription>
         </DialogHeader>
         {content}
