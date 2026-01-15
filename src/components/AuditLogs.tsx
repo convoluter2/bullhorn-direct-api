@@ -569,7 +569,7 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                         
                         {(log.status === 'error' && log.details?.error) && (() => {
                           const error = log.details.error
-                          let errorString: string
+                          let errorString: string = ''
                           
                           try {
                             if (typeof error === 'string') {
@@ -599,10 +599,18 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                             } else if (error === null || error === undefined) {
                               errorString = 'Unknown error'
                             } else {
-                              errorString = String(error)
+                              try {
+                                errorString = String(error)
+                              } catch {
+                                errorString = 'Unable to convert error to string'
+                              }
                             }
                           } catch (e) {
                             errorString = 'Error: Unable to process error object'
+                          }
+                          
+                          if (!errorString || errorString.trim() === '') {
+                            errorString = 'Unknown error (no details available)'
                           }
                           
                           return (
