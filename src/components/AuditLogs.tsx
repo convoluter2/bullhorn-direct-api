@@ -579,8 +579,22 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                                 errorString = error.message || error.toString()
                               } else if ('message' in error && typeof error.message === 'string') {
                                 errorString = error.message
+                              } else if ('error' in error && typeof error.error === 'string') {
+                                errorString = error.error
                               } else {
-                                errorString = JSON.stringify(error, Object.getOwnPropertyNames(error), 2)
+                                try {
+                                  errorString = JSON.stringify(error, (key, value) => {
+                                    if (value instanceof Error) {
+                                      return value.message
+                                    }
+                                    if (typeof value === 'object' && value !== null) {
+                                      return value
+                                    }
+                                    return value
+                                  }, 2)
+                                } catch {
+                                  errorString = Object.prototype.toString.call(error)
+                                }
                               }
                             } else if (error === null || error === undefined) {
                               errorString = 'Unknown error'
