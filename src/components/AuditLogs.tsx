@@ -711,53 +711,20 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                             <p className="text-xs font-semibold text-muted-foreground mb-1">
                               Rollback History ({log.rollbackHistory.length})
                             </p>
-                            const seen = new WeakSet()
+                            <div className="space-y-1">
                               {log.rollbackHistory.map((history, idx) => {
                                 try {
                                   return (
                                     <div key={idx} className="text-xs flex items-center gap-2">
-                                  name: value.name
+                                      <span className="text-muted-foreground">
+                                        {new Date(history.timestamp).toLocaleString()}
                                       </span>
                                       <span className="text-accent">
-                              if (typeof value === 'object' && value !== null) {
-                                if (seen.has(value)) {
-                                  return '[Circular]'
-                                }
-                                seen.add(value)
-                              }
-                              if (typeof value === 'function') {
-                                return '[Function]'
-                              }
-                              if (typeof value === 'undefined') {
-                                return null
-                                    <div key={idx} className="text-xs text-muted-foreground">
-                                      Error displaying history entry
-                                    </div>
-                                  )
-                            try {
-                              const simpleDetails: Record<string, any> = {}
-                              for (const [key, value] of Object.entries(log.details)) {
-                                try {
-                                  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-                                    simpleDetails[key] = value
-                                  } else if (value === null || value === undefined) {
-                                    simpleDetails[key] = value
-                                  } else if (Array.isArray(value)) {
-                                    simpleDetails[key] = `[Array of ${value.length} items]`
-                                  } else if (typeof value === 'object') {
-                                    simpleDetails[key] = '[Object]'
-                                  } else {
-                                    simpleDetails[key] = String(value)
-                                  }
-                                } catch {
-                                  simpleDetails[key] = '[Unable to serialize]'
-                                }
-                              }
-                              detailsString = JSON.stringify(simpleDetails, null, 2)
-                            } catch {
-                              detailsString = 'Unable to display details (contains non-serializable data)'
-                            }
-                                          ✗ {history.failedCount} failed
+                                        ✓ {history.successCount} success
+                                      </span>
+                                      {history.errorCount > 0 && (
+                                        <span className="text-destructive">
+                                          ✗ {history.errorCount} failed
                                         </span>
                                       )}
                                     </div>
