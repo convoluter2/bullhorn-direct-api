@@ -43,12 +43,26 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
   })
   const [isRetrying, setIsRetrying] = useState(false)
 
-  const filteredLogs = logs.filter(log => {
-    const matchesSearch = log.operation.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         log.message.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = filterStatus === 'all' || log.status === filterStatus
-    return matchesSearch && matchesStatus
-  }).sort((a, b) => b.timestamp - a.timestamp)
+  const safeLogs = Array.isArray(logs) ? logs : []
+  
+  const filteredLogs = safeLogs.filter(log => {
+    try {
+      if (!log || typeof log !== 'object') return false
+      const matchesSearch = (log.operation || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (log.message || '').toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesStatus = filterStatus === 'all' || log.status === filterStatus
+      return matchesSearch && matchesStatus
+    } catch (error) {
+      console.error('Error filtering log:', error)
+      return false
+    }
+  }).sort((a, b) => {
+    try {
+      return (b.timestamp || 0) - (a.timestamp || 0)
+    } catch {
+      return 0
+    }
+  })
 
   const handleExportCSV = () => {
     if (filteredLogs.length === 0) {
@@ -56,14 +70,28 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
       return
     }
     try {
-      const exportData = filteredLogs.map(log => ({
-        timestamp: new Date(log.timestamp).toISOString(),
-        operation: log.operation,
-        status: log.status,
-        message: log.message,
-        entity: log.entity || '',
-        recordCount: log.recordCount || 0
-      }))
+      const exportData = filteredLogs.map(log => {
+        try {
+          return {
+            timestamp: log.timestamp ? new Date(log.timestamp).toISOString() : '',
+            operation: log.operation || '',
+            status: log.status || '',
+            message: log.message || '',
+            entity: log.entity || '',
+            recordCount: log.recordCount || 0
+          }
+        } catch (error) {
+          console.error('Error mapping log for CSV export:', error)
+          return {
+            timestamp: '',
+            operation: 'ERROR',
+            status: 'error',
+            message: 'Failed to export this log entry',
+            entity: '',
+            recordCount: 0
+          }
+        }
+      })
       exportToCSV(exportData, `audit_logs_${Date.now()}.csv`)
       toast.success('Logs exported to CSV')
     } catch (error) {
@@ -78,7 +106,40 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
       return
     }
     try {
-      exportToJSON(filteredLogs, `audit_logs_${Date.now()}.json`)
+      const seen = new WeakSet()
+      const sanitizedLogs = filteredLogs.map(log => {
+        try {
+          return JSON.parse(JSON.stringify(log, (key, value) => {
+            if (value instanceof Error) {
+              return {
+                message: value.message,
+                name: value.name
+              }
+            }
+            if (typeof value === 'object' && value !== null) {
+              if (seen.has(value)) {
+                return '[Circular]'
+              }
+              seen.add(value)
+            }
+            if (typeof value === 'function') {
+              return '[Function]'
+            }
+            return value
+          }))
+        } catch (error) {
+          console.error('Error sanitizing log for JSON export:', error)
+          return {
+            id: log.id,
+            timestamp: log.timestamp,
+            operation: log.operation,
+            status: log.status,
+            message: log.message,
+            error: 'Failed to fully serialize this log entry'
+          }
+        }
+      })
+      exportToJSON(sanitizedLogs, `audit_logs_${Date.now()}.json`)
       toast.success('Logs exported to JSON')
     } catch (error) {
       console.error('JSON export error:', error)
@@ -458,17 +519,21 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
           ) : (
             <div className="space-y-2">
               {filteredLogs.map((log) => {
-                const isRollbackLog = log.details?.originalLogId
-                const originalLog = isRollbackLog ? logs.find(l => l.id === log.details.originalLogId) : null
-                
-                return (
-                  <div
-                    key={log.id}
-                    id={`log-${log.id}`}
-                    className={`p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors ${
-                      highlightedLogId === log.id ? 'ring-2 ring-accent' : ''
-                    }`}
-                  >
+                try {
+                  if (!log || !log.id) {
+                    return null
+                  }
+                  const isRollbackLog = log.details?.originalLogId
+                  const originalLog = isRollbackLog ? safeLogs.find(l => l.id === log.details.originalLogId) : null
+                  
+                  return (
+                    <div
+                      key={log.id}
+                      id={`log-${log.id}`}
+                      className={`p-4 rounded-lg border bg-card hover:bg-muted/30 transition-colors ${
+                        highlightedLogId === log.id ? 'ring-2 ring-accent' : ''
+                      }`}
+                    >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -636,7 +701,7 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                                 onClick={() => handleScrollToLog(originalLog.id)}
                                 className="text-xs text-accent hover:underline font-medium"
                               >
-                                {originalLog.operation} ({new Date(originalLog.timestamp).toLocaleString()})
+                                {originalLog.operation || 'Unknown'} ({originalLog.timestamp ? new Date(originalLog.timestamp).toLocaleString() : 'Unknown time'})
                               </button>
                             </div>
                           </div>
@@ -647,21 +712,31 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                               Rollback History ({log.rollbackHistory.length})
                             </p>
                             <div className="space-y-1">
-                              {log.rollbackHistory.map((history, idx) => (
-                                <div key={idx} className="text-xs flex items-center gap-2">
-                                  <span className="text-muted-foreground">
-                                    {new Date(history.timestamp).toLocaleString()}
-                                  </span>
-                                  <span className="text-accent">
-                                    ✓ {history.successCount} success
-                                  </span>
-                                  {history.errorCount > 0 && (
-                                    <span className="text-destructive">
-                                      ✗ {history.errorCount} failed
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
+                              {log.rollbackHistory.map((history, idx) => {
+                                try {
+                                  return (
+                                    <div key={idx} className="text-xs flex items-center gap-2">
+                                      <span className="text-muted-foreground">
+                                        {history.timestamp ? new Date(history.timestamp).toLocaleString() : 'Unknown time'}
+                                      </span>
+                                      <span className="text-accent">
+                                        ✓ {history.successCount || 0} success
+                                      </span>
+                                      {(history.errorCount || 0) > 0 && (
+                                        <span className="text-destructive">
+                                          ✗ {history.errorCount} failed
+                                        </span>
+                                      )}
+                                    </div>
+                                  )
+                                } catch (error) {
+                                  return (
+                                    <div key={idx} className="text-xs text-muted-foreground">
+                                      Error displaying history entry
+                                    </div>
+                                  )
+                                }
+                              })}
                             </div>
                           </div>
                         )}
@@ -671,21 +746,31 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                               Retry History ({log.retryHistory.length})
                             </p>
                             <div className="space-y-1">
-                              {log.retryHistory.map((history, idx) => (
-                                <div key={idx} className="text-xs flex items-center gap-2">
-                                  <span className="text-muted-foreground">
-                                    {new Date(history.timestamp).toLocaleString()}
-                                  </span>
-                                  <span className="text-accent">
-                                    ✓ {history.successCount} success
-                                  </span>
-                                  {history.failedCount > 0 && (
-                                    <span className="text-destructive">
-                                      ✗ {history.failedCount} failed
-                                    </span>
-                                  )}
-                                </div>
-                              ))}
+                              {log.retryHistory.map((history, idx) => {
+                                try {
+                                  return (
+                                    <div key={idx} className="text-xs flex items-center gap-2">
+                                      <span className="text-muted-foreground">
+                                        {history.timestamp ? new Date(history.timestamp).toLocaleString() : 'Unknown time'}
+                                      </span>
+                                      <span className="text-accent">
+                                        ✓ {history.successCount || 0} success
+                                      </span>
+                                      {(history.failedCount || 0) > 0 && (
+                                        <span className="text-destructive">
+                                          ✗ {history.failedCount} failed
+                                        </span>
+                                      )}
+                                    </div>
+                                  )
+                                } catch (error) {
+                                  return (
+                                    <div key={idx} className="text-xs text-muted-foreground">
+                                      Error displaying history entry
+                                    </div>
+                                  )
+                                }
+                              })}
                             </div>
                           </div>
                         )}
@@ -711,28 +796,52 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                         {log.details && (() => {
                           let detailsString: string
                           try {
+                            const seen = new WeakSet()
                             detailsString = JSON.stringify(log.details, (key, value) => {
                               if (value instanceof Error) {
                                 return {
                                   message: value.message,
-                                  name: value.name,
-                                  stack: value.stack
+                                  name: value.name
                                 }
                               }
-                              if (typeof value === 'object' && value !== null && !(value instanceof Array)) {
-                                const seen = new WeakSet()
-                                return JSON.parse(JSON.stringify(value, (k, v) => {
-                                  if (typeof v === 'object' && v !== null) {
-                                    if (seen.has(v)) return '[Circular]'
-                                    seen.add(v)
-                                  }
-                                  return v
-                                }))
+                              if (typeof value === 'object' && value !== null) {
+                                if (seen.has(value)) {
+                                  return '[Circular]'
+                                }
+                                seen.add(value)
+                              }
+                              if (typeof value === 'function') {
+                                return '[Function]'
+                              }
+                              if (typeof value === 'undefined') {
+                                return null
                               }
                               return value
                             }, 2)
                           } catch (e) {
-                            detailsString = 'Unable to display details (contains non-serializable data)'
+                            try {
+                              const simpleDetails: Record<string, any> = {}
+                              for (const [key, value] of Object.entries(log.details)) {
+                                try {
+                                  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+                                    simpleDetails[key] = value
+                                  } else if (value === null || value === undefined) {
+                                    simpleDetails[key] = value
+                                  } else if (Array.isArray(value)) {
+                                    simpleDetails[key] = `[Array of ${value.length} items]`
+                                  } else if (typeof value === 'object') {
+                                    simpleDetails[key] = '[Object]'
+                                  } else {
+                                    simpleDetails[key] = String(value)
+                                  }
+                                } catch {
+                                  simpleDetails[key] = '[Unable to serialize]'
+                                }
+                              }
+                              detailsString = JSON.stringify(simpleDetails, null, 2)
+                            } catch {
+                              detailsString = 'Unable to display details (contains non-serializable data)'
+                            }
                           }
                           
                           return (
@@ -749,7 +858,7 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                       </div>
                       <div className="flex flex-col items-end gap-2">
                         <div className="text-xs text-muted-foreground whitespace-nowrap">
-                          {new Date(log.timestamp).toLocaleString()}
+                          {log.timestamp ? new Date(log.timestamp).toLocaleString() : 'Unknown time'}
                         </div>
                         <div className="flex flex-col gap-1">
                           {log.rollbackData && !log.rolledBack && log.status === 'success' && (
@@ -779,6 +888,14 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                     </div>
                   </div>
                 )
+                } catch (error) {
+                  console.error('Error rendering log:', log?.id, error)
+                  return (
+                    <div key={log?.id || `error-${Math.random()}`} className="p-4 rounded-lg border bg-destructive/10 border-destructive/30">
+                      <p className="text-sm text-destructive">Error displaying log entry</p>
+                    </div>
+                  )
+                }
               })}
             </div>
           )}
