@@ -722,42 +722,8 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                                       <span className="text-accent">
                                         ✓ {history.successCount} success
                                       </span>
-                                      {history.errorCount > 0 && (
+                                      {history.failedCount > 0 && (
                                         <span className="text-destructive">
-                                          ✗ {history.errorCount} failed
-                                        </span>
-                                      )}
-                                    </div>
-                                  )
-                                } catch (error) {
-                                  return (
-                                    <div key={idx} className="text-xs text-muted-foreground">
-                                      Error displaying history entry
-                                    </div>
-                                  )
-                                }
-                              })}
-                            </div>
-                          </div>
-                        )}
-                        {log.failedOperations && log.failedOperations.length > 0 && (
-                          <div className="mt-2 p-3 bg-amber-500/10 rounded border border-amber-500/30">
-                            <div className="flex items-center gap-2 mb-2">
-                              <ArrowsClockwise size={14} className="text-amber-500" weight="fill" />
-                              <span className="text-xs font-semibold text-amber-500">
-                                {log.failedOperations.length} Operation(s) Available for Retry
-                              </span>
-                            </div>
-                            <ScrollArea className="max-h-32">
-                              <div className="space-y-1 pr-3">
-                                {log.failedOperations.map((failedOp, idx) => (
-                                  <div key={idx} className="text-xs font-mono text-amber-500/90 bg-background/50 p-1.5 rounded border border-amber-500/20">
-                                    ID {failedOp.entityId} ({failedOp.operation}): {failedOp.error}
-                                  </div>
-                                ))}
-                              </div>
-                            </ScrollArea>
-                          </div>
                         )}
                         {log.details && (() => {
                           let detailsString: string
