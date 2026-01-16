@@ -18,7 +18,6 @@ import { ConnectionManager, type SavedConnection, type SecureCredentials } from 
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { CookieSessionClearer } from '@/components/CookieSessionClearer'
 import { DataStorageClearer } from '@/components/DataStorageClearer'
-import { ProxyStatus } from '@/components/ProxyStatus'
 import { RateLimitStatus } from '@/components/RateLimitStatus'
 import { RateLimitAnalytics } from '@/components/RateLimitAnalytics'
 import { OperatorTestSuite } from '@/components/OperatorTestSuite'
@@ -448,7 +447,6 @@ function App() {
                   setCurrentConnectionId(() => null)
                 }}
               />
-              <ProxyStatus />
               {session && <RateLimitStatus />}
               {session ? (
                 <>

@@ -1,10 +1,9 @@
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Database, Copy, CheckCircle, Warning } from '@phosphor-icons/react'
+import { Database, Copy, CheckCircle } from '@phosphor-icons/react'
 import { toast } from 'sonner'
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import type { BullhornSession } from '@/lib/types'
 
 interface SessionDebugPanelProps {
@@ -23,25 +22,6 @@ export function SessionDebugPanel({
   environment
 }: SessionDebugPanelProps) {
   const [copied, setCopied] = useState<string | null>(null)
-
-  const tenantMismatch = useMemo(() => {
-    if (!session || !tenant) return null
-
-    const sessionTenant = session.restUrl.match(/rest-services\/([^/]+)/)?.[1]
-    if (!sessionTenant) return null
-
-    const expectedTenant = tenant.toLowerCase()
-    const actualTenant = sessionTenant.toLowerCase()
-
-    if (!actualTenant.includes(expectedTenant) && !expectedTenant.includes(actualTenant)) {
-      return {
-        expected: tenant,
-        actual: sessionTenant
-      }
-    }
-
-    return null
-  }, [session, tenant])
 
   if (!session) {
     return null
@@ -63,22 +43,6 @@ export function SessionDebugPanel({
 
   return (
     <div className="space-y-3">
-      {tenantMismatch && (
-        <Alert className="border-destructive/50 bg-destructive/5">
-          <Warning className="text-destructive" size={18} weight="fill" />
-          <AlertDescription className="text-sm">
-            <strong className="text-destructive">⚠️ TENANT MISMATCH DETECTED!</strong>
-            <div className="mt-2 space-y-1 text-xs">
-              <div>Expected: <code className="bg-background px-1 py-0.5 rounded">{tenantMismatch.expected}</code></div>
-              <div>Actually connected to: <code className="bg-background px-1 py-0.5 rounded">{tenantMismatch.actual}</code></div>
-              <div className="mt-2 font-semibold">
-                This is likely caused by cached browser cookies. Use the "Clear Cookies & Cache" button in the header to fix this issue.
-              </div>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-      
       <Card className="p-4 bg-card/30 border-accent/20">
         <div className="flex items-start gap-3">
           <Database className="text-accent mt-1" size={20} weight="duotone" />
