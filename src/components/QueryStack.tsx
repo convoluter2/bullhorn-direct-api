@@ -834,12 +834,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
                                     </SelectTrigger>
                                     <SelectContent>
                                       <SelectItem value="equals">Equals</SelectItem>
-                                      <SelectItem value="not_equals">Not Equals</SelectItem>
-                                      <SelectItem value="contains">Contains</SelectItem>
-                                      <SelectItem value="greater_than">Greater Than</SelectItem>
-                                      <SelectItem value="less_than">Less Than</SelectItem>
-                                      <SelectItem value="is_null">Is Null</SelectItem>
-                                      <SelectItem value="is_not_null">Is Not Null</SelectItem>
+                                      <SelectItem value="in_list_parens">In List (...)</SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </div>
@@ -873,6 +868,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
                           onGroupLogicChange={setGroupLogic}
                           availableFields={availableFields}
                           fieldsMap={fieldsMap}
+                          useProductionOperators={true}
                         />
                       )}
                     </div>
@@ -1122,12 +1118,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="equals">Equals</SelectItem>
-                                <SelectItem value="not_equals">Not Equals</SelectItem>
-                                <SelectItem value="contains">Contains</SelectItem>
-                                <SelectItem value="greater_than">Greater Than</SelectItem>
-                                <SelectItem value="less_than">Less Than</SelectItem>
-                                <SelectItem value="is_null">Is Null</SelectItem>
-                                <SelectItem value="is_not_null">Is Not Null</SelectItem>
+                                <SelectItem value="in_list_parens">In List (...)</SelectItem>
                               </SelectContent>
                             </Select>
                             <ValidatedFieldInput

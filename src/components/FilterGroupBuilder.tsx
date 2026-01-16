@@ -9,7 +9,7 @@ import { formatFieldLabel } from '@/lib/utils'
 import type { FilterGroup, QueryFilter } from '@/lib/types'
 import type { EntityField } from '@/hooks/use-entity-metadata'
 import { useKV } from '@github/spark/hooks'
-import { getValidatedOperators, ALL_OPERATORS } from '@/lib/validated-operators'
+import { getValidatedOperators, getProductionOperators, ALL_OPERATORS } from '@/lib/validated-operators'
 
 interface FilterGroupBuilderProps {
   groups: FilterGroup[]
@@ -18,6 +18,7 @@ interface FilterGroupBuilderProps {
   onGroupLogicChange: (logic: 'AND' | 'OR') => void
   availableFields: EntityField[]
   fieldsMap: Record<string, EntityField>
+  useProductionOperators?: boolean
 }
 
 export function FilterGroupBuilder({
@@ -26,13 +27,16 @@ export function FilterGroupBuilder({
   groupLogic,
   onGroupLogicChange,
   availableFields,
-  fieldsMap
+  fieldsMap,
+  useProductionOperators = false
 }: FilterGroupBuilderProps) {
   const [validatedOperatorsList] = useKV<string[]>('validated-operators', [])
   
-  const operatorsToShow = validatedOperatorsList && validatedOperatorsList.length > 0
-    ? getValidatedOperators(validatedOperatorsList)
-    : ALL_OPERATORS
+  const operatorsToShow = useProductionOperators
+    ? getProductionOperators()
+    : (validatedOperatorsList && validatedOperatorsList.length > 0
+      ? getValidatedOperators(validatedOperatorsList)
+      : ALL_OPERATORS)
 
   const addGroup = () => {
     const newGroup: FilterGroup = {

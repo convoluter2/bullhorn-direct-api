@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Swap, Flask, TestTube, Gauge, Export, Pause } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, Flask } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -40,6 +40,7 @@ function App() {
   const [connectionManagerOpen, setConnectionManagerOpen] = useState(false)
   const [logs, setLogs] = useKV<AuditLog[]>('audit-logs', [])
   const [activeTab, setActiveTab] = useState('queryblast')
+  const [testingSubTab, setTestingSubTab] = useState('operators')
   const [savedConnections, setSavedConnections] = useState<SavedConnection[]>([])
   const [isOAuthCallback, setIsOAuthCallback] = useState(false)
   const [currentConnectionId, setCurrentConnectionId] = useKV<string | null>('current-connection-id', null)
@@ -162,7 +163,7 @@ function App() {
 
     const interval = setInterval(checkTokenExpiry, 30000)
     return () => clearInterval(interval)
-  }, [session, currentConnectionId, addLog])
+  }, [session, currentConnectionId, addLog, setSession])
 
   const handleAuthenticated = (newSession: BullhornSession, connectionId?: string) => {
     console.log('App - handleAuthenticated called:', { 
@@ -295,54 +296,15 @@ function App() {
     })
     
     try {
-      const credentials = await secureCredentialsAPI.getCredentials(connection.id)
-      console.log('🔑 App - Retrieved credentials for connection:', {
-        hasCredentials: !!credentials,
-        hasClientId: !!credentials?.clientId,
-        hasClientSecret: !!credentials?.clientSecret,
-        hasUsername: !!credentials?.username,
-        hasPassword: !!credentials?.password
-      })
-      
-      if (!credentials) {
-        console.error('❌ App - No credentials found for connection:', connection.id)
-        toast.error(`No credentials found for "${connection.name}". Please edit the connection and re-save your credentials.`)
-        return
-      }
-      
       await secureCredentialsAPI.updateConnection(connection.id, { lastUsed: Date.now() })
       const connections = await secureCredentialsAPI.getConnections()
       setSavedConnections(connections)
       
-      console.log('🚀 App - Starting automatic authentication...')
-      toast.loading(`Connecting to ${connection.name}...`, { id: 'auto-connect' })
-      
-      try {
-        const newSession = await bullhornAPI.authenticate({
-          clientId: credentials.clientId,
-          clientSecret: credentials.clientSecret,
-          username: credentials.username,
-          password: credentials.password
-        })
-        
-        console.log('✅ App - Auto-authentication successful:', {
-          corporationId: newSession.corporationId,
-          restUrl: newSession.restUrl,
-          connectionName: connection.name
-        })
-        
-        handleAuthenticated(newSession, connection.id)
-        setConnectionManagerOpen(false)
-        toast.success(`Connected to ${connection.name}`, { id: 'auto-connect' })
-      } catch (authError) {
-        console.error('❌ App - Auto-authentication failed:', authError)
-        console.log('📋 App - Falling back to manual auth dialog')
-        
-        setConnectionManagerOpen(false)
-        setPreselectedConnection(connection)
-        setAuthDialogOpen(true)
-        toast.error(`Auto-connect failed. Please use manual authentication.`, { id: 'auto-connect' })
-      }
+      console.log('📋 App - Opening manual auth dialog for selected connection')
+      setConnectionManagerOpen(false)
+      setPreselectedConnection(connection)
+      setAuthDialogOpen(true)
+      toast.info(`Opening authentication for ${connection.name}`)
     } catch (error) {
       console.error('❌ App - Error in handleSelectConnectionFromManager:', error)
       toast.error('Failed to load connection. Please try again.')
@@ -549,7 +511,7 @@ function App() {
               environment={savedConnections.find(c => c.id === currentConnectionId)?.environment}
             />
             
-            <TabsList className="grid w-full grid-cols-12 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -570,33 +532,9 @@ function App() {
                 <Export size={18} />
                 <span className="hidden sm:inline">WFN Export</span>
               </TabsTrigger>
-              <TabsTrigger value="operators" className="gap-2">
+              <TabsTrigger value="testing-tools" className="gap-2">
                 <Flask size={18} />
-                <span className="hidden sm:inline">Operators</span>
-              </TabsTrigger>
-              <TabsTrigger value="toone-test" className="gap-2">
-                <TestTube size={18} />
-                <span className="hidden sm:inline">To-One Test</span>
-              </TabsTrigger>
-              <TabsTrigger value="comprehensive-test" className="gap-2">
-                <TestTube size={18} />
-                <span className="hidden sm:inline">Field Tests</span>
-              </TabsTrigger>
-              <TabsTrigger value="oauth-test" className="gap-2">
-                <TestTube size={18} />
-                <span className="hidden sm:inline">OAuth Test</span>
-              </TabsTrigger>
-              <TabsTrigger value="pause-resume-test" className="gap-2">
-                <Pause size={18} />
-                <span className="hidden sm:inline">Pause/Resume</span>
-              </TabsTrigger>
-              <TabsTrigger value="speed-test" className="gap-2">
-                <Gauge size={18} />
-                <span className="hidden sm:inline">Speed Test</span>
-              </TabsTrigger>
-              <TabsTrigger value="rate-limits" className="gap-2">
-                <Gauge size={18} />
-                <span className="hidden sm:inline">Rate Limits</span>
+                <span className="hidden sm:inline">Testing Tools</span>
               </TabsTrigger>
               <TabsTrigger value="logs" className="gap-2">
                 <ClockCounterClockwise size={18} />
@@ -629,34 +567,48 @@ function App() {
               <WFNExport onLog={addLog} />
             </TabsContent>
 
-            <TabsContent value="operators" className="space-y-6">
-              <OperatorTestSuite />
-            </TabsContent>
+            <TabsContent value="testing-tools" className="space-y-6">
+              <Tabs value={testingSubTab} onValueChange={setTestingSubTab} className="space-y-6">
+                <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
+                  <TabsTrigger value="operators">Operators</TabsTrigger>
+                  <TabsTrigger value="toone-test">To-One Test</TabsTrigger>
+                  <TabsTrigger value="field-tests">Field Tests</TabsTrigger>
+                  <TabsTrigger value="oauth-test">OAuth Test</TabsTrigger>
+                  <TabsTrigger value="pause-resume">Pause/Resume</TabsTrigger>
+                  <TabsTrigger value="speed-test">Speed Test</TabsTrigger>
+                  <TabsTrigger value="rate-limits">Rate Limits</TabsTrigger>
+                </TabsList>
 
-            <TabsContent value="toone-test" className="space-y-6">
-              <ToOneFieldTest />
-            </TabsContent>
+                <TabsContent value="operators">
+                  <OperatorTestSuite />
+                </TabsContent>
 
-            <TabsContent value="comprehensive-test" className="space-y-6">
-              <ComprehensiveFieldTest />
-            </TabsContent>
+                <TabsContent value="toone-test">
+                  <ToOneFieldTest />
+                </TabsContent>
 
-            <TabsContent value="oauth-test" className="space-y-6">
-              <ConsoleMonitor />
-              <OAuthDiagnostics />
-              <OAuthTestSuite />
-            </TabsContent>
+                <TabsContent value="field-tests">
+                  <ComprehensiveFieldTest />
+                </TabsContent>
 
-            <TabsContent value="pause-resume-test" className="space-y-6">
-              <PauseResumeTests />
-            </TabsContent>
+                <TabsContent value="oauth-test">
+                  <ConsoleMonitor />
+                  <OAuthDiagnostics />
+                  <OAuthTestSuite />
+                </TabsContent>
 
-            <TabsContent value="speed-test" className="space-y-6">
-              <SpeedTest />
-            </TabsContent>
+                <TabsContent value="pause-resume">
+                  <PauseResumeTests />
+                </TabsContent>
 
-            <TabsContent value="rate-limits" className="space-y-6">
-              <RateLimitAnalytics />
+                <TabsContent value="speed-test">
+                  <SpeedTest />
+                </TabsContent>
+
+                <TabsContent value="rate-limits">
+                  <RateLimitAnalytics />
+                </TabsContent>
+              </Tabs>
             </TabsContent>
 
             <TabsContent value="logs" className="space-y-6">

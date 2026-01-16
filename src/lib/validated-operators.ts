@@ -190,6 +190,12 @@ export function getValidatedOperators(validatedList: string[]): OperatorDefiniti
   }).map(op => ({ ...op, validated: true }))
 }
 
+export function getProductionOperators(): OperatorDefinition[] {
+  return ALL_OPERATORS.filter(op => 
+    op.id === 'equals' || op.id === 'in_list_parens'
+  )
+}
+
 export function getOperatorById(id: string): OperatorDefinition | undefined {
   return ALL_OPERATORS.find(op => op.id === id)
 }

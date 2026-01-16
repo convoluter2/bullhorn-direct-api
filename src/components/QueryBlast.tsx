@@ -711,21 +711,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                                   </SelectTrigger>
                                   <SelectContent className="max-h-[300px]">
                                     <SelectItem value="equals">= Equals</SelectItem>
-                                    <SelectItem value="not_equals">≠ Not Equals</SelectItem>
-                                    <SelectItem value="greater_than">&gt; Greater Than</SelectItem>
-                                    <SelectItem value="less_than">&lt; Less Than</SelectItem>
-                                    <SelectItem value="greater_equal">≥ Greater or Equal</SelectItem>
-                                    <SelectItem value="less_equal">≤ Less or Equal</SelectItem>
-                                    <SelectItem value="contains">⊃ Contains</SelectItem>
-                                    <SelectItem value="starts_with">⊐ Starts With</SelectItem>
-                                    <SelectItem value="ends_with">⊏ Ends With</SelectItem>
-                                    <SelectItem value="is_null">∅ Is Null</SelectItem>
-                                    <SelectItem value="is_not_null">∃ Is Not Null</SelectItem>
-                                    <SelectItem value="in_list">∈ In List [...]</SelectItem>
                                     <SelectItem value="in_list_parens">∈ In List (...)</SelectItem>
-                                    <SelectItem value="between_inclusive">⊆ Between [...]</SelectItem>
-                                    <SelectItem value="between_exclusive">⊂ Between (...)</SelectItem>
-                                    <SelectItem value="lucene">🔍 Lucene Query</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -765,6 +751,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                         onGroupLogicChange={setGroupLogic}
                         availableFields={availableFields}
                         fieldsMap={fieldsMap}
+                        useProductionOperators={true}
                       />
                     )}
                   </div>
