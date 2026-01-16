@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye, ArrowsClockwise, ArrowCounterClockwise, Pause, Play, Stop, DownloadSimple, Gauge, Warning } from '@phosphor-icons/react'
+import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye, ArrowsClockwise, ArrowCounterClockwise, Pause, Play, Stop, DownloadSimple, Gauge } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV, exportToCSV, exportToJSON } from '@/lib/csv-utils'
@@ -80,9 +80,6 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null)
   const processingStartTimeRef = useRef<number>(0)
   const lastProgressUpdateRef = useRef<{ time: number; index: number }>({ time: 0, index: 0 })
-  
-  const [isRetryingErrors, setIsRetryingErrors] = useState(false)
-  const [retryCount, setRetryCount] = useState(0)
 
   const { entities, loading: entitiesLoading, refresh: refreshEntities, addEntity } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
@@ -129,19 +126,10 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (file.size > 50 * 1024 * 1024) {
-      toast.warning('Large file detected. Processing in memory-efficient mode...')
-    }
-
     const reader = new FileReader()
     reader.onload = (event) => {
       const text = event.target?.result as string
       const parsed = parseCSV(text)
-      
-      if (parsed.rows.length > 10000) {
-        toast.info(`Large dataset detected: ${parsed.rows.length.toLocaleString()} rows. Memory management enabled.`)
-      }
-      
       setCsvData(parsed)
       
       const initialMappings = parsed.headers.map(header => ({
@@ -150,13 +138,8 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       }))
       setMappings(initialMappings)
       setResults([])
-      toast.success(`CSV loaded: ${parsed.rows.length.toLocaleString()} rows`)
+      toast.success(`CSV loaded: ${parsed.rows.length} rows`)
     }
-    
-    reader.onerror = () => {
-      toast.error('Failed to read CSV file')
-    }
-    
     reader.readAsText(file)
   }
 
@@ -305,22 +288,9 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     }> = []
 
     const startIndex = isResume ? currentIndex : 0
-    
-    const totalRows = csvData.rows.length
-    let CONCURRENT_BATCH_SIZE = 100
-    
-    if (totalRows > 50000) {
-      CONCURRENT_BATCH_SIZE = 50
-      console.log('Large dataset: reducing batch size to 50 for memory efficiency')
-    } else if (totalRows > 20000) {
-      CONCURRENT_BATCH_SIZE = 75
-      console.log('Medium-large dataset: reducing batch size to 75')
-    } else if (totalRows > 10000) {
-      CONCURRENT_BATCH_SIZE = 100
-      console.log('Medium dataset: using batch size of 100')
-    }
+    const CONCURRENT_BATCH_SIZE = 100
 
-    const processRecord = async (i: number, row: string[], storeRowData: boolean = true) => {
+    const processRecord = async (i: number, row: string[]) => {
       let existingRecord: any = null
       let data: any = {}
       
@@ -624,7 +594,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       for (let i = batchStart; i < batchEnd; i++) {
         const row = csvData.rows[i]
         batch.push(
-          processRecord(i, row, !isResume).catch(error => {
+          processRecord(i, row).catch(error => {
             const errorMessage = error instanceof Error ? error.message : 'Import failed'
             errorDetails.push(`Row ${i + 1}: ${errorMessage}`)
             return {
@@ -632,17 +602,13 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               status: 'error' as const,
               message: errorMessage,
               action: 'error' as const,
-              failedData: { error: errorMessage },
-              rowData: row,
-              error: errorMessage
+              failedData: { error: errorMessage }
             }
           })
         )
       }
 
       const batchResults = await Promise.all(batch)
-      
-      batch.length = 0
       
       for (const result of batchResults) {
         importResults.push(result)
@@ -666,11 +632,6 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
             })
           }
         }
-      }
-      
-      if (batchEnd % 500 === 0 && typeof global !== 'undefined' && typeof (global as any).gc === 'function') {
-        (global as any).gc()
-        console.log(`Memory cleanup at ${batchEnd} records`)
       }
 
       setCurrentIndex(batchEnd)
@@ -817,349 +778,6 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     }
   }
 
-  const retryFailedRows = async () => {
-    if (!csvData || !entity) {
-      toast.error('Cannot retry: missing data or entity')
-      return
-    }
-
-    const failedResults = results.filter(r => r.status === 'error' && r.rowData)
-    
-    if (failedResults.length === 0) {
-      toast.info('No failed rows to retry')
-      return
-    }
-
-    setIsRetryingErrors(true)
-    setLoading(true)
-    setProgress(0)
-    
-    const retryResults: ImportResult[] = []
-    const validMappings = mappings.filter(m => m.bullhornField && m.bullhornField !== '__skip__')
-    
-    let successCount = 0
-    let errorCount = 0
-    let createdCount = 0
-    let updatedCount = 0
-    
-    const RETRY_BATCH_SIZE = 50
-    
-    toast.info(`Retrying ${failedResults.length} failed rows...`)
-
-    const snapshotUpdates: Array<{
-      entityId: number
-      previousValues: Record<string, any>
-      newValues: Record<string, any>
-    }> = []
-
-    const processRetryRecord = async (failedResult: ImportResult) => {
-      if (!failedResult.rowData) {
-        throw new Error('No row data available for retry')
-      }
-      
-      const row = failedResult.rowData
-      const originalRowIndex = failedResult.row - 1
-      
-      let existingRecord: any = null
-      let data: any = {}
-      
-      let lookupValue: string | null = null
-
-      if (lookupField && lookupField !== '__none__') {
-        const lookupMapping = mappings.find(m => m.bullhornField === lookupField)
-        if (lookupMapping) {
-          const csvIndex = csvData.headers.indexOf(lookupMapping.csvColumn)
-          if (csvIndex !== -1) {
-            const rawValue = row[csvIndex]
-            lookupValue = transformValue(rawValue, lookupMapping.transform)
-          }
-        } else {
-          const csvIndex = csvData.headers.findIndex(h => h.toLowerCase() === lookupField.toLowerCase())
-          if (csvIndex !== -1) {
-            lookupValue = row[csvIndex]
-          }
-        }
-      }
-
-      validMappings.forEach(mapping => {
-        const csvIndex = csvData.headers.indexOf(mapping.csvColumn)
-        if (csvIndex !== -1) {
-          const rawValue = row[csvIndex]
-          const transformedValue = transformValue(rawValue, mapping.transform)
-          
-          if (transformedValue === '' || transformedValue.toLowerCase() === 'null') {
-            data[mapping.bullhornField] = null
-          } else {
-            const fieldMeta = metadata?.fieldsMap[mapping.bullhornField]
-            if (fieldMeta?.associationType === 'TO_MANY') {
-              try {
-                const parsed = JSON.parse(transformedValue)
-                data[`__tomany_${mapping.bullhornField}`] = parsed
-              } catch {
-                const ids = transformedValue.split(/[,\s]+/).map((id: string) => parseInt(id.trim(), 10)).filter((id: number) => !isNaN(id))
-                if (ids.length > 0) {
-                  data[`__tomany_${mapping.bullhornField}`] = {
-                    operation: 'add',
-                    ids: ids,
-                    subField: 'id'
-                  }
-                }
-              }
-            } else if (fieldMeta?.associationType === 'TO_ONE') {
-              const trimmedValue = transformedValue.trim()
-              if (trimmedValue && /^\d+$/.test(trimmedValue)) {
-                data[mapping.bullhornField] = { id: parseInt(trimmedValue, 10) }
-              } else {
-                data[mapping.bullhornField] = transformedValue
-              }
-            } else if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
-              data[mapping.bullhornField] = Number(transformedValue)
-            } else if (fieldMeta?.type === 'Boolean') {
-              data[mapping.bullhornField] = transformedValue === 'true' || transformedValue === '1'
-            } else {
-              data[mapping.bullhornField] = transformedValue
-            }
-          }
-        }
-      })
-
-      if (lookupField && lookupField !== '__none__' && lookupValue) {
-        try {
-          const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f !== 'id')]
-          const searchResult = await bullhornAPI.search({
-            entity,
-            fields: fieldsToFetch,
-            filters: [{ field: lookupField, operator: 'equals', value: lookupValue }],
-            count: 1,
-            start: 0
-          })
-          
-          if (searchResult.data && searchResult.data.length > 0) {
-            existingRecord = searchResult.data[0]
-          }
-        } catch (searchError) {
-          if (lookupField.toLowerCase() === 'id') {
-            const recordId = parseInt(lookupValue, 10)
-            if (!isNaN(recordId)) {
-              try {
-                const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f !== 'id')]
-                const record = await bullhornAPI.getEntity(entity, recordId, fieldsToFetch)
-                if (record && record.id) {
-                  existingRecord = record
-                }
-              } catch (fallbackError) {
-                console.error(`Fallback entity lookup failed:`, fallbackError)
-              }
-            }
-          }
-        }
-      }
-
-      if (existingRecord) {
-        if (updateExisting) {
-          const regularData: any = {}
-          const toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField?: string }> = []
-          
-          Object.keys(data).forEach(key => {
-            if (key.startsWith('__tomany_')) {
-              const fieldName = key.replace('__tomany_', '')
-              const toManyValue = data[key]
-              if (toManyValue.operation && toManyValue.ids) {
-                toManyUpdates.push({
-                  field: fieldName,
-                  operation: toManyValue.operation,
-                  ids: toManyValue.ids,
-                  subField: toManyValue.subField || 'id'
-                })
-              }
-            } else {
-              regularData[key] = data[key]
-            }
-          })
-          
-          if (Object.keys(regularData).length > 0) {
-            await bullhornAPI.updateEntity(entity, existingRecord.id, regularData)
-          }
-          
-          for (const toManyUpdate of toManyUpdates) {
-            await bullhornAPI.updateToManyAssociation(
-              entity,
-              existingRecord.id,
-              toManyUpdate.field,
-              toManyUpdate.ids,
-              toManyUpdate.operation as 'add' | 'remove' | 'replace',
-              toManyUpdate.subField || 'id'
-            )
-          }
-          
-          return {
-            row: failedResult.row,
-            status: 'success' as const,
-            message: `Updated existing record (ID: ${existingRecord.id})`,
-            action: 'updated' as const,
-            snapshotData: {
-              entityId: existingRecord.id,
-              previousValues: { ...existingRecord },
-              newValues: regularData
-            }
-          }
-        } else {
-          return {
-            row: failedResult.row,
-            status: 'success' as const,
-            message: `Skipped existing record (ID: ${existingRecord.id})`,
-            action: 'skipped' as const
-          }
-        }
-      } else {
-        if (createNew) {
-          const regularData: any = {}
-          const toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField?: string }> = []
-          
-          Object.keys(data).forEach(key => {
-            if (key.startsWith('__tomany_')) {
-              const fieldName = key.replace('__tomany_', '')
-              const toManyValue = data[key]
-              if (toManyValue.operation && toManyValue.ids) {
-                toManyUpdates.push({
-                  field: fieldName,
-                  operation: toManyValue.operation,
-                  ids: toManyValue.ids,
-                  subField: toManyValue.subField || 'id'
-                })
-              }
-            } else {
-              regularData[key] = data[key]
-            }
-          })
-          
-          const result = await bullhornAPI.createEntity(entity, regularData)
-          const newEntityId = result.changedEntityId
-          
-          for (const toManyUpdate of toManyUpdates) {
-            await bullhornAPI.updateToManyAssociation(
-              entity,
-              newEntityId,
-              toManyUpdate.field,
-              toManyUpdate.ids,
-              toManyUpdate.operation as 'add' | 'remove' | 'replace',
-              toManyUpdate.subField || 'id'
-            )
-          }
-          
-          return {
-            row: failedResult.row,
-            status: 'success' as const,
-            message: `Created new record (ID: ${newEntityId})`,
-            action: 'created' as const
-          }
-        } else {
-          return {
-            row: failedResult.row,
-            status: 'error' as const,
-            message: 'Record not found and create new is disabled',
-            action: 'skipped' as const
-          }
-        }
-      }
-    }
-
-    for (let batchStart = 0; batchStart < failedResults.length; batchStart += RETRY_BATCH_SIZE) {
-      const batchEnd = Math.min(batchStart + RETRY_BATCH_SIZE, failedResults.length)
-      const batch: Promise<any>[] = []
-      
-      for (let i = batchStart; i < batchEnd; i++) {
-        const failedResult = failedResults[i]
-        batch.push(
-          processRetryRecord(failedResult).catch(error => {
-            const errorMessage = error instanceof Error ? error.message : 'Retry failed'
-            return {
-              row: failedResult.row,
-              status: 'error' as const,
-              message: errorMessage,
-              action: 'error' as const,
-              rowData: failedResult.rowData,
-              error: errorMessage
-            }
-          })
-        )
-      }
-
-      const batchResults = await Promise.all(batch)
-      
-      batch.length = 0
-      
-      for (const result of batchResults) {
-        retryResults.push(result)
-        
-        if (result.status === 'success') {
-          successCount++
-          if (result.action === 'created') createdCount++
-          if (result.action === 'updated') updatedCount++
-          if (result.snapshotData) {
-            snapshotUpdates.push(result.snapshotData)
-          }
-        } else {
-          errorCount++
-        }
-      }
-
-      setProgress((batchEnd / failedResults.length) * 100)
-      
-      if (typeof global !== 'undefined' && typeof (global as any).gc === 'function') {
-        (global as any).gc()
-      }
-    }
-
-    const updatedResults = results.map(r => {
-      if (r.status === 'error') {
-        const retryResult = retryResults.find(rr => rr.row === r.row)
-        if (retryResult) {
-          return retryResult
-        }
-      }
-      return r
-    })
-
-    setResults(updatedResults)
-    setLoading(false)
-    setIsRetryingErrors(false)
-    setProgress(0)
-    setRetryCount(prev => prev + 1)
-
-    if (snapshotUpdates.length > 0) {
-      const snapshot: UpdateSnapshot = {
-        id: `snapshot-retry-${Date.now()}`,
-        timestamp: Date.now(),
-        operation: 'csv-import',
-        entity,
-        description: `CSV Error Retry: ${updatedCount} updated records`,
-        updates: snapshotUpdates
-      }
-      setSnapshots((current) => [snapshot, ...(current || [])].slice(0, 50))
-    }
-
-    if (errorCount === 0) {
-      toast.success(`All errors resolved! ${createdCount} created, ${updatedCount} updated`)
-    } else {
-      toast.warning(`Retry complete: ${successCount} resolved, ${errorCount} still failed`)
-    }
-
-    onLog(
-      'CSV Error Retry',
-      errorCount === 0 ? 'success' : 'error',
-      `Retried ${failedResults.length} failed rows: ${successCount} success, ${errorCount} still failed`,
-      { 
-        entity, 
-        successCount, 
-        errorCount, 
-        createdCount, 
-        updatedCount,
-        attemptNumber: retryCount + 1
-      }
-    )
-  }
-
   return (
     <div className="space-y-6">
       {showRestorePrompt && persistedState && (
@@ -1194,17 +812,6 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
             CSV Data Loader
           </CardTitle>
           <CardDescription>Import and update bulk data from CSV files into Bullhorn entities</CardDescription>
-          {csvData && csvData.rows.length > 10000 && (
-            <div className="mt-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-md text-sm">
-              <div className="flex items-start gap-2">
-                <Gauge className="text-blue-500 mt-0.5" size={16} />
-                <div className="flex-1 text-xs text-muted-foreground">
-                  <strong className="text-foreground">Large dataset mode active:</strong> Processing {csvData.rows.length.toLocaleString()} rows with optimized memory management. 
-                  The system will automatically batch and clear memory during processing.
-                </div>
-              </div>
-            </div>
-          )}
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1533,36 +1140,15 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  {dryRun ? 'Preview Results' : 'Import Results'}
-                  {results.filter(r => r.status === 'error').length > 0 && (
-                    <Badge variant="destructive" className="flex items-center gap-1">
-                      <Warning size={14} />
-                      {results.filter(r => r.status === 'error').length} errors
-                    </Badge>
-                  )}
-                </CardTitle>
+                <CardTitle>{dryRun ? 'Preview Results' : 'Import Results'}</CardTitle>
                 <CardDescription>
                   {results.filter(r => r.action === 'created').length} {dryRun ? 'would create' : 'created'}, 
                   {' '}{results.filter(r => r.action === 'updated').length} {dryRun ? 'would update' : 'updated'},
                   {' '}{results.filter(r => r.action === 'skipped').length} {dryRun ? 'would skip' : 'skipped'},
                   {' '}{results.filter(r => r.status === 'error').length} errors
-                  {retryCount > 0 && <span className="text-xs ml-2">(Retry attempt #{retryCount})</span>}
                 </CardDescription>
               </div>
               <div className="flex gap-2">
-                {!dryRun && results.filter(r => r.status === 'error' && r.rowData).length > 0 && (
-                  <Button 
-                    size="sm" 
-                    variant="default"
-                    onClick={retryFailedRows}
-                    disabled={loading || isRetryingErrors}
-                    className="gap-1"
-                  >
-                    <ArrowsClockwise className={isRetryingErrors ? 'animate-spin' : ''} />
-                    {isRetryingErrors ? 'Retrying...' : `Retry ${results.filter(r => r.status === 'error').length} Errors`}
-                  </Button>
-                )}
                 <Button 
                   size="sm" 
                   variant="outline" 
@@ -1603,38 +1189,11 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {!dryRun && results.filter(r => r.status === 'error').length > 0 && (
-              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <Warning className="text-destructive mt-0.5" size={20} />
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-sm text-destructive mb-1">
-                      {results.filter(r => r.status === 'error').length} rows failed to import
-                    </h4>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      You can retry just the failed rows without re-running the entire import. Click "Retry Errors" to try again.
-                    </p>
-                    <Button 
-                      size="sm" 
-                      variant="destructive"
-                      onClick={retryFailedRows}
-                      disabled={loading || isRetryingErrors}
-                      className="gap-1"
-                    >
-                      <ArrowsClockwise className={isRetryingErrors ? 'animate-spin' : ''} />
-                      {isRetryingErrors ? 'Retrying...' : `Retry ${results.filter(r => r.status === 'error').length} Failed Rows`}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
             <ScrollArea className="h-[300px]">
               <div className="space-y-2">
                 {results.map((result) => (
                   <div key={result.row} className="space-y-2">
-                    <div className={`flex items-center gap-2 p-2 rounded border ${
-                      result.status === 'error' ? 'bg-destructive/5 border-destructive/30' : ''
-                    }`}>
+                    <div className="flex items-center gap-2 p-2 rounded border">
                       {result.status === 'success' ? (
                         result.action === 'updated' ? (
                           <CheckCircle className="text-blue-500" size={20} />
@@ -1659,12 +1218,6 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                         {result.action || result.status}
                       </Badge>
                     </div>
-                    {result.status === 'error' && result.error && (
-                      <div className="ml-8 p-2 bg-destructive/10 border border-destructive/20 rounded text-xs">
-                        <span className="font-semibold text-destructive">Error: </span>
-                        <span className="text-muted-foreground">{result.error}</span>
-                      </div>
-                    )}
                     {dryRun && result.data && (
                       <div className="ml-8 p-2 bg-muted/50 rounded text-xs font-mono">
                         {result.action === 'updated' && result.data.existing && result.data.changes ? (
