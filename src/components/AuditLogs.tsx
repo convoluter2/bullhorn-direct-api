@@ -580,11 +580,16 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                             </div>
                             <ScrollArea className="max-h-32">
                               <div className="space-y-1 pr-3">
-                                {log.details.errors.map((error: string, idx: number) => (
-                                  <div key={idx} className="text-xs font-mono text-destructive/90 bg-background/50 p-1.5 rounded border border-destructive/20">
-                                    {error}
-                                  </div>
-                                ))}
+                                {log.details.errors.map((error: any, idx: number) => {
+                                  const errorText = typeof error === 'string' ? error : 
+                                    (error && typeof error === 'object' && 'message' in error) ? error.message :
+                                    JSON.stringify(error)
+                                  return (
+                                    <div key={idx} className="text-xs font-mono text-destructive/90 bg-background/50 p-1.5 rounded border border-destructive/20">
+                                      {errorText}
+                                    </div>
+                                  )
+                                })}
                               </div>
                             </ScrollArea>
                           </div>
@@ -600,11 +605,16 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                             </div>
                             <ScrollArea className="max-h-32">
                               <div className="space-y-1 pr-3">
-                                {log.details.rollbackErrors.map((error: string, idx: number) => (
-                                  <div key={idx} className="text-xs font-mono text-destructive/90 bg-background/50 p-1.5 rounded border border-destructive/20">
-                                    {error}
-                                  </div>
-                                ))}
+                                {log.details.rollbackErrors.map((error: any, idx: number) => {
+                                  const errorText = typeof error === 'string' ? error : 
+                                    (error && typeof error === 'object' && 'message' in error) ? error.message :
+                                    JSON.stringify(error)
+                                  return (
+                                    <div key={idx} className="text-xs font-mono text-destructive/90 bg-background/50 p-1.5 rounded border border-destructive/20">
+                                      {errorText}
+                                    </div>
+                                  )
+                                })}
                               </div>
                             </ScrollArea>
                           </div>
@@ -722,9 +732,52 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                                       <span className="text-accent">
                                         ✓ {history.successCount} success
                                       </span>
+                                      {history.errorCount > 0 && (
+                                        <span className="text-destructive">
+                                          ✗ {history.errorCount} failed
+                                        </span>
+                                      )}
+                                    </div>
+                                  )
+                                } catch {
+                                  return null
+                                }
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {log.retryHistory && log.retryHistory.length > 0 && (
+                          <div className="mt-2 p-2 bg-muted/50 rounded border border-border/50">
+                            <p className="text-xs font-semibold text-muted-foreground mb-1">
+                              Retry History ({log.retryHistory.length})
+                            </p>
+                            <div className="space-y-1">
+                              {log.retryHistory.map((history, idx) => {
+                                try {
+                                  return (
+                                    <div key={idx} className="text-xs flex items-center gap-2">
+                                      <span className="text-muted-foreground">
+                                        {new Date(history.timestamp).toLocaleString()}
+                                      </span>
+                                      <span className="text-accent">
+                                        ✓ {history.successCount} success
+                                      </span>
                                       {history.failedCount > 0 && (
                                         <span className="text-destructive">
+                                          ✗ {history.failedCount} failed
+                                        </span>
+                                      )}
+                                    </div>
+                                  )
+                                } catch {
+                                  return null
+                                }
+                              })}
+                            </div>
+                          </div>
                         )}
+                        
                         {log.details && (() => {
                           let detailsString: string
                           try {
