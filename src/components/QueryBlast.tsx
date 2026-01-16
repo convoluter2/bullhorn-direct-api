@@ -711,21 +711,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                                   </SelectTrigger>
                                   <SelectContent className="max-h-[300px]">
                                     <SelectItem value="equals">= Equals</SelectItem>
-                                    <SelectItem value="in_list_parens">∈ In List (...)</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="flex-1 space-y-1">
-                                <Label className="text-xs">Value</Label>
-                                <ValidatedFieldInput
-                                  field={fieldsMap[filter.field] || null}
-                                  value={filter.value}
-                                  onChange={(v) => updateFilter(index, 'value', v)}
-                                  disabled={filter.operator === 'is_null' || filter.operator === 'is_not_null'}
                                   placeholder={
-                                    filter.operator === 'in_list' || filter.operator === 'in_list_parens'
-                                      ? 'value1,value2,value3'
-                                      : filter.operator === 'between_inclusive' || filter.operator === 'between_exclusive'
                                       ? 'start,end'
                                       : 'Value'
                                   }
@@ -765,7 +751,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                       <SelectContent>
                         <SelectItem value="__none__">None</SelectItem>
                         {availableFields.map((field) => (
-                          <SelectItem key={field.name} value={field.name}>
+                        useProductionOperators={true}
                             {formatFieldLabel(field.label, field.name)}
                           </SelectItem>
                         ))}
