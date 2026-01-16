@@ -24,6 +24,7 @@ import { ManualEntityDialog } from '@/components/ManualEntityDialog'
 import { FilterGroupBuilder } from '@/components/FilterGroupBuilder'
 import { OperationProgressControls } from '@/components/OperationProgressControls'
 import { usePausableOperation } from '@/hooks/use-pausable-operation'
+import { getProductionOperators } from '@/lib/validated-operators'
 import type { QueryFilter, QueryConfig, FilterGroup, ExecutionState } from '@/lib/types'
 
 interface QueryBlastProps {
@@ -109,6 +110,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
 
   const availableFields = metadata?.fields || []
   const fieldsMap = metadata?.fieldsMap || {}
+  const operatorsToShow = getProductionOperators()
 
   const addFilter = () => {
     setFilters([...filters, { field: '', operator: 'equals', value: '' }])
@@ -710,10 +712,23 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent className="max-h-[300px]">
-                                    <SelectItem value="equals">= Equals</SelectItem>
+                                    {operatorsToShow.map(op => (
+                                      <SelectItem key={op.id} value={op.id}>
+                                        {op.symbol} {op.displayName}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex-1 space-y-1">
+                                <Label className="text-xs">Value</Label>
+                                <ValidatedFieldInput
+                                  field={fieldsMap[filter.field] || null}
+                                  value={filter.value}
+                                  onChange={(v) => updateFilter(index, 'value', v)}
+                                  disabled={filter.operator === 'is_null' || filter.operator === 'is_not_null'}
                                   placeholder={
-                                      ? 'start,end'
-                                      : 'Value'
+                                    operatorsToShow.find(op => op.id === filter.operator)?.placeholder || 'Value'
                                   }
                                 />
                               </div>
@@ -751,7 +766,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                       <SelectContent>
                         <SelectItem value="__none__">None</SelectItem>
                         {availableFields.map((field) => (
-                        useProductionOperators={true}
+                          <SelectItem key={field.name} value={field.name}>
                             {formatFieldLabel(field.label, field.name)}
                           </SelectItem>
                         ))}
