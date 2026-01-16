@@ -26,6 +26,7 @@ import { ManualEntityDialog } from '@/components/ManualEntityDialog'
 import { ConditionalAssociationBuilder, type ConditionalAssociation } from '@/components/ConditionalAssociationBuilder'
 import { getAssociationsForRecord, mergeAssociationActions, describeAssociation } from '@/lib/conditional-logic'
 import { FilterGroupBuilder } from '@/components/FilterGroupBuilder'
+import { EntityHelpAlert } from '@/components/EntityHelpAlert'
 import type { QueryFilter, UpdateSnapshot, FilterGroup, ExecutionState } from '@/lib/types'
 
 interface SmartStackProps {
@@ -927,6 +928,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
                   Failed to load entity metadata: {metadataError}
                 </div>
               )}
+              {selectedEntity && <EntityHelpAlert entity={selectedEntity} />}
             </div>
 
             <Separator />

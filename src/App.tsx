@@ -28,6 +28,7 @@ import { ToOneFieldTest } from '@/components/ToOneFieldTest'
 import { ComprehensiveFieldTest } from '@/components/ComprehensiveFieldTest'
 import { PauseResumeTests } from '@/components/PauseResumeTests'
 import { SpeedTest } from '@/components/SpeedTest'
+import { DiagnosticPanel } from '@/components/DiagnosticPanel'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { toast } from 'sonner'
@@ -566,7 +567,8 @@ function App() {
 
             <TabsContent value="testing-tools" className="space-y-6">
               <Tabs value={testingSubTab} onValueChange={setTestingSubTab} className="space-y-6">
-                <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
+                <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-grid">
+                  <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>
                   <TabsTrigger value="operators">Operators</TabsTrigger>
                   <TabsTrigger value="toone-test">To-One Test</TabsTrigger>
                   <TabsTrigger value="field-tests">Field Tests</TabsTrigger>
@@ -575,6 +577,10 @@ function App() {
                   <TabsTrigger value="speed-test">Speed Test</TabsTrigger>
                   <TabsTrigger value="rate-limits">Rate Limits</TabsTrigger>
                 </TabsList>
+
+                <TabsContent value="diagnostics">
+                  <DiagnosticPanel />
+                </TabsContent>
 
                 <TabsContent value="operators">
                   <OperatorTestSuite />

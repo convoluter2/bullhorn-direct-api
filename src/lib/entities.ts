@@ -24,7 +24,7 @@ export const BULLHORN_ENTITIES: BullhornEntity[] = [
   {
     id: 'JobSubmission',
     label: 'Job Submission',
-    fields: ['id', 'candidate', 'jobOrder', 'status', 'dateAdded', 'dateLastModified', 'sendingUser', 'dateWebResponse']
+    fields: ['id', 'candidate', 'jobOrder', 'status', 'dateAdded', 'dateLastModified', 'sendingUser', 'dateWebResponse', 'source', 'isDeleted', 'salary', 'billRate', 'payRate']
   },
   {
     id: 'Placement',

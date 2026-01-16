@@ -25,6 +25,7 @@ import { FilterGroupBuilder } from '@/components/FilterGroupBuilder'
 import { OperationProgressControls } from '@/components/OperationProgressControls'
 import { usePausableOperation } from '@/hooks/use-pausable-operation'
 import { getProductionOperators } from '@/lib/validated-operators'
+import { EntityHelpAlert } from '@/components/EntityHelpAlert'
 import type { QueryFilter, QueryConfig, FilterGroup, ExecutionState } from '@/lib/types'
 
 interface QueryBlastProps {
@@ -641,6 +642,8 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
               />
             </div>
           </div>
+
+          {entity && <EntityHelpAlert entity={entity} />}
 
           {entity && (
             <>
