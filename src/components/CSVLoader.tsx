@@ -15,7 +15,7 @@ import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye, Ar
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV, exportToCSV, exportToJSON } from '@/lib/csv-utils'
-import { formatFieldLabel } from '@/lib/utils'
+import { formatFieldLabel, formatFieldValue } from '@/lib/utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
@@ -1226,9 +1226,9 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                             {Object.entries(result.data.changes).map(([key, value]) => (
                               <div key={key}>
                                 <span className="text-muted-foreground">{key}:</span>{' '}
-                                <span className="text-destructive line-through">{JSON.stringify(result.data.existing[key])}</span>
+                                <span className="text-destructive line-through">{formatFieldValue(result.data.existing[key])}</span>
                                 {' → '}
-                                <span className="text-accent font-semibold">{JSON.stringify(value)}</span>
+                                <span className="text-accent font-semibold">{formatFieldValue(value)}</span>
                               </div>
                             ))}
                           </div>
@@ -1238,7 +1238,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                             {Object.entries(result.data).map(([key, value]) => (
                               <div key={key}>
                                 <span className="text-muted-foreground">{key}:</span>{' '}
-                                <span className="text-accent">{JSON.stringify(value)}</span>
+                                <span className="text-accent">{formatFieldValue(value)}</span>
                               </div>
                             ))}
                           </div>

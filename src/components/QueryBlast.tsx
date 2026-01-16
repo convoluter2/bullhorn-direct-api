@@ -15,7 +15,7 @@ import { MagnifyingGlass, Plus, Trash, Lightning, DownloadSimple, X, CaretLeft, 
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
-import { formatFieldLabel } from '@/lib/utils'
+import { formatFieldLabel, formatFieldValue } from '@/lib/utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { FieldSelector } from '@/components/FieldSelector'
@@ -1001,7 +1001,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                     {Object.entries(dryRunResults[0].preview).map(([key, value]) => (
                       <div key={key} className="flex gap-2">
                         <span className="text-muted-foreground">{key}:</span>
-                        <span className="text-accent font-semibold">{String(value)}</span>
+                        <span className="text-accent font-semibold">{formatFieldValue(value)}</span>
                       </div>
                     ))}
                   </div>
@@ -1027,9 +1027,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                           )}
                           <TableCell className="font-mono text-xs">{update.field}</TableCell>
                           <TableCell className="font-mono text-xs text-muted-foreground">
-                            {record.current[update.field] !== null && record.current[update.field] !== undefined 
-                              ? String(record.current[update.field]) 
-                              : '-'}
+                            {formatFieldValue(record.current[update.field])}
                           </TableCell>
                           <TableCell className="font-mono text-xs text-accent font-semibold">
                             {update.value}
@@ -1132,7 +1130,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                     <TableRow key={i}>
                       {selectedFields.map((field) => (
                         <TableCell key={field} className="font-mono text-xs">
-                          {row[field] !== null && row[field] !== undefined ? String(row[field]) : '-'}
+                          {formatFieldValue(row[field])}
                         </TableCell>
                       ))}
                     </TableRow>

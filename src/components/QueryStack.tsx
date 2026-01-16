@@ -20,7 +20,7 @@ import {
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import { formatFieldLabel } from '@/lib/utils'
+import { formatFieldLabel, formatFieldValue } from '@/lib/utils'
 import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
@@ -1454,7 +1454,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
                                       {Object.keys(record.newValues).map(field => (
                                         <div key={field} className="text-xs">
                                           <span className="font-mono text-muted-foreground">{field}:</span>{' '}
-                                          <span className="font-mono">{JSON.stringify(record.currentValues[field])}</span>
+                                          <span className="font-mono">{formatFieldValue(record.currentValues[field])}</span>
                                         </div>
                                       ))}
                                     </div>
@@ -1468,7 +1468,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
                                       {Object.entries(record.newValues).map(([field, value]) => (
                                         <div key={field} className="text-xs">
                                           <span className="font-mono text-muted-foreground">{field}:</span>{' '}
-                                          <span className="font-mono text-accent font-semibold">{JSON.stringify(value)}</span>
+                                          <span className="font-mono text-accent font-semibold">{formatFieldValue(value)}</span>
                                         </div>
                                       ))}
                                     </div>

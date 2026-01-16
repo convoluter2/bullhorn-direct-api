@@ -17,7 +17,7 @@ import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Ey
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV, exportToCSV, exportToJSON } from '@/lib/csv-utils'
-import { formatFieldLabel } from '@/lib/utils'
+import { formatFieldLabel, formatFieldValue } from '@/lib/utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { ValidatedFieldInput } from '@/components/ValidatedFieldInput'
@@ -1402,7 +1402,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
                                   {Object.keys(record.newValues).map(field => (
                                     <div key={field} className="text-xs">
                                       <span className="font-mono text-muted-foreground">{field}:</span>{' '}
-                                      <span className="font-mono">{JSON.stringify(record.currentValues[field])}</span>
+                                      <span className="font-mono">{formatFieldValue(record.currentValues[field])}</span>
                                     </div>
                                   ))}
                                 </div>
@@ -1416,7 +1416,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
                                   {Object.entries(record.newValues).map(([field, value]) => (
                                     <div key={field} className="text-xs">
                                       <span className="font-mono text-muted-foreground">{field}:</span>{' '}
-                                      <span className="font-mono text-accent font-semibold">{JSON.stringify(value)}</span>
+                                      <span className="font-mono text-accent font-semibold">{formatFieldValue(value)}</span>
                                     </div>
                                   ))}
                                 </div>
