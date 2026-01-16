@@ -447,7 +447,6 @@ function App() {
                   setCurrentConnectionId(() => null)
                 }}
               />
-              {session && <RateLimitStatus />}
               {session ? (
                 <>
                   <ConnectionSwitcher
