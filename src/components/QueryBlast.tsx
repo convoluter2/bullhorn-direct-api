@@ -894,7 +894,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                       className="text-destructive"
                     >
                       <Trash size={18} />
-                onClick={handleDryRun} 
+                    </Button>
                   </div>
                 ))}
                 
