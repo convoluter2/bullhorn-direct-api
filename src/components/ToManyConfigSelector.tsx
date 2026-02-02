@@ -1,10 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Plus, Trash, ArrowsClockwise } from '@phosphor-icons/react'
 import { formatFieldLabel } from '@/lib/utils'
-import type { EntityField } from '@/hooks/use-
+import { useEntityMetadata } from '@/hooks/use-entity-metadata'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
 interface ToManyConfig {
   subField: string
-
+  operation: 'add' | 'remove' | 'replace'
+}
 
 interface ToManyConfigSelectorProps {
   fieldName: string
