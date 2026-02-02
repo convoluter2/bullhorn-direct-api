@@ -1741,7 +1741,7 @@ export class BullhornAPI {
       'Lead',
       'Note',
       'NoteEntity',
-      'Opportunity',
+      'Tearsheet',
       'Placement',
       'PlacementCertification',
       'PlacementChangeRequest',
