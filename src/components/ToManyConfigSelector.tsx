@@ -1,30 +1,20 @@
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Minus, ArrowsClockwise } from '@phosphor-icons/react'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
+
 import { formatFieldLabel } from '@/lib/utils'
 
 export interface ToManyConfig {
   operation: 'add' | 'remove' | 'replace'
-  subField: string
-}
+interface ToManyCo
+ 
 
 interface ToManyConfigSelectorProps {
   associatedEntity: string
-  fieldLabel: string
-  fieldName: string
-  config: ToManyConfig
-  onChange: (config: ToManyConfig) => void
-}
-
-export function ToManyConfigSelector({
-  associatedEntity,
+export function ToMa
   fieldLabel,
-  fieldName,
   config,
-  onChange
 }: ToManyConfigSelectorProps) {
-  const { metadata: subEntityMetadata, loading: subEntityLoading } = useEntityMetadata(associatedEntity)
 
   const availableSubFields = subEntityMetadata?.fields.filter(
     f => f.dataType === 'String' || f.dataType === 'Integer'
