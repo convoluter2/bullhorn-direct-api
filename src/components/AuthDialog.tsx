@@ -5,12 +5,31 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
-import { Copy, Info, CheckCircle, Circle, Warning } from '@phosphor-icons/react'
+import { Copy, Info, CheckCircle, Circle, Warning, Database } from '@phosphor-icons/react'
 import type { SavedConnection } from '@/components/ConnectionManager'
 import type { BullhornSession } from '@/lib/types'
+
+interface LoginInfo {
+  atsUrl: string
+  billingSyncUrl: string
+  coreUrl: string
+  documentEditorUrl: string
+  mobileUrl: string
+  oauthUrl: string
+  restUrl: string
+  samlUrl: string
+  novoUrl: string
+  pulseInboxUrl: string
+  canvasUrl: string
+  npsSurveyUrl: string
+  ulUrl: string
+  dataCenterId: number
+  superClusterId: number
+}
 
 interface AuthDialogProps {
   open: boolean
@@ -21,10 +40,30 @@ interface AuthDialogProps {
 
 type AuthStep = 'idle' | 'opening-popup' | 'waiting-login' | 'welcome-detected' | 'extracting-code' | 'exchanging-token' | 'logging-in' | 'complete'
 
+interface LoginInfo {
+  atsUrl: string
+  billingSyncUrl: string
+  coreUrl: string
+  documentEditorUrl: string
+  mobileUrl: string
+  oauthUrl: string
+  restUrl: string
+  samlUrl: string
+  novoUrl: string
+  pulseInboxUrl: string
+  canvasUrl: string
+  npsSurveyUrl: string
+  ulUrl: string
+  dataCenterId: number
+  superClusterId: number
+}
+
 export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedConnection }: AuthDialogProps) {
   const [loading, setLoading] = useState(false)
   const [authStep, setAuthStep] = useState<AuthStep>('idle')
   const [authProgress, setAuthProgress] = useState(0)
+  const [loginInfo, setLoginInfo] = useState<LoginInfo | null>(null)
+  const [loadingLoginInfo, setLoadingLoginInfo] = useState(false)
   const [manualAuth, setManualAuth] = useState({
     clientId: '',
     clientSecret: '',
@@ -64,17 +103,43 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             authCode: ''
           })
           console.log('✅ AuthDialog - Credentials set in form state')
+          
+          if (credentials.username) {
+            loadLoginInfoForUsername(credentials.username)
+          }
         } else {
           console.warn('⚠️ AuthDialog - No credentials found for preselected connection')
         }
       } else {
         console.log('ℹ️ AuthDialog - Clearing credentials (dialog closed or no preselection)')
+        setLoginInfo(null)
       }
       setAuthStep('idle')
       setAuthProgress(0)
     }
     loadConnectionCredentials()
   }, [open, preselectedConnection])
+
+  const loadLoginInfoForUsername = async (username: string) => {
+    if (!username || username.trim() === '') {
+      setLoginInfo(null)
+      return
+    }
+
+    setLoadingLoginInfo(true)
+    try {
+      console.log('🔍 Loading loginInfo for username:', username)
+      const info = await bullhornAPI.getLoginInfo(username)
+      setLoginInfo(info)
+      console.log('✅ LoginInfo loaded:', info)
+    } catch (error) {
+      console.error('❌ Failed to load loginInfo:', error)
+      setLoginInfo(null)
+      toast.error('Failed to load datacenter information')
+    } finally {
+      setLoadingLoginInfo(false)
+    }
+  }
   
   const extractCodeFromUrl = (input: string): string | null => {
     try {
@@ -398,6 +463,50 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
             </AlertDescription>
           </Alert>
 
+          {loginInfo && (
+            <Alert className="border-accent/50 bg-accent/5">
+              <Database className="h-4 w-4 text-accent" />
+              <AlertDescription>
+                <p className="font-semibold text-sm mb-2">Datacenter Information</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Datacenter ID:</span>
+                    <Badge variant="outline" className="font-mono text-xs">
+                      {loginInfo.dataCenterId}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Super Cluster ID:</span>
+                    <Badge variant="outline" className="font-mono text-xs">
+                      {loginInfo.superClusterId}
+                    </Badge>
+                  </div>
+                  <div className="col-span-2 mt-1">
+                    <span className="text-muted-foreground">OAuth URL:</span>
+                    <code className="ml-2 text-xs bg-muted px-1.5 py-0.5 rounded">
+                      {loginInfo.oauthUrl}
+                    </code>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground">REST URL:</span>
+                    <code className="ml-2 text-xs bg-muted px-1.5 py-0.5 rounded">
+                      {loginInfo.restUrl}
+                    </code>
+                  </div>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {loadingLoginInfo && (
+            <Alert className="border-accent/30 bg-accent/5">
+              <Info className="h-4 w-4 text-accent animate-pulse" />
+              <AlertDescription className="text-xs">
+                Loading datacenter information for <strong>{manualAuth.username}</strong>...
+              </AlertDescription>
+            </Alert>
+          )}
+
           <form onSubmit={handleCodeSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="manual-clientId">Client ID</Label>
@@ -434,7 +543,14 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                 id="username"
                 type="text"
                 value={manualAuth.username}
-                onChange={(e) => setManualAuth({ ...manualAuth, username: e.target.value })}
+                onChange={(e) => {
+                  setManualAuth({ ...manualAuth, username: e.target.value })
+                  if (e.target.value && e.target.value.length > 3) {
+                    loadLoginInfoForUsername(e.target.value)
+                  } else {
+                    setLoginInfo(null)
+                  }
+                }}
                 required
                 disabled={loading}
                 placeholder="Your Bullhorn username"
@@ -459,6 +575,19 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                 Added to authorization URL for automatic login
               </p>
             </div>
+
+            {manualAuth.username && !loginInfo && !loadingLoginInfo && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => loadLoginInfoForUsername(manualAuth.username)}
+              >
+                <Database size={16} />
+                Verify Datacenter & Credentials
+              </Button>
+            )}
 
             <div className="space-y-2 p-3 bg-muted rounded-lg">
               <Label className="text-sm font-medium">Get Authorization Code</Label>
