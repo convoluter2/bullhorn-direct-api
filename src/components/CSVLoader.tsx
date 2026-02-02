@@ -335,7 +335,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
             if (fieldMeta?.associationType === 'TO_MANY') {
               const config = toManyConfigs[mapping.bullhornField] || { operation: 'add', subField: 'id' }
               
-              const values = transformedValue.split(/[,\s]+/).map((v: string) => v.trim()).filter((v: string) => v)
+              const values = transformedValue.split(',').map((v: string) => v.trim()).filter((v: string) => v)
               
               if (config.subField === 'id') {
                 const ids = values.map((v: string) => parseInt(v, 10)).filter((id: number) => !isNaN(id))
@@ -347,14 +347,10 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                   }
                 }
               } else {
-                const ids = values.map((v: string) => {
-                  const num = parseFloat(v)
-                  return isNaN(num) ? v : num
-                })
-                if (ids.length > 0) {
+                if (values.length > 0) {
                   data[`__tomany_${mapping.bullhornField}`] = {
                     operation: config.operation,
-                    ids: ids,
+                    ids: values,
                     subField: config.subField
                   }
                 }

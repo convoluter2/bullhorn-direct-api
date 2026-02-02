@@ -23,7 +23,7 @@ type ToManyOperation = 'add' | 'remove' | 'replace'
 
 interface ToManyValue {
   operation: ToManyOperation
-  ids: number[]
+  ids: (number | string)[]
   subField?: string
 }
 
@@ -35,7 +35,7 @@ export function ToManyFieldInput({
   className
 }: ToManyFieldInputProps) {
   const [operation, setOperation] = useState<ToManyOperation>('add')
-  const [ids, setIds] = useState<number[]>([])
+  const [ids, setIds] = useState<(number | string)[]>([])
   const [inputValue, setInputValue] = useState('')
   const [subField, setSubField] = useState<string>('id')
 
@@ -58,7 +58,7 @@ export function ToManyFieldInput({
     }
   }, [value])
 
-  const updateParent = (newOperation: ToManyOperation, newIds: number[], newSubField: string) => {
+  const updateParent = (newOperation: ToManyOperation, newIds: (number | string)[], newSubField: string) => {
     const toManyValue: ToManyValue = {
       operation: newOperation,
       ids: newIds,
@@ -68,20 +68,34 @@ export function ToManyFieldInput({
   }
 
   const handleAddId = () => {
-    const parsedIds = inputValue
-      .split(/[,\s]+/)
-      .map(id => parseInt(id.trim(), 10))
-      .filter(id => !isNaN(id) && !ids.includes(id))
+    if (subField === 'id') {
+      const parsedIds = inputValue
+        .split(',')
+        .map(id => parseInt(id.trim(), 10))
+        .filter(id => !isNaN(id) && !ids.includes(id))
 
-    if (parsedIds.length > 0) {
-      const newIds = [...ids, ...parsedIds]
-      setIds(newIds)
-      updateParent(operation, newIds, subField)
-      setInputValue('')
+      if (parsedIds.length > 0) {
+        const newIds = [...ids, ...parsedIds]
+        setIds(newIds)
+        updateParent(operation, newIds, subField)
+        setInputValue('')
+      }
+    } else {
+      const values = inputValue
+        .split(',')
+        .map(v => v.trim())
+        .filter(v => v && !ids.includes(v))
+
+      if (values.length > 0) {
+        const newIds = [...ids, ...values]
+        setIds(newIds)
+        updateParent(operation, newIds, subField)
+        setInputValue('')
+      }
     }
   }
 
-  const handleRemoveId = (id: number) => {
+  const handleRemoveId = (id: number | string) => {
     const newIds = ids.filter(existingId => existingId !== id)
     setIds(newIds)
     updateParent(operation, newIds, subField)
@@ -94,7 +108,8 @@ export function ToManyFieldInput({
 
   const handleSubFieldChange = (newSubField: string) => {
     setSubField(newSubField)
-    updateParent(operation, ids, newSubField)
+    setIds([])
+    updateParent(operation, [], newSubField)
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

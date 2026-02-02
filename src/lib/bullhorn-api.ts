@@ -1268,7 +1268,7 @@ export class BullhornAPI {
     entity: string,
     entityId: number,
     association: string,
-    associationIds: number[],
+    associationIds: (number | string)[],
     operation: 'add' | 'remove' | 'replace' = 'add',
     subField: string = 'id'
   ): Promise<any> {
@@ -1276,17 +1276,69 @@ export class BullhornAPI {
       throw new Error('Not authenticated')
     }
 
+    let resolvedIds: number[] = []
+
     if (subField !== 'id') {
-      console.log(`Using sub-field mode: ${subField} on association ${association}`)
-      toast.info(`Sub-field mode: Using ${subField} for ${association} association`)
+      console.log(`🔍 Resolving ${association} by ${subField}:`, associationIds)
+      toast.info(`Resolving ${association} by ${subField}...`)
+      
+      const metadata = await this.getMetadata(entity)
+      const associationField = metadata.fields?.find((f: any) => f.name === association)
+      const associatedEntityType = associationField?.associatedEntity?.entity
+      
+      if (!associatedEntityType) {
+        throw new Error(`Could not determine associated entity type for ${association}`)
+      }
+
+      const resolvedResults: Array<{ value: string | number; id: number | null }> = []
+      
+      for (const value of associationIds) {
+        try {
+          const searchResult = await this.search({
+            entity: associatedEntityType,
+            fields: ['id', subField],
+            filters: [{ field: subField, operator: 'equals', value: String(value) }],
+            count: 1,
+            start: 0
+          })
+          
+          if (searchResult.data && searchResult.data.length > 0) {
+            const id = searchResult.data[0].id
+            resolvedIds.push(id)
+            resolvedResults.push({ value, id })
+            console.log(`✅ Resolved ${subField}="${value}" to ID ${id}`)
+          } else {
+            resolvedResults.push({ value, id: null })
+            console.warn(`⚠️ Could not find ${associatedEntityType} with ${subField}="${value}"`)
+            toast.warning(`Could not find ${associatedEntityType} with ${subField}="${value}"`)
+          }
+        } catch (error) {
+          resolvedResults.push({ value, id: null })
+          console.error(`❌ Error resolving ${subField}="${value}":`, error)
+          toast.error(`Error resolving ${subField}="${value}"`)
+        }
+      }
+
+      const failedResolutions = resolvedResults.filter(r => r.id === null)
+      if (failedResolutions.length > 0) {
+        console.warn(`⚠️ Failed to resolve ${failedResolutions.length} values:`, failedResolutions.map(r => r.value))
+      }
+      
+      console.log(`✅ Resolved ${resolvedIds.length} of ${associationIds.length} values to IDs:`, resolvedIds)
+      
+      if (resolvedIds.length === 0) {
+        throw new Error(`Could not resolve any ${association} from the provided ${subField} values`)
+      }
+    } else {
+      resolvedIds = associationIds.map(id => typeof id === 'number' ? id : parseInt(String(id), 10)).filter(id => !isNaN(id))
     }
 
     switch (operation) {
       case 'add':
-        return this.associateToMany(entity, entityId, association, associationIds)
+        return this.associateToMany(entity, entityId, association, resolvedIds)
       
       case 'remove':
-        return this.disassociateToMany(entity, entityId, association, associationIds)
+        return this.disassociateToMany(entity, entityId, association, resolvedIds)
       
       case 'replace':
         const currentAssociations = await this.getToManyAssociation(entity, entityId, association)
@@ -1296,8 +1348,8 @@ export class BullhornAPI {
           await this.disassociateToMany(entity, entityId, association, currentIds)
         }
         
-        if (associationIds.length > 0) {
-          return this.associateToMany(entity, entityId, association, associationIds)
+        if (resolvedIds.length > 0) {
+          return this.associateToMany(entity, entityId, association, resolvedIds)
         }
         
         return { success: true, message: 'Association replaced successfully' }
