@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Trash, ArrowsClockwise } from 
+import { Plus, Trash, ArrowsClockwise } from '@phosphor-icons/react'
+import { Label } from '@/components/ui/label'
 import { formatFieldLabel } from '@/lib/utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
-import { formatFieldLabel } from '@/lib/utils'
 import type { EntityField } from '@/hooks/use-entity-metadata'
 
 interface ToManyConfig {
@@ -31,106 +31,94 @@ export function ToManyConfigSelector({
   
   const availableSubFields = subEntityMetadata?.fields.filter(f => f.type !== 'TO_MANY') || []
 
-        Co
+  return (
+    <div className="space-y-3 p-4 border border-border rounded-lg bg-card/50">
+      <p className="text-sm font-medium">
+        Configure To-Many: {formatFieldLabel(fieldLabel, fieldName)}
       </p>
       <div className="grid grid-cols-2 gap-3">
-          <Label className="text-xs">Operation</Lab
+        <div className="space-y-2">
+          <Label className="text-xs">Operation</Label>
+          <Select
             value={config.operation}
+            onValueChange={(value: 'add' | 'remove' | 'replace') => 
               onChange({ ...config, operation: value })
-          
-      
-            <SelectContent>
-                <div className="flex 
-                  <span>Add (keep existing)</span>
-              </S
-                <div className="flex
-                  <span>Remove (only these)</span>
-              </SelectItem>
-              
-           
-              </SelectItem>
-          </Select>
-        
-          <Label className=
-            value={config.subField}
-              onChange({ ...config, subField: value })
-            open={isOpen}
+            }
           >
-              <SelectV
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
-                <div className="space-y-0
-                  <div className="text-[10px] text-muted-
-                  </div>
+              <SelectItem value="add">
+                <div className="flex items-center gap-2">
+                  <Plus size={14} />
+                  <span>Add (keep existing)</span>
+                </div>
               </SelectItem>
-                <Selec
-              {!subEntityLo
-                  <div className="space-y-
-                    <div className="text-[10px] text-mute
-                    </div>
-                </SelectItem>
-            </SelectCo
+              <SelectItem value="remove">
+                <div className="flex items-center gap-2">
+                  <Trash size={14} />
+                  <span>Remove (only these)</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="replace">
+                <div className="flex items-center gap-2">
+                  <ArrowsClockwise size={14} />
+                  <span>Replace (all existing)</span>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+        <div className="space-y-2">
+          <Label className="text-xs">Match By Field</Label>
+          <Select
+            value={config.subField}
+            onValueChange={(value: string) => 
+              onChange({ ...config, subField: value })
+            }
+            open={isOpen}
+            onOpenChange={setIsOpen}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select field..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="id">
+                <div className="space-y-0.5">
+                  <div>ID</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    Match by entity ID
+                  </div>
+                </div>
+              </SelectItem>
+              {!subEntityLoading && availableSubFields.map((field) => (
+                <SelectItem key={field.name} value={field.name}>
+                  <div className="space-y-0.5">
+                    <div>{formatFieldLabel(field.label, field.name)}</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {field.type}
+                    </div>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
       
-        <p classNam
-          {con
-        
-          {config.operation === 'add'
-          {config.operation === 'replace' && '⚠ All exi
-        {config.s
-            💡 CSV values will be u
+      <div className="text-xs text-muted-foreground space-y-1">
+        <p className="font-medium">
+          {config.operation === 'add' && '➕ CSV values will be added to existing associations'}
+          {config.operation === 'remove' && '➖ Only specified CSV values will be removed'}
+          {config.operation === 'replace' && '⚠ All existing associations will be replaced'}
+        </p>
+        {config.subField && (
+          <p className="text-[10px]">
+            💡 CSV values will be matched using the <code className="font-mono">{config.subField}</code> field
+          </p>
         )}
+      </div>
     </div>
+  )
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

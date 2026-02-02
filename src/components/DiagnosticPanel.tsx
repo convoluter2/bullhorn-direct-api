@@ -22,11 +22,11 @@ export function DiagnosticPanel() {
   const scanStorage = async () => {
     setLoading(true)
     try {
-      const keys = await spark.kv.keys()
+      const keys = await window.spark.kv.keys()
       const data: StoredData[] = []
 
       for (const key of keys) {
-        const value = await spark.kv.get(key)
+        const value = await window.spark.kv.get(key)
         const valueStr = JSON.stringify(value)
         const size = new Blob([valueStr]).size
 
@@ -78,7 +78,7 @@ export function DiagnosticPanel() {
     if (!confirm(`Delete storage key: ${key}?`)) return
 
     try {
-      await spark.kv.delete(key)
+      await window.spark.kv.delete(key)
       toast.success(`Deleted: ${key}`)
       await scanStorage()
     } catch (error) {
