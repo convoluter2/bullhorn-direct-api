@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { Plus, Trash, ArrowsClockwise } from '@phosphor-icons/react'
+import { Label } from '@/components/ui/label'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useEntityMetadata } from '@/hooks/use-entity-metadata'
-import { formatFieldLabel } from '@/lib/utils'
+  operation: 'add' | 'remove' | 'replace'
+}
 
-interface ToManyConfig {
+  fieldLabel: string
   operation: 'add' | 'remove' | 'replace'
   subField: string
 }
@@ -14,21 +14,21 @@ interface ToManyConfigSelectorProps {
   associatedEntity: string
   fieldLabel: string
   fieldName: string
-  config: ToManyConfig
-  onChange: (config: ToManyConfig) => void
-}
+  return (
+      <p className="text-sm font-medium">
+ 
 
-export function ToManyConfigSelector({
-  associatedEntity,
-  fieldLabel,
-  fieldName,
-  config,
-  onChange
-}: ToManyConfigSelectorProps) {
-  const { metadata: subEntityMetadata, loading: subEntityLoading } = useEntityMetadata(associatedEntity)
-  const [isOpen, setIsOpen] = useState(false)
+          <Select
+            onValue
+            }
+            
+         
+          
+                  <Plus size={1
+                </div>
+              <SelectItem value="remove">
   
-  const availableSubFields = subEntityMetadata?.fields.filter(f => f.type !== 'TO_MANY') || []
+                </div>
 
   return (
     <div className="space-y-3 p-4 border border-border rounded-lg bg-card/50">
@@ -56,35 +56,35 @@ export function ToManyConfigSelector({
               </SelectItem>
               <SelectItem value="remove">
                 <div className="flex items-center gap-2">
-                  <Trash size={14} />
-                  <span>Remove (only these)</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="replace">
-                <div className="flex items-center gap-2">
-                  <ArrowsClockwise size={14} />
-                  <span>Replace (all existing)</span>
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label className="text-xs">Match By Field</Label>
-          <Select
-            value={config.subField}
-            onValueChange={(value: string) => 
-              onChange({ ...config, subField: value })
-            }
-            open={isOpen}
-            onOpenChange={setIsOpen}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select field..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="id">
-                <div className="space-y-0.5">
+            💡 CSV values will be mat
+        )}
+    </div>
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                   <div>ID</div>
                   <div className="text-[10px] text-muted-foreground">
                     Match by entity ID
