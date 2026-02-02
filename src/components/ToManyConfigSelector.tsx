@@ -1,17 +1,14 @@
 import { useState } from 'react'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Minus, ArrowsClockwise } from '@phosphor-icons/react'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
+
 import { formatFieldLabel } from '@/lib/utils'
 
-interface ToManyConfig {
-  operation: 'add' | 'remove' | 'replace'
+  subField: string
+}
   subField: string
 }
 
-interface ToManyConfigSelectorProps {
-  associatedEntity: string
   fieldLabel: string
   fieldName: string
   config: ToManyConfig
