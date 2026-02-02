@@ -1305,13 +1305,43 @@ export class BullhornAPI {
       
       for (const value of associationIds) {
         try {
-          const searchResult = await this.search({
-            entity: associatedEntityType,
-            fields: ['id', subField],
-            filters: [{ field: subField, operator: 'equals', value: String(value) }],
-            count: 1,
-            start: 0
-          })
+          let searchResult
+          const stringValue = String(value)
+          
+          if (subField === 'name' && (stringValue.includes('/') || stringValue.includes('-'))) {
+            const parts = stringValue.split(/[\/\-]/).map(part => part.trim()).filter(part => part.length > 0)
+            
+            if (parts.length > 1) {
+              const quotedParts = parts.map(part => `"${part}"`).join(' AND ')
+              const customQuery = `${subField}:(${quotedParts})`
+              
+              console.log(`🔍 Using custom AND query for specialty name: ${customQuery}`)
+              
+              searchResult = await this.search({
+                entity: associatedEntityType,
+                fields: ['id', subField],
+                filters: [],
+                count: 1,
+                start: 0
+              }, customQuery)
+            } else {
+              searchResult = await this.search({
+                entity: associatedEntityType,
+                fields: ['id', subField],
+                filters: [{ field: subField, operator: 'equals', value: stringValue }],
+                count: 1,
+                start: 0
+              })
+            }
+          } else {
+            searchResult = await this.search({
+              entity: associatedEntityType,
+              fields: ['id', subField],
+              filters: [{ field: subField, operator: 'equals', value: stringValue }],
+              count: 1,
+              start: 0
+            })
+          }
           
           if (searchResult.data && searchResult.data.length > 0) {
             const id = searchResult.data[0].id
