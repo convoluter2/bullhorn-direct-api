@@ -951,60 +951,96 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               <div className="space-y-2">
                 <Label>Field Mapping</Label>
                 <div className="space-y-2">
-                  {mappings.map((mapping) => (
-                    <div key={mapping.csvColumn} className="flex gap-2 items-center">
-                      <div className="flex-1 font-mono text-sm bg-muted p-2 rounded border">
-                        {mapping.csvColumn}
-                      </div>
-                      <div className="text-muted-foreground">→</div>
-                      <div className="flex-1">
-                        {metadataLoading ? (
-                          <Skeleton className="h-10 w-full" />
-                        ) : (
-                          <Select
-                            value={mapping.bullhornField}
-                            onValueChange={(v) => updateMapping(mapping.csvColumn, v)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select Bullhorn field" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__skip__">Skip</SelectItem>
-                              {availableFields.map((field) => (
-                                <SelectItem key={field.name} value={field.name}>
-                                  {formatFieldLabel(field.label, field.name)}
-                                  {lookupField === field.name && (
-                                    <span className="ml-2 text-xs text-accent">
-                                      (Lookup)
-                                    </span>
-                                  )}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      </div>
-                      <div className="w-32">
-                        <Select
-                          value={mapping.transform || 'none'}
-                          onValueChange={(v) => updateTransform(mapping.csvColumn, v === 'none' ? undefined : v)}
-                          disabled={mapping.bullhornField === '__skip__'}
-                        >
-                          <SelectTrigger className="text-xs">
-                            <SelectValue placeholder="Transform" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">No transform</SelectItem>
-                            <SelectItem value="trim">Trim</SelectItem>
-                            <SelectItem value="number">To Number</SelectItem>
-                            <SelectItem value="boolean">To Boolean</SelectItem>
-                            <SelectItem value="uppercase">Uppercase</SelectItem>
-                            <SelectItem value="lowercase">Lowercase</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  ))}
+                  {mappings.map((mapping) => {
+                    const fieldMeta = metadata?.fieldsMap[mapping.bullhornField]
+                    const isToMany = fieldMeta?.associationType === 'TO_MANY'
+                    const isToOne = fieldMeta?.associationType === 'TO_ONE'
+                    
+                    return (
+                      <Card key={mapping.csvColumn} className="p-3">
+                        <div className="space-y-3">
+                          <div className="flex gap-2 items-center">
+                            <div className="flex-1 font-mono text-sm bg-muted p-2 rounded border">
+                              {mapping.csvColumn}
+                            </div>
+                            <div className="text-muted-foreground">→</div>
+                            <div className="flex-1">
+                              {metadataLoading ? (
+                                <Skeleton className="h-10 w-full" />
+                              ) : (
+                                <Select
+                                  value={mapping.bullhornField}
+                                  onValueChange={(v) => updateMapping(mapping.csvColumn, v)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select Bullhorn field" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="__skip__">Skip</SelectItem>
+                                    {availableFields.map((field) => (
+                                      <SelectItem key={field.name} value={field.name}>
+                                        {formatFieldLabel(field.label, field.name)}
+                                        {field.associationType === 'TO_MANY' && ' (To-Many)'}
+                                        {field.associationType === 'TO_ONE' && ' (To-One)'}
+                                        {lookupField === field.name && (
+                                          <span className="ml-2 text-xs text-accent">
+                                            (Lookup)
+                                          </span>
+                                        )}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </div>
+                            <div className="w-32">
+                              <Select
+                                value={mapping.transform || 'none'}
+                                onValueChange={(v) => updateTransform(mapping.csvColumn, v === 'none' ? undefined : v)}
+                                disabled={mapping.bullhornField === '__skip__' || isToMany || isToOne}
+                              >
+                                <SelectTrigger className="text-xs">
+                                  <SelectValue placeholder="Transform" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">No transform</SelectItem>
+                                  <SelectItem value="trim">Trim</SelectItem>
+                                  <SelectItem value="number">To Number</SelectItem>
+                                  <SelectItem value="boolean">To Boolean</SelectItem>
+                                  <SelectItem value="uppercase">Uppercase</SelectItem>
+                                  <SelectItem value="lowercase">Lowercase</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          
+                          {isToMany && mapping.bullhornField !== '__skip__' && (
+                            <div className="pl-4 border-l-2 border-accent/30">
+                              <Label className="text-xs text-muted-foreground mb-2">To-Many Configuration</Label>
+                              <p className="text-xs text-muted-foreground mb-2">
+                                Configure how to update the {fieldMeta.label || mapping.bullhornField} association.
+                                CSV value should be comma-separated IDs or JSON: {`{"operation":"add","ids":[1,2,3],"subField":"id"}`}
+                              </p>
+                              <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded border">
+                                Operations: <Badge variant="secondary" className="text-xs mx-1">add</Badge>
+                                <Badge variant="secondary" className="text-xs mx-1">remove</Badge>
+                                <Badge variant="secondary" className="text-xs mx-1">replace</Badge>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {isToOne && mapping.bullhornField !== '__skip__' && (
+                            <div className="pl-4 border-l-2 border-accent/30">
+                              <Label className="text-xs text-muted-foreground mb-2">To-One Configuration</Label>
+                              <p className="text-xs text-muted-foreground">
+                                CSV value should be the {fieldMeta.associatedEntity?.entity || 'entity'} ID (e.g., 12345)
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    )
+                  })}
                 </div>
               </div>
 
