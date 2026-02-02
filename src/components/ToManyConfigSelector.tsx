@@ -1,17 +1,29 @@
 import { useState } from 'react'
 import { formatFieldLabel } from '@/lib/utils'
-import { formatFieldLabel } from '@/lib/utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
-
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { Plus, Trash, ArrowsClockwise } from '@phosphor-icons/react'
 
-  fieldLabel: string
-  config: ToManyCo
+export interface ToManyConfig {
+  operation: 'add' | 'remove' | 'replace'
+  subField: string
 }
-e
 
-  config, 
+interface ToManyConfigSelectorProps {
+  associatedEntity: string
+  fieldLabel: string
   fieldName: string
+  config: ToManyConfig
+  onChange: (config: ToManyConfig) => void
+}
+
+export function ToManyConfigSelector({
+  associatedEntity,
+  fieldLabel,
+  fieldName,
+  config,
+  onChange
 }: ToManyConfigSelectorProps) {
   const { metadata: subEntityMetadata, loading: subEntityLoading } = useEntityMetadata(associatedEntity)
   const [isOpen, setIsOpen] = useState(false)
@@ -104,23 +116,6 @@ e
           <p className="text-[10px]">
             💡 CSV values will be matched using the <code className="font-mono">{config.subField}</code> field
           </p>
-      </div>
-      
-      <div className="text-xs text-muted-foreground space-y-1">
-        <p className="font-medium">
-          {config.operation === 'add' && '➕ CSV values will be added to existing associations'}
-          {config.operation === 'remove' && '➖ Only specified CSV values will be removed'}
-          {config.operation === 'replace' && '⚠ All existing associations will be replaced'}
-        </p>
-        {config.subField && (
-          <p className="text-[10px]">
-            💡 CSV values will be matched using the <code className="font-mono">{config.subField}</code> field
-          </p>
-        )}
-      </div>
-    </div>
-  )
-}
         )}
       </div>
     </div>
