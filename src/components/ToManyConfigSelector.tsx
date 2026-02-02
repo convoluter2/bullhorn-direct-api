@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Label } from '@/components/ui/label'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-  operation: 'add' | 'remove' | 'replace'
-}
+import { Plus, Minus, ArrowsClockwise } from '@phosphor-icons/react'
+import { formatFieldLabel } from '@/lib/utils'
+import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 
-  fieldLabel: string
+interface ToManyConfig {
   operation: 'add' | 'remove' | 'replace'
   subField: string
 }
@@ -14,21 +14,22 @@ interface ToManyConfigSelectorProps {
   associatedEntity: string
   fieldLabel: string
   fieldName: string
-  return (
-      <p className="text-sm font-medium">
- 
+  config: ToManyConfig
+  onChange: (config: ToManyConfig) => void
+}
 
-          <Select
-            onValue
-            }
-            
-         
-          
-                  <Plus size={1
-                </div>
-              <SelectItem value="remove">
-  
-                </div>
+export function ToManyConfigSelector({
+  associatedEntity,
+  fieldLabel,
+  fieldName,
+  config,
+  onChange
+}: ToManyConfigSelectorProps) {
+  const { metadata: subEntityMetadata, loading: subEntityLoading } = useEntityMetadata(associatedEntity)
+
+  const availableSubFields = subEntityMetadata?.fields.filter(
+    f => f.dataType === 'String' || f.dataType === 'Integer'
+  ) || []
 
   return (
     <div className="space-y-3 p-4 border border-border rounded-lg bg-card/50">
@@ -56,35 +57,33 @@ interface ToManyConfigSelectorProps {
               </SelectItem>
               <SelectItem value="remove">
                 <div className="flex items-center gap-2">
-            💡 CSV values will be mat
-        )}
-    </div>
-}
+                  <Minus size={14} />
+                  <span>Remove (keep others)</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="replace">
+                <div className="flex items-center gap-2">
+                  <ArrowsClockwise size={14} />
+                  <span>Replace (clear all)</span>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        <div className="space-y-2">
+          <Label className="text-xs">Match Field</Label>
+          <Select
+            value={config.subField}
+            onValueChange={(value) => onChange({ ...config, subField: value })}
+            disabled={subEntityLoading}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="id">
+                <div className="space-y-0.5">
                   <div>ID</div>
                   <div className="text-[10px] text-muted-foreground">
                     Match by entity ID
