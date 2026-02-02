@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye, ArrowsClockwise, ArrowCounterClockwise, Pause, Play, Stop, DownloadSimple, Gauge } from '@phosphor-icons/react'
+import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye, ArrowsClockwise, ArrowCounterClockwise, Pause, Play, Stop, DownloadSimple, Gauge, Trash } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV, exportToCSV, exportToJSON } from '@/lib/csv-utils'
@@ -21,6 +21,7 @@ import { useEntities } from '@/hooks/use-entities'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
 import { LookupFieldSelector } from '@/components/LookupFieldSelector'
 import { SpeedControl } from '@/components/SpeedControl'
+import { ToManyConfigSelector } from '@/components/ToManyConfigSelector'
 import type { CSVMapping, UpdateSnapshot, ExecutionState } from '@/lib/types'
 
 interface CSVLoaderProps {
@@ -37,10 +38,16 @@ interface ImportResult {
   error?: string
 }
 
+interface ToManyConfig {
+  operation: 'add' | 'remove' | 'replace'
+  subField: string
+}
+
 interface PersistedImportState {
   entity: string
   csvData: { headers: string[]; rows: string[][] }
   mappings: CSVMapping[]
+  toManyConfigs: Record<string, ToManyConfig>
   lookupField: string
   updateExisting: boolean
   createNew: boolean
@@ -55,6 +62,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [entity, setEntity] = useState('')
   const [csvData, setCsvData] = useState<{ headers: string[]; rows: string[][] } | null>(null)
   const [mappings, setMappings] = useState<CSVMapping[]>([])
+  const [toManyConfigs, setToManyConfigs] = useState<Record<string, ToManyConfig>>({})
   const [lookupField, setLookupField] = useState<string>('')
   const [updateExisting, setUpdateExisting] = useState(true)
   const [createNew, setCreateNew] = useState(false)
@@ -103,6 +111,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     setEntity(persistedState.entity)
     setCsvData(persistedState.csvData)
     setMappings(persistedState.mappings)
+    setToManyConfigs(persistedState.toManyConfigs || {})
     setLookupField(persistedState.lookupField)
     setUpdateExisting(persistedState.updateExisting)
     setCreateNew(persistedState.createNew)
@@ -191,6 +200,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       entity,
       csvData,
       mappings,
+      toManyConfigs,
       lookupField,
       updateExisting,
       createNew,
@@ -323,16 +333,29 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           } else {
             const fieldMeta = metadata?.fieldsMap[mapping.bullhornField]
             if (fieldMeta?.associationType === 'TO_MANY') {
-              try {
-                const parsed = JSON.parse(transformedValue)
-                data[`__tomany_${mapping.bullhornField}`] = parsed
-              } catch {
-                const ids = transformedValue.split(/[,\s]+/).map((id: string) => parseInt(id.trim(), 10)).filter((id: number) => !isNaN(id))
+              const config = toManyConfigs[mapping.bullhornField] || { operation: 'add', subField: 'id' }
+              
+              const values = transformedValue.split(/[,\s]+/).map((v: string) => v.trim()).filter((v: string) => v)
+              
+              if (config.subField === 'id') {
+                const ids = values.map((v: string) => parseInt(v, 10)).filter((id: number) => !isNaN(id))
                 if (ids.length > 0) {
                   data[`__tomany_${mapping.bullhornField}`] = {
-                    operation: 'add',
+                    operation: config.operation,
                     ids: ids,
                     subField: 'id'
+                  }
+                }
+              } else {
+                const ids = values.map((v: string) => {
+                  const num = parseFloat(v)
+                  return isNaN(num) ? v : num
+                })
+                if (ids.length > 0) {
+                  data[`__tomany_${mapping.bullhornField}`] = {
+                    operation: config.operation,
+                    ids: ids,
+                    subField: config.subField
                   }
                 }
               }
@@ -567,6 +590,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           entity,
           csvData,
           mappings,
+          toManyConfigs,
           lookupField,
           updateExisting,
           createNew,
@@ -1015,18 +1039,18 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                           </div>
                           
                           {isToMany && mapping.bullhornField !== '__skip__' && (
-                            <div className="pl-4 border-l-2 border-accent/30">
-                              <Label className="text-xs text-muted-foreground mb-2">To-Many Configuration</Label>
-                              <p className="text-xs text-muted-foreground mb-2">
-                                Configure how to update the {fieldMeta.label || mapping.bullhornField} association.
-                                CSV value should be comma-separated IDs or JSON: {`{"operation":"add","ids":[1,2,3],"subField":"id"}`}
-                              </p>
-                              <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded border">
-                                Operations: <Badge variant="secondary" className="text-xs mx-1">add</Badge>
-                                <Badge variant="secondary" className="text-xs mx-1">remove</Badge>
-                                <Badge variant="secondary" className="text-xs mx-1">replace</Badge>
-                              </div>
-                            </div>
+                            <ToManyConfigSelector
+                              fieldName={mapping.bullhornField}
+                              fieldLabel={fieldMeta.label || mapping.bullhornField}
+                              associatedEntity={fieldMeta.associatedEntity?.entity}
+                              config={toManyConfigs[mapping.bullhornField] || { operation: 'add', subField: 'id' }}
+                              onChange={(config) => {
+                                setToManyConfigs(prev => ({
+                                  ...prev,
+                                  [mapping.bullhornField]: config
+                                }))
+                              }}
+                            />
                           )}
                           
                           {isToOne && mapping.bullhornField !== '__skip__' && (
