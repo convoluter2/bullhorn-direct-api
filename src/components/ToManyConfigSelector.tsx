@@ -1,13 +1,8 @@
 import { useState } from 'react'
-import { useEntityMetadata } from '@/hooks/use-entity-metadata'
+import { Label } from '@/components/ui/label'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Trash, ArrowsClockwise } from '@phosphor-icons/react'
-import { formatFieldLabel } from '@/lib/utils'
-
-
 export interface ToManyConfig {
-  operation: 'add' | 'remove' | 'replace'
   subField: string
 }
 
