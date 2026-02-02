@@ -1038,11 +1038,11 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                             </div>
                           </div>
                           
-                          {isToMany && mapping.bullhornField !== '__skip__' && (
+                          {isToMany && mapping.bullhornField !== '__skip__' && fieldMeta.associatedEntity?.entity && (
                             <ToManyConfigSelector
                               fieldName={mapping.bullhornField}
                               fieldLabel={fieldMeta.label || mapping.bullhornField}
-                              associatedEntity={fieldMeta.associatedEntity?.entity}
+                              associatedEntity={fieldMeta.associatedEntity.entity}
                               config={toManyConfigs[mapping.bullhornField] || { operation: 'add', subField: 'id' }}
                               onChange={(config) => {
                                 setToManyConfigs(prev => ({
