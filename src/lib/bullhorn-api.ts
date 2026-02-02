@@ -705,6 +705,10 @@ export class BullhornAPI {
     return conditions.join(' AND ')
   }
 
+  private escapeLuceneSpecialChars(value: string): string {
+    return value.replace(/([+\-!(){}[\]^"~*?:\\/])/g, '\\$1')
+  }
+
   private buildFilterCondition(filter: any): string {
     const operator = this.mapOperator(filter.operator)
     
@@ -717,7 +721,11 @@ export class BullhornAPI {
     }
     
     if (filter.operator === 'in_list' || filter.operator === 'in_list_parens') {
-      const values = filter.value.split(',').map((v: string) => v.trim())
+      const values = filter.value.split(',').map((v: string) => {
+        const trimmed = v.trim()
+        const needsEscape = /[+\-!(){}[\]^"~*?:\\/\s]/.test(trimmed)
+        return needsEscape ? `"${this.escapeLuceneSpecialChars(trimmed)}"` : trimmed
+      })
       if (filter.operator === 'in_list') {
         return `${filter.field}:[${values.join(',')}]`
       } else {
@@ -758,8 +766,11 @@ export class BullhornAPI {
     }
     
     let value = this.convertToTimestampIfNeeded(filter.value)
-    if (value && typeof value === 'string' && (value.includes(' ') || value.includes(','))) {
-      value = `"${value}"`
+    if (value && typeof value === 'string') {
+      const needsQuotes = /[+\-!(){}[\]^"~*?:\\/\s,]/.test(value)
+      if (needsQuotes) {
+        value = `"${this.escapeLuceneSpecialChars(value)}"`
+      }
     }
     
     return `${filter.field}${operator}${value}`
