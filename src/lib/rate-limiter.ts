@@ -18,12 +18,12 @@ export class BullhornRateLimiter {
   private requestQueue: QueuedRequest[] = []
   private isProcessing = false
   private requestsInProgress = 0
-  private maxConcurrentRequests = 500
-  private minDelayBetweenRequests = 0
+  private maxConcurrentRequests = 100
+  private minDelayBetweenRequests = 50
   private lastRequestTime = 0
   private consecutiveErrors = 0
   private backoffMultiplier = 1
-  private targetCallsPerMinute = 1500
+  private targetCallsPerMinute = 1000
   private speedMultiplier = 1.0
 
   constructor() {
@@ -288,7 +288,7 @@ export class BullhornRateLimiter {
   }
 
   setMaxConcurrentRequests(max: number): void {
-    this.maxConcurrentRequests = Math.max(1, Math.min(500, max))
+    this.maxConcurrentRequests = Math.max(1, Math.min(200, max))
     console.log(`⚙️ Max concurrent requests set to ${this.maxConcurrentRequests}`)
   }
 
@@ -313,13 +313,13 @@ export class BullhornRateLimiter {
     const effectiveCallsPerMinute = this.targetCallsPerMinute * this.speedMultiplier
     
     const baseMinDelay = Math.floor(60000 / effectiveCallsPerMinute)
-    this.minDelayBetweenRequests = Math.max(0, baseMinDelay)
+    this.minDelayBetweenRequests = Math.max(50, baseMinDelay)
     
     const baseConcurrency = Math.max(
-      50,
-      Math.min(500, Math.ceil(effectiveCallsPerMinute / 10))
+      20,
+      Math.min(200, Math.ceil(effectiveCallsPerMinute / 10))
     )
-    this.maxConcurrentRequests = Math.max(50, Math.min(500, baseConcurrency))
+    this.maxConcurrentRequests = Math.max(20, Math.min(200, baseConcurrency))
     
     console.log(`📊 Speed settings updated:`, {
       targetCPM: this.targetCallsPerMinute,
@@ -350,10 +350,10 @@ export class BullhornRateLimiter {
   }
 
   resetToDefaults(): void {
-    this.targetCallsPerMinute = 1500
+    this.targetCallsPerMinute = 1000
     this.speedMultiplier = 1.0
     this.updateSpeedSettings()
-    console.log(`🔄 Rate limiter reset to defaults (1500 calls/min)`)
+    console.log(`🔄 Rate limiter reset to defaults (1000 calls/min)`)
   }
 }
 
