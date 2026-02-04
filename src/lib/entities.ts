@@ -60,6 +60,11 @@ export const BULLHORN_ENTITIES: BullhornEntity[] = [
     id: 'Opportunity',
     label: 'Opportunity',
     fields: ['id', 'title', 'clientCorporation', 'clientContact', 'status', 'dateAdded', 'owner', 'estimatedCloseDate', 'estimatedAmount']
+  },
+  {
+    id: 'JobOrderRateCardLine',
+    label: 'Job Order Rate Card Line',
+    fields: ['id', 'jobOrder', 'candidate', 'payRate', 'billRate', 'markupPercent', 'dateAdded', 'dateLastModified', 'effectiveDate', 'externalID', 'label', 'migrateGUID', 'rateType', 'versionID']
   }
 ]
 
