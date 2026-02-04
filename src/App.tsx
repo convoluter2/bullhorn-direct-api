@@ -31,6 +31,7 @@ import { SpeedTest } from '@/components/SpeedTest'
 import { DiagnosticPanel } from '@/components/DiagnosticPanel'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
+import { sanitizeLogDetails } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { BullhornSession, AuditLog } from '@/lib/types'
 
@@ -61,7 +62,7 @@ function App() {
       operation,
       status,
       message,
-      details,
+      details: details ? sanitizeLogDetails(details) : undefined,
       entity: details?.entity,
       recordCount: details?.successCount || details?.updatedCount || details?.recordCount,
       rollbackData: details?.rollbackData,

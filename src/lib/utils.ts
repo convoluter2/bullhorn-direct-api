@@ -48,3 +48,81 @@ export function formatFieldValue(value: any): string {
   
   return String(value)
 }
+
+export function sanitizeLogDetails(details: any, maxDepth: number = 3): any {
+  if (details === null || details === undefined) {
+    return details
+  }
+
+  const seen = new WeakSet()
+
+  function sanitize(value: any, depth: number): any {
+    if (depth > maxDepth) {
+      if (Array.isArray(value)) {
+        return `[Array: ${value.length} items, depth limit reached]`
+      }
+      if (typeof value === 'object' && value !== null) {
+        return '[Object: depth limit reached]'
+      }
+      return value
+    }
+
+    if (value === null || value === undefined) {
+      return value
+    }
+
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      return value
+    }
+
+    if (value instanceof Error) {
+      return {
+        name: value.name,
+        message: value.message,
+        stack: value.stack
+      }
+    }
+
+    if (typeof value === 'function') {
+      return '[Function]'
+    }
+
+    if (Array.isArray(value)) {
+      if (value.length > 100) {
+        return [
+          ...value.slice(0, 100).map(item => sanitize(item, depth + 1)),
+          `... ${value.length - 100} more items`
+        ]
+      }
+      return value.map(item => sanitize(item, depth + 1))
+    }
+
+    if (typeof value === 'object') {
+      if (seen.has(value)) {
+        return '[Circular Reference]'
+      }
+      seen.add(value)
+
+      const result: any = {}
+      const keys = Object.keys(value)
+      
+      if (keys.length > 50) {
+        for (let i = 0; i < 50; i++) {
+          const key = keys[i]
+          result[key] = sanitize(value[key], depth + 1)
+        }
+        result['...'] = `${keys.length - 50} more properties`
+      } else {
+        for (const key of keys) {
+          result[key] = sanitize(value[key], depth + 1)
+        }
+      }
+      
+      return result
+    }
+
+    return value
+  }
+
+  return sanitize(details, 0)
+}

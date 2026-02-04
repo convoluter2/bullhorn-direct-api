@@ -406,7 +406,7 @@ export function WFNExport({ onLog }: WFNExportProps) {
         filterMode,
         where,
         placementCount: parsedIds.length || 'all active',
-        fields: placementFields,
+        fieldsCount: placementFields.length,
         pageSize,
         adpAssociateIdField,
         piiMode: usePlaintextPII ? 'plaintext-encrypted' : 'hashed',
@@ -726,7 +726,16 @@ export function WFNExport({ onLog }: WFNExportProps) {
         candidatesJoined: stats.candidatesJoined,
         errors: stats.errors,
         piiMode: usePlaintextPII ? 'plaintext-encrypted' : 'hashed',
-        encrypted: usePlaintextPII
+        encrypted: usePlaintextPII,
+        sampleRecords: allRecords.slice(0, 3).map(record => ({
+          positionId: record['Position ID'],
+          employeeId: record['Employee ID'],
+          name: `${record['First Name']} ${record['Last Name']}`,
+          hireDate: record['Hire Date'],
+          status: record['Employee Status'],
+          rate1: record['Rate 1 Amount'],
+          rate2: record['Rate 2 Amount']
+        }))
       })
 
     } catch (error) {
@@ -853,7 +862,15 @@ export function WFNExport({ onLog }: WFNExportProps) {
           onLog('WFN Export', 'success', 'Encrypted CSV file downloaded (plaintext PII, password-protected)', { 
             recordCount: exportData.length,
             encrypted: true,
-            plaintextPII: true
+            plaintextPII: true,
+            fileName: `wfn_export_encrypted_${Date.now()}.enc`,
+            sampleRecords: exportData.slice(0, 3).map(record => ({
+              positionId: record['Position ID'],
+              employeeId: record['Employee ID'],
+              name: `${record['First Name']} ${record['Last Name']}`,
+              hireDate: record['Hire Date'],
+              status: record['Employee Status']
+            }))
           })
         } catch (encryptError) {
           console.error('Encryption error:', encryptError)
@@ -879,7 +896,17 @@ export function WFNExport({ onLog }: WFNExportProps) {
         onLog('WFN Export', 'success', 'CSV file downloaded (hashed PII)', { 
           recordCount: exportData.length,
           encrypted: false,
-          plaintextPII: false
+          plaintextPII: false,
+          fileName: `wfn_export_${Date.now()}.csv`,
+          sampleRecords: exportData.slice(0, 3).map(record => ({
+            positionId: record['Position ID'],
+            employeeId: record['Employee ID'],
+            name: `${record['First Name']} ${record['Last Name']}`,
+            hireDate: record['Hire Date'],
+            status: record['Employee Status'],
+            rate1: record['Rate 1 Amount'],
+            rate2: record['Rate 2 Amount']
+          }))
         })
       }
     } catch (error) {
