@@ -617,9 +617,12 @@ export class BullhornAPI {
       this.ensureCorrectConnection(expectedCorporationId)
     }
 
+    const encodedEntity = encodeURIComponent(config.entity)
+
     const query = rawQuery || this.buildQuery(config)
     console.log('🔍 Executing search:', {
       entity: config.entity,
+      encodedEntity,
       corporationId: this.session.corporationId,
       restUrl: this.session.restUrl,
       query,
@@ -642,7 +645,7 @@ export class BullhornAPI {
       params.append('orderBy', config.orderBy)
     }
 
-    const fullUrl = `${this.session.restUrl}search/${config.entity}?${params.toString()}`
+    const fullUrl = `${this.session.restUrl}search/${encodedEntity}?${params.toString()}`
     console.log(`📡 Full SEARCH URL:`, fullUrl)
 
     const response = await this.throttledFetch(
@@ -849,6 +852,8 @@ export class BullhornAPI {
       this.ensureCorrectConnection(expectedCorporationId)
     }
 
+    const encodedEntity = encodeURIComponent(entity)
+
     const queryParams = new URLSearchParams({
       fields: fields.join(','),
       BhRestToken: this.session.BhRestToken
@@ -865,7 +870,7 @@ export class BullhornAPI {
     }
 
     const response = await this.throttledFetch(
-      `${this.session.restUrl}query/${entity}?${queryParams.toString()}`,
+      `${this.session.restUrl}query/${encodedEntity}?${queryParams.toString()}`,
       undefined,
       1
     )
