@@ -883,12 +883,16 @@ export class BullhornAPI {
       throw new Error('Not authenticated')
     }
 
+    const encodedEntity = encodeURIComponent(entity)
+
     console.log(`🔍 Fetching ${entity} entity by ID:`, {
       id,
       fields: fields.join(','),
       restUrl: this.session.restUrl,
       corporationId: this.session.corporationId,
-      url: `${this.session.restUrl}entity/${entity}/${id}`
+      entity,
+      encodedEntity,
+      url: `${this.session.restUrl}entity/${encodedEntity}/${id}`
     })
 
     const params = new URLSearchParams({
@@ -896,7 +900,7 @@ export class BullhornAPI {
       BhRestToken: this.session.BhRestToken
     })
 
-    const fullUrl = `${this.session.restUrl}entity/${entity}/${id}?${params.toString()}`
+    const fullUrl = `${this.session.restUrl}entity/${encodedEntity}/${id}?${params.toString()}`
     console.log(`📡 Full GET URL:`, fullUrl)
 
     const response = await this.throttledFetch(
@@ -942,12 +946,17 @@ export class BullhornAPI {
       this.ensureCorrectConnection(expectedCorporationId)
     }
 
+    const encodedEntity = encodeURIComponent(entity)
+
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken
     })
 
+    const fullUrl = `${this.session.restUrl}entity/${encodedEntity}?${params.toString()}`
+    console.log(`📡 Full CREATE URL:`, fullUrl)
+
     const response = await this.throttledFetch(
-      `${this.session.restUrl}entity/${entity}?${params.toString()}`,
+      fullUrl,
       {
         method: 'PUT',
         headers: {
@@ -975,17 +984,21 @@ export class BullhornAPI {
       this.ensureCorrectConnection(expectedCorporationId)
     }
 
+    const encodedEntity = encodeURIComponent(entity)
+
     console.log(`📝 Updating ${entity}/${id}:`, {
       data,
       restUrl: this.session.restUrl,
-      corporationId: this.session.corporationId
+      corporationId: this.session.corporationId,
+      entity,
+      encodedEntity
     })
 
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken
     })
 
-    const fullUrl = `${this.session.restUrl}entity/${entity}/${id}?${params.toString()}`
+    const fullUrl = `${this.session.restUrl}entity/${encodedEntity}/${id}?${params.toString()}`
     console.log(`📡 Full UPDATE URL:`, fullUrl)
     console.log(`📤 Update payload:`, JSON.stringify(data))
 
@@ -1035,12 +1048,17 @@ export class BullhornAPI {
       throw new Error('Not authenticated')
     }
 
+    const encodedEntity = encodeURIComponent(entity)
+
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken
     })
 
+    const fullUrl = `${this.session.restUrl}entity/${encodedEntity}/${id}?${params.toString()}`
+    console.log(`📡 Full DELETE URL:`, fullUrl)
+
     const response = await this.throttledFetch(
-      `${this.session.restUrl}entity/${entity}/${id}?${params.toString()}`,
+      fullUrl,
       {
         method: 'DELETE'
       },
@@ -1094,6 +1112,8 @@ export class BullhornAPI {
       throw new Error('Not authenticated')
     }
 
+    const encodedOwningEntity = encodeURIComponent(owningEntity)
+
     const results: Array<{ id: number; result: any }> = []
     const errors: Array<{ id: number; error: string }> = []
 
@@ -1113,7 +1133,7 @@ export class BullhornAPI {
         }
 
         let response = await this.throttledFetch(
-          `${this.session.restUrl}entity/${owningEntity}/${owningId}?${params.toString()}`,
+          `${this.session.restUrl}entity/${encodedOwningEntity}/${owningId}?${params.toString()}`,
           {
             method: 'POST',
             headers: {
@@ -1134,7 +1154,7 @@ export class BullhornAPI {
               toast.info(`Creating new ${owningEntity} association record...`)
               
               response = await this.throttledFetch(
-                `${this.session.restUrl}entity/${owningEntity}?${params.toString()}`,
+                `${this.session.restUrl}entity/${encodedOwningEntity}?${params.toString()}`,
                 {
                   method: 'PUT',
                   headers: {
@@ -1216,14 +1236,19 @@ export class BullhornAPI {
       throw new Error('Not authenticated')
     }
 
+    const encodedEntity = encodeURIComponent(entity)
+
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken
     })
 
     const idsParam = associationIds.join(',')
 
+    const fullUrl = `${this.session.restUrl}entity/${encodedEntity}/${entityId}/${association}/${idsParam}?${params.toString()}`
+    console.log(`📡 Full ASSOCIATE URL:`, fullUrl)
+
     const response = await this.throttledFetch(
-      `${this.session.restUrl}entity/${entity}/${entityId}/${association}/${idsParam}?${params.toString()}`,
+      fullUrl,
       {
         method: 'PUT'
       },
@@ -1260,6 +1285,8 @@ export class BullhornAPI {
       throw new Error('Not authenticated')
     }
 
+    const encodedOwningEntity = encodeURIComponent(owningEntity)
+
     const results: Array<{ id: number; result: any }> = []
     const errors: Array<{ id: number; error: string }> = []
 
@@ -1273,7 +1300,7 @@ export class BullhornAPI {
         toast.info(`Deleting ${owningEntity} association record...`)
         
         const response = await this.throttledFetch(
-          `${this.session.restUrl}entity/${owningEntity}/${owningId}?${params.toString()}`,
+          `${this.session.restUrl}entity/${encodedOwningEntity}/${owningId}?${params.toString()}`,
           {
             method: 'DELETE'
           },
@@ -1318,14 +1345,19 @@ export class BullhornAPI {
       throw new Error('Not authenticated')
     }
 
+    const encodedEntity = encodeURIComponent(entity)
+
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken
     })
 
     const idsParam = associationIds.join(',')
 
+    const fullUrl = `${this.session.restUrl}entity/${encodedEntity}/${entityId}/${association}/${idsParam}?${params.toString()}`
+    console.log(`📡 Full DISASSOCIATE URL:`, fullUrl)
+
     const response = await this.throttledFetch(
-      `${this.session.restUrl}entity/${entity}/${entityId}/${association}/${idsParam}?${params.toString()}`,
+      fullUrl,
       {
         method: 'DELETE'
       },
@@ -1561,6 +1593,8 @@ export class BullhornAPI {
       throw new Error('Not authenticated')
     }
 
+    const encodedEntity = encodeURIComponent(entity)
+
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken
     })
@@ -1571,7 +1605,7 @@ export class BullhornAPI {
     }
 
     const response = await this.throttledFetch(
-      `${this.session.restUrl}entity/${entity}?${params.toString()}`,
+      `${this.session.restUrl}entity/${encodedEntity}?${params.toString()}`,
       {
         method: 'PUT',
         headers: {
@@ -1600,13 +1634,15 @@ export class BullhornAPI {
       throw new Error('Not authenticated')
     }
 
+    const encodedEntity = encodeURIComponent(entity)
+
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken,
       effectiveDate: effectiveDate.toString()
     })
 
     const response = await this.throttledFetch(
-      `${this.session.restUrl}entity/${entity}/${entityId}?${params.toString()}`,
+      `${this.session.restUrl}entity/${encodedEntity}/${entityId}?${params.toString()}`,
       {
         method: 'POST',
         headers: {
@@ -1634,13 +1670,15 @@ export class BullhornAPI {
       throw new Error('Not authenticated')
     }
 
+    const encodedEntity = encodeURIComponent(entity)
+
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken,
       effectiveDate: effectiveDate.toString()
     })
 
     const response = await this.throttledFetch(
-      `${this.session.restUrl}entity/${entity}/${entityId}?${params.toString()}`,
+      `${this.session.restUrl}entity/${encodedEntity}/${entityId}?${params.toString()}`,
       {
         method: 'DELETE'
       },
@@ -1660,6 +1698,8 @@ export class BullhornAPI {
       throw new Error('Not authenticated')
     }
 
+    const encodedEntity = encodeURIComponent(entity)
+
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken,
       fields: '*',
@@ -1667,10 +1707,10 @@ export class BullhornAPI {
     })
 
     console.log(`Fetching metadata for entity: ${entity}`)
-    console.log(`URL: ${this.session.restUrl}meta/${entity}?${params.toString()}`)
+    console.log(`URL: ${this.session.restUrl}meta/${encodedEntity}?${params.toString()}`)
 
     const response = await this.throttledFetch(
-      `${this.session.restUrl}meta/${entity}?${params.toString()}`,
+      `${this.session.restUrl}meta/${encodedEntity}?${params.toString()}`,
       undefined,
       0
     )
@@ -1699,7 +1739,7 @@ export class BullhornAPI {
       })
       
       const altResponse = await this.throttledFetch(
-        `${this.session.restUrl}meta/${entity}?${altParams.toString()}`,
+        `${this.session.restUrl}meta/${encodedEntity}?${altParams.toString()}`,
         undefined,
         0
       )
@@ -1726,13 +1766,15 @@ export class BullhornAPI {
       throw new Error('Not authenticated')
     }
 
+    const encodedEntity = encodeURIComponent(entity)
+
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken,
       count: '500'
     })
 
     const response = await this.throttledFetch(
-      `${this.session.restUrl}options/${entity}/${field}?${params.toString()}`,
+      `${this.session.restUrl}options/${encodedEntity}/${field}?${params.toString()}`,
       undefined,
       0
     )
