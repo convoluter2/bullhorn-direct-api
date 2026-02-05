@@ -263,9 +263,9 @@ export function SmartStack({ onLog }: SmartStackProps) {
       return
     }
 
-    const invalidUpdates = fieldUpdates.filter(u => !u.field || !u.value)
+    const invalidUpdates = fieldUpdates.filter(u => !u.field)
     if (invalidUpdates.length > 0) {
-      toast.error('All field updates must have both field and value')
+      toast.error('All field updates must have a field selected')
       return
     }
 

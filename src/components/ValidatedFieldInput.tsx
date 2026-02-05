@@ -36,7 +36,13 @@ export function ValidatedFieldInput({
   const hasOptions = field?.options && field.options.length > 0
 
   const validateAndChange = useCallback((newValue: string) => {
-    if (!field || !newValue) {
+    if (!field) {
+      setError(null)
+      onChange(newValue)
+      return
+    }
+
+    if (!newValue || newValue.toLowerCase() === 'null') {
       setError(null)
       onChange(newValue)
       return
@@ -46,11 +52,11 @@ export function ValidatedFieldInput({
 
     if (dataType === 'integer' || dataSpecialization === 'integer') {
       if (!/^-?\d+$/.test(newValue)) {
-        validationError = 'Must be a whole number'
+        validationError = 'Must be a whole number or empty for NULL'
       }
     } else if (dataType === 'double' || dataType === 'bigdecimal' || dataSpecialization === 'numeric') {
       if (!/^-?\d*\.?\d+$/.test(newValue)) {
-        validationError = 'Must be a number'
+        validationError = 'Must be a number or empty for NULL'
       }
     } else if (dataType === 'timestamp' || dataSpecialization === 'date' || dataSpecialization === 'datetime') {
       const timestamp = parseInt(newValue)
@@ -69,18 +75,23 @@ export function ValidatedFieldInput({
   }, [field, onChange, dataType, dataSpecialization])
 
   useEffect(() => {
-    if (value && field) {
+    if (!value || value.toLowerCase() === 'null') {
+      setError(null)
+      return
+    }
+    
+    if (field) {
       const dataType = field?.dataType?.toLowerCase()
       const dataSpecialization = field?.dataSpecialization?.toLowerCase()
       let validationError: string | null = null
 
       if (dataType === 'integer' || dataSpecialization === 'integer') {
         if (!/^-?\d+$/.test(value)) {
-          validationError = 'Must be a whole number'
+          validationError = 'Must be a whole number or empty for NULL'
         }
       } else if (dataType === 'double' || dataType === 'bigdecimal' || dataSpecialization === 'numeric') {
         if (!/^-?\d*\.?\d+$/.test(value)) {
-          validationError = 'Must be a number'
+          validationError = 'Must be a number or empty for NULL'
         }
       } else if (dataType === 'timestamp' || dataSpecialization === 'date' || dataSpecialization === 'datetime') {
         const timestamp = parseInt(value)
@@ -192,21 +203,34 @@ function IntegerInput({
   className?: string
   placeholder?: string 
 }) {
+  const isNull = value === '' || value.toLowerCase() === 'null'
+  
   return (
     <div className="relative">
-      <Input
-        type="text"
-        inputMode="numeric"
-        value={value}
-        onChange={(e) => {
-          const val = e.target.value
-          if (val === '' || val === '-' || /^-?\d+$/.test(val)) {
-            onChange(val)
-          }
-        }}
-        placeholder={placeholder || '0'}
-        className={cn(className, error && 'border-destructive')}
-      />
+      <div className="flex gap-2">
+        <Input
+          type="text"
+          inputMode="numeric"
+          value={value}
+          onChange={(e) => {
+            const val = e.target.value
+            if (val === '' || val === '-' || /^-?\d+$/.test(val)) {
+              onChange(val)
+            }
+          }}
+          placeholder={placeholder || '0 or leave blank for NULL'}
+          className={cn('flex-1', className, error && 'border-destructive', isNull && 'text-muted-foreground italic')}
+        />
+        <Button
+          type="button"
+          variant={isNull ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => onChange('')}
+          className="shrink-0"
+        >
+          NULL
+        </Button>
+      </div>
       {error && (
         <div className="absolute -bottom-5 left-0 text-xs text-destructive flex items-center gap-1">
           <Warning size={12} />
@@ -230,21 +254,34 @@ function NumericInput({
   className?: string
   placeholder?: string 
 }) {
+  const isNull = value === '' || value.toLowerCase() === 'null'
+  
   return (
     <div className="relative">
-      <Input
-        type="text"
-        inputMode="decimal"
-        value={value}
-        onChange={(e) => {
-          const val = e.target.value
-          if (val === '' || val === '-' || val === '.' || /^-?\d*\.?\d*$/.test(val)) {
-            onChange(val)
-          }
-        }}
-        placeholder={placeholder || '0.00'}
-        className={cn(className, error && 'border-destructive')}
-      />
+      <div className="flex gap-2">
+        <Input
+          type="text"
+          inputMode="decimal"
+          value={value}
+          onChange={(e) => {
+            const val = e.target.value
+            if (val === '' || val === '-' || val === '.' || /^-?\d*\.?\d*$/.test(val)) {
+              onChange(val)
+            }
+          }}
+          placeholder={placeholder || '0.00 or leave blank for NULL'}
+          className={cn('flex-1', className, error && 'border-destructive', isNull && 'text-muted-foreground italic')}
+        />
+        <Button
+          type="button"
+          variant={isNull ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => onChange('')}
+          className="shrink-0"
+        >
+          NULL
+        </Button>
+      </div>
       {error && (
         <div className="absolute -bottom-5 left-0 text-xs text-destructive flex items-center gap-1">
           <Warning size={12} />
