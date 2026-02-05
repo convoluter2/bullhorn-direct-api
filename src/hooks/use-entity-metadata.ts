@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
+import { getCustomFieldLabel } from '@/lib/custom-field-labels'
 
 export interface EntityField {
   name: string
@@ -64,9 +65,12 @@ export function useEntityMetadata(entity: string | undefined) {
 
         if (response.fields && Array.isArray(response.fields)) {
           for (const field of response.fields) {
+            const defaultLabel = field.label || field.name
+            const customLabel = getCustomFieldLabel(entity, field.name, defaultLabel)
+            
             const fieldInfo: EntityField = {
               name: field.name,
-              label: field.label || field.name,
+              label: customLabel,
               type: field.type,
               dataType: field.dataType,
               dataSpecialization: field.dataSpecialization,
