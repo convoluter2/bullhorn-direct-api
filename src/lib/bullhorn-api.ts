@@ -617,14 +617,15 @@ export class BullhornAPI {
       this.ensureCorrectConnection(expectedCorporationId)
     }
 
+    const query = rawQuery || this.buildQuery(config)
     console.log('🔍 Executing search:', {
       entity: config.entity,
       corporationId: this.session.corporationId,
       restUrl: this.session.restUrl,
-      query: rawQuery || this.buildQuery(config)
+      query,
+      rawQuery: rawQuery || 'built from config'
     })
 
-    const query = rawQuery || this.buildQuery(config)
     const fields = config.fields.join(',')
     const count = config.count || 500
     const start = config.start || 0
@@ -641,14 +642,38 @@ export class BullhornAPI {
       params.append('orderBy', config.orderBy)
     }
 
+    const fullUrl = `${this.session.restUrl}search/${config.entity}?${params.toString()}`
+    console.log(`📡 Full SEARCH URL:`, fullUrl)
+
     const response = await this.throttledFetch(
-      `${this.session.restUrl}search/${config.entity}?${params.toString()}`,
+      fullUrl,
       undefined,
       1
     )
 
     if (!response.ok) {
       const error = await response.text()
+      console.error(`❌ Search failed for ${config.entity}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        error,
+        query,
+        url: fullUrl
+      })
+      
+      let errorObj
+      try {
+        errorObj = JSON.parse(error)
+      } catch {
+        errorObj = { errorMessage: error }
+      }
+      
+      if (config.entity === 'JobOrderRateCardLine') {
+        if (errorObj.errorMessage?.includes('not found') || errorObj.errorMessage?.includes('does not exist')) {
+          throw new Error(`Search failed for JobOrderRateCardLine. Note: This entity may have limited search capabilities. Try using the direct GET by ID instead. Query used: "${query}". Error: ${errorObj.errorMessage}`)
+        }
+      }
+      
       throw new Error(`Search failed: ${error}`)
     }
 
@@ -862,7 +887,8 @@ export class BullhornAPI {
       id,
       fields: fields.join(','),
       restUrl: this.session.restUrl,
-      corporationId: this.session.corporationId
+      corporationId: this.session.corporationId,
+      url: `${this.session.restUrl}entity/${entity}/${id}`
     })
 
     const params = new URLSearchParams({
@@ -870,15 +896,35 @@ export class BullhornAPI {
       BhRestToken: this.session.BhRestToken
     })
 
+    const fullUrl = `${this.session.restUrl}entity/${entity}/${id}?${params.toString()}`
+    console.log(`📡 Full GET URL:`, fullUrl)
+
     const response = await this.throttledFetch(
-      `${this.session.restUrl}entity/${entity}/${id}?${params.toString()}`,
+      fullUrl,
       undefined,
       2
     )
 
     if (!response.ok) {
       const error = await response.text()
-      console.error(`❌ Get entity failed for ${entity}/${id}:`, error)
+      console.error(`❌ Get entity failed for ${entity}/${id}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        error,
+        url: fullUrl
+      })
+      
+      let errorObj
+      try {
+        errorObj = JSON.parse(error)
+      } catch {
+        errorObj = { errorMessage: error }
+      }
+      
+      if (entity === 'JobOrderRateCardLine' && errorObj.errorMessage?.includes('not found')) {
+        throw new Error(`JobOrderRateCardLine ${id} not found. This could mean: 1) The record doesn't exist, 2) You don't have permission to access it, or 3) It belongs to a different corporation. Current corporation: ${this.session.corporationId}`)
+      }
+      
       throw new Error(`Get entity failed: ${error}`)
     }
 
@@ -929,12 +975,22 @@ export class BullhornAPI {
       this.ensureCorrectConnection(expectedCorporationId)
     }
 
+    console.log(`📝 Updating ${entity}/${id}:`, {
+      data,
+      restUrl: this.session.restUrl,
+      corporationId: this.session.corporationId
+    })
+
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken
     })
 
+    const fullUrl = `${this.session.restUrl}entity/${entity}/${id}?${params.toString()}`
+    console.log(`📡 Full UPDATE URL:`, fullUrl)
+    console.log(`📤 Update payload:`, JSON.stringify(data))
+
     const response = await this.throttledFetch(
-      `${this.session.restUrl}entity/${entity}/${id}?${params.toString()}`,
+      fullUrl,
       {
         method: 'POST',
         headers: {
@@ -947,10 +1003,31 @@ export class BullhornAPI {
 
     if (!response.ok) {
       const error = await response.text()
+      console.error(`❌ Update entity failed for ${entity}/${id}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        error,
+        data,
+        url: fullUrl
+      })
+      
+      let errorObj
+      try {
+        errorObj = JSON.parse(error)
+      } catch {
+        errorObj = { errorMessage: error }
+      }
+      
+      if (entity === 'JobOrderRateCardLine' && errorObj.errorMessage?.includes('not found')) {
+        throw new Error(`JobOrderRateCardLine ${id} not found for update. This could mean: 1) The record doesn't exist, 2) You don't have permission to modify it, or 3) It belongs to a different corporation. Current corporation: ${this.session.corporationId}`)
+      }
+      
       throw new Error(`Update entity failed: ${error}`)
     }
 
-    return await response.json()
+    const result = await response.json()
+    console.log(`✅ Successfully updated ${entity}/${id}:`, result)
+    return result
   }
 
   async deleteEntity(entity: string, id: number): Promise<any> {
