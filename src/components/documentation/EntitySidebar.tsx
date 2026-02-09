@@ -26,10 +26,19 @@ export function EntitySidebar({
     isArray: Array.isArray(customEntities),
     length: customEntities?.length,
     first10: customEntities?.slice(0, 10),
-    dataTypes: customEntities?.slice(0, 5).map(e => typeof e)
+    dataTypes: customEntities?.slice(0, 5).map(e => typeof e),
+    keys: Object.keys(customEntities || {}).slice(0, 10)
   })
 
-  const allEntities = customEntities.map(id => ({ 
+  if (!Array.isArray(customEntities)) {
+    console.error('❌ EntitySidebar - customEntities is not an array!', {
+      type: typeof customEntities,
+      value: customEntities,
+      keys: Object.keys(customEntities || {})
+    })
+  }
+
+  const allEntities = (Array.isArray(customEntities) ? customEntities : []).map(id => ({ 
     id, 
     label: entityMetadata.get(id)?.label || id
   }))

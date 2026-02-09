@@ -69,8 +69,11 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
           throw new Error('No valid entity names found in response')
         }
         
-        setAvailableEntities(entityNames)
-        toast.success(`Loaded ${entityNames.length} entities from your tenant`)
+        const sortedEntityNames = [...entityNames].sort((a, b) => a.localeCompare(b))
+        console.log(`📋 Setting ${sortedEntityNames.length} sorted entity names`)
+        
+        setAvailableEntities(sortedEntityNames)
+        toast.success(`Loaded ${sortedEntityNames.length} entities from your tenant`)
       } catch (error) {
         console.error('❌ Failed to load entities:', error)
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -199,6 +202,13 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
       </div>
     )
   }
+
+  console.log('📊 EntityDocumentation render - availableEntities:', {
+    type: typeof availableEntities,
+    isArray: Array.isArray(availableEntities),
+    length: availableEntities?.length,
+    first10: availableEntities?.slice(0, 10)
+  })
 
   return (
     <div className="flex h-[calc(100vh-200px)] border border-border rounded-lg overflow-hidden bg-background">
