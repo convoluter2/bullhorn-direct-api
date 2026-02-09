@@ -1837,35 +1837,65 @@ export class BullhornAPI {
 
     if (!response.ok) {
       const error = await response.text()
-      console.error('❌ Meta endpoint failed:', error)
-      throw new Error(`Failed to fetch meta entities: ${error}`)
+      console.error('❌ Meta endpoint failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        error
+      })
+      throw new Error(`Failed to fetch meta entities (${response.status}): ${error}`)
     }
 
-    const data = await response.json()
-    console.log('✅ Meta endpoint raw response type:', typeof data, Array.isArray(data))
+    const responseText = await response.text()
+    console.log('📦 Meta endpoint raw response text (first 500 chars):', responseText.substring(0, 500))
+    
+    let data: any
+    try {
+      data = JSON.parse(responseText)
+    } catch (parseError) {
+      console.error('❌ Failed to parse meta response as JSON:', parseError)
+      console.error('Response text:', responseText)
+      throw new Error('Failed to parse meta endpoint response as JSON')
+    }
+    
+    console.log('✅ Meta endpoint parsed response:', {
+      type: typeof data,
+      isArray: Array.isArray(data),
+      length: Array.isArray(data) ? data.length : 'N/A',
+      keys: typeof data === 'object' && !Array.isArray(data) ? Object.keys(data) : 'N/A'
+    })
     
     if (!Array.isArray(data)) {
       console.error('❌ Response is not an array:', data)
-      throw new Error('Invalid response from meta endpoint: expected array')
+      throw new Error(`Invalid response from meta endpoint: expected array, got ${typeof data}`)
     }
 
-    console.log('✅ Meta endpoint response:', {
-      totalEntities: data.length,
-      sampleEntities: data.slice(0, 5)
+    console.log('✅ Meta endpoint response array:', {
+      totalItems: data.length,
+      first5Items: data.slice(0, 5)
     })
 
     const entities = data
-      .filter(item => item && typeof item === 'object' && typeof item.entity === 'string')
+      .filter((item, index) => {
+        const isValid = item && typeof item === 'object' && typeof item.entity === 'string' && item.entity.length > 0
+        if (!isValid) {
+          console.warn(`⚠️ Invalid entity item at index ${index}:`, item)
+        }
+        return isValid
+      })
       .map(item => ({
         entity: item.entity,
         metaUrl: item.metaUrl || '',
         dateLastModified: item.dateLastModified || null
       }))
 
-    console.log('✅ Parsed entities:', {
+    console.log('✅ Parsed and filtered entities:', {
       totalEntities: entities.length,
-      sampleEntities: entities.slice(0, 10).map(e => e.entity)
+      first20EntityNames: entities.slice(0, 20).map(e => e.entity)
     })
+
+    if (entities.length === 0) {
+      throw new Error('No valid entities found in meta endpoint response')
+    }
 
     return entities.sort((a, b) => a.entity.localeCompare(b.entity))
   }

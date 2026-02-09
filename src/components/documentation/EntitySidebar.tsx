@@ -21,6 +21,14 @@ export function EntitySidebar({
 }: EntitySidebarProps) {
   const [search, setSearch] = useState('')
 
+  console.log('🎯 EntitySidebar - customEntities:', {
+    type: typeof customEntities,
+    isArray: Array.isArray(customEntities),
+    length: customEntities?.length,
+    first10: customEntities?.slice(0, 10),
+    dataTypes: customEntities?.slice(0, 5).map(e => typeof e)
+  })
+
   const allEntities = customEntities.map(id => ({ 
     id, 
     label: entityMetadata.get(id)?.label || id

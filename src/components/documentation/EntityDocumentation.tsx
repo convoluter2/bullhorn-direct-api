@@ -35,19 +35,35 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
         console.log('🔍 Loading all entities from /meta endpoint...')
         const entities = await bullhornAPI.getAllEntitiesMeta()
         
-        console.log('📊 Raw entities response:', entities)
-        console.log('📊 First 5 entities:', entities.slice(0, 5))
+        console.log('📊 Raw entities response type:', typeof entities, 'isArray:', Array.isArray(entities))
+        console.log('📊 Raw entities response length:', Array.isArray(entities) ? entities.length : 'N/A')
+        console.log('📊 First 5 entities:', Array.isArray(entities) ? entities.slice(0, 5) : entities)
         
         if (!Array.isArray(entities)) {
+          console.error('❌ getAllEntitiesMeta did not return an array, got:', typeof entities, entities)
           throw new Error('getAllEntitiesMeta did not return an array')
         }
         
         const entityNames = entities
-          .filter(e => e && typeof e === 'object' && typeof e.entity === 'string')
+          .filter(e => {
+            const isValid = e && typeof e === 'object' && typeof e.entity === 'string'
+            if (!isValid) {
+              console.warn('⚠️ Invalid entity item:', e)
+            }
+            return isValid
+          })
           .map(e => e.entity)
-          .filter(name => name && name.length > 0)
+          .filter(name => {
+            const isValid = name && name.length > 0
+            if (!isValid) {
+              console.warn('⚠️ Invalid entity name:', name)
+            }
+            return isValid
+          })
         
-        console.log(`✅ Loaded ${entityNames.length} entities:`, entityNames.slice(0, 10))
+        console.log(`✅ Extracted ${entityNames.length} entity names`)
+        console.log(`📋 First 20 entity names:`, entityNames.slice(0, 20))
+        console.log(`📋 Entity names data type check:`, entityNames.map(n => typeof n).slice(0, 5))
         
         if (entityNames.length === 0) {
           throw new Error('No valid entity names found in response')

@@ -1,0 +1,3412 @@
+[
+    {
+        "dateLastModified": "1770047501821",
+        "entity": "AccountingPeriod",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/AccountingPeriod?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "AccountingPeriodSetting",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/AccountingPeriodSetting?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ActivityGoal",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ActivityGoal?fields=*"
+    },
+    {
+        "dateLastModified": "1770049655247",
+        "entity": "ActivityGoalConfiguration",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ActivityGoalConfiguration?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ActivityGoalTarget",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ActivityGoalTarget?fields=*"
+    },
+    {
+        "dateLastModified": "1770047499146",
+        "entity": "AllSalesTaxGroup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/AllSalesTaxGroup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "AllSalesTaxRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/AllSalesTaxRate?fields=*"
+    },
+    {
+        "dateLastModified": "1770047486782",
+        "entity": "Appointment",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Appointment?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "AppointmentAttendee",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/AppointmentAttendee?fields=*"
+    },
+    {
+        "dateLastModified": "1770047497137",
+        "entity": "AppointmentEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/AppointmentEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "AppointmentEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/AppointmentEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "AutobuildSearchSetting",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/AutobuildSearchSetting?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "AutobuildSearchSettingFilter",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/AutobuildSearchSettingFilter?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BatchGroup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BatchGroup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BatchStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BatchStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501526",
+        "entity": "BillMaster",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMaster?fields=*"
+    },
+    {
+        "dateLastModified": "1770047504041",
+        "entity": "BillMasterCustomerRequiredField",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMasterCustomerRequiredField?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillMasterDiscountRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMasterDiscountRate?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillMasterEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMasterEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillMasterEditHistoryAssociationChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMasterEditHistoryAssociationChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillMasterEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMasterEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503974",
+        "entity": "BillMasterStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMasterStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillMasterSurchargeRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMasterSurchargeRate?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503989",
+        "entity": "BillMasterSyncBatch",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMasterSyncBatch?fields=*"
+    },
+    {
+        "dateLastModified": "1770047504022",
+        "entity": "BillMasterTransaction",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMasterTransaction?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillMasterTransactionDiscountDetail",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMasterTransactionDiscountDetail?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillMasterTransactionDiscountRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMasterTransactionDiscountRate?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501479",
+        "entity": "BillMasterTransactionDistributionBatch",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMasterTransactionDistributionBatch?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillMasterTransactionEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMasterTransactionEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillMasterTransactionEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMasterTransactionEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillMasterTransactionSalesTaxDetail",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMasterTransactionSalesTaxDetail?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillMasterTransactionSalesTaxRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMasterTransactionSalesTaxRate?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillMasterTransactionSurchargeDetail",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMasterTransactionSurchargeDetail?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillMasterTransactionSurchargeRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillMasterTransactionSurchargeRate?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillTransaction",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillTransaction?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501357",
+        "entity": "BillableCharge",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillableCharge?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501564",
+        "entity": "BillableChargeBillableTransaction",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillableChargeBillableTransaction?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillableChargeEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillableChargeEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillableChargeEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillableChargeEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501404",
+        "entity": "BillableChargeHoldStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillableChargeHoldStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047502000",
+        "entity": "BillableChargeInvoicedTransaction",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillableChargeInvoicedTransaction?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501833",
+        "entity": "BillableChargeStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillableChargeStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047502131",
+        "entity": "BillableChargeSummaryTransaction",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillableChargeSummaryTransaction?fields=*"
+    },
+    {
+        "dateLastModified": "1770047502196",
+        "entity": "BillableChargeUnbillableTransaction",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillableChargeUnbillableTransaction?fields=*"
+    },
+    {
+        "dateLastModified": "1769908629681",
+        "entity": "BillingProfile",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillingProfile?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillingProfileAssociationChangeHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillingProfileAssociationChangeHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillingProfileEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillingProfileEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillingProfileEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillingProfileEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillingProfileEffectiveDateChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillingProfileEffectiveDateChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503031",
+        "entity": "BillingProfileVersion",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillingProfileVersion?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503991",
+        "entity": "BillingSyncBatch",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillingSyncBatch?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501674",
+        "entity": "BillingSyncBatchFileAttachment",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillingSyncBatchFileAttachment?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501529",
+        "entity": "BillingSyncBatchFileTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillingSyncBatchFileTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillingSyncBatchRequest",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillingSyncBatchRequest?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillingSyncBatchRequestStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillingSyncBatchRequestStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "BillingSyncError",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BillingSyncError?fields=*"
+    },
+    {
+        "dateLastModified": "1770047486835",
+        "entity": "Branch",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Branch?fields=*"
+    },
+    {
+        "dateLastModified": "1770047494521",
+        "entity": "BteSyncStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BteSyncStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047486846",
+        "entity": "BusinessSector",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/BusinessSector?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "Calendar",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Calendar?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "CalendarFrequencyLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CalendarFrequencyLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501616",
+        "entity": "CalendarInstance",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CalendarInstance?fields=*"
+    },
+    {
+        "dateLastModified": "1770047579596",
+        "entity": "Candidate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Candidate?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490561",
+        "entity": "CandidateCertification",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CandidateCertification?fields=*"
+    },
+    {
+        "dateLastModified": "1770049733911",
+        "entity": "CandidateCertificationEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CandidateCertificationEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": "1770049733870",
+        "entity": "CandidateCertificationEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CandidateCertificationEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "CandidateCertificationRequirement",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CandidateCertificationRequirement?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "CandidateCertificationRequirementEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CandidateCertificationRequirementEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "CandidateCertificationRequirementEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CandidateCertificationRequirementEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490783",
+        "entity": "CandidateEducation",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CandidateEducation?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490814",
+        "entity": "CandidateFileAttachment",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CandidateFileAttachment?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "CandidateHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CandidateHistory?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490929",
+        "entity": "CandidateReference",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CandidateReference?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "CandidateReferenceQuestion",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CandidateReferenceQuestion?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "CandidateReferenceResponse",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CandidateReferenceResponse?fields=*"
+    },
+    {
+        "dateLastModified": "1770093440899",
+        "entity": "CandidateSource",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CandidateSource?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "CandidateTaxInfo",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CandidateTaxInfo?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491053",
+        "entity": "CandidateWorkHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CandidateWorkHistory?fields=*"
+    },
+    {
+        "dateLastModified": "1769908797197",
+        "entity": "Category",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Category?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487093",
+        "entity": "Certification",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Certification?fields=*"
+    },
+    {
+        "dateLastModified": "1770049676519",
+        "entity": "CertificationFileAttachment",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CertificationFileAttachment?fields=*"
+    },
+    {
+        "dateLastModified": "1770047489688",
+        "entity": "CertificationGroup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CertificationGroup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "CertificationRequirement",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CertificationRequirement?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "CertificationRequirementStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CertificationRequirementStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047500711",
+        "entity": "ChargeTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ChargeTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ChipLayout",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ChipLayout?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ChipLayoutOption",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ChipLayoutOption?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ChipLayoutOptionField",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ChipLayoutOptionField?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ChipLayoutOptionTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ChipLayoutOptionTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ChipLayoutPositionLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ChipLayoutPositionLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047506572",
+        "entity": "CitySalesTaxRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CitySalesTaxRate?fields=*"
+    },
+    {
+        "dateLastModified": "1770047579416",
+        "entity": "ClientContact",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientContact?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientContact1",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientContact1?fields=*"
+    },
+    {
+        "dateLastModified": "1770047580961",
+        "entity": "ClientContact2",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientContact2?fields=*"
+    },
+    {
+        "dateLastModified": "1770047580852",
+        "entity": "ClientContact3",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientContact3?fields=*"
+    },
+    {
+        "dateLastModified": "1770047580780",
+        "entity": "ClientContact4",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientContact4?fields=*"
+    },
+    {
+        "dateLastModified": "1770047580709",
+        "entity": "ClientContact5",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientContact5?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487277",
+        "entity": "ClientContactFileAttachment",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientContactFileAttachment?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientContactHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientContactHistory?fields=*"
+    },
+    {
+        "dateLastModified": "1769908605134",
+        "entity": "ClientCorporation",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporation?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporation1",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporation1?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491970",
+        "entity": "ClientCorporation2",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporation2?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491861",
+        "entity": "ClientCorporation3",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporation3?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491777",
+        "entity": "ClientCorporation4",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporation4?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491648",
+        "entity": "ClientCorporation5",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporation5?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationAppointment",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationAppointment?fields=*"
+    },
+    {
+        "dateLastModified": "1770047489713",
+        "entity": "ClientCorporationCertification",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCertification?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject10EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject10EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject11EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject11EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject12EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject12EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject13EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject13EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject14EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject14EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject15EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject15EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject16EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject16EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject17EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject17EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject18EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject18EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject19EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject19EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject1EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject1EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject20EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject20EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject21EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject21EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject22EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject22EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject23EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject23EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject24EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject24EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject25EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject25EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject26EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject26EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject27EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject27EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject28EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject28EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject29EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject29EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject2EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject2EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject30EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject30EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject31EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject31EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject32EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject32EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject33EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject33EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject34EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject34EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject35EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject35EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject3EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject3EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject4EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject4EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject5EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject5EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject6EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject6EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject7EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject7EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject8EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject8EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObject9EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObject9EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationCustomObjectEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490494",
+        "entity": "ClientCorporationCustomObjectInstance1",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance1?fields=*"
+    },
+    {
+        "dateLastModified": "1770047489819",
+        "entity": "ClientCorporationCustomObjectInstance10",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance10?fields=*"
+    },
+    {
+        "dateLastModified": "1770047489947",
+        "entity": "ClientCorporationCustomObjectInstance11",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance11?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490042",
+        "entity": "ClientCorporationCustomObjectInstance12",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance12?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490125",
+        "entity": "ClientCorporationCustomObjectInstance13",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance13?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490230",
+        "entity": "ClientCorporationCustomObjectInstance14",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance14?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490332",
+        "entity": "ClientCorporationCustomObjectInstance15",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance15?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490428",
+        "entity": "ClientCorporationCustomObjectInstance16",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance16?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490530",
+        "entity": "ClientCorporationCustomObjectInstance17",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance17?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490634",
+        "entity": "ClientCorporationCustomObjectInstance18",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance18?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490717",
+        "entity": "ClientCorporationCustomObjectInstance19",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance19?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490661",
+        "entity": "ClientCorporationCustomObjectInstance2",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance2?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490858",
+        "entity": "ClientCorporationCustomObjectInstance20",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance20?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490917",
+        "entity": "ClientCorporationCustomObjectInstance21",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance21?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491021",
+        "entity": "ClientCorporationCustomObjectInstance22",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance22?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491130",
+        "entity": "ClientCorporationCustomObjectInstance23",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance23?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491236",
+        "entity": "ClientCorporationCustomObjectInstance24",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance24?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491353",
+        "entity": "ClientCorporationCustomObjectInstance25",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance25?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491396",
+        "entity": "ClientCorporationCustomObjectInstance26",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance26?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491494",
+        "entity": "ClientCorporationCustomObjectInstance27",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance27?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491587",
+        "entity": "ClientCorporationCustomObjectInstance28",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance28?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491722",
+        "entity": "ClientCorporationCustomObjectInstance29",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance29?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490732",
+        "entity": "ClientCorporationCustomObjectInstance3",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance3?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491814",
+        "entity": "ClientCorporationCustomObjectInstance30",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance30?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491908",
+        "entity": "ClientCorporationCustomObjectInstance31",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance31?fields=*"
+    },
+    {
+        "dateLastModified": "1770047492019",
+        "entity": "ClientCorporationCustomObjectInstance32",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance32?fields=*"
+    },
+    {
+        "dateLastModified": "1770047492113",
+        "entity": "ClientCorporationCustomObjectInstance33",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance33?fields=*"
+    },
+    {
+        "dateLastModified": "1770047492145",
+        "entity": "ClientCorporationCustomObjectInstance34",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance34?fields=*"
+    },
+    {
+        "dateLastModified": "1770047492286",
+        "entity": "ClientCorporationCustomObjectInstance35",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance35?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490813",
+        "entity": "ClientCorporationCustomObjectInstance4",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance4?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490890",
+        "entity": "ClientCorporationCustomObjectInstance5",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance5?fields=*"
+    },
+    {
+        "dateLastModified": "1770047490972",
+        "entity": "ClientCorporationCustomObjectInstance6",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance6?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491050",
+        "entity": "ClientCorporationCustomObjectInstance7",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance7?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491159",
+        "entity": "ClientCorporationCustomObjectInstance8",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance8?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491227",
+        "entity": "ClientCorporationCustomObjectInstance9",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationCustomObjectInstance9?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047492347",
+        "entity": "ClientCorporationFileAttachment",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationFileAttachment?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationHistory?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488489",
+        "entity": "ClientCorporationLine",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationLine?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationLineEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationLineEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationLineEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationLineEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationNote",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationNote?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationRateAgreementCard",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationRateAgreementCard?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationRateAgreementCardEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationRateAgreementCardEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationRateAgreementCardEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationRateAgreementCardEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationRateAgreementCardEffectiveDateChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationRateAgreementCardEffectiveDateChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationRateAgreementCardLine",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationRateAgreementCardLine?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationRateAgreementCardLineEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationRateAgreementCardLineEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationRateAgreementCardLineGroup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationRateAgreementCardLineGroup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationRateAgreementCardLineGroupEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationRateAgreementCardLineGroupEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationRateAgreementCardVersion",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationRateAgreementCardVersion?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ClientCorporationTask",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationTask?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491362",
+        "entity": "ClientCorporationTaxExemptionStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ClientCorporationTaxExemptionStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "CorpFile",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CorpFile?fields=*"
+    },
+    {
+        "dateLastModified": "1770047477808",
+        "entity": "CorporateUser",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CorporateUser?fields=*"
+    },
+    {
+        "dateLastModified": "1770047479728",
+        "entity": "CorporationDepartment",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CorporationDepartment?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "Country",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Country?fields=*"
+    },
+    {
+        "dateLastModified": "1770047506591",
+        "entity": "CountySalesTaxRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CountySalesTaxRate?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501434",
+        "entity": "CurrencyUnit",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CurrencyUnit?fields=*"
+    },
+    {
+        "dateLastModified": "1770049656253",
+        "entity": "CustomAction",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CustomAction?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "CustomEntity",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CustomEntity?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "CustomEntityType",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CustomEntityType?fields=*"
+    },
+    {
+        "dateLastModified": "1770047505530",
+        "entity": "CustomerRequiredFieldConfiguration",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CustomerRequiredFieldConfiguration?fields=*"
+    },
+    {
+        "dateLastModified": "1770047505619",
+        "entity": "CustomerRequiredFieldConfigurationVersion",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CustomerRequiredFieldConfigurationVersion?fields=*"
+    },
+    {
+        "dateLastModified": "1770047505558",
+        "entity": "CustomerRequiredFieldConfigurationVersionOption",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CustomerRequiredFieldConfigurationVersionOption?fields=*"
+    },
+    {
+        "dateLastModified": "1770047504906",
+        "entity": "CustomerRequiredFieldMeta",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CustomerRequiredFieldMeta?fields=*"
+    },
+    {
+        "dateLastModified": "1770047504966",
+        "entity": "CustomerRequiredFieldMetaEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CustomerRequiredFieldMetaEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "CustomerRequiredFieldMetaEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CustomerRequiredFieldMetaEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047504988",
+        "entity": "CustomerRequiredFieldOption",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CustomerRequiredFieldOption?fields=*"
+    },
+    {
+        "dateLastModified": "1770047505547",
+        "entity": "CustomerRequiredFieldOptionEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CustomerRequiredFieldOptionEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "CustomerRequiredFieldOptionEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CustomerRequiredFieldOptionEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047504962",
+        "entity": "CustomerRequiredFieldValueTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/CustomerRequiredFieldValueTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047504006",
+        "entity": "DayOfWeekLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DayOfWeekLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "Deduction",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Deduction?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "DeductionCategoryLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DeductionCategoryLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047500739",
+        "entity": "DefaultEarnCode",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DefaultEarnCode?fields=*"
+    },
+    {
+        "dateLastModified": "1770047502945",
+        "entity": "DeliveryMethodLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DeliveryMethodLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047486180",
+        "entity": "Department",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Department?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "DirectDepositAccount",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DirectDepositAccount?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "DirectDepositAccountTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DirectDepositAccountTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "Discount",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Discount?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "DiscountEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DiscountEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "DiscountEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DiscountEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501448",
+        "entity": "DiscountRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DiscountRate?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "DiscountRateAssociationChangeHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DiscountRateAssociationChangeHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "DiscountRateEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DiscountRateEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "DiscountRateEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DiscountRateEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "DiscountRateEffectiveDateChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DiscountRateEffectiveDateChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047504062",
+        "entity": "DiscountRateVersion",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DiscountRateVersion?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "DiscountType",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DiscountType?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501513",
+        "entity": "DiscountTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DiscountTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047506605",
+        "entity": "DistrictSalesTaxRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DistrictSalesTaxRate?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "DocumentDataFlowback",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DocumentDataFlowback?fields=*"
+    },
+    {
+        "dateLastModified": "1770047500845",
+        "entity": "DoubleTimeEarnCode",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/DoubleTimeEarnCode?fields=*"
+    },
+    {
+        "dateLastModified": "1770047500606",
+        "entity": "EarnCode",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/EarnCode?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "EarnCodeEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/EarnCodeEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "EarnCodeFiltered",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/EarnCodeFiltered?fields=*"
+    },
+    {
+        "dateLastModified": "1770047500643",
+        "entity": "EarnCodeGroup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/EarnCodeGroup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "EarnCodeGroupEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/EarnCodeGroupEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "EarnCodeGroupEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/EarnCodeGroupEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047500783",
+        "entity": "EarnCodeGroupStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/EarnCodeGroupStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "EarnCodeTemplate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/EarnCodeTemplate?fields=*"
+    },
+    {
+        "dateLastModified": "1770047500676",
+        "entity": "EarnCodeTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/EarnCodeTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "EditHistoryActionLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/EditHistoryActionLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "EmployeePay",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/EmployeePay?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "EmployerContribution",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/EmployerContribution?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "EntityFieldTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/EntityFieldTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "EntityTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/EntityTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501711",
+        "entity": "EntryTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/EntryTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "EstaffMappableFlowback",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/EstaffMappableFlowback?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "EstaffMappableFlowbackOverride",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/EstaffMappableFlowbackOverride?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ExternalBatchStatusRequest",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ExternalBatchStatusRequest?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ExternalSalesTaxGroup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ExternalSalesTaxGroup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ExternalSalesTaxRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ExternalSalesTaxRate?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ExternalSalesTaxRateVersion",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ExternalSalesTaxRateVersion?fields=*"
+    },
+    {
+        "dateLastModified": "1769972410343",
+        "entity": "FederalTaxForm",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/FederalTaxForm?fields=*"
+    },
+    {
+        "dateLastModified": "1770047500693",
+        "entity": "GeneralLedgerAccount",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/GeneralLedgerAccount?fields=*"
+    },
+    {
+        "dateLastModified": "1770047502970",
+        "entity": "GeneralLedgerExportStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/GeneralLedgerExportStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "GeneralLedgerSegment",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/GeneralLedgerSegment?fields=*"
+    },
+    {
+        "dateLastModified": "1770047495145",
+        "entity": "GeneralLedgerSegment1",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/GeneralLedgerSegment1?fields=*"
+    },
+    {
+        "dateLastModified": "1770047495168",
+        "entity": "GeneralLedgerSegment2",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/GeneralLedgerSegment2?fields=*"
+    },
+    {
+        "dateLastModified": "1770047495190",
+        "entity": "GeneralLedgerSegment3",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/GeneralLedgerSegment3?fields=*"
+    },
+    {
+        "dateLastModified": "1770047495212",
+        "entity": "GeneralLedgerSegment4",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/GeneralLedgerSegment4?fields=*"
+    },
+    {
+        "dateLastModified": "1770047495230",
+        "entity": "GeneralLedgerSegment5",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/GeneralLedgerSegment5?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "GeneralLedgerSegmentType",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/GeneralLedgerSegmentType?fields=*"
+    },
+    {
+        "dateLastModified": "1770047495253",
+        "entity": "GeneralLedgerServiceCode",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/GeneralLedgerServiceCode?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "GoalTarget",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/GoalTarget?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "HousingComplex",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/HousingComplex?fields=*"
+    },
+    {
+        "dateLastModified": "1770047495272",
+        "entity": "HousingComplexAmenity",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/HousingComplexAmenity?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "HousingComplexFurnitureDelivery",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/HousingComplexFurnitureDelivery?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "HousingComplexUnit",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/HousingComplexUnit?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "HousingComplexUtilityAccount",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/HousingComplexUtilityAccount?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoicePayment",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoicePayment?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501758",
+        "entity": "InvoiceStatement",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatement?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceStatementBatch",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementBatch?fields=*"
+    },
+    {
+        "dateLastModified": "1770047502988",
+        "entity": "InvoiceStatementDeliveryStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementDeliveryStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503004",
+        "entity": "InvoiceStatementDiscount",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementDiscount?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceStatementDiscountRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementDiscountRate?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503030",
+        "entity": "InvoiceStatementDistributionBatch",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementDistributionBatch?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceStatementEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceStatementEditHistoryAssociationChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementEditHistoryAssociationChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceStatementEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceStatementEmailBatch",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementEmailBatch?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503070",
+        "entity": "InvoiceStatementExport",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementExport?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503053",
+        "entity": "InvoiceStatementExportBatch",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementExportBatch?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceStatementHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementHistory?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503093",
+        "entity": "InvoiceStatementLineDistribution",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementLineDistribution?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceStatementLineDistributionTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementLineDistributionTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503200",
+        "entity": "InvoiceStatementLineItem",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementLineItem?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceStatementLineItemDiscountRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementLineItemDiscountRate?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceStatementLineItemEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementLineItemEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceStatementLineItemEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementLineItemEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceStatementLineItemGroupBy",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementLineItemGroupBy?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceStatementLineItemSalesTaxRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementLineItemSalesTaxRate?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceStatementLineItemSummarizeBy",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementLineItemSummarizeBy?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceStatementLineItemSurchargeRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementLineItemSurchargeRate?fields=*"
+    },
+    {
+        "dateLastModified": "1770047502970",
+        "entity": "InvoiceStatementMessageTemplate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementMessageTemplate?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceStatementNumberFormat",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementNumberFormat?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503116",
+        "entity": "InvoiceStatementPaidStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementPaidStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceStatementSalesTaxRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementSalesTaxRate?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503335",
+        "entity": "InvoiceStatementSplitBy",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementSplitBy?fields=*"
+    },
+    {
+        "dateLastModified": "1770047502942",
+        "entity": "InvoiceStatementStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503346",
+        "entity": "InvoiceStatementSurcharge",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementSurcharge?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceStatementSurchargeRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementSurchargeRate?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503355",
+        "entity": "InvoiceStatementTax",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementTax?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501441",
+        "entity": "InvoiceStatementTemplate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementTemplate?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503147",
+        "entity": "InvoiceStatementTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceStatementTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501344",
+        "entity": "InvoiceTerm",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceTerm?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceTermAssociationChangeHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceTermAssociationChangeHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceTermConfiguration",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceTermConfiguration?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceTermConfigurationOptInField",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceTermConfigurationOptInField?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceTermEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceTermEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceTermEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceTermEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "InvoiceTermEffectiveDateChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceTermEffectiveDateChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501343",
+        "entity": "InvoiceTermTemplate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceTermTemplate?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501635",
+        "entity": "InvoiceTermVersion",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/InvoiceTermVersion?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "Issue",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Issue?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "IssueItems",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/IssueItems?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "IssueResolutionStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/IssueResolutionStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobBoardPost",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobBoardPost?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488524",
+        "entity": "JobCode",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobCode?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobCodeEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobCodeEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobCodeEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobCodeEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1769908606400",
+        "entity": "JobOrder",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrder?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrder1",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrder1?fields=*"
+    },
+    {
+        "dateLastModified": "1770047489440",
+        "entity": "JobOrder2",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrder2?fields=*"
+    },
+    {
+        "dateLastModified": "1770047489365",
+        "entity": "JobOrder3",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrder3?fields=*"
+    },
+    {
+        "dateLastModified": "1770047489291",
+        "entity": "JobOrder4",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrder4?fields=*"
+    },
+    {
+        "dateLastModified": "1770047489190",
+        "entity": "JobOrder5",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrder5?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderCustomObject10EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObject10EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderCustomObject1EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObject1EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderCustomObject2EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObject2EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderCustomObject3EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObject3EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderCustomObject4EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObject4EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderCustomObject5EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObject5EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderCustomObject6EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObject6EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderCustomObject7EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObject7EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderCustomObject8EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObject8EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderCustomObject9EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObject9EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderCustomObjectEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObjectEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487310",
+        "entity": "JobOrderCustomObjectInstance1",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObjectInstance1?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487142",
+        "entity": "JobOrderCustomObjectInstance10",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObjectInstance10?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487402",
+        "entity": "JobOrderCustomObjectInstance2",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObjectInstance2?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487474",
+        "entity": "JobOrderCustomObjectInstance3",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObjectInstance3?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487641",
+        "entity": "JobOrderCustomObjectInstance4",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObjectInstance4?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487735",
+        "entity": "JobOrderCustomObjectInstance5",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObjectInstance5?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487827",
+        "entity": "JobOrderCustomObjectInstance6",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObjectInstance6?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487888",
+        "entity": "JobOrderCustomObjectInstance7",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObjectInstance7?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487977",
+        "entity": "JobOrderCustomObjectInstance8",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObjectInstance8?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488058",
+        "entity": "JobOrderCustomObjectInstance9",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomObjectInstance9?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderCustomerRequiredFieldConfiguration",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomerRequiredFieldConfiguration?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderCustomerRequiredFieldConfigurationVersion",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomerRequiredFieldConfigurationVersion?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderCustomerRequiredFieldConfigurationVersionOption",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderCustomerRequiredFieldConfigurationVersionOption?fields=*"
+    },
+    {
+        "dateLastModified": "1769908629641",
+        "entity": "JobOrderEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047489850",
+        "entity": "JobOrderFileAttachment",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderFileAttachment?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderRateCard",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderRateCard?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderRateCardEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderRateCardEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderRateCardEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderRateCardEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderRateCardEffectiveDateChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderRateCardEffectiveDateChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderRateCardLine",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderRateCardLine?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderRateCardLineEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderRateCardLineEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderRateCardLineGroup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderRateCardLineGroup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderRateCardLineGroupEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderRateCardLineGroupEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderRateCardVersion",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderRateCardVersion?fields=*"
+    },
+    {
+        "dateLastModified": "1770047489910",
+        "entity": "JobOrderScreenerQuestion",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderScreenerQuestion?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobOrderTemplate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobOrderTemplate?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobShiftOfferContext",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobShiftOfferContext?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488289",
+        "entity": "JobSubmission",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobSubmission?fields=*"
+    },
+    {
+        "dateLastModified": "1770047494959",
+        "entity": "JobSubmissionCertificationRequirement",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobSubmissionCertificationRequirement?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobSubmissionCertificationRequirementEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobSubmissionCertificationRequirementEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobSubmissionCertificationRequirementEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobSubmissionCertificationRequirementEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobSubmissionEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobSubmissionEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "JobSubmissionEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobSubmissionEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047494898",
+        "entity": "JobSubmissionHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/JobSubmissionHistory?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488361",
+        "entity": "Lead",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Lead?fields=*"
+    },
+    {
+        "dateLastModified": "1770047497592",
+        "entity": "LeadHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/LeadHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "LegalBusinessEntity",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/LegalBusinessEntity?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "LocalTaxForm",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/LocalTaxForm?fields=*"
+    },
+    {
+        "dateLastModified": "1769908604828",
+        "entity": "Location",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Location?fields=*"
+    },
+    {
+        "dateLastModified": "1769908560358",
+        "entity": "LocationEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/LocationEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "LocationEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/LocationEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "LocationEffectiveDateChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/LocationEffectiveDateChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047499165",
+        "entity": "LocationVersion",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/LocationVersion?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "MappedEntityConfiguration",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/MappedEntityConfiguration?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "MappedEntityConfigurationEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/MappedEntityConfigurationEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "MappedEntityConfigurationEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/MappedEntityConfigurationEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "MassActionBatch",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/MassActionBatch?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "MassActionBatchEntity",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/MassActionBatchEntity?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "MassActionBatchStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/MassActionBatchStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "MassActionBatchWarning",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/MassActionBatchWarning?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "MassActionBatchWarningTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/MassActionBatchWarningTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "MassActionTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/MassActionTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "MatchingCriteria",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/MatchingCriteria?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "MatchingCriteriaGroup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/MatchingCriteriaGroup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487315",
+        "entity": "Note",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Note?fields=*"
+    },
+    {
+        "dateLastModified": "1770047497174",
+        "entity": "NoteEntity",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/NoteEntity?fields=*"
+    },
+    {
+        "dateLastModified": "1769916826289",
+        "entity": "Opportunity",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Opportunity?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "Opportunity1",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Opportunity1?fields=*"
+    },
+    {
+        "dateLastModified": "1770047500081",
+        "entity": "Opportunity2",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Opportunity2?fields=*"
+    },
+    {
+        "dateLastModified": "1770047500027",
+        "entity": "Opportunity3",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Opportunity3?fields=*"
+    },
+    {
+        "dateLastModified": "1770047499966",
+        "entity": "Opportunity4",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Opportunity4?fields=*"
+    },
+    {
+        "dateLastModified": "1770047499908",
+        "entity": "Opportunity5",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Opportunity5?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "OpportunityCustomObject10EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObject10EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "OpportunityCustomObject1EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObject1EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "OpportunityCustomObject2EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObject2EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "OpportunityCustomObject3EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObject3EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "OpportunityCustomObject4EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObject4EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "OpportunityCustomObject5EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObject5EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "OpportunityCustomObject6EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObject6EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "OpportunityCustomObject7EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObject7EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "OpportunityCustomObject8EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObject8EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "OpportunityCustomObject9EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObject9EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "OpportunityCustomObjectEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObjectEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047498596",
+        "entity": "OpportunityCustomObjectInstance1",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObjectInstance1?fields=*"
+    },
+    {
+        "dateLastModified": "1770047499254",
+        "entity": "OpportunityCustomObjectInstance10",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObjectInstance10?fields=*"
+    },
+    {
+        "dateLastModified": "1770047498720",
+        "entity": "OpportunityCustomObjectInstance2",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObjectInstance2?fields=*"
+    },
+    {
+        "dateLastModified": "1770047498818",
+        "entity": "OpportunityCustomObjectInstance3",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObjectInstance3?fields=*"
+    },
+    {
+        "dateLastModified": "1770047498916",
+        "entity": "OpportunityCustomObjectInstance4",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObjectInstance4?fields=*"
+    },
+    {
+        "dateLastModified": "1770047499033",
+        "entity": "OpportunityCustomObjectInstance5",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObjectInstance5?fields=*"
+    },
+    {
+        "dateLastModified": "1770047499159",
+        "entity": "OpportunityCustomObjectInstance6",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObjectInstance6?fields=*"
+    },
+    {
+        "dateLastModified": "1770047499263",
+        "entity": "OpportunityCustomObjectInstance7",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObjectInstance7?fields=*"
+    },
+    {
+        "dateLastModified": "1770047499370",
+        "entity": "OpportunityCustomObjectInstance8",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObjectInstance8?fields=*"
+    },
+    {
+        "dateLastModified": "1770047499525",
+        "entity": "OpportunityCustomObjectInstance9",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityCustomObjectInstance9?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "OpportunityEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "OpportunityEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047499558",
+        "entity": "OpportunityFileAttachment",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityFileAttachment?fields=*"
+    },
+    {
+        "dateLastModified": "1770047498481",
+        "entity": "OpportunityHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OpportunityHistory?fields=*"
+    },
+    {
+        "dateLastModified": "1770047506619",
+        "entity": "OtherSalesTaxRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OtherSalesTaxRate?fields=*"
+    },
+    {
+        "dateLastModified": "1770047500908",
+        "entity": "OvertimeEarnCode",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/OvertimeEarnCode?fields=*"
+    },
+    {
+        "dateLastModified": "1770047491319",
+        "entity": "PayBillCycle",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayBillCycle?fields=*"
+    },
+    {
+        "dateLastModified": "1770047500761",
+        "entity": "PayBillOptionsLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayBillOptionsLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503950",
+        "entity": "PayBillSetting",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayBillSetting?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayBillSettingEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayBillSettingEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayBillSettingEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayBillSettingEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayCheck",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayCheck?fields=*"
+    },
+    {
+        "dateLastModified": "1770047505067",
+        "entity": "PayExportBatch",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayExportBatch?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayExportBatchExternal",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayExportBatchExternal?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayExportTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayExportTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503249",
+        "entity": "PayMaster",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayMaster?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayMasterTransaction",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayMasterTransaction?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayMasterTransactionEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayMasterTransactionEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayMasterTransactionEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayMasterTransactionEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayMasterTransactionPayExportBatch",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayMasterTransactionPayExportBatch?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayMasterTransactionPayExportBatchIssues",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayMasterTransactionPayExportBatchIssues?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayServiceExportAuditLog",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayServiceExportAuditLog?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayTransaction",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayTransaction?fields=*"
+    },
+    {
+        "dateLastModified": "1770047502872",
+        "entity": "PayableCharge",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayableCharge?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayableChargeEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayableChargeEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayableChargeEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayableChargeEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047502972",
+        "entity": "PayableChargeExportedTransaction",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayableChargeExportedTransaction?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503269",
+        "entity": "PayableChargePayableTransaction",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayableChargePayableTransaction?fields=*"
+    },
+    {
+        "dateLastModified": "1770047503015",
+        "entity": "PayableChargeStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayableChargeStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047504918",
+        "entity": "PayableChargeSummaryTransaction",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayableChargeSummaryTransaction?fields=*"
+    },
+    {
+        "dateLastModified": "1770047494340",
+        "entity": "PayrollEmployeeTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayrollEmployeeTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayrollExportConfig",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayrollExportConfig?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayrollExportConfigEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayrollExportConfigEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayrollExportConfigEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayrollExportConfigEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayrollExportTargetLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayrollExportTargetLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PayrollExportTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayrollExportTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047494360",
+        "entity": "PayrollSyncStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PayrollSyncStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1769908608870",
+        "entity": "Person",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Person?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject10EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject10EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject11EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject11EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject12EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject12EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject13EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject13EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject14EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject14EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject15EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject15EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject16EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject16EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject17EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject17EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject18EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject18EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject19EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject19EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject1EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject1EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject20EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject20EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject21EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject21EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject22EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject22EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject23EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject23EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject24EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject24EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject25EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject25EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject26EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject26EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject27EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject27EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject28EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject28EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject29EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject29EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject2EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject2EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject30EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject30EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject31EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject31EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject32EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject32EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject33EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject33EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject34EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject34EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject35EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject35EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject3EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject3EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject4EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject4EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject5EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject5EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject6EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject6EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject7EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject7EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject8EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject8EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObject9EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObject9EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PersonCustomObjectEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487633",
+        "entity": "PersonCustomObjectInstance1",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance1?fields=*"
+    },
+    {
+        "dateLastModified": "1770047486877",
+        "entity": "PersonCustomObjectInstance10",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance10?fields=*"
+    },
+    {
+        "dateLastModified": "1770047486954",
+        "entity": "PersonCustomObjectInstance11",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance11?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487018",
+        "entity": "PersonCustomObjectInstance12",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance12?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487120",
+        "entity": "PersonCustomObjectInstance13",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance13?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487185",
+        "entity": "PersonCustomObjectInstance14",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance14?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487301",
+        "entity": "PersonCustomObjectInstance15",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance15?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487340",
+        "entity": "PersonCustomObjectInstance16",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance16?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487439",
+        "entity": "PersonCustomObjectInstance17",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance17?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487510",
+        "entity": "PersonCustomObjectInstance18",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance18?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487567",
+        "entity": "PersonCustomObjectInstance19",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance19?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487656",
+        "entity": "PersonCustomObjectInstance2",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance2?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487702",
+        "entity": "PersonCustomObjectInstance20",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance20?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487760",
+        "entity": "PersonCustomObjectInstance21",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance21?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487810",
+        "entity": "PersonCustomObjectInstance22",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance22?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487858",
+        "entity": "PersonCustomObjectInstance23",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance23?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487916",
+        "entity": "PersonCustomObjectInstance24",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance24?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487971",
+        "entity": "PersonCustomObjectInstance25",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance25?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488069",
+        "entity": "PersonCustomObjectInstance26",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance26?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488123",
+        "entity": "PersonCustomObjectInstance27",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance27?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488179",
+        "entity": "PersonCustomObjectInstance28",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance28?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488243",
+        "entity": "PersonCustomObjectInstance29",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance29?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487720",
+        "entity": "PersonCustomObjectInstance3",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance3?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488324",
+        "entity": "PersonCustomObjectInstance30",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance30?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488388",
+        "entity": "PersonCustomObjectInstance31",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance31?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488449",
+        "entity": "PersonCustomObjectInstance32",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance32?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488502",
+        "entity": "PersonCustomObjectInstance33",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance33?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488558",
+        "entity": "PersonCustomObjectInstance34",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance34?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488613",
+        "entity": "PersonCustomObjectInstance35",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance35?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487789",
+        "entity": "PersonCustomObjectInstance4",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance4?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487858",
+        "entity": "PersonCustomObjectInstance5",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance5?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487944",
+        "entity": "PersonCustomObjectInstance6",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance6?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488081",
+        "entity": "PersonCustomObjectInstance7",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance7?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488169",
+        "entity": "PersonCustomObjectInstance8",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance8?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488253",
+        "entity": "PersonCustomObjectInstance9",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PersonCustomObjectInstance9?fields=*"
+    },
+    {
+        "dateLastModified": "1770047486477",
+        "entity": "Placement",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Placement?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "Placement1",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Placement1?fields=*"
+    },
+    {
+        "dateLastModified": "1770047495320",
+        "entity": "Placement2",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Placement2?fields=*"
+    },
+    {
+        "dateLastModified": "1770047495259",
+        "entity": "Placement3",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Placement3?fields=*"
+    },
+    {
+        "dateLastModified": "1770047495169",
+        "entity": "Placement4",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Placement4?fields=*"
+    },
+    {
+        "dateLastModified": "1770047495056",
+        "entity": "Placement5",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Placement5?fields=*"
+    },
+    {
+        "dateLastModified": "1770047495369",
+        "entity": "PlacementCertification",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCertification?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementCertificationEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCertificationEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementCertificationEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCertificationEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047492496",
+        "entity": "PlacementChangeRequest",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementChangeRequest?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementChangeRequestEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementChangeRequestEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementChangeRequestEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementChangeRequestEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047493111",
+        "entity": "PlacementCommission",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCommission?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementCommissionEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCommissionEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementCommissionEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCommissionEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementCredentialDetail",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCredentialDetail?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementCustomObject10EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObject10EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementCustomObject1EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObject1EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementCustomObject2EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObject2EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementCustomObject3EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObject3EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementCustomObject4EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObject4EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementCustomObject5EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObject5EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementCustomObject6EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObject6EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementCustomObject7EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObject7EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementCustomObject8EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObject8EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementCustomObject9EditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObject9EditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementCustomObjectEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObjectEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047493135",
+        "entity": "PlacementCustomObjectInstance1",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObjectInstance1?fields=*"
+    },
+    {
+        "dateLastModified": "1770047494155",
+        "entity": "PlacementCustomObjectInstance10",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObjectInstance10?fields=*"
+    },
+    {
+        "dateLastModified": "1770047493446",
+        "entity": "PlacementCustomObjectInstance2",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObjectInstance2?fields=*"
+    },
+    {
+        "dateLastModified": "1770047493603",
+        "entity": "PlacementCustomObjectInstance3",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObjectInstance3?fields=*"
+    },
+    {
+        "dateLastModified": "1770047493684",
+        "entity": "PlacementCustomObjectInstance4",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObjectInstance4?fields=*"
+    },
+    {
+        "dateLastModified": "1770047493751",
+        "entity": "PlacementCustomObjectInstance5",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObjectInstance5?fields=*"
+    },
+    {
+        "dateLastModified": "1770047493812",
+        "entity": "PlacementCustomObjectInstance6",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObjectInstance6?fields=*"
+    },
+    {
+        "dateLastModified": "1770047493872",
+        "entity": "PlacementCustomObjectInstance7",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObjectInstance7?fields=*"
+    },
+    {
+        "dateLastModified": "1770047493951",
+        "entity": "PlacementCustomObjectInstance8",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObjectInstance8?fields=*"
+    },
+    {
+        "dateLastModified": "1770047494042",
+        "entity": "PlacementCustomObjectInstance9",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementCustomObjectInstance9?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047495123",
+        "entity": "PlacementFileAttachment",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementFileAttachment?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementRateCard",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementRateCard?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementRateCardChangeRequest",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementRateCardChangeRequest?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementRateCardChangeRequestSnapshot",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementRateCardChangeRequestSnapshot?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementRateCardChangeRequestStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementRateCardChangeRequestStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementRateCardEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementRateCardEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementRateCardEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementRateCardEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementRateCardEffectiveDateChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementRateCardEffectiveDateChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementRateCardLine",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementRateCardLine?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementRateCardLineEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementRateCardLineEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementRateCardLineGroup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementRateCardLineGroup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementRateCardLineGroupEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementRateCardLineGroupEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047494453",
+        "entity": "PlacementRateCardStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementRateCardStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementRateCardVersion",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementRateCardVersion?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementShiftSet",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementShiftSet?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementShiftSetAssociationChangeHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementShiftSetAssociationChangeHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementShiftSetEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementShiftSetEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementShiftSetEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementShiftSetEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementShiftSetEffectiveDateChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementShiftSetEffectiveDateChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementShiftSetVersion",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementShiftSetVersion?fields=*"
+    },
+    {
+        "dateLastModified": "1770047494539",
+        "entity": "PlacementTaxExemptionStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementTaxExemptionStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047494488",
+        "entity": "PlacementTimeAndExpense",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementTimeAndExpense?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PlacementTimeAndExpenseChangeRequest",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PlacementTimeAndExpenseChangeRequest?fields=*"
+    },
+    {
+        "dateLastModified": "1770047505527",
+        "entity": "PurchaseOrder",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PurchaseOrder?fields=*"
+    },
+    {
+        "dateLastModified": "1770047505559",
+        "entity": "PurchaseOrderEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PurchaseOrderEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "PurchaseOrderEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/PurchaseOrderEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "RateDetail",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/RateDetail?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "RateDetailEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/RateDetailEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "RateDetailEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/RateDetailEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "RateGroup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/RateGroup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "RateGroupEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/RateGroupEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "RateGroupEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/RateGroupEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770049673263",
+        "entity": "Report",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Report?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ReportingCodeTemplate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ReportingCodeTemplate?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ReportingCodeTemplateEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ReportingCodeTemplateEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ReportingCodeTemplateEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ReportingCodeTemplateEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "SalesQuota",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SalesQuota?fields=*"
+    },
+    {
+        "dateLastModified": "1770047506500",
+        "entity": "SalesTaxGroup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SalesTaxGroup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "SalesTaxGroupEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SalesTaxGroupEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "SalesTaxGroupEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SalesTaxGroupEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047506503",
+        "entity": "SalesTaxRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SalesTaxRate?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "SalesTaxRateEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SalesTaxRateEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "SalesTaxRateEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SalesTaxRateEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "SalesTaxRateEffectiveDateChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SalesTaxRateEffectiveDateChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047506620",
+        "entity": "SalesTaxRateSourceLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SalesTaxRateSourceLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047506740",
+        "entity": "SalesTaxRateTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SalesTaxRateTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047506762",
+        "entity": "SalesTaxRateVersion",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SalesTaxRateVersion?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ScreenerQuestion",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ScreenerQuestion?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487410",
+        "entity": "Sendout",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Sendout?fields=*"
+    },
+    {
+        "dateLastModified": "1770047489995",
+        "entity": "Shift",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Shift?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ShiftSetting",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ShiftSetting?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ShiftSharedSchedule",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ShiftSharedSchedule?fields=*"
+    },
+    {
+        "dateLastModified": "1769909093108",
+        "entity": "Skill",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Skill?fields=*"
+    },
+    {
+        "dateLastModified": "1769909059882",
+        "entity": "Specialty",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Specialty?fields=*"
+    },
+    {
+        "dateLastModified": "1770047504064",
+        "entity": "State",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/State?fields=*"
+    },
+    {
+        "dateLastModified": "1770047506614",
+        "entity": "StateSalesTaxRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/StateSalesTaxRate?fields=*"
+    },
+    {
+        "dateLastModified": "1769972411519",
+        "entity": "StateTaxForm",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/StateTaxForm?fields=*"
+    },
+    {
+        "dateLastModified": "1770047505998",
+        "entity": "StatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/StatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "Surcharge",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Surcharge?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "SurchargeEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SurchargeEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "SurchargeEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SurchargeEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501557",
+        "entity": "SurchargeRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SurchargeRate?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "SurchargeRateAssociationChangeHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SurchargeRateAssociationChangeHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "SurchargeRateEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SurchargeRateEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "SurchargeRateEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SurchargeRateEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "SurchargeRateEffectiveDateChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SurchargeRateEffectiveDateChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501612",
+        "entity": "SurchargeRateTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SurchargeRateTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047504214",
+        "entity": "SurchargeRateVersion",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SurchargeRateVersion?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "SurchargeType",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/SurchargeType?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487459",
+        "entity": "Task",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Task?fields=*"
+    },
+    {
+        "dateLastModified": "1770047498501",
+        "entity": "TaskEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TaskEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "TaskEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TaskEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "Tax",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Tax?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "TaxEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TaxEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "TaxEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TaxEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047506603",
+        "entity": "TaxJurisdictionTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TaxJurisdictionTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047506636",
+        "entity": "TaxStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TaxStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "TaxType",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TaxType?fields=*"
+    },
+    {
+        "dateLastModified": "1770047506725",
+        "entity": "TaxTypeLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TaxTypeLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047487504",
+        "entity": "Tearsheet",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/Tearsheet?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "TearsheetMember",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TearsheetMember?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "TearsheetRecipient",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TearsheetRecipient?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "TextUsMessageLog",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TextUsMessageLog?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "TextUsSenderServiceLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TextUsSenderServiceLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488370",
+        "entity": "TimeUnit",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TimeUnit?fields=*"
+    },
+    {
+        "dateLastModified": "1770047504083",
+        "entity": "TimeZoneGISLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TimeZoneGISLookup?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "TransactionNote",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TransactionNote?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "TransactionNoteType",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TransactionNoteType?fields=*"
+    },
+    {
+        "dateLastModified": "1770047504942",
+        "entity": "TransactionOrigin",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TransactionOrigin?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501566",
+        "entity": "TransactionStatus",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TransactionStatus?fields=*"
+    },
+    {
+        "dateLastModified": "1770047502179",
+        "entity": "TransactionType",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/TransactionType?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "UnbilledRevenueDistribution",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/UnbilledRevenueDistribution?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "UnbilledRevenueDistributionBatch",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/UnbilledRevenueDistributionBatch?fields=*"
+    },
+    {
+        "dateLastModified": "1770047501739",
+        "entity": "UnbilledRevenueGeneralLedgerExportStatusLookup",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/UnbilledRevenueGeneralLedgerExportStatusLookup?fields=*"
+    },
+    {
+        "dateLastModified": "1770047500749",
+        "entity": "UnitOfMeasure",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/UnitOfMeasure?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "UserDepartmentGrouping",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/UserDepartmentGrouping?fields=*"
+    },
+    {
+        "dateLastModified": "1769908606483",
+        "entity": "UserEditHistory",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/UserEditHistory?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "UserEditHistoryFieldChange",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/UserEditHistoryFieldChange?fields=*"
+    },
+    {
+        "dateLastModified": "1770047495449",
+        "entity": "UserHousingComplexUnit",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/UserHousingComplexUnit?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "UserPulseCallLog",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/UserPulseCallLog?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "UserPulseCallLogContact",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/UserPulseCallLogContact?fields=*"
+    },
+    {
+        "dateLastModified": "1770047477875",
+        "entity": "UserType",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/UserType?fields=*"
+    },
+    {
+        "dateLastModified": "1770047488400",
+        "entity": "WorkersCompensation",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/WorkersCompensation?fields=*"
+    },
+    {
+        "dateLastModified": "1769908797000",
+        "entity": "WorkersCompensationRate",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/WorkersCompensationRate?fields=*"
+    },
+    {
+        "dateLastModified": null,
+        "entity": "ZipCodeGis",
+        "metaUrl": "https://rest99.bullhornstaffing.com/rest-services/7loef4/meta/ZipCodeGis?fields=*"
+    }
+]
