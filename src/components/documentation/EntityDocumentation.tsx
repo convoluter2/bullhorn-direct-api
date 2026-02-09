@@ -488,7 +488,7 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
 
     setRefreshingAll(true)
     try {
-      const entitiesToRefresh = availableEntities.slice(0, 50)
+      const entitiesToRefresh = availableEntities
       toast.info(`Refreshing metadata for ${entitiesToRefresh.length} entities...`)
       
       let successCount = 0
@@ -511,7 +511,7 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
           
           successCount++
           
-          if (successCount % 10 === 0) {
+          if (successCount % 50 === 0) {
             toast.info(`Refreshed ${successCount}/${entitiesToRefresh.length} entities...`, { id: 'refresh-progress' })
           }
         } catch (err) {
