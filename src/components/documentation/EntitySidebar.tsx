@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { MagnifyingGlass, Database, X } from '@phosphor-icons/react'
-import { BULLHORN_ENTITIES } from '@/lib/entities'
+import { MagnifyingGlass, Database, X } from 
 import type { EntityMetadata } from '@/lib/entity-metadata'
+interface EntitySidebarProps {
+  onSelectEntity: (entityId: string) => void
 
 interface EntitySidebarProps {
   selectedEntity: string | null
@@ -34,42 +34,42 @@ export function EntitySidebar({
   ]
 
   const filteredEntities = allEntities.filter(entity =>
-    entity.label.toLowerCase().includes(search.toLowerCase()) ||
-    entity.id.toLowerCase().includes(search.toLowerCase())
-  )
-
-  return (
-    <div className="flex flex-col h-full border-r border-border bg-card/30">
       <div className="p-4 border-b border-border">
-        <div className="relative">
           <MagnifyingGlass 
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" 
-            size={16} 
-          />
-          <Input
-            placeholder="Search entities..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 pr-9"
-          />
-          {search && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-              onClick={() => setSearch('')}
-            >
-              <X size={14} />
-            </Button>
-          )}
-        </div>
-        <div className="mt-3 text-xs text-muted-foreground">
-          {filteredEntities.length} {filteredEntities.length === 1 ? 'entity' : 'entities'}
-        </div>
-      </div>
+   
 
-      <ScrollArea className="flex-1">
-        <div className="p-2">
+          
+            className="pl-9 pr-9"
+          {search && (
+              variant="ghost"
+              className="ab
+            >
+            </Button>
+        </di
+          {filte
+      </div>
+      <ScrollArea classNam
+          {filteredEntities.map((entity) => (
+              key={entity.id}
+            
+                transi
+                  ?
+                }
+            >
+                <Database size={16} className="shrink-0" />
+              </div>
+             
+                </Badge>
+            </button>
+
+            <d
+            </div>
+        </div>
+    </div>
+}
+
+
+
           {filteredEntities.map((entity) => (
             <button
               key={entity.id}
