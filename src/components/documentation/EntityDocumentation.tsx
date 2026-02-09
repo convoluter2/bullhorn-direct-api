@@ -641,9 +641,6 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
           session={session}
           onRefresh={handleRefresh}
         />
-    </div>
-  )
-}
       </div>
     </div>
   )
