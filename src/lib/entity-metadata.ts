@@ -38,11 +38,11 @@ export interface EntityMetadata {
 export class EntityMetadataService {
   private cache: Map<string, EntityMetadata> = new Map()
 
-  async fetchMetadata(entityName: string, session: BullhornSession): Promise<EntityMetadata> {
+  async fetchMetadata(entityName: string, session: BullhornSession, forceRefresh = false): Promise<EntityMetadata> {
     const cacheKey = `${entityName}-${session.corporationId}`
     
-    if (this.cache.has(cacheKey)) {
-      console.log('📦 Using cached metadata for:', entityName)
+    if (!forceRefresh && this.cache.has(cacheKey)) {
+      console.log('📦 Using in-memory cached metadata for:', entityName)
       return this.cache.get(cacheKey)!
     }
 
@@ -116,8 +116,20 @@ export class EntityMetadataService {
     return undefined
   }
 
-  clearCache(): void {
-    this.cache.clear()
+  clearCache(entityName?: string): void {
+    if (entityName) {
+      const keysToDelete: string[] = []
+      for (const key of this.cache.keys()) {
+        if (key.startsWith(entityName + '-')) {
+          keysToDelete.push(key)
+        }
+      }
+      keysToDelete.forEach(key => this.cache.delete(key))
+      console.log(`🧹 Cleared cache for entity: ${entityName}`)
+    } else {
+      this.cache.clear()
+      console.log('🧹 Cleared all metadata cache')
+    }
   }
 }
 

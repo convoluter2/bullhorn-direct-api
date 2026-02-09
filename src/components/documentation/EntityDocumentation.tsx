@@ -7,11 +7,18 @@ import type { BullhornSession } from '@/lib/types'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Database, WarningCircle } from '@phosphor-icons/react'
+import { Button } from '@/components/ui/button'
+import { Database, WarningCircle, ArrowsClockwise } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
 interface EntityDocumentationProps {
   session: BullhornSession | null
+}
+
+interface CachedMetadata {
+  metadata: EntityMetadata
+  cachedAt: number
+  corporationId: string
 }
 
 export function EntityDocumentation({ session }: EntityDocumentationProps) {
@@ -21,7 +28,8 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
   const [error, setError] = useState<string | null>(null)
   const [availableEntities, setAvailableEntities] = useState<string[]>([])
   const [loadingEntities, setLoadingEntities] = useState(false)
-  const [metadataCache, setMetadataCache] = useKV<Record<string, EntityMetadata>>('entity-metadata-cache', {})
+  const [metadataCache, setMetadataCache] = useKV<Record<string, CachedMetadata>>('entity-metadata-cache-v2', {})
+  const [refreshingAll, setRefreshingAll] = useState(false)
 
   useEffect(() => {
     const loadAvailableEntities = async () => {
@@ -104,23 +112,30 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
       const cacheKey = `${entityName}-${session.corporationId}`
       const cache = metadataCache || {}
       
-      if (!forceRefresh && cache[cacheKey]) {
+      const cachedData = cache[cacheKey]
+      if (!forceRefresh && cachedData && cachedData.corporationId === String(session.corporationId)) {
         if (!silent) {
-          setMetadata(cache[cacheKey])
+          setMetadata(cachedData.metadata)
           setLoading(false)
         }
         return
       }
 
-      const entityMetadata = await entityMetadataService.fetchMetadata(entityName, session)
+      const entityMetadata = await entityMetadataService.fetchMetadata(entityName, session, forceRefresh)
       
       if (!silent) {
         setMetadata(entityMetadata)
       }
       
+      const cachedMetadata: CachedMetadata = {
+        metadata: entityMetadata,
+        cachedAt: Date.now(),
+        corporationId: String(session.corporationId)
+      }
+      
       setMetadataCache((current) => ({
         ...(current || {}),
-        [cacheKey]: entityMetadata
+        [cacheKey]: cachedMetadata
       }))
 
       if (!silent) {
@@ -155,11 +170,68 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
     }
   }
 
+  const handleRefreshAll = async () => {
+    if (!session) {
+      toast.error('Not connected to Bullhorn')
+      return
+    }
+
+    setRefreshingAll(true)
+    try {
+      const entitiesToRefresh = availableEntities.slice(0, 50)
+      toast.info(`Refreshing metadata for ${entitiesToRefresh.length} entities...`)
+      
+      let successCount = 0
+      let failCount = 0
+      
+      for (const entityName of entitiesToRefresh) {
+        try {
+          const entityMetadata = await entityMetadataService.fetchMetadata(entityName, session, true)
+          const cacheKey = `${entityName}-${session.corporationId}`
+          const cachedMetadata: CachedMetadata = {
+            metadata: entityMetadata,
+            cachedAt: Date.now(),
+            corporationId: String(session.corporationId)
+          }
+          
+          setMetadataCache((current) => ({
+            ...(current || {}),
+            [cacheKey]: cachedMetadata
+          }))
+          
+          successCount++
+          
+          if (successCount % 10 === 0) {
+            toast.info(`Refreshed ${successCount}/${entitiesToRefresh.length} entities...`, { id: 'refresh-progress' })
+          }
+        } catch (err) {
+          console.error(`Failed to refresh ${entityName}:`, err)
+          failCount++
+        }
+      }
+      
+      toast.success(`Refreshed ${successCount} entities${failCount > 0 ? `, ${failCount} failed` : ''}`, { id: 'refresh-progress' })
+    } catch (error) {
+      toast.error('Failed to refresh metadata')
+    } finally {
+      setRefreshingAll(false)
+    }
+  }
+
+  const handleClearCache = () => {
+    if (confirm('Are you sure you want to clear all cached metadata? You will need to reload metadata for each entity you view.')) {
+      setMetadataCache(() => ({}))
+      toast.success('Metadata cache cleared')
+    }
+  }
+
   const metadataMap = new Map<string, EntityMetadata>()
-  Object.entries(metadataCache || {}).forEach(([key, value]) => {
+  Object.entries(metadataCache || {}).forEach(([key, cachedData]) => {
     const entityName = key.split('-')[0]
-    metadataMap.set(entityName, value)
+    metadataMap.set(entityName, cachedData.metadata)
   })
+
+  const cachedEntityCount = Object.keys(metadataCache || {}).length
 
   if (!session) {
     return (
@@ -218,6 +290,10 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
           onSelectEntity={handleSelectEntity}
           customEntities={availableEntities}
           entityMetadata={metadataMap}
+          onRefreshAll={handleRefreshAll}
+          refreshingAll={refreshingAll}
+          onClearCache={handleClearCache}
+          cachedCount={cachedEntityCount}
         />
       </div>
       <div className="flex-1">

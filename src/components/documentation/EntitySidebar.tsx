@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { MagnifyingGlass, Database, X } from '@phosphor-icons/react'
+import { MagnifyingGlass, Database, X, ArrowsClockwise, Trash } from '@phosphor-icons/react'
 import type { EntityMetadata } from '@/lib/entity-metadata'
 
 interface EntitySidebarProps {
@@ -11,13 +11,21 @@ interface EntitySidebarProps {
   onSelectEntity: (entityId: string) => void
   customEntities: string[]
   entityMetadata: Map<string, EntityMetadata>
+  onRefreshAll: () => void
+  refreshingAll: boolean
+  onClearCache: () => void
+  cachedCount: number
 }
 
 export function EntitySidebar({ 
   selectedEntity, 
   onSelectEntity, 
   customEntities,
-  entityMetadata 
+  entityMetadata,
+  onRefreshAll,
+  refreshingAll,
+  onClearCache,
+  cachedCount
 }: EntitySidebarProps) {
   const [search, setSearch] = useState('')
 
@@ -40,7 +48,8 @@ export function EntitySidebar({
 
   const allEntities = (Array.isArray(customEntities) ? customEntities : []).map(id => ({ 
     id, 
-    label: entityMetadata.get(id)?.label || id
+    label: entityMetadata.get(id)?.label || id,
+    isCached: entityMetadata.has(id)
   }))
 
   const filteredEntities = allEntities.filter(entity =>
@@ -50,34 +59,64 @@ export function EntitySidebar({
 
   return (
     <div className="flex flex-col h-full border-r border-border bg-card">
-      <div className="p-4 border-b border-border">
-        <div className="relative">
-          <MagnifyingGlass 
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" 
-            size={16}
-          />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search entities..."
-            className="pl-9 pr-9"
-          />
-          {search && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSearch('')}
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-            >
-              <X size={14} />
-            </Button>
+      <div className="p-4 border-b border-border space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <MagnifyingGlass 
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" 
+              size={16}
+            />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search entities..."
+              className="pl-9 pr-9"
+            />
+            {search && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSearch('')}
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+              >
+                <X size={14} />
+              </Button>
+            )}
+          </div>
+        </div>
+        
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={onRefreshAll}
+            disabled={refreshingAll}
+            className="flex-1"
+          >
+            <ArrowsClockwise className={refreshingAll ? 'animate-spin' : ''} />
+            {refreshingAll ? 'Refreshing...' : 'Refresh All'}
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={onClearCache}
+            disabled={cachedCount === 0}
+            className="px-3"
+            title="Clear metadata cache"
+          >
+            <Trash size={16} />
+          </Button>
+        </div>
+        
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>{filteredEntities.length} entities</span>
+          {cachedCount > 0 && (
+            <Badge variant="secondary" className="text-xs">
+              {cachedCount} cached
+            </Badge>
           )}
         </div>
-        {filteredEntities.length > 0 && (
-          <p className="text-xs text-muted-foreground mt-2">
-            {filteredEntities.length} entities
-          </p>
-        )}
       </div>
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-1">
@@ -98,6 +137,11 @@ export function EntitySidebar({
                 <Database size={16} className="shrink-0" />
                 <span className="truncate">{entity.label}</span>
               </div>
+              {entity.isCached && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                  ✓
+                </Badge>
+              )}
             </button>
           ))}
 
