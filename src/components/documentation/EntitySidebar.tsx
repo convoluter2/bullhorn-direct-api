@@ -132,7 +132,7 @@ export function EntitySidebar({
           )}
         </div>
       </div>
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 h-0">
         <div className="p-2 space-y-1">
           {filteredEntities.map((entity) => (
             <button
