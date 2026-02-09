@@ -21,6 +21,316 @@ interface CachedMetadata {
   corporationId: string
 }
 
+function generateCombinedHTMLDocumentation(entities: EntityMetadata[], session: BullhornSession | null): string {
+  const restUrl = session?.restUrl || 'https://rest.bullhornstaffing.com/rest-services/{corpToken}'
+  const token = session?.BhRestToken || '{BhRestToken}'
+  
+  const entitySections = entities.map(metadata => {
+    const fieldsHTML = metadata.fields
+      .map(field => `
+        <tr>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+            <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">${field.name}</code>
+          </td>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+            ${field.label || field.name}
+          </td>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="display: inline-block; padding: 2px 8px; background: ${getFieldTypeBadgeColor(field.type)}; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+              ${field.type}
+            </span>
+          </td>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+            <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">${field.dataType}</code>
+          </td>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+            ${field.required ? '' : '✓'}
+          </td>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+            ${field.readonly ? '✓' : ''}
+          </td>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+            ${field.associatedEntity?.entity || '-'}
+          </td>
+        </tr>
+      `)
+      .join('')
+
+    return `
+      <section id="${metadata.entity}" style="scroll-margin-top: 80px;">
+        <h2>${metadata.label}</h2>
+        <div>
+          <span class="entity-name">${metadata.entity}</span>
+          <span class="badge">${metadata.fields.length} fields</span>
+        </div>
+        
+        <h3>Fields Reference</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Field Name</th>
+              <th>Label</th>
+              <th>Type</th>
+              <th>Data Type</th>
+              <th>Optional</th>
+              <th>Read-Only</th>
+              <th>Associated Entity</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${fieldsHTML}
+          </tbody>
+        </table>
+
+        <h3>API Examples</h3>
+        <div style="display: grid; gap: 16px;">
+          <div>
+            <h4 style="font-size: 14px; margin-bottom: 8px; color: #374151;">Get Entity by ID</h4>
+            <pre>GET ${restUrl}/entity/${metadata.entity}/{id}?fields=*&BhRestToken=${token}</pre>
+          </div>
+          <div>
+            <h4 style="font-size: 14px; margin-bottom: 8px; color: #374151;">Search Entities</h4>
+            <pre>GET ${restUrl}/search/${metadata.entity}?query=id:1&fields=*&BhRestToken=${token}</pre>
+          </div>
+          <div>
+            <h4 style="font-size: 14px; margin-bottom: 8px; color: #374151;">Query Entities</h4>
+            <pre>GET ${restUrl}/query/${metadata.entity}?where=id>0&fields=*&orderBy=id&count=10&BhRestToken=${token}</pre>
+          </div>
+        </div>
+      </section>
+    `
+  }).join('')
+
+  const tableOfContents = entities
+    .map(e => `<li><a href="#${e.entity}" style="color: #3b82f6; text-decoration: none;">${e.label} (${e.entity})</a></li>`)
+    .join('')
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bullhorn API Documentation - All Entities</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+      color: #1f2937;
+      background: #ffffff;
+    }
+    
+    .header {
+      position: sticky;
+      top: 0;
+      background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+      color: white;
+      padding: 24px 40px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      z-index: 100;
+    }
+    
+    .header h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 32px;
+      font-weight: 700;
+    }
+    
+    .header p {
+      font-size: 14px;
+      opacity: 0.9;
+      margin-top: 4px;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 40px 40px 80px;
+    }
+    
+    .toc {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 40px;
+    }
+    
+    .toc h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 20px;
+      margin-bottom: 16px;
+      color: #111827;
+    }
+    
+    .toc ul {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 8px;
+    }
+    
+    .toc li {
+      padding: 4px 0;
+    }
+    
+    h1, h2, h3, h4 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+    }
+    
+    h2 {
+      font-size: 28px;
+      margin-top: 60px;
+      margin-bottom: 16px;
+      color: #111827;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+    
+    h3 {
+      font-size: 20px;
+      margin-top: 32px;
+      margin-bottom: 16px;
+      color: #374151;
+    }
+    
+    h4 {
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: #374151;
+    }
+    
+    .entity-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      color: #6b7280;
+      font-weight: 400;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 500;
+      margin-left: 12px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 24px 0;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    thead {
+      background: #f9fafb;
+    }
+    
+    th {
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 13px;
+      color: #374151;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    
+    tr:last-child td {
+      border-bottom: none;
+    }
+    
+    tr:hover {
+      background: #f9fafb;
+    }
+    
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+    }
+    
+    pre {
+      background: #1f2937;
+      color: #f9fafb;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    
+    section {
+      margin-bottom: 60px;
+    }
+    
+    .footer {
+      margin-top: 80px;
+      padding-top: 24px;
+      border-top: 1px solid #e5e7eb;
+      text-align: center;
+      color: #9ca3af;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Bullhorn API Documentation</h1>
+    <p>${entities.length} Entities • Generated ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
+  </div>
+  
+  <div class="container">
+    <div class="toc">
+      <h2>Table of Contents</h2>
+      <ul>
+        ${tableOfContents}
+      </ul>
+    </div>
+
+    ${entitySections}
+
+    <div class="footer">
+      Generated by Bullhorn Data Manager • ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
+    </div>
+  </div>
+</body>
+</html>`
+}
+
+function getFieldTypeBadgeColor(type: string): string {
+  const colors: Record<string, string> = {
+    'ID': '#3b82f6',
+    'SCALAR': '#10b981',
+    'TO_ONE': '#8b5cf6',
+    'TO_MANY': '#f97316',
+    'COMPOSITE': '#06b6d4'
+  }
+  return colors[type] || '#6b7280'
+}
+
 export function EntityDocumentation({ session }: EntityDocumentationProps) {
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null)
   const [metadata, setMetadata] = useState<EntityMetadata | null>(null)
@@ -225,6 +535,31 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
     }
   }
 
+  const handleExportAll = () => {
+    if (Object.keys(metadataCache || {}).length === 0) {
+      toast.error('No cached entities to export. Load some entities first.')
+      return
+    }
+
+    try {
+      const allEntities = Array.from(metadataMap.values())
+      const html = generateCombinedHTMLDocumentation(allEntities, session)
+      const blob = new Blob([html], { type: 'text/html' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `bullhorn-entities-documentation.html`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success(`Exported ${allEntities.length} entities to HTML`)
+    } catch (err) {
+      console.error('Failed to export all entities:', err)
+      toast.error('Failed to export documentation')
+    }
+  }
+
   const metadataMap = new Map<string, EntityMetadata>()
   Object.entries(metadataCache || {}).forEach(([key, cachedData]) => {
     const entityName = key.split('-')[0]
@@ -294,6 +629,7 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
           refreshingAll={refreshingAll}
           onClearCache={handleClearCache}
           cachedCount={cachedEntityCount}
+          onExportAll={handleExportAll}
         />
       </div>
       <div className="flex-1">

@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { MagnifyingGlass, Database, X, ArrowsClockwise, Trash } from '@phosphor-icons/react'
+import { MagnifyingGlass, Database, X, ArrowsClockwise, Trash, Export } from '@phosphor-icons/react'
 import type { EntityMetadata } from '@/lib/entity-metadata'
 
 interface EntitySidebarProps {
@@ -15,6 +15,7 @@ interface EntitySidebarProps {
   refreshingAll: boolean
   onClearCache: () => void
   cachedCount: number
+  onExportAll?: () => void
 }
 
 export function EntitySidebar({ 
@@ -25,7 +26,8 @@ export function EntitySidebar({
   onRefreshAll,
   refreshingAll,
   onClearCache,
-  cachedCount
+  cachedCount,
+  onExportAll
 }: EntitySidebarProps) {
   const [search, setSearch] = useState('')
 
@@ -96,6 +98,18 @@ export function EntitySidebar({
             <ArrowsClockwise className={refreshingAll ? 'animate-spin' : ''} />
             {refreshingAll ? 'Refreshing...' : 'Refresh All'}
           </Button>
+          
+          {onExportAll && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onExportAll}
+              className="px-3"
+              title="Export all cached entities to HTML"
+            >
+              <Export size={16} />
+            </Button>
+          )}
           
           <Button 
             variant="outline" 

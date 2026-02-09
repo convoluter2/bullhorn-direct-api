@@ -120,7 +120,8 @@ function App() {
         try {
           console.log('🔄 Token expiring soon, refreshing...', {
             currentConnectionId,
-            corporationId: session.corporationId
+            corporationId: session.corporationId,
+            timeUntilExpiry: Math.floor(timeUntilExpiry / 1000) + 's'
           })
           
           const credentials = await secureCredentialsAPI.getCredentials(currentConnectionId)
@@ -138,13 +139,17 @@ function App() {
             credentials.username
           )
           
+          console.log('🔐 Logging in with refreshed access token...')
           const newSession = await bullhornAPI.login(tokenData.accessToken, credentials.username)
           newSession.refreshToken = tokenData.refreshToken
+          newSession.accessToken = tokenData.accessToken
           newSession.expiresAt = Date.now() + (tokenData.expiresIn * 1000)
           
           console.log('✅ Token refreshed successfully:', {
             corporationId: newSession.corporationId,
-            restUrl: newSession.restUrl
+            restUrl: newSession.restUrl,
+            newExpiresIn: tokenData.expiresIn + 's',
+            expiresAt: new Date(newSession.expiresAt).toISOString()
           })
           
           setSession(() => newSession)
@@ -152,20 +157,27 @@ function App() {
           
           addLog('Token Refresh', 'success', 'Access token refreshed automatically', {
             connectionId: currentConnectionId,
-            corporationId: newSession.corporationId
+            corporationId: newSession.corporationId,
+            expiresIn: tokenData.expiresIn
           })
+          
+          toast.success('Session refreshed successfully', { duration: 2000 })
         } catch (error) {
           console.error('❌ Token refresh failed:', error)
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
           toast.error('Failed to refresh access token. Please reconnect.')
+          addLog('Token Refresh', 'error', 'Token refresh failed', { error: errorMessage })
           bullhornAPI.clearSession()
           setSession(() => null)
+          setCurrentConnectionId(() => null)
         }
       }
     }
 
     const interval = setInterval(checkTokenExpiry, 30000)
+    checkTokenExpiry()
     return () => clearInterval(interval)
-  }, [session, currentConnectionId, addLog, setSession])
+  }, [session, currentConnectionId, addLog, setSession, setCurrentConnectionId])
 
   const handleAuthenticated = (newSession: BullhornSession, connectionId?: string) => {
     console.log('App - handleAuthenticated called:', { 
