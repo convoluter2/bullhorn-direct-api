@@ -34,13 +34,31 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
       try {
         console.log('🔍 Loading all entities from /meta endpoint...')
         const entities = await bullhornAPI.getAllEntitiesMeta()
-        const entityNames = entities.map(e => e.entity)
+        
+        console.log('📊 Raw entities response:', entities)
+        console.log('📊 First 5 entities:', entities.slice(0, 5))
+        
+        if (!Array.isArray(entities)) {
+          throw new Error('getAllEntitiesMeta did not return an array')
+        }
+        
+        const entityNames = entities
+          .filter(e => e && typeof e === 'object' && typeof e.entity === 'string')
+          .map(e => e.entity)
+          .filter(name => name && name.length > 0)
+        
+        console.log(`✅ Loaded ${entityNames.length} entities:`, entityNames.slice(0, 10))
+        
+        if (entityNames.length === 0) {
+          throw new Error('No valid entity names found in response')
+        }
+        
         setAvailableEntities(entityNames)
-        console.log(`✅ Loaded ${entityNames.length} entities:`, entityNames.slice(0, 10), '...')
         toast.success(`Loaded ${entityNames.length} entities from your tenant`)
       } catch (error) {
         console.error('❌ Failed to load entities:', error)
-        toast.error('Failed to load available entities')
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        toast.error(`Failed to load entities: ${errorMessage}`)
         setAvailableEntities([])
       } finally {
         setLoadingEntities(false)

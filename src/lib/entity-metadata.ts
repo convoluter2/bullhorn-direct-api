@@ -1,4 +1,5 @@
 import type { BullhornSession } from './types'
+import { bullhornAPI } from './bullhorn-api'
 
 export interface EntityFieldMetadata {
   name: string
@@ -41,27 +42,28 @@ export class EntityMetadataService {
     const cacheKey = `${entityName}-${session.corporationId}`
     
     if (this.cache.has(cacheKey)) {
+      console.log('📦 Using cached metadata for:', entityName)
       return this.cache.get(cacheKey)!
     }
 
-    const params = new URLSearchParams({
-      BhRestToken: session.BhRestToken,
-      meta: 'full'
+    console.log('📚 Fetching fresh metadata for:', entityName)
+    
+    const data = await bullhornAPI.getMetadata(entityName)
+    
+    console.log('📊 Metadata response for', entityName, ':', {
+      entity: data.entity,
+      label: data.label,
+      fieldCount: data.fields?.length || 0,
+      hasFields: !!data.fields,
+      firstFewFields: data.fields?.slice(0, 5).map((f: any) => f.name) || []
     })
-
-    const url = `${session.restUrl}meta/${entityName}?${params.toString()}`
     
-    console.log('📚 Fetching metadata for:', entityName, url)
-
-    const response = await fetch(url)
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch metadata for ${entityName}: ${response.statusText}`)
+    if (!data.fields || data.fields.length === 0) {
+      console.warn(`⚠️ No fields returned for ${entityName}`)
+      throw new Error(`No fields found for entity ${entityName}. This entity may not be accessible or may not exist.`)
     }
-
-    const data = await response.json()
     
-    const fields: EntityFieldMetadata[] = data.fields?.map((field: any) => ({
+    const fields: EntityFieldMetadata[] = data.fields.map((field: any) => ({
       name: field.name,
       label: field.label || field.name,
       type: field.type,
@@ -81,7 +83,7 @@ export class EntityMetadataService {
       confidential: field.confidential,
       sortOrder: field.sortOrder,
       hideFromSearch: field.hideFromSearch
-    })) || []
+    }))
 
     const metadata: EntityMetadata = {
       entity: entityName,
@@ -95,6 +97,11 @@ export class EntityMetadataService {
       trackTitleChanges: data.trackTitleChanges,
       associations: data.associations
     }
+
+    console.log('✅ Processed metadata for', entityName, ':', {
+      totalFields: metadata.fields.length,
+      label: metadata.label
+    })
 
     this.cache.set(cacheKey, metadata)
     return metadata

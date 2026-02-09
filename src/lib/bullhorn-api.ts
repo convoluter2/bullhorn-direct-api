@@ -1840,15 +1840,25 @@ export class BullhornAPI {
     }
 
     const data = await response.json()
-    console.log('✅ Meta endpoint response:', {
-      totalEntities: Object.keys(data).length,
-      sampleEntities: Object.keys(data).slice(0, 5)
-    })
+    console.log('✅ Meta endpoint raw response type:', typeof data, Array.isArray(data))
+    console.log('✅ Meta endpoint response keys:', Object.keys(data).slice(0, 10))
+    console.log('✅ Meta endpoint full response:', data)
 
-    const entities = Object.entries(data).map(([entity, metaUrl]) => ({
-      entity,
-      metaUrl: metaUrl as string
-    }))
+    if (typeof data !== 'object' || data === null) {
+      throw new Error('Invalid response from meta endpoint: expected object')
+    }
+
+    const entities = Object.entries(data)
+      .filter(([key, value]) => typeof key === 'string' && typeof value === 'string')
+      .map(([entity, metaUrl]) => ({
+        entity,
+        metaUrl: metaUrl as string
+      }))
+
+    console.log('✅ Parsed entities:', {
+      totalEntities: entities.length,
+      sampleEntities: entities.slice(0, 10).map(e => e.entity)
+    })
 
     return entities.sort((a, b) => a.entity.localeCompare(b.entity))
   }
