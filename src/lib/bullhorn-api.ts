@@ -1810,7 +1810,7 @@ export class BullhornAPI {
     return []
   }
 
-  async getAllEntitiesMeta(): Promise<Array<{ entity: string; metaUrl: string }>> {
+  async getAllEntitiesMeta(): Promise<Array<{ entity: string; metaUrl: string; dateLastModified: string | null }>> {
     if (!this.session) {
       throw new Error('Not authenticated')
     }
@@ -1821,7 +1821,9 @@ export class BullhornAPI {
     }
 
     const params = new URLSearchParams({
-      BhRestToken: this.session.BhRestToken
+      BhRestToken: this.session.BhRestToken,
+      fields: '*',
+      meta: 'full'
     })
 
     const metaUrl = `${this.session.restUrl}meta?${params.toString()}`
@@ -1841,18 +1843,23 @@ export class BullhornAPI {
 
     const data = await response.json()
     console.log('✅ Meta endpoint raw response type:', typeof data, Array.isArray(data))
-    console.log('✅ Meta endpoint response keys:', Object.keys(data).slice(0, 10))
-    console.log('✅ Meta endpoint full response:', data)
-
-    if (typeof data !== 'object' || data === null) {
-      throw new Error('Invalid response from meta endpoint: expected object')
+    
+    if (!Array.isArray(data)) {
+      console.error('❌ Response is not an array:', data)
+      throw new Error('Invalid response from meta endpoint: expected array')
     }
 
-    const entities = Object.entries(data)
-      .filter(([key, value]) => typeof key === 'string' && typeof value === 'string')
-      .map(([entity, metaUrl]) => ({
-        entity,
-        metaUrl: metaUrl as string
+    console.log('✅ Meta endpoint response:', {
+      totalEntities: data.length,
+      sampleEntities: data.slice(0, 5)
+    })
+
+    const entities = data
+      .filter(item => item && typeof item === 'object' && typeof item.entity === 'string')
+      .map(item => ({
+        entity: item.entity,
+        metaUrl: item.metaUrl || '',
+        dateLastModified: item.dateLastModified || null
       }))
 
     console.log('✅ Parsed entities:', {
