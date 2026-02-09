@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { MagnifyingGlass, Database, X } from '@phosphor-icons/react'
 import type { EntityMetadata } from '@/lib/entity-metadata'
-import { BULLHORN_ENTITIES } from '@/lib/entities'
 
 interface EntitySidebarProps {
   selectedEntity: string | null
@@ -22,16 +21,10 @@ export function EntitySidebar({
 }: EntitySidebarProps) {
   const [search, setSearch] = useState('')
 
-  const allEntities = [
-    ...BULLHORN_ENTITIES.map(e => ({ id: e.id, label: e.label, isCustom: false })),
-    ...customEntities
-      .filter(id => !BULLHORN_ENTITIES.find(e => e.id === id))
-      .map(id => ({ 
-        id, 
-        label: entityMetadata.get(id)?.label || id, 
-        isCustom: true 
-      }))
-  ]
+  const allEntities = customEntities.map(id => ({ 
+    id, 
+    label: entityMetadata.get(id)?.label || id
+  }))
 
   const filteredEntities = allEntities.filter(entity =>
     entity.label.toLowerCase().includes(search.toLowerCase()) ||
@@ -88,11 +81,6 @@ export function EntitySidebar({
                 <Database size={16} className="shrink-0" />
                 <span className="truncate">{entity.label}</span>
               </div>
-              {entity.isCustom && (
-                <Badge variant="secondary" className="text-xs shrink-0">
-                  Custom
-                </Badge>
-              )}
             </button>
           ))}
 

@@ -4,6 +4,10 @@ import { EntitySidebar } from './EntitySidebar'
 import { EntityDocViewer } from './EntityDocViewer'
 import { entityMetadataService, type EntityMetadata } from '@/lib/entity-metadata'
 import type { BullhornSession } from '@/lib/types'
+import { bullhornAPI } from '@/lib/bullhorn-api'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Database, WarningCircle } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
 interface EntityDocumentationProps {
@@ -15,28 +19,36 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
   const [metadata, setMetadata] = useState<EntityMetadata | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [customEntities, setCustomEntities] = useKV<string[]>('custom-entities', [])
+  const [availableEntities, setAvailableEntities] = useState<string[]>([])
+  const [loadingEntities, setLoadingEntities] = useState(false)
   const [metadataCache, setMetadataCache] = useKV<Record<string, EntityMetadata>>('entity-metadata-cache', {})
 
   useEffect(() => {
-    const handleEntityUsage = (event: CustomEvent<{ entityName: string }>) => {
-      const { entityName } = event.detail
-      const entities = customEntities || []
-      
-      if (!entities.includes(entityName)) {
-        setCustomEntities((current) => [...(current || []), entityName])
-        
-        if (session) {
-          loadMetadata(entityName, false, true)
-        }
+    const loadAvailableEntities = async () => {
+      if (!session) {
+        setAvailableEntities([])
+        return
+      }
+
+      setLoadingEntities(true)
+      try {
+        console.log('🔍 Loading all entities from /meta endpoint...')
+        const entities = await bullhornAPI.getAllEntitiesMeta()
+        const entityNames = entities.map(e => e.entity)
+        setAvailableEntities(entityNames)
+        console.log(`✅ Loaded ${entityNames.length} entities:`, entityNames.slice(0, 10), '...')
+        toast.success(`Loaded ${entityNames.length} entities from your tenant`)
+      } catch (error) {
+        console.error('❌ Failed to load entities:', error)
+        toast.error('Failed to load available entities')
+        setAvailableEntities([])
+      } finally {
+        setLoadingEntities(false)
       }
     }
 
-    window.addEventListener('entity-usage', handleEntityUsage as EventListener)
-    return () => {
-      window.removeEventListener('entity-usage', handleEntityUsage as EventListener)
-    }
-  }, [session, customEntities, setCustomEntities])
+    loadAvailableEntities()
+  }, [session])
 
   const loadMetadata = useCallback(async (entityName: string, forceRefresh = false, silent = false) => {
     if (!session) {
@@ -74,11 +86,6 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
         [cacheKey]: entityMetadata
       }))
 
-      const entities = customEntities || []
-      if (!entities.includes(entityName)) {
-        setCustomEntities((current) => [...(current || []), entityName])
-      }
-
       if (!silent) {
         toast.success(`Loaded metadata for ${entityMetadata.label}`)
       }
@@ -93,7 +100,7 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
         setLoading(false)
       }
     }
-  }, [session, metadataCache, setMetadataCache, customEntities, setCustomEntities])
+  }, [session, metadataCache, setMetadataCache])
 
   useEffect(() => {
     if (selectedEntity) {
@@ -117,13 +124,55 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
     metadataMap.set(entityName, value)
   })
 
+  if (!session) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+        <div className="text-center space-y-4 max-w-md">
+          <Database size={64} className="mx-auto text-muted-foreground opacity-50" />
+          <div>
+            <h3 className="text-lg font-semibold">Not Connected</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Please connect to Bullhorn to view entity documentation
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (loadingEntities) {
+    return (
+      <div className="flex h-[calc(100vh-200px)] border border-border rounded-lg overflow-hidden bg-background">
+        <div className="w-80 shrink-0 border-r border-border bg-card p-4 space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <div className="space-y-2">
+            {[...Array(15)].map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <Database size={64} className="mx-auto text-accent animate-pulse" weight="duotone" />
+            <div>
+              <h3 className="text-lg font-semibold">Loading Entities</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Fetching all available entities from your tenant...
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-[calc(100vh-200px)] border border-border rounded-lg overflow-hidden bg-background">
       <div className="w-80 shrink-0">
         <EntitySidebar
           selectedEntity={selectedEntity}
           onSelectEntity={handleSelectEntity}
-          customEntities={customEntities || []}
+          customEntities={availableEntities}
           entityMetadata={metadataMap}
         />
       </div>

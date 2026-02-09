@@ -1810,6 +1810,49 @@ export class BullhornAPI {
     return []
   }
 
+  async getAllEntitiesMeta(): Promise<Array<{ entity: string; metaUrl: string }>> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const corpToken = this.session.restUrl.match(/rest-services\/([^/]+)/)?.[1]
+    if (!corpToken) {
+      throw new Error('Could not extract corporation token from restUrl')
+    }
+
+    const params = new URLSearchParams({
+      BhRestToken: this.session.BhRestToken
+    })
+
+    const metaUrl = `${this.session.restUrl}meta?${params.toString()}`
+    console.log('🔍 Fetching all entities from /meta endpoint:', metaUrl)
+
+    const response = await this.throttledFetch(
+      metaUrl,
+      undefined,
+      0
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error('❌ Meta endpoint failed:', error)
+      throw new Error(`Failed to fetch meta entities: ${error}`)
+    }
+
+    const data = await response.json()
+    console.log('✅ Meta endpoint response:', {
+      totalEntities: Object.keys(data).length,
+      sampleEntities: Object.keys(data).slice(0, 5)
+    })
+
+    const entities = Object.entries(data).map(([entity, metaUrl]) => ({
+      entity,
+      metaUrl: metaUrl as string
+    }))
+
+    return entities.sort((a, b) => a.entity.localeCompare(b.entity))
+  }
+
   async getAllEntities(): Promise<string[]> {
     if (!this.session) {
       throw new Error('Not authenticated')
