@@ -619,6 +619,9 @@ export class BullhornAPI {
 
     const encodedEntity = encodeURIComponent(config.entity)
 
+    const event = new CustomEvent('entity-usage', { detail: { entityName: config.entity } })
+    window.dispatchEvent(event)
+
     const query = rawQuery || this.buildQuery(config)
     console.log('🔍 Executing search:', {
       entity: config.entity,
@@ -890,6 +893,9 @@ export class BullhornAPI {
 
     const encodedEntity = encodeURIComponent(entity)
 
+    const event = new CustomEvent('entity-usage', { detail: { entityName: entity } })
+    window.dispatchEvent(event)
+
     console.log(`🔍 Fetching ${entity} entity by ID:`, {
       id,
       fields: fields.join(','),
@@ -953,6 +959,9 @@ export class BullhornAPI {
 
     const encodedEntity = encodeURIComponent(entity)
 
+    const event = new CustomEvent('entity-usage', { detail: { entityName: entity } })
+    window.dispatchEvent(event)
+
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken
     })
@@ -990,6 +999,9 @@ export class BullhornAPI {
     }
 
     const encodedEntity = encodeURIComponent(entity)
+
+    const event = new CustomEvent('entity-usage', { detail: { entityName: entity } })
+    window.dispatchEvent(event)
 
     console.log(`📝 Updating ${entity}/${id}:`, {
       data,

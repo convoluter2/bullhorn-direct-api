@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, Flask } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, Flask, BookOpen } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -29,6 +29,7 @@ import { ComprehensiveFieldTest } from '@/components/ComprehensiveFieldTest'
 import { PauseResumeTests } from '@/components/PauseResumeTests'
 import { SpeedTest } from '@/components/SpeedTest'
 import { DiagnosticPanel } from '@/components/DiagnosticPanel'
+import { EntityDocumentation } from '@/components/documentation/EntityDocumentation'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { sanitizeLogDetails } from '@/lib/utils'
@@ -510,7 +511,7 @@ function App() {
               environment={savedConnections.find(c => c.id === currentConnectionId)?.environment}
             />
             
-            <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -530,6 +531,10 @@ function App() {
               <TabsTrigger value="wfn-export" className="gap-2">
                 <Export size={18} />
                 <span className="hidden sm:inline">WFN Export</span>
+              </TabsTrigger>
+              <TabsTrigger value="documentation" className="gap-2">
+                <BookOpen size={18} />
+                <span className="hidden sm:inline">Documentation</span>
               </TabsTrigger>
               <TabsTrigger value="testing-tools" className="gap-2">
                 <Flask size={18} />
@@ -564,6 +569,10 @@ function App() {
 
             <TabsContent value="wfn-export" className="space-y-6">
               <WFNExport onLog={addLog} />
+            </TabsContent>
+
+            <TabsContent value="documentation" className="space-y-6">
+              <EntityDocumentation session={session} />
             </TabsContent>
 
             <TabsContent value="testing-tools" className="space-y-6">
