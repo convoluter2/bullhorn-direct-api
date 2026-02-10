@@ -88,7 +88,7 @@ export function useAutoRefresh(
     intervalSeconds: config?.intervalSeconds ?? DEFAULT_CONFIG.intervalSeconds,
     enable,
     disable,
-    setInterval: setIntervalSeconds,
+    setIntervalSeconds,
     toggle
   }
 }

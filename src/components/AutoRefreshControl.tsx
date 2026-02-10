@@ -29,7 +29,7 @@ export function AutoRefreshControl({ onRefresh, configKey = 'auto-refresh-config
     intervalSeconds,
     enable,
     disable,
-    setInterval: setIntervalSeconds,
+    setIntervalSeconds,
     toggle
   } = useAutoRefresh(configKey, onRefresh)
 
