@@ -49,8 +49,9 @@ export function useEntities() {
           return
         }
 
-        console.log('Fetching fresh entities from API...')
-        const fetchedEntities = await bullhornAPI.getAllEntities()
+        console.log('Fetching fresh entities from API using meta endpoint...')
+        const metaEntities = await bullhornAPI.getAllEntitiesMeta()
+        const fetchedEntities = metaEntities.map(e => e.entity).sort()
         
         if (fetchedEntities.length === 0) {
           setError('No entities available')
@@ -97,7 +98,8 @@ export function useEntities() {
           return
         }
 
-        const fetchedEntities = await bullhornAPI.getAllEntities()
+        const metaEntities = await bullhornAPI.getAllEntitiesMeta()
+        const fetchedEntities = metaEntities.map(e => e.entity).sort()
         
         if (fetchedEntities.length === 0) {
           setError('No entities available')
