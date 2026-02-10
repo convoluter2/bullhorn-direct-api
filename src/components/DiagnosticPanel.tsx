@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { MagnifyingGlass, Trash, Warning, Lightning } from '@phosphor-icons/react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
+import { CacheStatus } from '@/components/CacheStatus'
 
 interface StoredData {
   key: string
@@ -247,6 +248,8 @@ export function DiagnosticPanel() {
 
   return (
     <div className="space-y-6">
+      <CacheStatus />
+      
       <Card>
         <CardHeader>
           <CardTitle>JobOrderRateCardLine Tester</CardTitle>

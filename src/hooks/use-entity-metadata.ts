@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { getCustomFieldLabel } from '@/lib/custom-field-labels'
+import { entityCacheService } from '@/lib/entity-cache-service'
 
 export type EntityField = {
   name: string
@@ -28,18 +29,6 @@ export type EntityMetadata = {
   lastUpdated: number
 }
 
-const CACHE_DURATION = 1000 * 60 * 60
-
-const metadataCache: Record<string, EntityMetadata> = {}
-
-export function clearMetadataCache(entity?: string) {
-  if (entity) {
-    delete metadataCache[entity]
-  } else {
-    Object.keys(metadataCache).forEach(key => delete metadataCache[key])
-  }
-}
-
 export function useEntityMetadata(entity: string | undefined) {
   const [metadata, setMetadata] = useState<EntityMetadata | null>(null)
   const [loading, setLoading] = useState(false)
@@ -48,7 +37,6 @@ export function useEntityMetadata(entity: string | undefined) {
 
   const refresh = useCallback(() => {
     if (entity) {
-      clearMetadataCache(entity)
       setRefreshTrigger(prev => prev + 1)
     }
   }, [entity])
@@ -61,19 +49,20 @@ export function useEntityMetadata(entity: string | undefined) {
       return
     }
 
-    const cached = metadataCache[entity]
-    if (cached && Date.now() - cached.lastUpdated < CACHE_DURATION && refreshTrigger === 0) {
-      setMetadata(cached)
-      setLoading(false)
-      setError(null)
-      return
-    }
-
     const loadMetadata = async () => {
       setLoading(true)
       setError(null)
 
       try {
+        const cached = await entityCacheService.loadMetadataCache(entity)
+        if (cached && refreshTrigger === 0) {
+          console.log('📦 Using cached metadata for:', entity)
+          setMetadata(cached.metadata)
+          setLoading(false)
+          return
+        }
+
+        console.log('📚 Fetching fresh metadata for:', entity)
         const response = await bullhornAPI.getMetadata(entity)
 
         const fields: EntityField[] = []
@@ -130,7 +119,10 @@ export function useEntityMetadata(entity: string | undefined) {
         }
 
         setMetadata(newMetadata)
-        metadataCache[entity] = newMetadata
+        
+        await entityCacheService.saveMetadataCache(entity, newMetadata)
+        
+        console.log('✅ Metadata loaded and cached for:', entity, '- Fields:', fields.length)
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load metadata'
         setError(errorMessage)

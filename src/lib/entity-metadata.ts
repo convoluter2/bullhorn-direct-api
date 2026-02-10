@@ -1,5 +1,6 @@
 import type { BullhornSession } from './types'
 import { bullhornAPI } from './bullhorn-api'
+import { entityCacheService } from './entity-cache-service'
 
 export interface EntityFieldMetadata {
   name: string
@@ -36,14 +37,13 @@ export interface EntityMetadata {
 }
 
 export class EntityMetadataService {
-  private cache: Map<string, EntityMetadata> = new Map()
-
   async fetchMetadata(entityName: string, session: BullhornSession, forceRefresh = false): Promise<EntityMetadata> {
-    const cacheKey = `${entityName}-${session.corporationId}`
-    
-    if (!forceRefresh && this.cache.has(cacheKey)) {
-      console.log('📦 Using in-memory cached metadata for:', entityName)
-      return this.cache.get(cacheKey)!
+    if (!forceRefresh) {
+      const cached = await entityCacheService.loadMetadataCache(entityName)
+      if (cached) {
+        console.log('📦 Using persistent cached metadata for:', entityName)
+        return cached.metadata as EntityMetadata
+      }
     }
 
     console.log('📚 Fetching fresh metadata for:', entityName)
@@ -103,31 +103,30 @@ export class EntityMetadataService {
       label: metadata.label
     })
 
-    this.cache.set(cacheKey, metadata)
+    await entityCacheService.saveMetadataCache(entityName, metadata)
+    
     return metadata
   }
 
-  getCached(entityName: string): EntityMetadata | undefined {
-    for (const [key, value] of this.cache.entries()) {
-      if (key.startsWith(entityName + '-')) {
-        return value
-      }
-    }
-    return undefined
+  async getCached(entityName: string): Promise<EntityMetadata | undefined> {
+    const cached = await entityCacheService.loadMetadataCache(entityName)
+    return cached?.metadata as EntityMetadata | undefined
   }
 
-  clearCache(entityName?: string): void {
+  async clearCache(entityName?: string): Promise<void> {
     if (entityName) {
-      const keysToDelete: string[] = []
-      for (const key of this.cache.keys()) {
-        if (key.startsWith(entityName + '-')) {
-          keysToDelete.push(key)
-        }
+      const allKeys = await window.spark.kv.keys()
+      const keysToDelete = allKeys.filter(key => key === `metadata-cache-${entityName}`)
+      for (const key of keysToDelete) {
+        await window.spark.kv.delete(key)
       }
-      keysToDelete.forEach(key => this.cache.delete(key))
       console.log(`🧹 Cleared cache for entity: ${entityName}`)
     } else {
-      this.cache.clear()
+      const allKeys = await window.spark.kv.keys()
+      const metadataKeys = allKeys.filter(key => key.startsWith('metadata-cache-'))
+      for (const key of metadataKeys) {
+        await window.spark.kv.delete(key)
+      }
       console.log('🧹 Cleared all metadata cache')
     }
   }

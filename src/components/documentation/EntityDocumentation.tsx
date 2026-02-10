@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useKV } from '@github/spark/hooks'
 import { EntitySidebar } from './EntitySidebar'
 import { EntityDocViewer } from './EntityDocViewer'
 import { entityMetadataService, type EntityMetadata } from '@/lib/entity-metadata'
+import { entityCacheService } from '@/lib/entity-cache-service'
 import type { BullhornSession } from '@/lib/types'
-import { bullhornAPI } from '@/lib/bullhorn-api'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -13,12 +12,6 @@ import { toast } from 'sonner'
 
 interface EntityDocumentationProps {
   session: BullhornSession | null
-}
-
-interface CachedMetadata {
-  metadata: EntityMetadata
-  cachedAt: number
-  corporationId: string
 }
 
 function generateCombinedHTMLDocumentation(entities: EntityMetadata[], session: BullhornSession | null): string {
@@ -338,7 +331,6 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
   const [error, setError] = useState<string | null>(null)
   const [availableEntities, setAvailableEntities] = useState<string[]>([])
   const [loadingEntities, setLoadingEntities] = useState(false)
-  const [metadataCache, setMetadataCache] = useKV<Record<string, CachedMetadata>>('entity-metadata-cache-v2', {})
   const [refreshingAll, setRefreshingAll] = useState(false)
 
   useEffect(() => {
@@ -350,48 +342,21 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
 
       setLoadingEntities(true)
       try {
-        console.log('🔍 Loading all entities from /meta endpoint...')
-        const entities = await bullhornAPI.getAllEntitiesMeta()
+        console.log('🔍 Loading entities from persistent cache...')
+        const cachedEntities = await entityCacheService.getEntityList()
         
-        console.log('📊 Raw entities response type:', typeof entities, 'isArray:', Array.isArray(entities))
-        console.log('📊 Raw entities response length:', Array.isArray(entities) ? entities.length : 'N/A')
-        console.log('📊 First 5 entities:', Array.isArray(entities) ? entities.slice(0, 5) : entities)
-        
-        if (!Array.isArray(entities)) {
-          console.error('❌ getAllEntitiesMeta did not return an array, got:', typeof entities, entities)
-          throw new Error('getAllEntitiesMeta did not return an array')
+        if (cachedEntities.length === 0) {
+          console.log('📥 No cache found, fetching from API...')
+          await entityCacheService.refreshEntityList()
+          const refreshedEntities = await entityCacheService.getEntityList()
+          const entityNames = refreshedEntities.map(e => e.entity).sort()
+          setAvailableEntities(entityNames)
+          toast.success(`Loaded ${entityNames.length} entities`)
+        } else {
+          const entityNames = cachedEntities.map(e => e.entity).sort()
+          setAvailableEntities(entityNames)
+          console.log(`✅ Loaded ${entityNames.length} entities from cache`)
         }
-        
-        const entityNames = entities
-          .filter(e => {
-            const isValid = e && typeof e === 'object' && typeof e.entity === 'string'
-            if (!isValid) {
-              console.warn('⚠️ Invalid entity item:', e)
-            }
-            return isValid
-          })
-          .map(e => e.entity)
-          .filter(name => {
-            const isValid = name && name.length > 0
-            if (!isValid) {
-              console.warn('⚠️ Invalid entity name:', name)
-            }
-            return isValid
-          })
-        
-        console.log(`✅ Extracted ${entityNames.length} entity names`)
-        console.log(`📋 First 20 entity names:`, entityNames.slice(0, 20))
-        console.log(`📋 Entity names data type check:`, entityNames.map(n => typeof n).slice(0, 5))
-        
-        if (entityNames.length === 0) {
-          throw new Error('No valid entity names found in response')
-        }
-        
-        const sortedEntityNames = [...entityNames].sort((a, b) => a.localeCompare(b))
-        console.log(`📋 Setting ${sortedEntityNames.length} sorted entity names`)
-        
-        setAvailableEntities(sortedEntityNames)
-        toast.success(`Loaded ${sortedEntityNames.length} entities from your tenant`)
       } catch (error) {
         console.error('❌ Failed to load entities:', error)
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -419,36 +384,10 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
     }
 
     try {
-      const cacheKey = `${entityName}-${session.corporationId}`
-      const cache = metadataCache || {}
-      
-      const cachedData = cache[cacheKey]
-      if (!forceRefresh && cachedData && cachedData.corporationId === String(session.corporationId)) {
-        if (!silent) {
-          setMetadata(cachedData.metadata)
-          setLoading(false)
-        }
-        return
-      }
-
       const entityMetadata = await entityMetadataService.fetchMetadata(entityName, session, forceRefresh)
       
       if (!silent) {
         setMetadata(entityMetadata)
-      }
-      
-      const cachedMetadata: CachedMetadata = {
-        metadata: entityMetadata,
-        cachedAt: Date.now(),
-        corporationId: String(session.corporationId)
-      }
-      
-      setMetadataCache((current) => ({
-        ...(current || {}),
-        [cacheKey]: cachedMetadata
-      }))
-
-      if (!silent) {
         toast.success(`Loaded metadata for ${entityMetadata.label}`)
       }
     } catch (err) {
@@ -462,7 +401,7 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
         setLoading(false)
       }
     }
-  }, [session, metadataCache, setMetadataCache])
+  }, [session])
 
   useEffect(() => {
     if (selectedEntity) {
@@ -496,19 +435,7 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
       
       for (const entityName of entitiesToRefresh) {
         try {
-          const entityMetadata = await entityMetadataService.fetchMetadata(entityName, session, true)
-          const cacheKey = `${entityName}-${session.corporationId}`
-          const cachedMetadata: CachedMetadata = {
-            metadata: entityMetadata,
-            cachedAt: Date.now(),
-            corporationId: String(session.corporationId)
-          }
-          
-          setMetadataCache((current) => ({
-            ...(current || {}),
-            [cacheKey]: cachedMetadata
-          }))
-          
+          await entityMetadataService.fetchMetadata(entityName, session, true)
           successCount++
           
           if (successCount % 50 === 0) {
@@ -528,21 +455,36 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
     }
   }
 
-  const handleClearCache = () => {
+  const handleClearCache = async () => {
     if (confirm('Are you sure you want to clear all cached metadata? You will need to reload metadata for each entity you view.')) {
-      setMetadataCache(() => ({}))
+      await entityMetadataService.clearCache()
       toast.success('Metadata cache cleared')
     }
   }
 
-  const handleExportAll = () => {
-    if (Object.keys(metadataCache || {}).length === 0) {
-      toast.error('No cached entities to export. Load some entities first.')
-      return
-    }
-
+  const handleExportAll = async () => {
     try {
-      const allEntities = Array.from(metadataMap.values())
+      const allKeys = await window.spark.kv.keys()
+      const metadataKeys = allKeys.filter(key => key.startsWith('metadata-cache-'))
+      
+      if (metadataKeys.length === 0) {
+        toast.error('No cached entities to export. Load some entities first.')
+        return
+      }
+
+      const allEntities: EntityMetadata[] = []
+      for (const key of metadataKeys) {
+        const cached = await window.spark.kv.get<any>(key)
+        if (cached && cached.metadata) {
+          allEntities.push(cached.metadata)
+        }
+      }
+
+      if (allEntities.length === 0) {
+        toast.error('No valid metadata found to export')
+        return
+      }
+
       const html = generateCombinedHTMLDocumentation(allEntities, session)
       const blob = new Blob([html], { type: 'text/html' })
       const url = URL.createObjectURL(blob)
@@ -559,14 +501,6 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
       toast.error('Failed to export documentation')
     }
   }
-
-  const metadataMap = new Map<string, EntityMetadata>()
-  Object.entries(metadataCache || {}).forEach(([key, cachedData]) => {
-    const entityName = key.split('-')[0]
-    metadataMap.set(entityName, cachedData.metadata)
-  })
-
-  const cachedEntityCount = Object.keys(metadataCache || {}).length
 
   if (!session) {
     return (
@@ -624,11 +558,11 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
           selectedEntity={selectedEntity}
           onSelectEntity={handleSelectEntity}
           customEntities={availableEntities}
-          entityMetadata={metadataMap}
+          entityMetadata={new Map()}
           onRefreshAll={handleRefreshAll}
           refreshingAll={refreshingAll}
           onClearCache={handleClearCache}
-          cachedCount={cachedEntityCount}
+          cachedCount={0}
           onExportAll={handleExportAll}
         />
       </div>
