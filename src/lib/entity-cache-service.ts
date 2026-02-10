@@ -3,8 +3,8 @@ import { bullhornAPI } from './bullhorn-api'
 export interface CachedEntity {
   entity: string
   label?: string
-  isManual?: boolean
   metaUrl?: string
+  isManual?: boolean
   lastUpdated: number
 }
 
@@ -42,16 +42,62 @@ class EntityCacheService {
     }
   }
 
-  async saveEntityCache(cache: EntityCacheData): Promise<void> {
+  async saveEntityCache(cacheData: EntityCacheData): Promise<void> {
     try {
-      await window.spark.kv.set('entity-cache-v2', cache)
-      console.log('✅ Entity cache saved:', cache.entities.length, 'entities')
+      await window.spark.kv.set('entity-cache-v2', cacheData)
     } catch (error) {
       console.error('Failed to save entity cache:', error)
     }
   }
 
-  async loadMetadataCache(entityName: string): Promise<any | null> {
+  async refreshEntityList(silent: boolean = false): Promise<CachedEntity[]> {
+    try {
+      const session = bullhornAPI.getSession()
+      if (!session) {
+        console.log('⚠️ No active session, cannot refresh entity list')
+        return []
+      }
+
+      if (!silent) {
+        console.log('🔄 Refreshing entity list from API...')
+      }
+
+      const response = await bullhornAPI.getAllEntitiesMeta()
+      const apiEntities: CachedEntity[] = response.map((e: any) => ({
+        entity: e.entity,
+        label: e.label,
+        metaUrl: e.metaUrl,
+        isManual: false,
+        lastUpdated: Date.now()
+      }))
+
+      const cache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
+      const manualEntities = cache?.entities.filter(e => e.isManual) || []
+
+      const allEntities = [
+        ...apiEntities,
+        ...manualEntities
+      ].sort((a, b) => a.entity.localeCompare(b.entity))
+
+      const updatedCache: EntityCacheData = {
+        entities: allEntities,
+        lastFullRefresh: Date.now()
+      }
+
+      await this.saveEntityCache(updatedCache)
+
+      if (!silent) {
+        console.log('✅ Entity list refreshed:', allEntities.length, 'entities')
+      }
+
+      return allEntities
+    } catch (error) {
+      console.error('Failed to refresh entity list:', error)
+      return []
+    }
+  }
+
+  async getMetadataCache(entityName: string): Promise<any | null> {
     try {
       const cache = await window.spark.kv.get<MetadataCache>(`metadata-cache-${entityName}`)
       if (!cache) {
@@ -82,60 +128,19 @@ class EntityCacheService {
     }
   }
 
-  async refreshEntityList(silent = false): Promise<CachedEntity[]> {
-    if (!silent) {
-      console.log('🔄 Refreshing entity list from API...')
-    }
-
-    try {
-      const session = bullhornAPI.getSession()
-      if (!session) {
-        console.log('⚠️ No active session, cannot refresh entity list')
-        return []
-      }
-
-      const existingCache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
-      
-      const manualEntities = existingCache?.entities.filter(e => e.isManual) || []
-      
-      const metaEntities = await bullhornAPI.getAllEntitiesMeta()
-      const apiEntities: CachedEntity[] = metaEntities.map(e => ({
-        entity: e.entity,
-        label: e.entity,
-        isManual: false,
-        metaUrl: e.metaUrl,
-        lastUpdated: Date.now()
-      }))
-
-      const allEntities = [
-        ...apiEntities,
-        ...manualEntities
-      ].sort((a, b) => a.entity.localeCompare(b.entity))
-
-      const cacheData: EntityCacheData = {
-        entities: allEntities,
-        lastFullRefresh: Date.now()
-      }
-
-      await this.saveEntityCache(cacheData)
-
-      if (!silent) {
-        console.log('✅ Entity list refreshed:', allEntities.length, 'entities')
-      }
-
-      return allEntities
-    } catch (error) {
-      console.error('Failed to refresh entity list:', error)
-      throw error
-    }
+  async loadMetadataCache(entityName: string): Promise<any | null> {
+    return this.getMetadataCache(entityName)
   }
 
   async addManualEntity(entityName: string): Promise<boolean> {
     try {
       const cache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
+      if (!cache) {
+        return false
+      }
 
-      if (cache?.entities.some(e => e.entity === entityName)) {
-        console.log(`Entity ${entityName} already exists in cache`)
+      if (cache.entities.some(e => e.entity === entityName)) {
+        console.log(`⚠️ Entity ${entityName} already exists`)
         return false
       }
 
@@ -147,13 +152,12 @@ class EntityCacheService {
       }
 
       const updatedCache: EntityCacheData = {
-        entities: [...(cache?.entities || []), newEntity].sort((a, b) => a.entity.localeCompare(b.entity)),
-        lastFullRefresh: cache?.lastFullRefresh || Date.now()
+        entities: [...cache.entities, newEntity].sort((a, b) => a.entity.localeCompare(b.entity)),
+        lastFullRefresh: cache.lastFullRefresh
       }
 
       await this.saveEntityCache(updatedCache)
-
-      console.log(`✅ Manual entity ${entityName} added to cache`)
+      console.log(`✅ Manual entity ${entityName} added`)
       return true
     } catch (error) {
       console.error(`Failed to add manual entity ${entityName}:`, error)
@@ -165,7 +169,7 @@ class EntityCacheService {
     if (this.refreshTimer) {
       return
     }
-
+    
     this.refreshTimer = setInterval(async () => {
       const cache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
       if (!cache) {
@@ -173,8 +177,8 @@ class EntityCacheService {
       }
       
       const shouldRefreshNow = Date.now() - cache.lastFullRefresh > REFRESH_INTERVAL
-
       if (shouldRefreshNow) {
+        console.log('🔄 Background refresh triggered')
         await this.refreshEntityList(true)
       }
     }, REFRESH_INTERVAL)
@@ -194,9 +198,30 @@ class EntityCacheService {
     manualCount: number
     apiCount: number
   }> {
-    const cache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
+    try {
+      const cache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
+      if (!cache) {
+        return {
+          entityCount: 0,
+          lastRefresh: null,
+          nextRefresh: null,
+          manualCount: 0,
+          apiCount: 0
+        }
+      }
 
-    if (!cache) {
+      const manualCount = cache.entities.filter(e => e.isManual).length
+      const apiCount = cache.entities.filter(e => !e.isManual).length
+
+      return {
+        entityCount: cache.entities.length,
+        lastRefresh: cache.lastFullRefresh,
+        nextRefresh: cache.lastFullRefresh + REFRESH_INTERVAL,
+        manualCount,
+        apiCount
+      }
+    } catch (error) {
+      console.error('Failed to get cache status:', error)
       return {
         entityCount: 0,
         lastRefresh: null,
@@ -204,17 +229,6 @@ class EntityCacheService {
         manualCount: 0,
         apiCount: 0
       }
-    }
-
-    const manualCount = cache.entities.filter(e => e.isManual).length
-    const apiCount = cache.entities.filter(e => !e.isManual).length
-
-    return {
-      entityCount: cache.entities.length,
-      lastRefresh: cache.lastFullRefresh,
-      nextRefresh: cache.lastFullRefresh + REFRESH_INTERVAL,
-      manualCount,
-      apiCount
     }
   }
 }
