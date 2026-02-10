@@ -14,6 +14,7 @@ export function useEntities() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [entitiesCache, setEntitiesCache] = useKV<EntitiesCache | null>('entities-cache', null)
+  const [lastRefresh, setLastRefresh] = useState<number | null>(null)
   const loadingRef = useRef(false)
   const hasLoadedRef = useRef(false)
   const cacheCheckedRef = useRef(false)
@@ -108,6 +109,7 @@ export function useEntities() {
         setEntities(fetchedEntities)
         hasLoadedRef.current = true
         cacheCheckedRef.current = true
+        setLastRefresh(Date.now())
         
         const newCache = {
           entities: fetchedEntities,
@@ -126,6 +128,42 @@ export function useEntities() {
     }
 
     loadEntities()
+  }, [setEntitiesCache])
+
+  const refreshInBackground = useCallback(async () => {
+    if (loadingRef.current) {
+      console.log('🔄 Background refresh skipped - already loading')
+      return
+    }
+
+    const session = bullhornAPI.getSession()
+    if (!session) {
+      console.log('🔄 Background refresh skipped - no session')
+      return
+    }
+
+    console.log('🔄 Background refresh starting...')
+    loadingRef.current = true
+
+    try {
+      const metaEntities = await bullhornAPI.getAllEntitiesMeta()
+      const fetchedEntities = metaEntities.map(e => e.entity).sort()
+      
+      setEntities(fetchedEntities)
+      setLastRefresh(Date.now())
+      
+      const newCache = {
+        entities: fetchedEntities,
+        lastUpdated: Date.now()
+      }
+      setEntitiesCache(() => newCache)
+      
+      console.log('✅ Background refresh completed:', fetchedEntities.length, 'entities')
+    } catch (err) {
+      console.error('❌ Background refresh failed:', err)
+    } finally {
+      loadingRef.current = false
+    }
   }, [setEntitiesCache])
 
   const addEntity = useCallback((entityName: string) => {
@@ -148,5 +186,5 @@ export function useEntities() {
     return true
   }, [entities, setEntitiesCache])
 
-  return { entities, loading, error, refresh, addEntity }
+  return { entities, loading, error, refresh, refreshInBackground, addEntity, lastRefresh }
 }

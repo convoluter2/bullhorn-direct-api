@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Eye, ArrowCounterClockwise, ListBullets, TreeStructure, Pause, Play, Stop, DownloadSimple } from '@phosphor-icons/react'
+import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Eye, ArrowCounterClockwise, ListBullets, TreeStructure, Pause, Play, Stop, DownloadSimple, Clock } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV, exportToCSV, exportToJSON } from '@/lib/csv-utils'
@@ -27,6 +27,7 @@ import { ConditionalAssociationBuilder, type ConditionalAssociation } from '@/co
 import { getAssociationsForRecord, mergeAssociationActions, describeAssociation } from '@/lib/conditional-logic'
 import { FilterGroupBuilder } from '@/components/FilterGroupBuilder'
 import { EntityHelpAlert } from '@/components/EntityHelpAlert'
+import { AutoRefreshControl } from '@/components/AutoRefreshControl'
 import type { QueryFilter, UpdateSnapshot, FilterGroup, ExecutionState } from '@/lib/types'
 
 interface SmartStackProps {
@@ -102,7 +103,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
   const [persistedState, setPersistedState, deletePersistedState] = useKV<PersistedSmartStackState | null>('smartstack-paused-state', null)
   const [showRestorePrompt, setShowRestorePrompt] = useState(false)
 
-  const { entities, loading: entitiesLoading, refresh: refreshEntities, addEntity } = useEntities()
+  const { entities, loading: entitiesLoading, refresh: refreshEntities, refreshInBackground, addEntity, lastRefresh } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(selectedEntity || undefined)
   
   const availableFields = metadata?.fields || []
@@ -801,6 +802,12 @@ export function SmartStack({ onLog }: SmartStackProps) {
 
   return (
     <div className="space-y-6">
+      <AutoRefreshControl 
+        onRefresh={refreshInBackground} 
+        configKey="smartstack-entities-auto-refresh"
+        compact={true}
+      />
+      
       {showRestorePrompt && persistedState && (
         <Card className="border-accent bg-accent/5">
           <CardHeader>
@@ -877,6 +884,12 @@ export function SmartStack({ onLog }: SmartStackProps) {
                 {!entitiesLoading && entities.length > 0 && (
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="text-xs">{entities.length} entities</Badge>
+                    {lastRefresh && (
+                      <Badge variant="outline" className="text-xs font-mono gap-1">
+                        <Clock size={12} />
+                        {new Date(lastRefresh).toLocaleTimeString()}
+                      </Badge>
+                    )}
                     <Button 
                       size="sm" 
                       variant="ghost" 

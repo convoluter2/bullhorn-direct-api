@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye, ArrowsClockwise, ArrowCounterClockwise, Pause, Play, Stop, DownloadSimple, Gauge, Trash } from '@phosphor-icons/react'
+import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye, ArrowsClockwise, ArrowCounterClockwise, Pause, Play, Stop, DownloadSimple, Gauge, Trash, Clock } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV, exportToCSV, exportToJSON } from '@/lib/csv-utils'
@@ -22,6 +22,7 @@ import { ManualEntityDialog } from '@/components/ManualEntityDialog'
 import { LookupFieldSelector } from '@/components/LookupFieldSelector'
 import { SpeedControl } from '@/components/SpeedControl'
 import { ToManyConfigSelector } from '@/components/ToManyConfigSelector'
+import { AutoRefreshControl } from '@/components/AutoRefreshControl'
 import type { CSVMapping, UpdateSnapshot, ExecutionState } from '@/lib/types'
 
 interface CSVLoaderProps {
@@ -89,7 +90,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const processingStartTimeRef = useRef<number>(0)
   const lastProgressUpdateRef = useRef<{ time: number; index: number }>({ time: 0, index: 0 })
 
-  const { entities, loading: entitiesLoading, refresh: refreshEntities, addEntity } = useEntities()
+  const { entities, loading: entitiesLoading, refresh: refreshEntities, refreshInBackground, addEntity, lastRefresh } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
   
   const availableFields = metadata?.fields || []
@@ -800,6 +801,12 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
 
   return (
     <div className="space-y-6">
+      <AutoRefreshControl 
+        onRefresh={refreshInBackground} 
+        configKey="csvloader-entities-auto-refresh"
+        compact={true}
+      />
+      
       {showRestorePrompt && persistedState && (
         <Card className="border-accent bg-accent/5">
           <CardHeader>
@@ -841,6 +848,12 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                 {!entitiesLoading && entities.length > 0 && (
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="text-xs">{entities.length} entities</Badge>
+                    {lastRefresh && (
+                      <Badge variant="outline" className="text-xs font-mono gap-1">
+                        <Clock size={12} />
+                        {new Date(lastRefresh).toLocaleTimeString()}
+                      </Badge>
+                    )}
                     <Button 
                       size="sm" 
                       variant="ghost" 

@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Stack, Plus, Trash, Lightning, MagnifyingGlass, 
   ArrowsClockwise, Eye, ArrowCounterClockwise, 
-  ListBullets, TreeStructure, DownloadSimple 
+  ListBullets, TreeStructure, DownloadSimple, Clock
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
@@ -30,6 +30,7 @@ import { ManualEntityDialog } from '@/components/ManualEntityDialog'
 import { FieldSelector } from '@/components/FieldSelector'
 import { FilterGroupBuilder } from '@/components/FilterGroupBuilder'
 import { ConditionalAssociationBuilder, type ConditionalAssociation } from '@/components/ConditionalAssociationBuilder'
+import { AutoRefreshControl } from '@/components/AutoRefreshControl'
 import { getAssociationsForRecord, mergeAssociationActions, describeAssociation } from '@/lib/conditional-logic'
 import type { QueryFilter, QueryConfig, FilterGroup, UpdateSnapshot } from '@/lib/types'
 
@@ -84,7 +85,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
   const [conditionalAssociations, setConditionalAssociations] = useState<ConditionalAssociation[]>([])
   const [useConditionalLogic, setUseConditionalLogic] = useState(false)
 
-  const { entities, loading: entitiesLoading, error: entitiesError, refresh: refreshEntities, addEntity } = useEntities()
+  const { entities, loading: entitiesLoading, error: entitiesError, refresh: refreshEntities, refreshInBackground, addEntity, lastRefresh } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
   const { metadata: targetMetadata, loading: targetMetadataLoading, error: targetMetadataError } = useEntityMetadata(targetEntity || undefined)
 
@@ -669,6 +670,12 @@ export function QueryStack({ onLog }: QueryStackProps) {
 
   return (
     <div className="space-y-6">
+      <AutoRefreshControl 
+        onRefresh={refreshInBackground} 
+        configKey="querystack-entities-auto-refresh"
+        compact={true}
+      />
+      
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -693,6 +700,12 @@ export function QueryStack({ onLog }: QueryStackProps) {
                   {!entitiesLoading && entities.length > 0 && (
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="text-xs">{entities.length} entities</Badge>
+                      {lastRefresh && (
+                        <Badge variant="outline" className="text-xs font-mono gap-1">
+                          <Clock size={12} />
+                          {new Date(lastRefresh).toLocaleTimeString()}
+                        </Badge>
+                      )}
                       <Button 
                         size="sm" 
                         variant="ghost" 

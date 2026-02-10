@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { MagnifyingGlass, Plus, Trash, Lightning, DownloadSimple, X, CaretLeft, CaretRight, ArrowsClockwise, ListBullets, TreeStructure, FloppyDisk, PencilSimple, Warning, Pause, Play, Stop } from '@phosphor-icons/react'
+import { MagnifyingGlass, Plus, Trash, Lightning, DownloadSimple, X, CaretLeft, CaretRight, ArrowsClockwise, ListBullets, TreeStructure, FloppyDisk, PencilSimple, Warning, Pause, Play, Stop, Clock } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
@@ -26,6 +26,7 @@ import { OperationProgressControls } from '@/components/OperationProgressControl
 import { usePausableOperation } from '@/hooks/use-pausable-operation'
 import { getProductionOperators } from '@/lib/validated-operators'
 import { EntityHelpAlert } from '@/components/EntityHelpAlert'
+import { AutoRefreshControl } from '@/components/AutoRefreshControl'
 import type { QueryFilter, QueryConfig, FilterGroup, ExecutionState } from '@/lib/types'
 
 interface QueryBlastProps {
@@ -106,7 +107,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
     setShowRestorePrompt(false)
   }
 
-  const { entities, loading: entitiesLoading, error: entitiesError, refresh: refreshEntities, addEntity } = useEntities()
+  const { entities, loading: entitiesLoading, error: entitiesError, refresh: refreshEntities, refreshInBackground, addEntity, lastRefresh } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
 
   const availableFields = metadata?.fields || []
@@ -559,6 +560,12 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
 
   return (
     <div className="space-y-6">
+      <AutoRefreshControl 
+        onRefresh={refreshInBackground} 
+        configKey="queryblast-entities-auto-refresh"
+        compact={true}
+      />
+      
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -575,6 +582,12 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                 {!entitiesLoading && entities.length > 0 && (
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="text-xs">{entities.length} entities</Badge>
+                    {lastRefresh && (
+                      <Badge variant="outline" className="text-xs font-mono gap-1">
+                        <Clock size={12} />
+                        {new Date(lastRefresh).toLocaleTimeString()}
+                      </Badge>
+                    )}
                     <Button 
                       size="sm" 
                       variant="ghost" 
