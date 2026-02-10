@@ -23,15 +23,15 @@ const INTERVAL_OPTIONS = [
   { value: 1800, label: '30 minutes' }
 ]
 
-export function AutoRefreshControl({ onRefresh, configKey, compact = false }: AutoRefreshControlProps) {
+export function AutoRefreshControl({ onRefresh, configKey = 'auto-refresh-config', compact = false }: AutoRefreshControlProps) {
   const {
     enabled,
     intervalSeconds,
     enable,
     disable,
-    setIntervalSeconds,
+    setInterval: setIntervalSeconds,
     toggle
-  } = useAutoRefresh(onRefresh, configKey)
+  } = useAutoRefresh(configKey, onRefresh)
 
   if (compact) {
     return (
