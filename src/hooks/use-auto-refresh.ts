@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useKV } from '@github/spark/hooks'
 
-export interface AutoRefreshConfig {
+type AutoRefreshConfig = {
   enabled: boolean
   intervalSeconds: number
 }
