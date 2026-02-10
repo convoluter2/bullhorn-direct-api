@@ -6,7 +6,7 @@ import { bullhornRateLimiter } from './rate-limiter'
 const BULLHORN_LOGIN_INFO_URL = 'https://rest.bullhornstaffing.com/rest-services/loginInfo'
 const BULLHORN_LOGIN_URL = 'https://rest.bullhornstaffing.com/rest-services/login'
 
-interface LoginInfo {
+type LoginInfo = {
   atsUrl: string
   billingSyncUrl: string
   coreUrl: string

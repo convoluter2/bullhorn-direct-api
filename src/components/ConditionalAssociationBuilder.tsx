@@ -12,14 +12,14 @@ import { Plus, Trash, X, GitBranch, FunnelSimple } from '@phosphor-icons/react'
 import { cn, formatFieldLabel } from '@/lib/utils'
 import type { EntityField } from '@/hooks/use-entity-metadata'
 
-export interface ConditionalRule {
+export type ConditionalRule = {
   id: string
   field: string
   operator: 'equals' | 'notEquals' | 'contains' | 'notContains' | 'greaterThan' | 'lessThan' | 'isEmpty' | 'isNotEmpty' | 'in' | 'notIn'
   value: string
 }
 
-export interface ConditionalAssociation {
+export type ConditionalAssociation = {
   id: string
   enabled: boolean
   conditions: ConditionalRule[]
@@ -30,7 +30,7 @@ export interface ConditionalAssociation {
   description?: string
 }
 
-interface ConditionalAssociationBuilderProps {
+type ConditionalAssociationBuilderProps = {
   fields: EntityField[]
   value: ConditionalAssociation[]
   onChange: (value: ConditionalAssociation[]) => void

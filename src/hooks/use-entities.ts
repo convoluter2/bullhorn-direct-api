@@ -4,7 +4,7 @@ import { bullhornAPI } from '@/lib/bullhorn-api'
 
 const CACHE_DURATION = 1000 * 60 * 60 * 24
 
-interface EntitiesCache {
+type EntitiesCache = {
   entities: string[]
   lastUpdated: number
 }

@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
 
-export interface OperationProgress {
+export type OperationProgress = {
   total: number
   completed: number
   failed: number
@@ -14,7 +14,7 @@ export interface OperationProgress {
   estimatedTimeRemaining: number | null
 }
 
-export interface PausableOperationState {
+export type PausableOperationState = {
   progress: OperationProgress
   pause: () => void
   resume: () => void

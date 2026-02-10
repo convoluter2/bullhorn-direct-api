@@ -1,11 +1,11 @@
-interface RateLimitInfo {
+type RateLimitInfo = {
   limitPerMinute: number
   remaining: number
   resetTime: number
   lastUpdated: number
 }
 
-interface QueuedRequest {
+type QueuedRequest = {
   execute: () => Promise<Response>
   resolve: (value: Response) => void
   reject: (error: Error) => void

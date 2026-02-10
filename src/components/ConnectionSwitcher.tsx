@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Swap, Check, Plus } from '@phosphor-icons/react'
 import type { SavedConnection } from '@/components/ConnectionManager'
 
-interface ConnectionSwitcherProps {
+type ConnectionSwitcherProps = {
   connections: SavedConnection[]
   currentConnectionId?: string
   onSelectConnection: (connection: SavedConnection) => void

@@ -13,7 +13,7 @@ import { Copy, Info, CheckCircle, Circle, Warning, Database } from '@phosphor-ic
 import type { SavedConnection } from '@/components/ConnectionManager'
 import type { BullhornSession } from '@/lib/types'
 
-interface LoginInfo {
+type LoginInfo = {
   atsUrl: string
   billingSyncUrl: string
   coreUrl: string
@@ -31,7 +31,7 @@ interface LoginInfo {
   superClusterId: number
 }
 
-interface AuthDialogProps {
+type AuthDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onAuthenticated: (session: BullhornSession, connectionId?: string) => void
@@ -39,24 +39,6 @@ interface AuthDialogProps {
 }
 
 type AuthStep = 'idle' | 'opening-popup' | 'waiting-login' | 'welcome-detected' | 'extracting-code' | 'exchanging-token' | 'logging-in' | 'complete'
-
-interface LoginInfo {
-  atsUrl: string
-  billingSyncUrl: string
-  coreUrl: string
-  documentEditorUrl: string
-  mobileUrl: string
-  oauthUrl: string
-  restUrl: string
-  samlUrl: string
-  novoUrl: string
-  pulseInboxUrl: string
-  canvasUrl: string
-  npsSurveyUrl: string
-  ulUrl: string
-  dataCenterId: number
-  superClusterId: number
-}
 
 export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedConnection }: AuthDialogProps) {
   const [loading, setLoading] = useState(false)

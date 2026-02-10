@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { getCustomFieldLabel } from '@/lib/custom-field-labels'
 
-export interface EntityField {
+export type EntityField = {
   name: string
   label: string
   type: string
@@ -20,7 +20,7 @@ export interface EntityField {
   associationType?: 'TO_ONE' | 'TO_MANY'
 }
 
-export interface EntityMetadata {
+export type EntityMetadata = {
   entity: string
   label: string
   fields: EntityField[]

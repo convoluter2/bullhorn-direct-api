@@ -12,7 +12,7 @@ import { ShieldCheck, Plus, Pencil, Trash } from '@phosphor-icons/react'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import type { SavedConnection, SecureCredentials } from '@/lib/secure-credentials'
 
-interface ConnectionManagerProps {
+type ConnectionManagerProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   connections: SavedConnection[]

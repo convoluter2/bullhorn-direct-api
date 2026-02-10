@@ -1,4 +1,4 @@
-export interface BullhornCredentials {
+export type BullhornCredentials = {
   clientId: string
   clientSecret: string
   username: string
@@ -7,7 +7,7 @@ export interface BullhornCredentials {
   bhRestToken?: string
 }
 
-export interface BullhornSession {
+export type BullhornSession = {
   BhRestToken: string
   restUrl: string
   corporationId?: number
@@ -17,25 +17,25 @@ export interface BullhornSession {
   expiresAt?: number
 }
 
-export interface BullhornEntity {
+export type BullhornEntity = {
   id: string
   label: string
   fields: string[]
 }
 
-export interface QueryFilter {
+export type QueryFilter = {
   field: string
   operator: string
   value: string
 }
 
-export interface FilterGroup {
+export type FilterGroup = {
   id: string
   logic: 'AND' | 'OR'
   filters: QueryFilter[]
 }
 
-export interface QueryConfig {
+export type QueryConfig = {
   entity: string
   fields: string[]
   filters: QueryFilter[]
@@ -46,14 +46,14 @@ export interface QueryConfig {
   start?: number
 }
 
-export interface QueryResult {
+export type QueryResult = {
   data: any[]
   total: number
   count: number
   start: number
 }
 
-export interface AuditLog {
+export type AuditLog = {
   id: string
   timestamp: number
   operation: string
@@ -96,13 +96,13 @@ export interface AuditLog {
   }>
 }
 
-export interface CSVMapping {
+export type CSVMapping = {
   csvColumn: string
   bullhornField: string
   transform?: string
 }
 
-export interface CSVImportConfig {
+export type CSVImportConfig = {
   entity: string
   mappings: CSVMapping[]
   lookupField?: string
@@ -110,7 +110,7 @@ export interface CSVImportConfig {
   createNew: boolean
 }
 
-export interface StackOperation {
+export type StackOperation = {
   id: string
   type: 'create' | 'update' | 'delete' | 'query'
   entity: string
@@ -122,7 +122,7 @@ export interface StackOperation {
   description?: string
 }
 
-export interface UpdateSnapshot {
+export type UpdateSnapshot = {
   id: string
   timestamp: number
   operation: 'csv-import' | 'smartstack'
@@ -137,7 +137,7 @@ export interface UpdateSnapshot {
 
 export type ExecutionState = 'idle' | 'running' | 'paused' | 'stopping' | 'stopped'
 
-export interface ExecutionControl {
+export type ExecutionControl = {
   state: ExecutionState
   currentIndex: number
   totalRecords: number

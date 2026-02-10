@@ -1,11 +1,11 @@
-export interface SecureCredentials {
+export type SecureCredentials = {
   clientId: string
   clientSecret: string
   username: string
   password: string
 }
 
-export interface SavedConnection {
+export type SavedConnection = {
   id: string
   name: string
   environment: 'NPE' | 'PROD'
