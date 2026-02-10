@@ -1,37 +1,46 @@
 import { bullhornAPI } from './bullhorn-api'
 
-  label: string
-  isManual?: boo
+const REFRESH_INTERVAL = 24 * 60 * 60 * 1000
 
-  entities: Cache
-  metadata: any
+export type CachedEntity = {
+  entity: string
+  label: string
+  metaUrl: string
+  isManual?: boolean
 }
 
+export type EntityCacheData = {
+  entities: CachedEntity[]
+  lastFullRefresh: number
+  metadata: any
+  lastUpdated: number
+}
 
-  private refreshTimer: No
-  async getEntityList(): 
-      const cac
+class EntityCacheService {
+  private refreshTimer: NodeJS.Timeout | null = null
+
+  async getEntityList(): Promise<CachedEntity[]> {
+    try {
+      const cache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
+      if (!cache) {
         return []
- 
+      }
 
-        metaUrl: e.metaUrl,
-      }))
-
-    }
-
-
+      const session = bullhornAPI.getSession()
       if (!session) {
-        r
+        return []
+      }
 
-        console.log
+      console.log('📋 Loaded entity list from cache:', {
+        entityCount: cache.entities.length,
+        lastRefresh: new Date(cache.lastFullRefresh).toISOString()
+      })
 
-      c
-      
-        isManual: false
-
-      const manualEntit
-        ...manualEntities
-        isManual: e.isManual
+      return cache.entities.map(e => ({
+        entity: e.entity,
+        label: e.label,
+        metaUrl: e.metaUrl,
+        isManual: e.isManual || false
       }))
     } catch (error) {
       console.error('Failed to get entity list from cache:', error)
@@ -45,34 +54,34 @@ import { bullhornAPI } from './bullhorn-api'
       if (!session) {
         console.log('⚠️ No active session, cannot refresh entity list')
         return []
-      c
+      }
 
       if (!silent) {
         console.log('🔄 Refreshing entity list from API...')
       }
 
-      const response = await bullhornAPI.request('/meta?type=AllEntities&meta=full')
-      const entities: CachedEntity[] = response.data.AllEntities.map((entity: string) => ({
-        entity,
-        label: entity,
-        metaUrl: `/meta/${entity}?meta=full`,
+      const allEntitiesMeta = await bullhornAPI.getAllEntitiesMeta()
+      const entities: CachedEntity[] = allEntitiesMeta.map((meta) => ({
+        entity: meta.entity,
+        label: meta.entity,
+        metaUrl: meta.metaUrl || `/meta/${meta.entity}?meta=full`,
         isManual: false
       }))
 
-      const cache = await spark.kv.get<EntityCacheData>('entity-cache-v2')
+      const cache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
       const manualEntities = cache?.entities.filter(e => e.isManual) || []
       
       const allEntities = [
         ...entities,
         ...manualEntities
-      console.error('Failed to save metadata cache:', er
+      ]
 
       const cacheData: EntityCacheData = {
         entities: allEntities,
         lastFullRefresh: Date.now(),
-        metadata: response.data,
+        metadata: {},
         lastUpdated: Date.now()
-       
+      }
 
       await this.saveEntityCache(cacheData)
 
@@ -81,29 +90,50 @@ import { bullhornAPI } from './bullhorn-api'
       }
 
       return allEntities
-
+    } catch (error) {
       console.error('Failed to refresh entity list:', error)
       return []
-     
+    }
   }
 
   async loadMetadataCache(entityName: string): Promise<any | null> {
-        r
-      const cache = await spark.kv.get<EntityCacheData>('entity-cache-v2')
-      const shouldR
+    try {
+      const cache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
+      if (!cache) {
         return null
       }
       
       return cache.metadata
-        }
+    } catch (error) {
       console.error('Failed to load metadata cache:', error)
       return null
     }
-   
+  }
+
+  async saveMetadataCache(entityName: string, metadata: any): Promise<void> {
+    try {
+      const cache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
+      
+      const cacheData: EntityCacheData = {
+        entities: cache?.entities || [],
+        lastFullRefresh: cache?.lastFullRefresh || Date.now(),
+        metadata: {
+          ...(cache?.metadata || {}),
+          [entityName]: metadata
+        },
+        lastUpdated: Date.now()
+      }
+
+      await this.saveEntityCache(cacheData)
+      console.log(`✅ Saved metadata cache for ${entityName}`)
+    } catch (error) {
+      console.error(`Failed to save metadata cache for ${entityName}:`, error)
+    }
+  }
 
   async addManualEntity(entityName: string): Promise<boolean> {
     try {
-      const cache = await spark.kv.get<EntityCacheData>('entity-cache-v2')
+      const cache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
       
       const existingEntities = cache?.entities || []
       if (existingEntities.some(e => e.entity === entityName)) {
@@ -111,14 +141,14 @@ import { bullhornAPI } from './bullhorn-api'
         return false
       }
 
-        entityCount: cache.entities.len
+      const newEntity: CachedEntity = {
         entity: entityName,
-    } catch (error) {
+        label: entityName,
         metaUrl: `/meta/${entityName}?meta=full`,
         isManual: true
-       
+      }
 
-  }
+      const cacheData: EntityCacheData = {
         entities: [
           ...existingEntities,
           newEntity
@@ -126,25 +156,26 @@ import { bullhornAPI } from './bullhorn-api'
         lastFullRefresh: cache?.lastFullRefresh || Date.now(),
         metadata: cache?.metadata || {},
         lastUpdated: Date.now()
+      }
 
-
+      await this.saveEntityCache(cacheData)
 
       console.log(`✅ Added manual entity: ${entityName}`)
       return true
     } catch (error) {
       console.error(`Failed to add manual entity ${entityName}:`, error)
       return false
-
+    }
   }
 
   async startBackgroundRefresh() {
     try {
-
-
-
-
-
-
+      const cache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
+      if (!cache) {
+        return
+      }
+      
+      const shouldRefreshNow = Date.now() - cache.lastFullRefresh > REFRESH_INTERVAL
       
       if (shouldRefreshNow) {
         console.log('🔄 Cache is stale, refreshing immediately...')
@@ -156,7 +187,7 @@ import { bullhornAPI } from './bullhorn-api'
 
     this.refreshTimer = setInterval(async () => {
       try {
-        const cache = await spark.kv.get<EntityCacheData>('entity-cache-v2')
+        const cache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
         if (!cache) {
           return
         }
@@ -170,25 +201,25 @@ import { bullhornAPI } from './bullhorn-api'
       } catch (error) {
         console.error('Background refresh error:', error)
       }
-
+    }, 60 * 60 * 1000)
   }
 
   stopBackgroundRefresh() {
-
+    if (this.refreshTimer) {
       clearInterval(this.refreshTimer)
-
-
-
+      this.refreshTimer = null
+    }
+  }
 
   async getCacheStatus(): Promise<{
-
+    lastRefresh: number | null
     nextRefresh: number | null
     entityCount: number
-
+    manualCount: number
     apiCount: number
   }> {
     try {
-      const cache = await spark.kv.get<EntityCacheData>('entity-cache-v2')
+      const cache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
       if (!cache) {
         return {
           lastRefresh: null,
@@ -203,7 +234,7 @@ import { bullhornAPI } from './bullhorn-api'
       const apiCount = cache.entities.length - manualCount
       const nextRefresh = cache.lastFullRefresh + REFRESH_INTERVAL
 
-
+      return {
         lastRefresh: cache.lastFullRefresh,
         nextRefresh,
         entityCount: cache.entities.length,
@@ -213,18 +244,18 @@ import { bullhornAPI } from './bullhorn-api'
     } catch (error) {
       console.error('Failed to get cache status:', error)
       return {
-
+        lastRefresh: null,
         nextRefresh: null,
         entityCount: 0,
         manualCount: 0,
         apiCount: 0
-
-
+      }
+    }
   }
 
   private async saveEntityCache(data: EntityCacheData) {
-    await spark.kv.set('entity-cache-v2', data)
+    await window.spark.kv.set('entity-cache-v2', data)
   }
-
+}
 
 export const entityCacheService = new EntityCacheService()
