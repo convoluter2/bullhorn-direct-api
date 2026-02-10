@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { getCustomFieldLabel } from '@/lib/custom-field-labels'
 
@@ -32,10 +32,26 @@ const CACHE_DURATION = 1000 * 60 * 60
 
 const metadataCache: Record<string, EntityMetadata> = {}
 
+export function clearMetadataCache(entity?: string) {
+  if (entity) {
+    delete metadataCache[entity]
+  } else {
+    Object.keys(metadataCache).forEach(key => delete metadataCache[key])
+  }
+}
+
 export function useEntityMetadata(entity: string | undefined) {
   const [metadata, setMetadata] = useState<EntityMetadata | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
+
+  const refresh = useCallback(() => {
+    if (entity) {
+      clearMetadataCache(entity)
+      setRefreshTrigger(prev => prev + 1)
+    }
+  }, [entity])
 
   useEffect(() => {
     if (!entity) {
@@ -46,7 +62,7 @@ export function useEntityMetadata(entity: string | undefined) {
     }
 
     const cached = metadataCache[entity]
-    if (cached && Date.now() - cached.lastUpdated < CACHE_DURATION) {
+    if (cached && Date.now() - cached.lastUpdated < CACHE_DURATION && refreshTrigger === 0) {
       setMetadata(cached)
       setLoading(false)
       setError(null)
@@ -125,7 +141,7 @@ export function useEntityMetadata(entity: string | undefined) {
     }
 
     loadMetadata()
-  }, [entity])
+  }, [entity, refreshTrigger])
 
-  return { metadata, loading, error }
+  return { metadata, loading, error, refresh }
 }

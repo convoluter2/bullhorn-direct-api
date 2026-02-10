@@ -1,202 +1,112 @@
-# Planning Guide
+# Real-Time Metadata Refresh Enhancement
 
-A comprehensive Bullhorn ATS/CRM data management platform that enables enterprise users to query, import, export, and manipulate candidate and job data through direct REST API integration.
+A real-time metadata refresh system that allows users to force reload entity lists and metadata on demand, with visual feedback and improved user experience.
 
 **Experience Qualities**: 
-1. **Professional** - Enterprise-grade interface that instills confidence in handling critical recruitment data
-2. **Efficient** - Streamlined workflows that minimize clicks and maximize productivity for bulk operations
-3. **Transparent** - Clear visibility into all operations with comprehensive logging and audit trails
+1. **Responsive** - Immediate visual feedback with spinning animations and toast notifications during refresh operations
+2. **Reliable** - Clear error states with retry mechanisms ensure users can always access fresh data
+3. **Intuitive** - Subtle, discoverable refresh buttons placed contextually next to entity selectors
 
-**Complexity Level**: Complex Application (advanced functionality, likely with multiple views)
-This is a sophisticated enterprise data management tool with multiple modules (QueryBlast, CSV Loader, SmartStack), authentication flows, API integration, bulk operations, error handling, audit logging, and data export capabilities.
+**Complexity Level**: Light Application (multiple features with basic state) - This enhancement adds interactive refresh capabilities to an existing data management application, introducing state management for loading indicators and cache invalidation logic.
 
 ## Essential Features
 
-### Authentication & Authorization
-- **Functionality**: OAuth2 authorization code flow with Bullhorn REST API, including automatic token refresh and automatic callback handling
-- **Purpose**: Secure access to Bullhorn tenant data with persistent session management
-- **Trigger**: User clicks "Connect to Bullhorn" and chooses authentication method (credentials or authorization code with optional redirect)
-- **Progression**: 
-  - **Method 1 (Username/Password)**: Enter client credentials + username/password → Auto-exchange for auth code → Exchange code for access token → Get REST session token → Store session with refresh token → Auto-refresh before expiry → Enable features
-  - **Method 2 (Authorization Code - Manual)**: Enter client credentials → Open authorization URL → Copy authorization code from redirect → Paste code → Exchange for access token → Get REST session token → Store session with refresh token → Enable features
-  - **Method 3 (Authorization Code - Automatic Redirect)**: Enter client credentials → Enable redirect URI → Click "Start OAuth Flow" → Redirect to Bullhorn → Authorize → Automatic redirect back to app → Auto-capture code from URL → Exchange for access token → Get REST session token → Store session with refresh token → Enable features
-- **Success criteria**: Valid BhRestToken obtained and stored, refresh token maintained, automatic token refresh works, API calls authenticated successfully, OAuth callback auto-detected and processed
+### Entity List Refresh Button
+- **Functionality**: Allows users to force reload the complete list of available Bullhorn entities from the API
+- **Purpose**: Ensures users always have access to the latest entity types, especially important when custom entities are added or schema changes occur
+- **Trigger**: Click on the refresh icon button (ArrowsClockwise) next to the entity count badge
+- **Progression**: User clicks refresh → Loading toast appears → API call executes → Cache invalidates → Fresh entity list loads → Success toast displays
+- **Success criteria**: Entity list updates with latest data from API, cache is cleared, and user receives confirmation notification
 
-### QueryBlast (Advanced Search)
-- **Functionality**: Build and execute complex queries against Bullhorn entities with field selection, supporting both simple filters and advanced grouped filters with AND/OR logic
-- **Purpose**: Power users need flexible data retrieval beyond standard UI search, including complex logical combinations
-- **Trigger**: User selects entity type, adds filters, and clicks Execute
-- **Progression**: 
-  - **Simple Mode**: Select entity → Choose fields → Add filters (combined with AND) → Set parameters → Execute → Display results table → Export option
-  - **Grouped Mode**: Select entity → Choose fields → Create filter groups → Add filters to groups with AND/OR logic → Configure between-group logic (AND/OR) → Set parameters → Execute → Display results table → Export option
-- **Success criteria**: Query returns accurate data, supports pagination, handles errors gracefully, grouped filters generate correct query syntax with proper logical operators
+### Metadata Refresh Function
+- **Functionality**: Programmatic refresh of entity field metadata with cache invalidation
+- **Purpose**: Enables on-demand reloading of field definitions when entity schemas are modified
+- **Trigger**: Exported `refresh()` function from `useEntityMetadata` hook and `clearMetadataCache()` utility
+- **Progression**: Component calls refresh → Cache entry deleted → Metadata refetched from API → Fields list updates
+- **Success criteria**: Latest field metadata loaded and displayed, obsolete cache cleared
 
-### CSV Data Loader
-- **Functionality**: Bulk import records via CSV with field mapping and validation
-- **Purpose**: Mass data migration and updates without manual entry
-- **Trigger**: User uploads CSV file
-- **Progression**: Upload CSV → Parse headers → Map to Bullhorn fields → Validate data → Preview → Execute import → Show progress → Generate report
-- **Success criteria**: Successfully imports valid records, reports errors clearly, maintains data integrity
+### Visual Loading States
+- **Functionality**: Animated feedback during refresh operations
+- **Purpose**: Provides clear indication that the system is working and prevents user confusion
+- **Trigger**: Automatically shown during any refresh operation
+- **Progression**: User initiates refresh → Icon spins with CSS animation → Loading toast notification → Operation completes → Success toast
+- **Success criteria**: Users see immediate visual response and understand the current state of their action
 
-### SmartStack v2
-- **Functionality**: Batch processing with CSV upload of IDs, query filters, field updates, and conditional association logic based on field values
-- **Purpose**: Complex bulk update operations with fine-grained control over which associations are applied based on record data
-- **Trigger**: User uploads CSV with IDs OR manually configures operation stack
-- **Progression**: Upload CSV with IDs → Select entity → Add query filters (optional) → Define field updates → Configure conditional associations (optional) → Preview (dry run) → Execute → Monitor progress → Handle failures → Complete or rollback
-- **Success criteria**: Executes operations in correct order, handles failures gracefully, conditional associations apply correctly based on field values, provides detailed status with descriptions
-
-### QueryStack
-- **Functionality**: Combine QueryBlast with SmartStack - query records first, then apply bulk updates with conditional association logic
-- **Purpose**: Create dynamic lists using queries and then perform bulk updates with field-based conditional logic
-- **Trigger**: User builds query to find records, then configures updates
-- **Progression**: Select entity → Build query filters → Execute query → Preview results → Optionally select different target entity → Add update filters → Define field updates → Configure conditional associations → Preview changes (dry run) → Execute updates → Monitor progress → Complete or rollback
-- **Success criteria**: Query returns accurate data, updates apply correctly to queried records, conditional associations work based on field values, rollback capability available
-
-### Conditional Association Logic
-- **Functionality**: Define rules that apply different to-many association operations (add/remove/replace) based on field values of each record
-- **Purpose**: Enable sophisticated data management where association changes depend on record state (e.g., add certification A if status is "Active", remove certification B if date < X)
-- **Trigger**: User enables conditional logic in SmartStack or QueryStack and defines rules
-- **Progression**: Enable conditional logic → Add conditional rule → Define conditions (field, operator, value) with AND/OR logic → Select association field → Choose operation (add/remove/replace) → Specify IDs → Add more rules → Preview applies correct associations → Execute
-- **Success criteria**: Conditions evaluate correctly against record data, correct associations applied per rule, multiple rules can be active, proper conflict resolution when rules overlap
-
-### Audit & Logging
-- **Functionality**: Comprehensive tracking of all operations with timestamps and results
-- **Purpose**: Compliance, troubleshooting, and operation verification
-- **Trigger**: Automatic for all operations
-- **Progression**: Operation occurs → Log created → Stored with details → Viewable in audit panel → Filterable and exportable
-- **Success criteria**: All operations logged, logs persist across sessions, searchable and filterable
-
-### Data Export
-- **Functionality**: Export query results and logs to CSV/JSON formats
-- **Purpose**: Reporting, backup, and integration with other systems
-- **Trigger**: User clicks export button on results or logs
-- **Progression**: User selects format → System generates file → Download initiated
-- **Success criteria**: Exports complete datasets accurately, proper formatting, no data loss
-
-### WFN Placements Export
-- **Functionality**: Secure export of placements with rate cards, candidate demographics, and tax information - supports filtering by specific Placement IDs or active placements
-- **Purpose**: Generate WFN/ADP-ready payroll data with hashed sensitive fields (SSN, DOB) for compliance
-- **Trigger**: User selects filter mode (Active Placements or By IDs), configures settings, and clicks "Start Export"
-- **Progression**: 
-  - **Active Mode**: Configure hash salt → Set earn codes → Execute → Fetch approved placements in date window → Join candidate/tax data → Fetch rate cards → Hash SSN/DOB → Generate CSV → Download
-  - **IDs Mode**: Configure hash salt → Paste Placement IDs (comma or newline separated) → Set earn codes → Execute → Fetch specific placements → Join candidate/tax data → Fetch rate cards → Hash SSN/DOB → Generate CSV → Download
-- **Success criteria**: 
-  - CSV contains only requested placements when using ID filter
-  - SSN and DOB are SHA-256 hashed with salt, never written in plaintext
-  - Rate selection logic correctly identifies primary (Regular/Base) and secondary (OT/Holiday) rates
-  - Candidate demographics and W-4 2020+ tax info correctly joined
-  - Progress tracking shows current status and record counts
-  - Export statistics display total/processed/errors accurately
+### Error Recovery
+- **Functionality**: Dedicated retry buttons in error and empty states
+- **Purpose**: Provides clear recovery path when entity loading fails
+- **Trigger**: Displayed when entity fetch fails or returns empty results
+- **Progression**: Error occurs → Error message shown → User clicks Retry → Fresh fetch attempt → Success or new error state
+- **Success criteria**: Users can recover from transient failures without page reload
 
 ## Edge Case Handling
-- **Rate Limiting**: Intelligent throttling based on Bullhorn response headers tracking calls per minute and remaining quota
-  - Parse `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` headers from all API responses
-  - Automatically queue requests when approaching limits (buffer at 20% remaining)
-  - Implement backoff multiplier for consecutive errors (up to 5x delay)
-  - Visual rate limit status indicator in header showing usage, queue size, and time until reset
-  - Prevent 429 errors through proactive throttling with configurable concurrent request limits
-  - Pause request processing when limit exhausted and auto-resume after reset window
-- **Large Datasets**: Pagination support with configurable page sizes, streaming for exports
-- **Network Failures**: Retry logic with user notification, operation resumption where possible
-- **Invalid Data**: Pre-validation before API calls, clear error messages with field-level feedback
-- **Session Expiration**: Automatic token refresh using refresh token, graceful re-authentication prompts if refresh fails
-- **Token Expiry**: Proactive refresh 60 seconds before expiration, background refresh every 30 seconds
-- **Concurrent Operations**: Queue management to prevent conflicting updates
-- **Malformed CSV**: Robust parsing with error reporting, skip invalid rows option
-- **Field Type Validation**: Smart input controls that enforce field-specific validation rules based on metadata
-  - Integer fields: Only accept whole numbers with visual feedback for invalid input
-  - Numeric/Decimal fields: Accept decimal values with proper formatting
-  - Date/Timestamp fields: Date picker with visual calendar or manual timestamp entry in milliseconds
-  - Phone fields: Auto-formatting with input masks (e.g., (555) 123-4567)
-  - Boolean fields: Toggle buttons for true/false selection
-  - Option/Enum fields: Dropdown with searchable options, allow custom values for flexibility
+
+- **Network Failures**: Retry button with spinning animation and error toast notification
+- **Empty Response**: "Load Entities" button with clear messaging guides user to manual fetch
+- **Concurrent Refreshes**: Loading state prevents multiple simultaneous refresh operations
+- **Cache Invalidation**: Explicit cache clearing ensures no stale data persists after refresh
 
 ## Design Direction
-The design should evoke confidence, precision, and power - like a professional developer tool or enterprise admin console. It should feel sophisticated yet approachable, with clear information hierarchy and data-dense displays that don't overwhelm.
+
+The design should feel technical and professional, with subtle animations that enhance usability without being distracting. Refresh actions should feel instantaneous and reliable, building confidence in data freshness.
 
 ## Color Selection
-A technical, developer-focused palette with strong contrast and semantic color coding.
 
-- **Primary Color**: Deep indigo `oklch(0.35 0.12 265)` - Conveys professionalism, technology, and trustworthiness
-- **Secondary Colors**: 
-  - Slate gray `oklch(0.55 0.015 250)` for secondary actions
-  - Charcoal `oklch(0.25 0.01 260)` for backgrounds providing depth
-- **Accent Color**: Electric cyan `oklch(0.70 0.15 210)` - Calls attention to active operations and CTAs
+- **Primary Color**: Deep blue-purple `oklch(0.35 0.12 265)` - Technical authority for primary actions
+- **Secondary Colors**: Cool gray tones for subtle UI elements
+- **Accent Color**: Cyan `oklch(0.70 0.15 210)` - Highlights refresh actions and success states
 - **Foreground/Background Pairings**: 
-  - Background (Charcoal #1a1b26): White text `oklch(0.98 0 0)` - Ratio 15.2:1 ✓
-  - Primary (Deep Indigo): White text `oklch(0.98 0 0)` - Ratio 8.5:1 ✓
-  - Accent (Electric Cyan): Charcoal text `oklch(0.25 0.01 260)` - Ratio 9.1:1 ✓
-  - Card backgrounds `oklch(0.22 0.01 260)`: Light gray text `oklch(0.90 0.01 260)` - Ratio 13.8:1 ✓
+  - Background (Dark) `oklch(0.15 0.01 260)`: Light text `oklch(0.98 0 0)` - Ratio 14.2:1 ✓
+  - Accent (Cyan) `oklch(0.70 0.15 210)`: Dark text `oklch(0.25 0.01 260)` - Ratio 5.1:1 ✓
 
 ## Font Selection
-Typography should communicate technical precision and modern professionalism with excellent code/data readability.
 
-- **Typographic Hierarchy**: 
-  - H1 (Page Title): Space Grotesk Bold/32px/tight letter spacing (-0.02em)
-  - H2 (Section Header): Space Grotesk SemiBold/24px/normal
-  - H3 (Card Header): Space Grotesk Medium/18px/normal
-  - Body (UI Text): Inter Regular/14px/1.5 line height
-  - Data/Code: JetBrains Mono Regular/13px/1.4 line height
-  - Labels: Inter Medium/12px/uppercase/wide tracking (0.05em)
+Modern, technical typefaces that convey precision and clarity:
+
+- **Typographic Hierarchy**:
+  - H1 (Component Titles): Space Grotesk Bold/24px/tight spacing
+  - Labels: Inter Medium/14px/normal spacing  
+  - Body: Inter Regular/14px/relaxed spacing
+  - Badges: Inter Medium/12px/tight spacing
 
 ## Animations
-Animations should emphasize state changes and provide feedback without delaying workflows - quick, purposeful, and subtle.
 
-- **State Transitions**: 150ms ease-out for button states, tab switching
-- **Loading States**: Smooth spinner with pulsing effect for API calls
-- **Success Feedback**: Brief 200ms scale+fade for confirmation icons
-- **Panel Sliding**: 300ms ease-in-out for drawer/modal entrances
-- **Data Updates**: Subtle 100ms highlight flash on row updates
-- **Error Shake**: 400ms shake animation for validation errors
+Animations serve functional purposes - communicating state changes and providing feedback:
+
+- **Refresh Icon Spin**: Continuous 360° rotation during loading (CSS `animate-spin`)
+- **Toast Notifications**: Slide-in from top-right with gentle ease-out timing
+- **Button Hover**: Subtle background color transition (150ms)
 
 ## Component Selection
+
 - **Components**: 
-  - Tabs for switching between QueryBlast/CSV Loader/SmartStack modules
-  - Table for displaying query results and audit logs with sortable columns
-  - Dialog for authentication flow and confirmation prompts
-  - Sheet (drawer) for detailed operation logs and configuration
-  - Card for organizing features and displaying stats
-  - Form with Input, Select, Textarea for query building
-  - Button with loading states for all API operations
-  - Badge for status indicators (success/error/pending)
-  - Progress for upload and batch operation tracking
-  - Separator for visual organization
-  - Scroll Area for large data displays
-  - Alert for important messages and warnings
+  - `Button` (ghost variant) - Minimal refresh icon buttons that don't compete visually
+  - `Badge` (secondary variant) - Displays entity count with subtle styling
+  - `Skeleton` - Loading placeholder for entity selector during fetch
+  - `toast` from sonner - Non-blocking notifications for refresh operations
+
 - **Customizations**: 
-  - Custom syntax-highlighted query builder component
-  - Data table with inline editing capabilities
-  - Multi-step wizard component for CSV mapping
-  - Stack operation timeline visualizer
-- **States**: 
-  - Buttons: Default with icon, hover with brightness increase, active with scale(0.98), loading with spinner, disabled with reduced opacity
-  - Inputs: Default with subtle border, focus with accent ring, error with red border + icon, success with green checkmark
-  - Table rows: Hover with background highlight, selected with accent background, error rows with red tint
+  - Refresh buttons use `h-6 px-2` sizing for compact placement
+  - Added `animate-spin` conditional class on ArrowsClockwise icon
+  - Toast notifications use contextual IDs for state replacement
+
+- **States**:
+  - Loading: Spinning icon + loading toast + disabled state
+  - Success: Success toast with green checkmark
+  - Error: Error message + retry button with red accent
+  - Empty: Informational message + load button
+
 - **Icon Selection**: 
-  - Database for entity selection
-  - MagnifyingGlass for search/query
-  - Upload for CSV import
-  - Stack for SmartStack operations
-  - CheckCircle for success states
-  - XCircle for errors
-  - ClockCounterClockwise for audit logs
-  - DownloadSimple for exports
-  - Lightning for execute/run
-  - Gear for settings
-  - ListBullets for simple filter mode
-  - TreeStructure for grouped filter mode
-  - Unite for OR logic
-  - Intersect for AND logic
+  - `ArrowsClockwise` - Universal symbol for refresh/reload
+  - `Plus` - Add manual entity
+  - Consistent 14px-16px sizing for compact layouts
+
 - **Spacing**: 
-  - Section padding: p-6
-  - Card padding: p-4
-  - Gap between elements: gap-4 (16px) for related, gap-6 (24px) for sections
-  - Form fields: gap-2 (8px) vertical stacking
-  - Button padding: px-4 py-2 for primary, px-3 py-1.5 for secondary
+  - `gap-2` for button groups
+  - `h-6` height for inline action buttons
+  - `px-2` horizontal padding for compact clickable area
+
 - **Mobile**: 
-  - Tabs convert to select dropdown on mobile
-  - Tables scroll horizontally with sticky first column
-  - Drawers slide from bottom instead of side
-  - Stack navigation instead of parallel module view
-  - Touch-friendly button sizes (min 44px height)
-  - Collapsible sections for dense data displays
+  - Refresh buttons remain visible on mobile
+  - Toast notifications stack responsively
+  - Icon-only buttons save horizontal space

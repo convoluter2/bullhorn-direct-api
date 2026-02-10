@@ -844,11 +844,17 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                     <Button 
                       size="sm" 
                       variant="ghost" 
-                      onClick={refreshEntities}
+                      onClick={() => {
+                        toast.loading('Refreshing entity list...', { id: 'refresh-entities' })
+                        refreshEntities()
+                        setTimeout(() => {
+                          toast.success('Entity list refreshed', { id: 'refresh-entities' })
+                        }, 500)
+                      }}
                       className="h-6 px-2"
-                      title="Refresh entity list"
+                      title="Refresh entity list from API"
                     >
-                      <ArrowsClockwise size={14} />
+                      <ArrowsClockwise size={14} className={entitiesLoading ? 'animate-spin' : ''} />
                     </Button>
                     <Button 
                       size="sm" 
@@ -868,8 +874,18 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               ) : entities.length === 0 ? (
                 <div className="space-y-2">
                   <div className="text-sm text-muted-foreground">No entities available</div>
-                  <Button size="sm" variant="outline" onClick={refreshEntities}>
-                    <ArrowsClockwise size={14} />
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => {
+                      toast.loading('Loading entities...', { id: 'load-entities' })
+                      refreshEntities()
+                      setTimeout(() => {
+                        toast.success('Entity list loaded', { id: 'load-entities' })
+                      }, 500)
+                    }}
+                  >
+                    <ArrowsClockwise size={14} className={entitiesLoading ? 'animate-spin' : ''} />
                     Load Entities
                   </Button>
                 </div>
