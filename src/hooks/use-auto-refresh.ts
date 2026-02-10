@@ -1,29 +1,29 @@
 import { useEffect, useRef, useCallback } from 'react'
-import { useKV } from '@github/spark/hooks'
+
 
 export interface AutoRefreshConfig {
   enabled: boolean
   intervalSeconds: number
-}
-
-const DEFAULT_CONFIG: AutoRefreshConfig = {
-  enabled: false,
-  intervalSeconds: 300
-}
+ 
 
 export function useAutoRefresh(
-  refreshCallback: () => void | Promise<void>,
-  configKey: string = 'auto-refresh-config'
-) {
-  const [config, setConfig] = useKV<AutoRefreshConfig>(configKey, DEFAULT_CONFIG)
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const refreshCallbackRef = useRef(refreshCallback)
+  configKey: stri
+  const [config, setCo
+ 
 
-  useEffect(() => {
-    refreshCallbackRef.current = refreshCallback
   }, [refreshCallback])
-
   useEffect(() => {
+      clearInterval(intervalRef.current)
+   
+    if (!config?.enabled || !config?.intervalSeconds) {
+    }
+    console.log(`🔄 Auto-refresh enabled: every ${co
+
+    intervalRef.cur
+      try {
+      } catch (error) {
+
+
     if (intervalRef.current) {
       clearInterval(intervalRef.current)
       intervalRef.current = null
@@ -37,14 +37,14 @@ export function useAutoRefresh(
 
     const intervalMs = config.intervalSeconds * 1000
 
-    intervalRef.current = globalThis.setInterval(async () => {
+    intervalRef.current = setInterval(async () => {
       console.log('🔄 Auto-refresh triggered')
       try {
         await refreshCallbackRef.current()
       } catch (error) {
         console.error('Auto-refresh error:', error)
       }
-    }, intervalMs) as ReturnType<typeof setInterval>
+    }, intervalMs)
 
     return () => {
       if (intervalRef.current) {
@@ -68,7 +68,7 @@ export function useAutoRefresh(
     }))
   }, [setConfig])
 
-  const setIntervalSeconds = useCallback((intervalSeconds: number) => {
+  const setInterval = useCallback((intervalSeconds: number) => {
     setConfig((current) => ({
       enabled: current?.enabled ?? false,
       intervalSeconds
@@ -88,7 +88,53 @@ export function useAutoRefresh(
     intervalSeconds: config?.intervalSeconds ?? DEFAULT_CONFIG.intervalSeconds,
     enable,
     disable,
-    setIntervalSeconds,
+    setInterval,
+    toggle
+  }
+}
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
+  }, [config?.enabled, config?.intervalSeconds])
+
+  const enable = useCallback((intervalSeconds?: number) => {
+    setConfig((current) => ({
+      enabled: true,
+      intervalSeconds: intervalSeconds ?? current?.intervalSeconds ?? DEFAULT_CONFIG.intervalSeconds
+    }))
+  }, [setConfig])
+
+  const disable = useCallback(() => {
+    setConfig((current) => ({
+      enabled: false,
+      intervalSeconds: current?.intervalSeconds ?? DEFAULT_CONFIG.intervalSeconds
+    }))
+  }, [setConfig])
+
+  const setInterval = useCallback((intervalSeconds: number) => {
+    setConfig((current) => ({
+      enabled: current?.enabled ?? false,
+      intervalSeconds
+    }))
+  }, [setConfig])
+
+  const toggle = useCallback(() => {
+    setConfig((current) => ({
+      enabled: !(current?.enabled ?? false),
+      intervalSeconds: current?.intervalSeconds ?? DEFAULT_CONFIG.intervalSeconds
+    }))
+  }, [setConfig])
+
+  return {
+    config: config ?? DEFAULT_CONFIG,
+    enabled: config?.enabled ?? false,
+    intervalSeconds: config?.intervalSeconds ?? DEFAULT_CONFIG.intervalSeconds,
+    enable,
+    disable,
+    setInterval,
     toggle
   }
 }
