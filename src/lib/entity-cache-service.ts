@@ -1,22 +1,22 @@
 import { bullhornAPI } from './bullhorn-api'
 
-const REFRESH_INTERVAL = 24 * 60 * 60 * 1000
+const REFRESH_INTERVAL = 12 * 60 * 60 * 1000
 
-export type CachedEntity = {
+export interface CachedEntity {
   entity: string
   label: string
   metaUrl: string
   isManual?: boolean
 }
 
-export type EntityCacheData = {
+export interface EntityCacheData {
   entities: CachedEntity[]
   lastFullRefresh: number
   metadata: any
   lastUpdated: number
 }
 
-class EntityCacheService {
+export class EntityCacheService {
   private refreshTimer: NodeJS.Timeout | null = null
 
   async getEntityList(): Promise<CachedEntity[]> {
@@ -25,17 +25,7 @@ class EntityCacheService {
       if (!cache) {
         return []
       }
-
-      const session = bullhornAPI.getSession()
-      if (!session) {
-        return []
-      }
-
-      console.log('📋 Loaded entity list from cache:', {
-        entityCount: cache.entities.length,
-        lastRefresh: new Date(cache.lastFullRefresh).toISOString()
-      })
-
+      
       return cache.entities.map(e => ({
         entity: e.entity,
         label: e.label,
@@ -60,11 +50,11 @@ class EntityCacheService {
         console.log('🔄 Refreshing entity list from API...')
       }
 
-      const allEntitiesMeta = await bullhornAPI.getAllEntitiesMeta()
-      const entities: CachedEntity[] = allEntitiesMeta.map((meta) => ({
-        entity: meta.entity,
-        label: meta.entity,
-        metaUrl: meta.metaUrl || `/meta/${meta.entity}?meta=full`,
+      const entitiesData = await bullhornAPI.getAllEntitiesMeta()
+      const entities: CachedEntity[] = entitiesData.map((entityData) => ({
+        entity: entityData.entity,
+        label: entityData.entity,
+        metaUrl: entityData.metaUrl || `/meta/${entityData.entity}?meta=full`,
         isManual: false
       }))
 
@@ -79,7 +69,7 @@ class EntityCacheService {
       const cacheData: EntityCacheData = {
         entities: allEntities,
         lastFullRefresh: Date.now(),
-        metadata: {},
+        metadata: entitiesData,
         lastUpdated: Date.now()
       }
 
@@ -98,12 +88,11 @@ class EntityCacheService {
 
   async loadMetadataCache(entityName: string): Promise<any | null> {
     try {
-      const cache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
-      if (!cache) {
+      const cached = await window.spark.kv.get<{ metadata: any; cachedAt: number }>(`metadata-cache-${entityName}`)
+      if (!cached) {
         return null
       }
-      
-      return cache.metadata
+      return cached
     } catch (error) {
       console.error('Failed to load metadata cache:', error)
       return null
@@ -112,20 +101,11 @@ class EntityCacheService {
 
   async saveMetadataCache(entityName: string, metadata: any): Promise<void> {
     try {
-      const cache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
-      
-      const cacheData: EntityCacheData = {
-        entities: cache?.entities || [],
-        lastFullRefresh: cache?.lastFullRefresh || Date.now(),
-        metadata: {
-          ...(cache?.metadata || {}),
-          [entityName]: metadata
-        },
-        lastUpdated: Date.now()
-      }
-
-      await this.saveEntityCache(cacheData)
-      console.log(`✅ Saved metadata cache for ${entityName}`)
+      await window.spark.kv.set(`metadata-cache-${entityName}`, {
+        metadata,
+        cachedAt: Date.now()
+      })
+      console.log(`💾 Saved metadata cache for: ${entityName}`)
     } catch (error) {
       console.error(`Failed to save metadata cache for ${entityName}:`, error)
     }
@@ -148,7 +128,7 @@ class EntityCacheService {
         isManual: true
       }
 
-      const cacheData: EntityCacheData = {
+      const updatedCache: EntityCacheData = {
         entities: [
           ...existingEntities,
           newEntity
@@ -158,7 +138,7 @@ class EntityCacheService {
         lastUpdated: Date.now()
       }
 
-      await this.saveEntityCache(cacheData)
+      await this.saveEntityCache(updatedCache)
 
       console.log(`✅ Added manual entity: ${entityName}`)
       return true
@@ -171,11 +151,7 @@ class EntityCacheService {
   async startBackgroundRefresh() {
     try {
       const cache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
-      if (!cache) {
-        return
-      }
-      
-      const shouldRefreshNow = Date.now() - cache.lastFullRefresh > REFRESH_INTERVAL
+      const shouldRefreshNow = !cache || (Date.now() - cache.lastFullRefresh > REFRESH_INTERVAL)
       
       if (shouldRefreshNow) {
         console.log('🔄 Cache is stale, refreshing immediately...')
@@ -201,7 +177,7 @@ class EntityCacheService {
       } catch (error) {
         console.error('Background refresh error:', error)
       }
-    }, 60 * 60 * 1000)
+    }, REFRESH_INTERVAL)
   }
 
   stopBackgroundRefresh() {
@@ -250,6 +226,27 @@ class EntityCacheService {
         manualCount: 0,
         apiCount: 0
       }
+    }
+  }
+
+  async getUncachedEntities(): Promise<string[]> {
+    try {
+      const allKeys = await window.spark.kv.keys()
+      const cachedMetadataKeys = allKeys
+        .filter(key => key.startsWith('metadata-cache-'))
+        .map(key => key.replace('metadata-cache-', ''))
+      
+      const entityList = await this.getEntityList()
+      const allEntityNames = entityList.map(e => e.entity)
+      
+      const uncached = allEntityNames.filter(name => !cachedMetadataKeys.includes(name))
+      
+      console.log(`📊 Cache status: ${cachedMetadataKeys.length} cached, ${uncached.length} uncached out of ${allEntityNames.length} total`)
+      
+      return uncached
+    } catch (error) {
+      console.error('Failed to get uncached entities:', error)
+      return []
     }
   }
 

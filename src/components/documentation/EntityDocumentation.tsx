@@ -455,6 +455,49 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
     }
   }
 
+  const handleRefreshUncached = async () => {
+    if (!session) {
+      toast.error('Not connected to Bullhorn')
+      return
+    }
+
+    setRefreshingAll(true)
+    try {
+      const uncachedEntities = await entityCacheService.getUncachedEntities()
+      
+      if (uncachedEntities.length === 0) {
+        toast.info('All entities are already cached!')
+        setRefreshingAll(false)
+        return
+      }
+
+      toast.info(`Refreshing ${uncachedEntities.length} uncached entities...`)
+      
+      let successCount = 0
+      let failCount = 0
+      
+      for (const entityName of uncachedEntities) {
+        try {
+          await entityMetadataService.fetchMetadata(entityName, session, false)
+          successCount++
+          
+          if (successCount % 50 === 0) {
+            toast.info(`Cached ${successCount}/${uncachedEntities.length} entities...`, { id: 'refresh-uncached-progress' })
+          }
+        } catch (err) {
+          console.error(`Failed to cache ${entityName}:`, err)
+          failCount++
+        }
+      }
+      
+      toast.success(`Cached ${successCount} entities${failCount > 0 ? `, ${failCount} failed` : ''}`, { id: 'refresh-uncached-progress' })
+    } catch (error) {
+      toast.error('Failed to refresh uncached entities')
+    } finally {
+      setRefreshingAll(false)
+    }
+  }
+
   const handleClearCache = async () => {
     if (confirm('Are you sure you want to clear all cached metadata? You will need to reload metadata for each entity you view.')) {
       await entityMetadataService.clearCache()
@@ -560,6 +603,7 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
           customEntities={availableEntities}
           entityMetadata={new Map()}
           onRefreshAll={handleRefreshAll}
+          onRefreshUncached={handleRefreshUncached}
           refreshingAll={refreshingAll}
           onClearCache={handleClearCache}
           cachedCount={0}

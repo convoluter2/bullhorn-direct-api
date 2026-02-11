@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { MagnifyingGlass, Database, X, ArrowsClockwise, Trash, Export } from '@phosphor-icons/react'
+import { MagnifyingGlass, Database, X, ArrowsClockwise, Trash, Export, CloudArrowDown } from '@phosphor-icons/react'
 import type { EntityMetadata } from '@/lib/entity-metadata'
 
 interface EntitySidebarProps {
@@ -12,6 +12,7 @@ interface EntitySidebarProps {
   customEntities: string[]
   entityMetadata: Map<string, EntityMetadata>
   onRefreshAll: () => void
+  onRefreshUncached: () => void
   refreshingAll: boolean
   onClearCache: () => void
   cachedCount: number
@@ -24,6 +25,7 @@ export function EntitySidebar({
   customEntities,
   entityMetadata,
   onRefreshAll,
+  onRefreshUncached,
   refreshingAll,
   onClearCache,
   cachedCount,
@@ -87,16 +89,28 @@ export function EntitySidebar({
           </div>
         </div>
         
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={onRefreshUncached}
+            disabled={refreshingAll}
+            className="col-span-2"
+            title="Cache only uncached entities"
+          >
+            <CloudArrowDown className={refreshingAll ? 'animate-spin' : ''} />
+            {refreshingAll ? 'Caching...' : 'Cache Uncached'}
+          </Button>
+          
           <Button 
             variant="outline" 
             size="sm" 
             onClick={onRefreshAll}
             disabled={refreshingAll}
-            className="flex-1"
+            title="Force refresh all entities"
           >
             <ArrowsClockwise className={refreshingAll ? 'animate-spin' : ''} />
-            {refreshingAll ? 'Refreshing...' : 'Refresh All'}
+            Refresh All
           </Button>
           
           {onExportAll && (
@@ -104,22 +118,24 @@ export function EntitySidebar({
               variant="outline" 
               size="sm" 
               onClick={onExportAll}
-              className="px-3"
               title="Export all cached entities to HTML"
             >
               <Export size={16} />
             </Button>
           )}
-          
+        </div>
+        
+        <div className="flex gap-2">
           <Button 
             variant="outline" 
             size="sm" 
             onClick={onClearCache}
             disabled={cachedCount === 0}
-            className="px-3"
+            className="flex-1"
             title="Clear metadata cache"
           >
             <Trash size={16} />
+            Clear Cache
           </Button>
         </div>
         
