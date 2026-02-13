@@ -138,29 +138,48 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
 
     const reader = new FileReader()
     reader.onload = (event) => {
-      const text = event.target?.result as string
-      const parsed = parseCSV(text)
-      setCsvData(parsed)
-      
-      const initialMappings = parsed.headers.map(header => ({
-        csvColumn: header,
-        bullhornField: '__skip__'
-      }))
-      setMappings(initialMappings)
-      setResults([])
-      toast.success(`CSV loaded: ${parsed.rows.length} rows`)
+      try {
+        const text = event.target?.result as string
+        if (!text || text.trim() === '') {
+          toast.error('CSV file is empty')
+          return
+        }
+        
+        const parsed = parseCSV(text)
+        
+        if (!parsed.headers || parsed.headers.length === 0) {
+          toast.error('CSV file has no headers')
+          return
+        }
+        
+        setCsvData(parsed)
+        
+        const initialMappings = parsed.headers.map(header => ({
+          csvColumn: header || '',
+          bullhornField: '__skip__'
+        }))
+        setMappings(initialMappings)
+        setResults([])
+        toast.success(`CSV loaded: ${parsed.rows.length} rows, ${parsed.headers.length} columns`)
+      } catch (error) {
+        console.error('CSV parse error:', error)
+        toast.error(`Failed to parse CSV: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
+    }
+    reader.onerror = () => {
+      toast.error('Failed to read CSV file')
     }
     reader.readAsText(file)
   }
 
   const updateMapping = (csvColumn: string, bullhornField: string) => {
-    setMappings(mappings.map(m => 
+    setMappings((mappings || []).map(m => 
       m.csvColumn === csvColumn ? { ...m, bullhornField } : m
     ))
   }
 
   const updateTransform = (csvColumn: string, transform?: string) => {
-    setMappings(mappings.map(m => 
+    setMappings((mappings || []).map(m => 
       m.csvColumn === csvColumn ? { ...m, transform } : m
     ))
   }
@@ -230,29 +249,35 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   }
 
   const executeImport = async (isResume: boolean = false) => {
-    if (!csvData || !entity) {
-      toast.error('Please upload a CSV and select an entity')
-      return
-    }
-
-    const validMappings = mappings.filter(m => m.bullhornField && m.bullhornField !== '__skip__')
-    if (validMappings.length === 0) {
-      toast.error('Please map at least one field')
-      return
-    }
-
-    if (lookupField && lookupField !== '__none__') {
-      const lookupMapping = mappings.find(m => m.bullhornField === lookupField || m.csvColumn.toLowerCase() === lookupField.toLowerCase())
-      if (!lookupMapping) {
-        toast.error('Lookup field must have a corresponding CSV column')
+    try {
+      if (!csvData || !entity) {
+        toast.error('Please upload a CSV and select an entity')
         return
       }
-    }
 
-    if (!updateExisting && !createNew) {
-      toast.error('Must enable either "Update Existing" or "Create New"')
-      return
-    }
+      if (!mappings || mappings.length === 0) {
+        toast.error('No field mappings available')
+        return
+      }
+
+      const validMappings = mappings.filter(m => m && m.bullhornField && m.bullhornField !== '__skip__')
+      if (validMappings.length === 0) {
+        toast.error('Please map at least one field')
+        return
+      }
+
+      if (lookupField && lookupField !== '__none__') {
+        const lookupMapping = mappings.find(m => m.bullhornField === lookupField || m.csvColumn.toLowerCase() === lookupField.toLowerCase())
+        if (!lookupMapping) {
+          toast.error('Lookup field must have a corresponding CSV column')
+          return
+        }
+      }
+
+      if (!updateExisting && !createNew) {
+        toast.error('Must enable either "Update Existing" or "Create New"')
+        return
+      }
 
     if (!isResume) {
       setCurrentIndex(0)
@@ -772,6 +797,19 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         failedOperations: !dryRun && failedOperations.length > 0 ? failedOperations : undefined
       }
     )
+    } catch (error) {
+      console.error('CSV Import fatal error:', error)
+      setLoading(false)
+      setExecutionState('idle')
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      toast.error(`Import failed: ${errorMessage}`)
+      onLog(
+        'CSV Import Error',
+        'error',
+        `Fatal error during import: ${errorMessage}`,
+        { entity, error: errorMessage }
+      )
+    }
   }
 
   const rollbackSnapshot = async (snapshotId: string) => {
@@ -1036,13 +1074,14 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               <div className="space-y-2">
                 <Label>Field Mapping</Label>
                 <div className="space-y-2">
-                  {mappings.map((mapping) => {
-                    const fieldMeta = metadata?.fieldsMap[mapping.bullhornField]
+                  {(mappings || []).map((mapping) => {
+                    if (!mapping) return null
+                    const fieldMeta = mapping.bullhornField ? metadata?.fieldsMap[mapping.bullhornField] : undefined
                     const isToMany = fieldMeta?.associationType === 'TO_MANY'
                     const isToOne = fieldMeta?.associationType === 'TO_ONE'
                     
                     return (
-                      <Card key={mapping.csvColumn} className="p-3">
+                      <Card key={mapping.csvColumn || Math.random()} className="p-3">
                         <div className="space-y-3">
                           <div className="flex gap-2 items-center">
                             <div className="flex-1 font-mono text-sm bg-muted p-2 rounded border">
@@ -1062,7 +1101,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="__skip__">Skip</SelectItem>
-                                    {availableFields.map((field) => (
+                                    {(availableFields || []).map((field) => (
                                       <SelectItem key={field.name} value={field.name}>
                                         {formatFieldLabel(field.label, field.name)}
                                         {field.associationType === 'TO_MANY' && ' (To-Many)'}
@@ -1163,7 +1202,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                 {executionState === 'idle' || executionState === 'stopped' ? (
                   <Button
                     onClick={() => executeImport(false)}
-                    disabled={loading || mappings.filter(m => m.bullhornField && m.bullhornField !== '__skip__').length === 0}
+                    disabled={loading || !mappings || mappings.filter(m => m && m.bullhornField && m.bullhornField !== '__skip__').length === 0}
                     className="flex-1"
                     variant={dryRun ? "secondary" : "default"}
                   >
