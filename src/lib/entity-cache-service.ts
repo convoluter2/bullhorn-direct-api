@@ -21,19 +21,27 @@ export class EntityCacheService {
 
   async getEntityList(): Promise<CachedEntity[]> {
     try {
-      const cache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
-      if (!cache) {
+      if (!window.spark || !window.spark.kv) {
+        console.warn('⚠️ Spark KV not available yet')
         return []
       }
       
-      return cache.entities.map(e => ({
-        entity: e.entity,
-        label: e.label,
-        metaUrl: e.metaUrl,
-        isManual: e.isManual || false
-      }))
+      const cache = await window.spark.kv.get<EntityCacheData>('entity-cache-v2')
+      if (!cache || !cache.entities) {
+        console.log('📦 No entity cache found')
+        return []
+      }
+      
+      const entities = cache.entities.map(e => ({
+        entity: e?.entity || '',
+        label: e?.label || e?.entity || '',
+        metaUrl: e?.metaUrl || '',
+        isManual: e?.isManual || false
+      })).filter(e => e.entity !== '')
+      
+      return entities
     } catch (error) {
-      console.error('Failed to get entity list from cache:', error)
+      console.error('❌ Failed to get entity list from cache:', error)
       return []
     }
   }

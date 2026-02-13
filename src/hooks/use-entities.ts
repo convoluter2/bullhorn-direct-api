@@ -32,15 +32,18 @@ export function useEntities() {
         const session = bullhornAPI.getSession()
         
         if (!session) {
+          console.log('⚠️ No session found, skipping entity load')
           setEntities([])
           setLoading(false)
           loadingRef.current = false
+          hasLoadedRef.current = true
           return
         }
 
+        console.log('📦 Loading entities...')
         const cachedEntities = await entityCacheService.getEntityList()
         
-        if (cachedEntities.length > 0) {
+        if (cachedEntities && cachedEntities.length > 0) {
           console.log('✅ Loading entities from persistent cache:', cachedEntities.length)
           setEntities(cachedEntities.map(e => e.entity))
           const status = await entityCacheService.getCacheStatus()
@@ -58,16 +61,22 @@ export function useEntities() {
         hasLoadedRef.current = true
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load entities'
-        console.error('Failed to load entities:', err)
+        console.error('❌ Failed to load entities:', err)
         setError(errorMessage)
         setEntities([])
+        hasLoadedRef.current = true
       } finally {
         setLoading(false)
         loadingRef.current = false
       }
     }
 
-    loadEntities()
+    loadEntities().catch(err => {
+      console.error('❌ Unexpected error in loadEntities:', err)
+      setLoading(false)
+      loadingRef.current = false
+      hasLoadedRef.current = true
+    })
   }, [])
 
   useEffect(() => {

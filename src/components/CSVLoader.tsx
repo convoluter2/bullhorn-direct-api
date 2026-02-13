@@ -109,21 +109,33 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const restorePersistedState = () => {
     if (!persistedState) return
     
-    setEntity(persistedState.entity)
-    setCsvData(persistedState.csvData)
-    setMappings(persistedState.mappings)
-    setToManyConfigs(persistedState.toManyConfigs || {})
-    setLookupField(persistedState.lookupField)
-    setUpdateExisting(persistedState.updateExisting)
-    setCreateNew(persistedState.createNew)
-    setDryRun(persistedState.dryRun)
-    setCurrentIndex(persistedState.currentIndex)
-    setResults(persistedState.results)
-    setProgress(persistedState.progress)
-    setExecutionState('paused')
-    setShowRestorePrompt(false)
-    
-    toast.success(`Restored paused import: ${persistedState.currentIndex} of ${persistedState.csvData.rows.length} rows processed`)
+    try {
+      setEntity(persistedState.entity)
+      setCsvData(persistedState.csvData)
+      
+      const validMappings = (persistedState.mappings || []).filter(m => 
+        m && m.csvColumn && m.bullhornField !== undefined
+      )
+      setMappings(validMappings)
+      
+      setToManyConfigs(persistedState.toManyConfigs || {})
+      setLookupField(persistedState.lookupField)
+      setUpdateExisting(persistedState.updateExisting)
+      setCreateNew(persistedState.createNew)
+      setDryRun(persistedState.dryRun)
+      setCurrentIndex(persistedState.currentIndex)
+      setResults(persistedState.results || [])
+      setProgress(persistedState.progress)
+      setExecutionState('paused')
+      setShowRestorePrompt(false)
+      
+      toast.success(`Restored paused import: ${persistedState.currentIndex} of ${persistedState.csvData.rows.length} rows processed`)
+    } catch (error) {
+      console.error('Error restoring persisted state:', error)
+      toast.error('Failed to restore paused import state')
+      deletePersistedState()
+      setShowRestorePrompt(false)
+    }
   }
   
   const discardPersistedState = () => {
@@ -154,10 +166,18 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         
         setCsvData(parsed)
         
-        const initialMappings = parsed.headers.map(header => ({
-          csvColumn: header || '',
-          bullhornField: '__skip__'
-        }))
+        const initialMappings = parsed.headers
+          .filter(header => header !== null && header !== undefined)
+          .map(header => ({
+            csvColumn: String(header) || '',
+            bullhornField: '__skip__'
+          }))
+        
+        if (initialMappings.length === 0) {
+          toast.error('CSV file has invalid headers')
+          return
+        }
+        
         setMappings(initialMappings)
         setResults([])
         toast.success(`CSV loaded: ${parsed.rows.length} rows, ${parsed.headers.length} columns`)
@@ -173,15 +193,19 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   }
 
   const updateMapping = (csvColumn: string, bullhornField: string) => {
-    setMappings((mappings || []).map(m => 
-      m.csvColumn === csvColumn ? { ...m, bullhornField } : m
-    ))
+    setMappings((currentMappings) => 
+      (currentMappings || []).map(m => 
+        m && m.csvColumn === csvColumn ? { ...m, bullhornField } : m
+      ).filter(m => m !== null && m !== undefined)
+    )
   }
 
   const updateTransform = (csvColumn: string, transform?: string) => {
-    setMappings((mappings || []).map(m => 
-      m.csvColumn === csvColumn ? { ...m, transform } : m
-    ))
+    setMappings((currentMappings) => 
+      (currentMappings || []).map(m => 
+        m && m.csvColumn === csvColumn ? { ...m, transform } : m
+      ).filter(m => m !== null && m !== undefined)
+    )
   }
 
   const transformValue = (value: string, transform?: string): any => {
@@ -260,14 +284,14 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         return
       }
 
-      const validMappings = mappings.filter(m => m && m.bullhornField && m.bullhornField !== '__skip__')
+      const validMappings = mappings.filter(m => m && m.csvColumn && m.bullhornField && m.bullhornField !== '__skip__')
       if (validMappings.length === 0) {
         toast.error('Please map at least one field')
         return
       }
 
       if (lookupField && lookupField !== '__none__') {
-        const lookupMapping = mappings.find(m => m.bullhornField === lookupField || m.csvColumn.toLowerCase() === lookupField.toLowerCase())
+        const lookupMapping = mappings.find(m => m && (m.bullhornField === lookupField || m.csvColumn?.toLowerCase() === lookupField.toLowerCase()))
         if (!lookupMapping) {
           toast.error('Lookup field must have a corresponding CSV column')
           return
@@ -334,16 +358,16 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       
       let lookupValue: string | null = null
 
-      if (lookupField && lookupField !== '__none__') {
-        const lookupMapping = mappings.find(m => m.bullhornField === lookupField)
-        if (lookupMapping) {
+      if (lookupField && lookupField !== '__none__' && csvData && csvData.headers) {
+        const lookupMapping = mappings.find(m => m && m.bullhornField === lookupField)
+        if (lookupMapping && lookupMapping.csvColumn) {
           const csvIndex = csvData.headers.indexOf(lookupMapping.csvColumn)
-          if (csvIndex !== -1) {
+          if (csvIndex !== -1 && row && row[csvIndex] !== undefined) {
             const rawValue = row[csvIndex]
             lookupValue = transformValue(rawValue, lookupMapping.transform)
           }
         } else {
-          const csvIndex = csvData.headers.findIndex(h => h.toLowerCase() === lookupField.toLowerCase())
+          const csvIndex = csvData.headers.findIndex(h => h && h.toLowerCase() === lookupField.toLowerCase())
           if (csvIndex !== -1) {
             lookupValue = row[csvIndex]
           }
@@ -351,8 +375,12 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       }
 
       validMappings.forEach(mapping => {
+        if (!mapping || !mapping.csvColumn || !mapping.bullhornField || !csvData || !csvData.headers) {
+          return
+        }
+        
         const csvIndex = csvData.headers.indexOf(mapping.csvColumn)
-        if (csvIndex !== -1) {
+        if (csvIndex !== -1 && row && row[csvIndex] !== undefined) {
           const rawValue = row[csvIndex]
           const transformedValue = transformValue(rawValue, mapping.transform)
           
@@ -1074,9 +1102,8 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               <div className="space-y-2">
                 <Label>Field Mapping</Label>
                 <div className="space-y-2">
-                  {(mappings || []).map((mapping) => {
-                    if (!mapping) return null
-                    const fieldMeta = mapping.bullhornField ? metadata?.fieldsMap[mapping.bullhornField] : undefined
+                  {(mappings || []).filter(m => m && m.csvColumn).map((mapping) => {
+                    const fieldMeta = mapping?.bullhornField ? metadata?.fieldsMap[mapping.bullhornField] : undefined
                     const isToMany = fieldMeta?.associationType === 'TO_MANY'
                     const isToOne = fieldMeta?.associationType === 'TO_ONE'
                     
@@ -1093,7 +1120,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                                 <Skeleton className="h-10 w-full" />
                               ) : (
                                 <Select
-                                  value={mapping.bullhornField || '__skip__'}
+                                  value={mapping?.bullhornField || '__skip__'}
                                   onValueChange={(v) => updateMapping(mapping.csvColumn, v)}
                                 >
                                   <SelectTrigger>
@@ -1119,9 +1146,9 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                             </div>
                             <div className="w-32">
                               <Select
-                                value={mapping.transform || 'none'}
+                                value={mapping?.transform || 'none'}
                                 onValueChange={(v) => updateTransform(mapping.csvColumn, v === 'none' ? undefined : v)}
-                                disabled={mapping.bullhornField === '__skip__' || isToMany || isToOne}
+                                disabled={!mapping?.bullhornField || mapping.bullhornField === '__skip__' || isToMany || isToOne}
                               >
                                 <SelectTrigger className="text-xs">
                                   <SelectValue placeholder="Transform" />
@@ -1138,7 +1165,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                             </div>
                           </div>
                           
-                          {isToMany && mapping.bullhornField !== '__skip__' && fieldMeta.associatedEntity?.entity && (
+                          {isToMany && mapping?.bullhornField && mapping.bullhornField !== '__skip__' && fieldMeta?.associatedEntity?.entity && (
                             <ToManyConfigSelector
                               fieldName={mapping.bullhornField}
                               fieldLabel={fieldMeta.label || mapping.bullhornField}
@@ -1147,17 +1174,17 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                               onChange={(config) => {
                                 setToManyConfigs(prev => ({
                                   ...prev,
-                                  [mapping.bullhornField]: config
+                                  [mapping.bullhornField!]: config
                                 }))
                               }}
                             />
                           )}
                           
-                          {isToOne && mapping.bullhornField !== '__skip__' && (
+                          {isToOne && mapping?.bullhornField && mapping.bullhornField !== '__skip__' && (
                             <div className="pl-4 border-l-2 border-accent/30">
                               <Label className="text-xs text-muted-foreground mb-2">To-One Configuration</Label>
                               <p className="text-xs text-muted-foreground">
-                                CSV value should be the {fieldMeta.associatedEntity?.entity || 'entity'} ID (e.g., 12345)
+                                CSV value should be the {fieldMeta?.associatedEntity?.entity || 'entity'} ID (e.g., 12345)
                               </p>
                             </div>
                           )}

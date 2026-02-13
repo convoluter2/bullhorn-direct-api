@@ -65,19 +65,27 @@ export function useEntityMetadata(entity: string | undefined) {
         console.log('📚 Fetching fresh metadata for:', entity)
         const response = await bullhornAPI.getMetadata(entity)
 
+        if (!response) {
+          throw new Error('No metadata response received')
+        }
+
         const fields: EntityField[] = []
         const fieldsMap: Record<string, EntityField> = {}
 
         if (response.fields && Array.isArray(response.fields)) {
           for (const field of response.fields) {
+            if (!field || !field.name) {
+              continue
+            }
+            
             const defaultLabel = field.label || field.name
             const customLabel = getCustomFieldLabel(entity, field.name, defaultLabel)
             
             const fieldInfo: EntityField = {
               name: field.name,
               label: customLabel,
-              type: field.type,
-              dataType: field.dataType,
+              type: field.type || 'String',
+              dataType: field.dataType || 'String',
               dataSpecialization: field.dataSpecialization,
               confidential: field.confidential,
               optional: field.optional,
@@ -125,6 +133,7 @@ export function useEntityMetadata(entity: string | undefined) {
         console.log('✅ Metadata loaded and cached for:', entity, '- Fields:', fields.length)
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load metadata'
+        console.error('❌ Metadata loading failed for', entity, ':', err)
         setError(errorMessage)
         setMetadata(null)
       } finally {
@@ -132,7 +141,11 @@ export function useEntityMetadata(entity: string | undefined) {
       }
     }
 
-    loadMetadata()
+    loadMetadata().catch(err => {
+      console.error('❌ Unexpected error in loadMetadata:', err)
+      setLoading(false)
+      setError(err instanceof Error ? err.message : 'Unexpected error')
+    })
   }, [entity, refreshTrigger])
 
   return { metadata, loading, error, refresh }
