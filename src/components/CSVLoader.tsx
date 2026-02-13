@@ -1074,9 +1074,8 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                       <Label className="text-sm font-medium">Create New</Label>
                       <p className="text-xs text-muted-foreground">Create records if not found</p>
                     </div>
-                    <Switch
-                      checked={createNew}
-                      onCheckedChange={setCreateNew}
+                  {(mappings || []).filter(m => m && m.csvColumn).map((mapping) => {
+                    const fieldMeta = mapping?.bullhornField ? metadata?.fieldsMap[mapping.bullhornField] : undefined
                     />
                   </div>
                 </div>
@@ -1093,7 +1092,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                   </div>
                   <Switch
                     checked={dryRun}
-                    onCheckedChange={setDryRun}
+                                  value={mapping?.bullhornField || '__skip__'}
                     disabled={loading}
                   />
                 </div>
@@ -1119,9 +1118,9 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                               {metadataLoading ? (
                                 <Skeleton className="h-10 w-full" />
                               ) : (
-                                <Select
+                                value={mapping?.transform || 'none'}
                                   value={mapping?.bullhornField || '__skip__'}
-                                  onValueChange={(v) => updateMapping(mapping.csvColumn, v)}
+                                disabled={!mapping?.bullhornField || mapping.bullhornField === '__skip__' || isToMany || isToOne}
                                 >
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select Bullhorn field" />
