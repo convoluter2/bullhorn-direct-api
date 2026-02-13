@@ -11,11 +11,13 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye, ArrowsClockwise, ArrowCounterClockwise, Pause, Play, Stop, DownloadSimple, Gauge, Trash, Clock } from '@phosphor-icons/react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye, ArrowsClockwise, ArrowCounterClockwise, Pause, Play, Stop, DownloadSimple, Gauge, Trash, Clock, Warning, WarningCircle } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV, exportToCSV, exportToJSON } from '@/lib/csv-utils'
 import { formatFieldLabel, formatFieldValue } from '@/lib/utils'
+import { validateCSVFile, validateCSVContent, validateFieldMappings, validateImportConfiguration, type ValidationRule } from '@/lib/csv-validation'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
@@ -75,6 +77,9 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [snapshots, setSnapshots] = useKV<UpdateSnapshot[]>('csv-import-snapshots', [])
   const [lastSnapshotId, setLastSnapshotId] = useState<string | null>(null)
   
+  const [validationErrors, setValidationErrors] = useState<ValidationRule[]>([])
+  const [validationWarnings, setValidationWarnings] = useState<ValidationRule[]>([])
+  
   const [executionState, setExecutionState] = useState<ExecutionState>('idle')
   const [currentIndex, setCurrentIndex] = useState(0)
   const executionControlRef = useRef<{ shouldPause: boolean; shouldStop: boolean }>({
@@ -94,6 +99,30 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
   
   const availableFields = metadata?.fields || []
+  
+  useEffect(() => {
+    if (csvData && mappings.length > 0 && entity) {
+      const validMappings = mappings.filter(m => 
+        m && m.csvColumn && m.bullhornField && m.bullhornField !== '__skip__'
+      )
+      
+      const configValidation = validateImportConfiguration({
+        entity,
+        lookupField,
+        updateExisting,
+        createNew,
+        hasValidMappings: validMappings.length > 0
+      })
+      
+      const mappingValidation = validateFieldMappings(mappings, csvData.headers, false)
+      
+      const combinedErrors = [...configValidation.errors, ...mappingValidation.errors]
+      const combinedWarnings = [...configValidation.warnings, ...mappingValidation.warnings]
+      
+      setValidationErrors(combinedErrors)
+      setValidationWarnings(combinedWarnings)
+    }
+  }, [entity, lookupField, updateExisting, createNew, mappings, csvData])
   
   useEffect(() => {
     if (persistedState && !csvData) {
@@ -166,20 +195,59 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     const file = e.target.files?.[0]
     if (!file) return
 
+    const fileValidation = validateCSVFile(file, {
+      maxFileSize: 50 * 1024 * 1024,
+      maxRows: 100000,
+      maxColumns: 200
+    })
+
+    if (!fileValidation.isValid) {
+      setValidationErrors(fileValidation.errors)
+      setValidationWarnings(fileValidation.warnings)
+      fileValidation.errors.forEach(err => toast.error(err.message))
+      return
+    }
+
+    if (fileValidation.warnings.length > 0) {
+      setValidationWarnings(fileValidation.warnings)
+      fileValidation.warnings.forEach(warn => toast.warning(warn.message))
+    }
+
     const reader = new FileReader()
     reader.onload = (event) => {
       try {
         const text = event.target?.result as string
         if (!text || text.trim() === '') {
-          toast.error('CSV file is empty')
+          const error = { name: 'empty_file', message: 'CSV file is empty', severity: 'error' as const }
+          setValidationErrors([error])
+          toast.error(error.message)
           return
         }
         
         const parsed = parseCSV(text)
         
-        if (!parsed.headers || parsed.headers.length === 0) {
-          toast.error('CSV file has no headers')
+        const contentValidation = validateCSVContent(parsed.headers, parsed.rows, {
+          requireHeaders: true,
+          allowDuplicateHeaders: false,
+          minRows: 1
+        })
+
+        if (!contentValidation.isValid) {
+          setValidationErrors(contentValidation.errors)
+          setValidationWarnings(contentValidation.warnings)
+          contentValidation.errors.forEach(err => toast.error(err.message))
+          if (contentValidation.warnings.length > 0) {
+            contentValidation.warnings.forEach(warn => toast.warning(warn.message))
+          }
           return
+        }
+
+        setValidationErrors([])
+        if (contentValidation.warnings.length > 0) {
+          setValidationWarnings(contentValidation.warnings)
+          contentValidation.warnings.forEach(warn => toast.warning(warn.message))
+        } else {
+          setValidationWarnings([])
         }
         
         setCsvData(parsed)
@@ -192,21 +260,31 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           }))
           .filter(mapping => mapping.csvColumn !== '')
         
-        if (initialMappings.length === 0) {
-          toast.error('CSV file has invalid headers')
-          return
-        }
-        
         setMappings(initialMappings)
         setResults([])
         toast.success(`CSV loaded: ${parsed.rows.length} rows, ${parsed.headers.length} columns`)
+        
+        onLog('CSV Upload', 'success', `Loaded CSV file: ${file.name}`, {
+          fileName: file.name,
+          fileSize: file.size,
+          rows: parsed.rows.length,
+          columns: parsed.headers.length,
+          warnings: contentValidation.warnings.length
+        })
       } catch (error) {
         console.error('CSV parse error:', error)
-        toast.error(`Failed to parse CSV: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        const errorMsg = `Failed to parse CSV: ${error instanceof Error ? error.message : 'Unknown error'}`
+        const validationError = { name: 'parse_error', message: errorMsg, severity: 'error' as const }
+        setValidationErrors([validationError])
+        toast.error(errorMsg)
+        onLog('CSV Upload', 'error', 'CSV parse failed', { error: String(error) })
       }
     }
     reader.onerror = () => {
-      toast.error('Failed to read CSV file')
+      const error = { name: 'read_error', message: 'Failed to read CSV file', severity: 'error' as const }
+      setValidationErrors([error])
+      toast.error(error.message)
+      onLog('CSV Upload', 'error', 'File read failed', {})
     }
     reader.readAsText(file)
   }
@@ -214,13 +292,26 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const updateMapping = (csvColumn: string, bullhornField: string) => {
     setMappings((currentMappings) => {
       if (!currentMappings || currentMappings.length === 0) return []
-      return currentMappings
+      const updatedMappings = currentMappings
         .filter(m => m && m.csvColumn && m.csvColumn.trim() !== '')
         .map(m => 
           m.csvColumn === csvColumn 
             ? { ...m, bullhornField: bullhornField || '__skip__' } 
             : m
         )
+      
+      if (csvData) {
+        const validation = validateFieldMappings(updatedMappings, csvData.headers, true)
+        if (validation.errors.length > 0 || validation.warnings.length > 0) {
+          setValidationErrors(validation.errors)
+          setValidationWarnings(validation.warnings)
+        } else {
+          setValidationErrors([])
+          setValidationWarnings([])
+        }
+      }
+      
+      return updatedMappings
     })
   }
 
@@ -318,9 +409,35 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         m.bullhornField !== '__skip__'
       )
       
-      if (validMappings.length === 0) {
-        toast.error('Please map at least one field')
+      const mappingValidation = validateFieldMappings(
+        mappings,
+        csvData.headers,
+        true
+      )
+
+      const configValidation = validateImportConfiguration({
+        entity,
+        lookupField,
+        updateExisting,
+        createNew,
+        hasValidMappings: validMappings.length > 0
+      })
+
+      const allErrors = [...mappingValidation.errors, ...configValidation.errors]
+      const allWarnings = [...mappingValidation.warnings, ...configValidation.warnings]
+
+      if (allErrors.length > 0) {
+        setValidationErrors(allErrors)
+        allErrors.forEach(err => toast.error(err.message))
+        onLog('CSV Import Validation', 'error', 'Import validation failed', {
+          errors: allErrors.map(e => e.message)
+        })
         return
+      }
+
+      if (allWarnings.length > 0) {
+        setValidationWarnings(allWarnings)
+        allWarnings.forEach(warn => toast.warning(warn.message))
       }
 
       if (lookupField && lookupField !== '__none__') {
@@ -331,14 +448,11 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           (m.csvColumn && m.csvColumn.toLowerCase() === lookupField.toLowerCase()))
         )
         if (!lookupMapping) {
-          toast.error('Lookup field must have a corresponding CSV column')
+          const error = { name: 'lookup_not_mapped', message: 'Lookup field must have a corresponding CSV column', severity: 'error' as const }
+          setValidationErrors([error])
+          toast.error(error.message)
           return
         }
-      }
-
-      if (!updateExisting && !createNew) {
-        toast.error('Must enable either "Update Existing" or "Create New"')
-        return
       }
 
     if (!isResume) {
@@ -977,6 +1091,28 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           <CardTitle className="flex items-center gap-2">
             <Upload className="text-accent" size={24} />
             CSV Data Loader
+            {csvData && (
+              <div className="flex items-center gap-2 ml-auto">
+                {validationErrors.length > 0 && (
+                  <Badge variant="destructive" className="flex items-center gap-1">
+                    <WarningCircle size={14} />
+                    {validationErrors.length} Error{validationErrors.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+                {validationWarnings.length > 0 && (
+                  <Badge className="flex items-center gap-1 bg-yellow-500/20 text-yellow-700 border-yellow-500/50">
+                    <Warning size={14} />
+                    {validationWarnings.length} Warning{validationWarnings.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+                {csvData && validationErrors.length === 0 && (
+                  <Badge variant="outline" className="flex items-center gap-1 text-green-600 border-green-500/50">
+                    <CheckCircle size={14} />
+                    Ready
+                  </Badge>
+                )}
+              </div>
+            )}
           </CardTitle>
           <CardDescription>Import and update bulk data from CSV files into Bullhorn entities</CardDescription>
         </CardHeader>
@@ -1072,6 +1208,38 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
 
           {csvData && (
             <>
+              {(validationErrors.length > 0 || validationWarnings.length > 0) && (
+                <div className="space-y-2">
+                  {validationErrors.length > 0 && (
+                    <Alert variant="destructive">
+                      <WarningCircle className="h-4 w-4" />
+                      <AlertTitle>Validation Errors ({validationErrors.length})</AlertTitle>
+                      <AlertDescription>
+                        <ul className="list-disc list-inside space-y-1 text-sm mt-2">
+                          {validationErrors.map((error, i) => (
+                            <li key={i}>{error.message}</li>
+                          ))}
+                        </ul>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  {validationWarnings.length > 0 && (
+                    <Alert className="border-yellow-500/50 bg-yellow-500/10">
+                      <Warning className="h-4 w-4 text-yellow-600" />
+                      <AlertTitle className="text-yellow-600">Validation Warnings ({validationWarnings.length})</AlertTitle>
+                      <AlertDescription className="text-yellow-600">
+                        <ul className="list-disc list-inside space-y-1 text-sm mt-2">
+                          {validationWarnings.map((warning, i) => (
+                            <li key={i}>{warning.message}</li>
+                          ))}
+                        </ul>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
+              
               {metadataError && entity && (
                 <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md border border-destructive/20">
                   Failed to load entity metadata: {metadataError}
@@ -1269,20 +1437,35 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
 
               <div className="flex gap-2 pt-2">
                 {executionState === 'idle' || executionState === 'stopped' ? (
-                  <Button
-                    onClick={() => executeImport(false)}
-                    disabled={
-                      loading || 
-                      !mappings || 
-                      mappings.length === 0 ||
-                      mappings.filter(m => m && m.csvColumn && m.bullhornField && m.bullhornField !== '__skip__').length === 0
-                    }
-                    className="flex-1"
-                    variant={dryRun ? "secondary" : "default"}
-                  >
-                    {dryRun ? <Eye /> : <Lightning />}
-                    {loading ? (dryRun ? 'Previewing...' : 'Importing...') : dryRun ? 'Preview Import' : (lookupField && lookupField !== '__none__') ? 'Start Import/Update' : 'Start Import'}
-                  </Button>
+                  <div className="flex-1 space-y-2">
+                    <Button
+                      onClick={() => executeImport(false)}
+                      disabled={
+                        loading || 
+                        !mappings || 
+                        mappings.length === 0 ||
+                        mappings.filter(m => m && m.csvColumn && m.bullhornField && m.bullhornField !== '__skip__').length === 0 ||
+                        validationErrors.length > 0
+                      }
+                      className="w-full"
+                      variant={dryRun ? "secondary" : "default"}
+                    >
+                      {dryRun ? <Eye /> : <Lightning />}
+                      {loading ? (dryRun ? 'Previewing...' : 'Importing...') : dryRun ? 'Preview Import' : (lookupField && lookupField !== '__none__') ? 'Start Import/Update' : 'Start Import'}
+                    </Button>
+                    {validationErrors.length > 0 && (
+                      <div className="flex items-center gap-2 text-xs text-destructive">
+                        <WarningCircle size={14} />
+                        <span>Fix {validationErrors.length} validation error{validationErrors.length !== 1 ? 's' : ''} to proceed</span>
+                      </div>
+                    )}
+                    {validationWarnings.length > 0 && validationErrors.length === 0 && (
+                      <div className="flex items-center gap-2 text-xs text-yellow-600">
+                        <Warning size={14} />
+                        <span>{validationWarnings.length} warning{validationWarnings.length !== 1 ? 's' : ''} - review before proceeding</span>
+                      </div>
+                    )}
+                  </div>
                 ) : null}
                 
                 {executionState === 'running' && (
