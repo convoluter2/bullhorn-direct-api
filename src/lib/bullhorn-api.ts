@@ -983,10 +983,27 @@ export class BullhornAPI {
 
     if (!response.ok) {
       const error = await response.text()
-      throw new Error(`Create entity failed: ${error}`)
+      console.error(`❌ Create entity failed for ${entity}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        error,
+        data,
+        url: fullUrl
+      })
+      
+      let errorObj
+      try {
+        errorObj = JSON.parse(error)
+      } catch {
+        errorObj = { errorMessage: error }
+      }
+      
+      throw new Error(`Create ${entity} failed: ${errorObj.errorMessage || error}`)
     }
 
-    return await response.json()
+    const result = await response.json()
+    console.log(`✅ Successfully created ${entity}:`, result)
+    return result
   }
 
   async updateEntity(entity: string, id: number, data: any, expectedCorporationId?: number): Promise<any> {

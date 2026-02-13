@@ -166,12 +166,13 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   }
 
   const transformValue = (value: string, transform?: string): any => {
-    if (!transform || !value) return value
+    if (!value || value === null || value === undefined) return value
 
     try {
       switch (transform) {
         case 'number':
-          return parseFloat(value) || 0
+          const num = parseFloat(value)
+          return isNaN(num) ? value : num
         case 'boolean':
           return value.toLowerCase() === 'true' || value === '1'
         case 'trim':
@@ -183,7 +184,8 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         default:
           return value
       }
-    } catch {
+    } catch (error) {
+      console.error('Transform error:', error)
       return value
     }
   }
@@ -329,7 +331,9 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           const rawValue = row[csvIndex]
           const transformedValue = transformValue(rawValue, mapping.transform)
           
-          if (transformedValue === '' || transformedValue.toLowerCase() === 'null') {
+          if (transformedValue === '' || transformedValue === null || transformedValue === undefined) {
+            data[mapping.bullhornField] = null
+          } else if (typeof transformedValue === 'string' && transformedValue.toLowerCase() === 'null') {
             data[mapping.bullhornField] = null
           } else {
             const fieldMeta = metadata?.fieldsMap[mapping.bullhornField]
@@ -430,18 +434,28 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
             })
             
             if (Object.keys(regularData).length > 0) {
-              await bullhornAPI.updateEntity(entity, existingRecord.id, regularData)
+              try {
+                await bullhornAPI.updateEntity(entity, existingRecord.id, regularData)
+              } catch (updateError) {
+                const errorMsg = updateError instanceof Error ? updateError.message : String(updateError)
+                throw new Error(`Failed to update record ID ${existingRecord.id}: ${errorMsg}`)
+              }
             }
             
             for (const toManyUpdate of toManyUpdates) {
-              await bullhornAPI.updateToManyAssociation(
-                entity,
-                existingRecord.id,
-                toManyUpdate.field,
-                toManyUpdate.ids,
-                toManyUpdate.operation as 'add' | 'remove' | 'replace',
-                toManyUpdate.subField || 'id'
-              )
+              try {
+                await bullhornAPI.updateToManyAssociation(
+                  entity,
+                  existingRecord.id,
+                  toManyUpdate.field,
+                  toManyUpdate.ids,
+                  toManyUpdate.operation as 'add' | 'remove' | 'replace',
+                  toManyUpdate.subField || 'id'
+                )
+              } catch (toManyError) {
+                const errorMsg = toManyError instanceof Error ? toManyError.message : String(toManyError)
+                throw new Error(`Failed to update to-many field "${toManyUpdate.field}" for record ID ${existingRecord.id}: ${errorMsg}`)
+              }
             }
             
             return {
@@ -509,18 +523,38 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               }
             })
             
-            const result = await bullhornAPI.createEntity(entity, regularData)
+            if (Object.keys(regularData).length === 0 && toManyUpdates.length === 0) {
+              throw new Error('No data to create - all mapped fields are empty')
+            }
+            
+            let result
+            try {
+              result = await bullhornAPI.createEntity(entity, regularData)
+            } catch (createError) {
+              const errorMsg = createError instanceof Error ? createError.message : String(createError)
+              throw new Error(`Failed to create ${entity}: ${errorMsg}`)
+            }
+            
             const newEntityId = result.changedEntityId
             
+            if (!newEntityId) {
+              throw new Error(`Create ${entity} returned no ID. Response: ${JSON.stringify(result)}`)
+            }
+            
             for (const toManyUpdate of toManyUpdates) {
-              await bullhornAPI.updateToManyAssociation(
-                entity,
-                newEntityId,
-                toManyUpdate.field,
-                toManyUpdate.ids,
-                toManyUpdate.operation as 'add' | 'remove' | 'replace',
-                toManyUpdate.subField || 'id'
-              )
+              try {
+                await bullhornAPI.updateToManyAssociation(
+                  entity,
+                  newEntityId,
+                  toManyUpdate.field,
+                  toManyUpdate.ids,
+                  toManyUpdate.operation as 'add' | 'remove' | 'replace',
+                  toManyUpdate.subField || 'id'
+                )
+              } catch (toManyError) {
+                const errorMsg = toManyError instanceof Error ? toManyError.message : String(toManyError)
+                console.warn(`Failed to update to-many field "${toManyUpdate.field}" for new record ID ${newEntityId}: ${errorMsg}`)
+              }
             }
             
             return {
@@ -616,13 +650,15 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         const row = csvData.rows[i]
         batch.push(
           processRecord(i, row).catch(error => {
-            const errorMessage = error instanceof Error ? error.message : 'Import failed'
+            console.error(`Row ${i + 1} processing error:`, error)
+            const errorMessage = error instanceof Error ? error.message : String(error)
             errorDetails.push(`Row ${i + 1}: ${errorMessage}`)
             return {
               row: i + 1,
               status: 'error' as const,
               message: errorMessage,
               action: 'error' as const,
+              error: errorMessage,
               failedData: { error: errorMessage }
             }
           })
