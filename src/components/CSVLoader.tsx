@@ -1054,7 +1054,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                                 <Skeleton className="h-10 w-full" />
                               ) : (
                                 <Select
-                                  value={mapping.bullhornField}
+                                  value={mapping.bullhornField || '__skip__'}
                                   onValueChange={(v) => updateMapping(mapping.csvColumn, v)}
                                 >
                                   <SelectTrigger>
