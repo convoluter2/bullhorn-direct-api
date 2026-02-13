@@ -114,7 +114,14 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       setCsvData(persistedState.csvData)
       
       const validMappings = (persistedState.mappings || [])
-        .filter(m => m && m.csvColumn && m.bullhornField !== undefined && m.bullhornField !== null)
+        .filter(m => 
+          m && 
+          m.csvColumn && 
+          m.csvColumn.trim() !== '' &&
+          m.bullhornField !== undefined && 
+          m.bullhornField !== null &&
+          m.bullhornField !== ''
+        )
         .map(m => ({
           csvColumn: m.csvColumn,
           bullhornField: m.bullhornField,
@@ -208,8 +215,12 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     setMappings((currentMappings) => {
       if (!currentMappings || currentMappings.length === 0) return []
       return currentMappings
-        .filter(m => m && m.csvColumn)
-        .map(m => m.csvColumn === csvColumn ? { ...m, bullhornField } : m)
+        .filter(m => m && m.csvColumn && m.csvColumn.trim() !== '')
+        .map(m => 
+          m.csvColumn === csvColumn 
+            ? { ...m, bullhornField: bullhornField || '__skip__' } 
+            : m
+        )
     })
   }
 
@@ -217,7 +228,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     setMappings((currentMappings) => {
       if (!currentMappings || currentMappings.length === 0) return []
       return currentMappings
-        .filter(m => m && m.csvColumn)
+        .filter(m => m && m.csvColumn && m.csvColumn.trim() !== '')
         .map(m => m.csvColumn === csvColumn ? { ...m, transform } : m)
     })
   }
@@ -298,10 +309,12 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         return
       }
 
-      const validMappings = mappings.filter(m => 
+      const validMappings = (mappings || []).filter(m => 
         m && 
         m.csvColumn && 
-        m.bullhornField && 
+        m.bullhornField !== undefined && 
+        m.bullhornField !== null &&
+        m.bullhornField !== '' &&
         m.bullhornField !== '__skip__'
       )
       
@@ -312,8 +325,10 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
 
       if (lookupField && lookupField !== '__none__') {
         const lookupMapping = validMappings.find(m => 
-          m.bullhornField === lookupField || 
-          m.csvColumn?.toLowerCase() === lookupField.toLowerCase()
+          m && 
+          m.bullhornField && 
+          (m.bullhornField === lookupField || 
+          (m.csvColumn && m.csvColumn.toLowerCase() === lookupField.toLowerCase()))
         )
         if (!lookupMapping) {
           toast.error('Lookup field must have a corresponding CSV column')
@@ -382,7 +397,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       let lookupValue: string | null = null
 
       if (lookupField && lookupField !== '__none__' && csvData && csvData.headers) {
-        const lookupMapping = validMappings.find(m => m.bullhornField === lookupField)
+        const lookupMapping = validMappings.find(m => m && m.bullhornField === lookupField)
         if (lookupMapping && lookupMapping.csvColumn) {
           const csvIndex = csvData.headers.indexOf(lookupMapping.csvColumn)
           if (csvIndex !== -1 && row && row[csvIndex] !== undefined) {
@@ -391,14 +406,14 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           }
         } else {
           const csvIndex = csvData.headers.findIndex(h => h && h.toLowerCase() === lookupField.toLowerCase())
-          if (csvIndex !== -1) {
+          if (csvIndex !== -1 && row && row[csvIndex] !== undefined) {
             lookupValue = row[csvIndex]
           }
         }
       }
 
       validMappings.forEach(mapping => {
-        if (!mapping.csvColumn || !mapping.bullhornField || !csvData || !csvData.headers) {
+        if (!mapping || !mapping.csvColumn || !mapping.bullhornField || mapping.bullhornField === '__skip__' || !csvData || !csvData.headers) {
           return
         }
         
@@ -456,7 +471,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
 
       if (lookupField && lookupField !== '__none__' && lookupValue) {
         try {
-          const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f !== 'id')]
+          const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f && f !== '__skip__' && f !== 'id')]
           const searchResult = await bullhornAPI.search({
             entity,
             fields: fieldsToFetch,
@@ -473,7 +488,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
             const recordId = parseInt(lookupValue, 10)
             if (!isNaN(recordId)) {
               try {
-                const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f !== 'id')]
+                const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f && f !== '__skip__' && f !== 'id')]
                 const record = await bullhornAPI.getEntity(entity, recordId, fieldsToFetch)
                 if (record && record.id) {
                   existingRecord = record
@@ -1146,7 +1161,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                                 <Skeleton className="h-10 w-full" />
                               ) : (
                                 <Select
-                                  value={mapping.bullhornField || '__skip__'}
+                                  value={mapping.bullhornField && mapping.bullhornField !== '' ? mapping.bullhornField : '__skip__'}
                                   onValueChange={(value) => updateMapping(mapping.csvColumn, value)}
                                   disabled={loading}
                                 >
