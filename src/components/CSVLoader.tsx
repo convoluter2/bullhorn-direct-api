@@ -541,7 +541,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           } else if (typeof transformedValue === 'string' && transformedValue.toLowerCase() === 'null') {
             data[mapping.bullhornField] = null
           } else {
-            const fieldMeta = metadata?.fieldsMap[mapping.bullhornField]
+            const fieldMeta = metadata?.fieldsMap ? metadata.fieldsMap[mapping.bullhornField] : undefined
             if (fieldMeta?.associationType === 'TO_MANY') {
               const config = toManyConfigs[mapping.bullhornField] || { operation: 'add', subField: 'id' }
               
@@ -1317,7 +1317,9 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                   {(mappings || [])
                     .filter(m => m && m.csvColumn && m.csvColumn.trim() !== '')
                     .map((mapping) => {
-                    const fieldMeta = mapping.bullhornField && mapping.bullhornField !== '__skip__' ? metadata?.fieldsMap[mapping.bullhornField] : undefined
+                    const fieldMeta = mapping.bullhornField && mapping.bullhornField !== '__skip__' && metadata?.fieldsMap 
+                      ? metadata.fieldsMap[mapping.bullhornField] 
+                      : undefined
                     const isToMany = fieldMeta?.associationType === 'TO_MANY'
                     const isToOne = fieldMeta?.associationType === 'TO_ONE'
                     
