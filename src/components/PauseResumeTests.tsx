@@ -322,14 +322,14 @@ export function PauseResumeTests() {
     
     setAllTestsRunning(false)
     
-    const passed = testResults.filter(t => t.status === 'pass').length
-    const failed = testResults.filter(t => t.status === 'fail').length
+    const passed = testResults.filter(t => t && t.status === 'pass').length
+    const failed = testResults.filter(t => t && t.status === 'fail').length
     toast.success(`Test suite complete: ${passed} passed, ${failed} failed`)
   }
 
-  const passedCount = testResults.filter(t => t.status === 'pass').length
-  const failedCount = testResults.filter(t => t.status === 'fail').length
-  const totalCount = testResults.length
+  const passedCount = testResults.filter(t => t && t.status === 'pass').length
+  const failedCount = testResults.filter(t => t && t.status === 'fail').length
+  const totalCount = testResults.filter(t => t && typeof t === 'object').length
 
   return (
     <div className="space-y-6">
@@ -433,7 +433,7 @@ export function PauseResumeTests() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {testResults.map((result, idx) => (
+                    {testResults.filter(result => result && typeof result === 'object').map((result, idx) => (
                       <TableRow key={idx}>
                         <TableCell className="font-medium">{result.testName}</TableCell>
                         <TableCell>

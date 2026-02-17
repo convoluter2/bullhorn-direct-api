@@ -398,11 +398,11 @@ export function OperatorTestSuite() {
   }
 
   const workingOperators = Object.entries(results)
-    .filter(([_, result]) => result.status === 'success' && result.hasResults && (result.resultCount || 0) > 0)
-    .map(([op, result]) => ({ operator: op, count: result.resultCount || 0 }))
+    .filter(([_, result]) => result && result.status === 'success' && result.hasResults && (result.resultCount || 0) > 0)
+    .map(([op, result]) => ({ operator: op, count: result!.resultCount || 0 }))
 
   const workingButNoResults = Object.entries(results)
-    .filter(([_, result]) => result.status === 'success' && !result.hasResults && (result.resultCount || 0) === 0)
+    .filter(([_, result]) => result && result.status === 'success' && !result.hasResults && (result.resultCount || 0) === 0)
     .map(([op, _]) => op)
 
   return (

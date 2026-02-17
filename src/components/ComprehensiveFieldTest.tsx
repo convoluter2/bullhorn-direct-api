@@ -268,8 +268,8 @@ export function ComprehensiveFieldTest() {
 
     setIsRunning(false)
 
-    const passCount = results.filter(r => r.status === 'pass').length
-    const failCount = results.filter(r => r.status === 'fail').length
+    const passCount = results.filter(r => r && r.status === 'pass').length
+    const failCount = results.filter(r => r && r.status === 'fail').length
 
     if (failCount === 0) {
       toast.success(`All ${passCount} tests passed!`)
@@ -279,12 +279,13 @@ export function ComprehensiveFieldTest() {
   }
 
   const filteredResults = testResults.filter(result => {
+    if (!result || typeof result !== 'object') return false
     if (testFilter === 'all') return true
     return result.status === testFilter
   })
 
-  const passCount = testResults.filter(r => r.status === 'pass').length
-  const failCount = testResults.filter(r => r.status === 'fail').length
+  const passCount = testResults.filter(r => r && r.status === 'pass').length
+  const failCount = testResults.filter(r => r && r.status === 'fail').length
 
   return (
     <Card>
