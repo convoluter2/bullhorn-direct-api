@@ -32,8 +32,10 @@ export function PauseResumeTests() {
 
   const updateTestResult = (testName: string, status: TestResult['status'], message: string, details?: any) => {
     setTestResults(prev => {
-      const existing = prev.find(t => t.testName === testName)
-      const updated = {
+      if (!Array.isArray(prev)) prev = []
+      
+      const existing = prev.find(t => t && typeof t === 'object' && t.testName === testName)
+      const updated: TestResult = {
         testName,
         status,
         message,
@@ -42,7 +44,7 @@ export function PauseResumeTests() {
       }
       
       if (existing) {
-        return prev.map(t => t.testName === testName ? updated : t)
+        return prev.map(t => (t && typeof t === 'object' && t.testName === testName) ? updated : t)
       }
       return [...prev, updated]
     })

@@ -284,8 +284,8 @@ export function ComprehensiveFieldTest() {
     return result.status === testFilter
   })
 
-  const passCount = testResults.filter(r => r && r.status === 'pass').length
-  const failCount = testResults.filter(r => r && r.status === 'fail').length
+  const passCount = testResults.filter(r => r && typeof r === 'object' && r.status === 'pass').length
+  const failCount = testResults.filter(r => r && typeof r === 'object' && r.status === 'fail').length
 
   return (
     <Card>
@@ -385,7 +385,10 @@ export function ComprehensiveFieldTest() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredResults.map((result, idx) => (
+                  {filteredResults.map((result, idx) => {
+                    if (!result || typeof result !== 'object') return null
+                    
+                    return (
                     <TableRow key={idx}>
                       <TableCell>
                         {result.status === 'pass' ? (
@@ -394,28 +397,29 @@ export function ComprehensiveFieldTest() {
                           <XCircle size={20} weight="fill" className="text-destructive" />
                         )}
                       </TableCell>
-                      <TableCell className="font-medium">{result.testName}</TableCell>
-                      <TableCell className="font-mono text-xs">{result.field}</TableCell>
+                      <TableCell className="font-medium">{result.testName || 'Unknown Test'}</TableCell>
+                      <TableCell className="font-mono text-xs">{result.field || 'N/A'}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{result.fieldType}</Badge>
+                        <Badge variant="outline">{result.fieldType || 'UNKNOWN'}</Badge>
                       </TableCell>
-                      <TableCell className="font-mono text-xs max-w-xs truncate" title={result.query}>
-                        {result.query}
+                      <TableCell className="font-mono text-xs max-w-xs truncate" title={result.query || ''}>
+                        {result.query || 'N/A'}
                       </TableCell>
                       <TableCell>
                         {result.status === 'pass' ? (
-                          <span className="text-sm text-muted-foreground">{result.resultCount} records</span>
+                          <span className="text-sm text-muted-foreground">{result.resultCount ?? 0} records</span>
                         ) : (
-                          <div className="text-xs text-destructive max-w-xs truncate" title={result.error}>
-                            {result.error}
+                          <div className="text-xs text-destructive max-w-xs truncate" title={result.error || 'Unknown error'}>
+                            {result.error || 'Unknown error'}
                           </div>
                         )}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {result.duration}ms
+                        {result.duration ?? 0}ms
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
+                  )}
                 </TableBody>
               </Table>
             </ScrollArea>

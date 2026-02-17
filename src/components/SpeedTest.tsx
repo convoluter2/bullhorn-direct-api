@@ -56,6 +56,11 @@ export function SpeedTest() {
     const savedMaxConcurrent = bullhornAPI.getRateLimiterStatus().requestsInProgress
 
     try {
+      const session = bullhornAPI.getSession()
+      if (!session || !session.restUrl || !session.BhRestToken) {
+        throw new Error('No active Bullhorn session. Please authenticate first.')
+      }
+
       toast.info('Starting speed test - bypassing rate limiter for max throughput...', { duration: 3000 })
 
       bullhornRateLimiter.setMaxConcurrentRequests(500)
@@ -77,8 +82,8 @@ export function SpeedTest() {
         
         try {
           const session = bullhornAPI.getSession()
-          if (!session) {
-            throw new Error('No session available')
+          if (!session || !session.restUrl || !session.BhRestToken) {
+            throw new Error('Session lost during test')
           }
 
           const url = `${session.restUrl}query/Candidate?BhRestToken=${session.BhRestToken}&fields=id&where=isDeleted=false&count=1&start=0`

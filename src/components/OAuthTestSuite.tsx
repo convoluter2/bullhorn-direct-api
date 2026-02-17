@@ -433,10 +433,10 @@ export function OAuthTestSuite() {
 
   const summary = {
     total: results.length,
-    success: results.filter(r => r.status === 'success').length,
-    error: results.filter(r => r.status === 'error').length,
-    warning: results.filter(r => r.status === 'warning').length,
-    pending: results.filter(r => r.status === 'pending').length,
+    success: results.filter(r => r && typeof r === 'object' && r.status === 'success').length,
+    error: results.filter(r => r && typeof r === 'object' && r.status === 'error').length,
+    warning: results.filter(r => r && typeof r === 'object' && r.status === 'warning').length,
+    pending: results.filter(r => r && typeof r === 'object' && r.status === 'pending').length,
   }
 
   return (

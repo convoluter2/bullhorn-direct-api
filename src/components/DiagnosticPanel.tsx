@@ -40,33 +40,50 @@ export function DiagnosticPanel() {
     setLoading(true)
     try {
       const keys = await window.spark.kv.keys()
+      if (!keys || !Array.isArray(keys)) {
+        toast.warning('No storage keys found')
+        setStoredData([])
+        return
+      }
+
       const data: StoredData[] = []
 
       for (const key of keys) {
-        const value = await window.spark.kv.get(key)
-        const valueStr = JSON.stringify(value)
-        const size = new Blob([valueStr]).size
+        try {
+          const value = await window.spark.kv.get(key)
+          const valueStr = JSON.stringify(value)
+          const size = new Blob([valueStr]).size
 
-        const issues: string[] = []
-        let hasIssues = false
+          const issues: string[] = []
+          let hasIssues = false
 
-        if (valueStr.includes('candidateSource') && valueStr.includes('selectedFields')) {
-          issues.push('Contains candidateSource reference in selectedFields')
-          hasIssues = true
+          if (valueStr.includes('candidateSource') && valueStr.includes('selectedFields')) {
+            issues.push('Contains candidateSource reference in selectedFields')
+            hasIssues = true
+          }
+
+          if (size > 500000) {
+            issues.push(`Large data size: ${(size / 1024).toFixed(2)} KB`)
+            hasIssues = true
+          }
+
+          data.push({
+            key,
+            value,
+            size,
+            issues,
+            hasIssues,
+          })
+        } catch (error) {
+          console.error(`Error scanning key ${key}:`, error)
+          data.push({
+            key,
+            value: null,
+            size: 0,
+            issues: [`Error reading value: ${error instanceof Error ? error.message : 'Unknown error'}`],
+            hasIssues: true,
+          })
         }
-
-        if (size > 500000) {
-          issues.push(`Large data size: ${(size / 1024).toFixed(2)} KB`)
-          hasIssues = true
-        }
-
-        data.push({
-          key,
-          value,
-          size,
-          issues,
-          hasIssues,
-        })
       }
 
       data.sort((a, b) => {
@@ -85,7 +102,7 @@ export function DiagnosticPanel() {
       }
     } catch (error) {
       console.error('Error scanning storage:', error)
-      toast.error('Failed to scan storage')
+      toast.error(`Failed to scan storage: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
     }

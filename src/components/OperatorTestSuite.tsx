@@ -398,11 +398,17 @@ export function OperatorTestSuite() {
   }
 
   const workingOperators = Object.entries(results)
-    .filter(([_, result]) => result && result.status === 'success' && result.hasResults && (result.resultCount || 0) > 0)
-    .map(([op, result]) => ({ operator: op, count: result!.resultCount || 0 }))
+    .filter(([_, result]) => {
+      if (!result || typeof result !== 'object') return false
+      return result.status === 'success' && result.hasResults === true && (result.resultCount || 0) > 0
+    })
+    .map(([op, result]) => ({ operator: op, count: result?.resultCount || 0 }))
 
   const workingButNoResults = Object.entries(results)
-    .filter(([_, result]) => result && result.status === 'success' && !result.hasResults && (result.resultCount || 0) === 0)
+    .filter(([_, result]) => {
+      if (!result || typeof result !== 'object') return false
+      return result.status === 'success' && result.hasResults === false && (result.resultCount || 0) === 0
+    })
     .map(([op, _]) => op)
 
   return (
@@ -597,7 +603,7 @@ export function OperatorTestSuite() {
                       </div>
                     </div>
 
-                    {result && (
+                    {result && typeof result === 'object' && (
                       <div className="pt-2 space-y-1">
                         {result.queryUsed && (
                           <div className="flex items-center gap-2 text-xs">
@@ -610,13 +616,13 @@ export function OperatorTestSuite() {
                         
                         {result.status === 'success' && (
                           <div className="flex items-center gap-3 text-xs flex-wrap">
-                            {result.hasResults && result.resultCount! > 0 ? (
+                            {result.hasResults === true && (result.resultCount || 0) > 0 ? (
                               <>
                                 <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
                                   ✓ Working with Data
                                 </Badge>
                                 <span className="text-muted-foreground">
-                                  Found {result.resultCount} records
+                                  Found {result.resultCount || 0} records
                                 </span>
                               </>
                             ) : (
@@ -643,7 +649,7 @@ export function OperatorTestSuite() {
                               ✗ Failed
                             </Badge>
                             <div className="text-xs text-destructive bg-destructive/5 px-2 py-1 rounded">
-                              {result.error}
+                              {result.error || 'Unknown error'}
                             </div>
                           </div>
                         )}

@@ -78,29 +78,33 @@ export function RateLimitAnalytics() {
     if (!isRecording) return
 
     const captureSnapshot = () => {
-      const status = bullhornAPI.getRateLimiterStatus()
-      
-      if (status && status.rateLimitInfo) {
-        const snapshot: RateLimitSnapshot = {
-          timestamp: Date.now(),
-          limitPerMinute: status.rateLimitInfo.limitPerMinute,
-          remaining: status.rateLimitInfo.remaining,
-          resetTime: status.rateLimitInfo.resetTime,
-          queueLength: status.queueLength,
-          requestsInProgress: status.requestsInProgress,
-          backoffMultiplier: status.backoffMultiplier,
-        }
-
-        setSnapshots((current) => {
-          const existing = current || []
-          const updated = [...existing, snapshot]
-          const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000)
-          return updated.filter(s => s.timestamp > cutoff)
-        })
+      try {
+        const status = bullhornAPI.getRateLimiterStatus()
         
-        setCurrentStatus(status)
-      } else {
-        setCurrentStatus(null)
+        if (status && status.rateLimitInfo && typeof status.rateLimitInfo === 'object') {
+          const snapshot: RateLimitSnapshot = {
+            timestamp: Date.now(),
+            limitPerMinute: status.rateLimitInfo.limitPerMinute ?? 0,
+            remaining: status.rateLimitInfo.remaining ?? 0,
+            resetTime: status.rateLimitInfo.resetTime ?? Date.now(),
+            queueLength: status.queueLength ?? 0,
+            requestsInProgress: status.requestsInProgress ?? 0,
+            backoffMultiplier: status.backoffMultiplier ?? 1,
+          }
+
+          setSnapshots((current) => {
+            const existing = current || []
+            const updated = [...existing, snapshot]
+            const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000)
+            return updated.filter(s => s && s.timestamp > cutoff)
+          })
+          
+          setCurrentStatus(status)
+        } else {
+          setCurrentStatus(null)
+        }
+      } catch (error) {
+        console.error('Error capturing rate limit snapshot:', error)
       }
     }
 
@@ -112,10 +116,15 @@ export function RateLimitAnalytics() {
 
   useEffect(() => {
     const updateStatus = () => {
-      const status = bullhornAPI.getRateLimiterStatus()
-      if (status && status.rateLimitInfo) {
-        setCurrentStatus(status)
-      } else {
+      try {
+        const status = bullhornAPI.getRateLimiterStatus()
+        if (status && status.rateLimitInfo && typeof status.rateLimitInfo === 'object') {
+          setCurrentStatus(status)
+        } else {
+          setCurrentStatus(null)
+        }
+      } catch (error) {
+        console.error('Error updating rate limit status:', error)
         setCurrentStatus(null)
       }
     }
@@ -140,7 +149,7 @@ export function RateLimitAnalytics() {
   const calculateMetrics = useCallback((): RateLimitMetrics => {
     const filtered = getFilteredSnapshots()
     
-    if (filtered.length === 0) {
+    if (!filtered || filtered.length === 0) {
       return {
         totalRequests: 0,
         throttledRequests: 0,
@@ -155,41 +164,73 @@ export function RateLimitAnalytics() {
       }
     }
 
-    const totalRequests = filtered.reduce((sum, s) => {
-      const used = s.limitPerMinute - s.remaining
-      return sum + used
-    }, 0) / filtered.length
+    try {
+      const totalRequests = filtered.reduce((sum, s) => {
+        if (!s || typeof s !== 'object') return sum
+        const used = (s.limitPerMinute ?? 0) - (s.remaining ?? 0)
+        return sum + used
+      }, 0) / filtered.length
 
-    const throttledRequests = filtered.filter(s => s.queueLength > 0).length
-    const averageRemaining = filtered.reduce((sum, s) => sum + s.remaining, 0) / filtered.length
-    
-    const peakUsage = Math.max(...filtered.map(s => {
-      const percentUsed = ((s.limitPerMinute - s.remaining) / s.limitPerMinute) * 100
-      return percentUsed
-    }))
+      const throttledRequests = filtered.filter(s => s && typeof s === 'object' && (s.queueLength ?? 0) > 0).length
+      const averageRemaining = filtered.reduce((sum, s) => {
+        if (!s || typeof s !== 'object') return sum
+        return sum + (s.remaining ?? 0)
+      }, 0) / filtered.length
+      
+      const peakUsage = Math.max(...filtered.map(s => {
+        if (!s || typeof s !== 'object') return 0
+        const limit = s.limitPerMinute ?? 1
+        const percentUsed = (((limit) - (s.remaining ?? 0)) / limit) * 100
+        return percentUsed
+      }))
 
-    const lowestRemaining = Math.min(...filtered.map(s => s.remaining))
-    
-    const timesBelowThreshold = filtered.filter(s => {
-      const threshold = s.limitPerMinute * 0.2
-      return s.remaining < threshold
-    }).length
+      const lowestRemaining = Math.min(...filtered.map(s => {
+        if (!s || typeof s !== 'object') return Infinity
+        return s.remaining ?? Infinity
+      }))
+      
+      const timesBelowThreshold = filtered.filter(s => {
+        if (!s || typeof s !== 'object') return false
+        const threshold = (s.limitPerMinute ?? 0) * 0.2
+        return (s.remaining ?? 0) < threshold
+      }).length
 
-    const timesExhausted = filtered.filter(s => s.remaining === 0).length
-    const averageQueueLength = filtered.reduce((sum, s) => sum + s.queueLength, 0) / filtered.length
-    const maxQueueLength = Math.max(...filtered.map(s => s.queueLength))
+      const timesExhausted = filtered.filter(s => s && typeof s === 'object' && (s.remaining ?? 1) === 0).length
+      const averageQueueLength = filtered.reduce((sum, s) => {
+        if (!s || typeof s !== 'object') return sum
+        return sum + (s.queueLength ?? 0)
+      }, 0) / filtered.length
+      const maxQueueLength = Math.max(...filtered.map(s => {
+        if (!s || typeof s !== 'object') return 0
+        return s.queueLength ?? 0
+      }))
 
-    return {
-      totalRequests,
-      throttledRequests,
-      averageRemaining,
-      peakUsage,
-      lowestRemaining,
-      timesBelowThreshold,
-      timesExhausted,
-      averageQueueLength,
-      maxQueueLength,
-      totalThrottleTime: 0,
+      return {
+        totalRequests,
+        throttledRequests,
+        averageRemaining,
+        peakUsage: isFinite(peakUsage) ? peakUsage : 0,
+        lowestRemaining: isFinite(lowestRemaining) ? lowestRemaining : 0,
+        timesBelowThreshold,
+        timesExhausted,
+        averageQueueLength,
+        maxQueueLength,
+        totalThrottleTime: 0,
+      }
+    } catch (error) {
+      console.error('Error calculating metrics:', error)
+      return {
+        totalRequests: 0,
+        throttledRequests: 0,
+        averageRemaining: 0,
+        peakUsage: 0,
+        lowestRemaining: 0,
+        timesBelowThreshold: 0,
+        timesExhausted: 0,
+        averageQueueLength: 0,
+        maxQueueLength: 0,
+        totalThrottleTime: 0,
+      }
     }
   }, [getFilteredSnapshots])
 
@@ -509,14 +550,18 @@ export function RateLimitAnalytics() {
               ) : (
                 <div className="space-y-2">
                   {filtered.slice(-20).reverse().map((snapshot, idx) => {
-                    const percentUsed = ((snapshot.limitPerMinute - snapshot.remaining) / snapshot.limitPerMinute) * 100
-                    const isLow = snapshot.remaining < snapshot.limitPerMinute * 0.2
-                    const isExhausted = snapshot.remaining === 0
+                    if (!snapshot || typeof snapshot !== 'object') return null
+                    
+                    const limit = snapshot.limitPerMinute ?? 1
+                    const remaining = snapshot.remaining ?? 0
+                    const percentUsed = ((limit - remaining) / limit) * 100
+                    const isLow = remaining < limit * 0.2
+                    const isExhausted = remaining === 0
                     
                     return (
                       <div key={idx} className="flex items-center gap-4">
                         <div className="text-xs text-muted-foreground font-mono w-24 flex-shrink-0">
-                          {new Date(snapshot.timestamp).toLocaleTimeString()}
+                          {new Date(snapshot.timestamp ?? Date.now()).toLocaleTimeString()}
                         </div>
                         <div className="flex-1">
                           <Progress 
@@ -529,9 +574,9 @@ export function RateLimitAnalytics() {
                           />
                         </div>
                         <div className="text-xs font-mono w-32 flex-shrink-0 text-right">
-                          {snapshot.remaining} / {snapshot.limitPerMinute}
+                          {remaining} / {limit}
                         </div>
-                        {snapshot.queueLength > 0 && (
+                        {(snapshot.queueLength ?? 0) > 0 && (
                           <Badge variant="secondary" className="text-xs">
                             Q: {snapshot.queueLength}
                           </Badge>
@@ -568,25 +613,29 @@ export function RateLimitAnalytics() {
                     <div>Backoff</div>
                   </div>
                   {filtered.slice().reverse().map((snapshot, idx) => {
-                    const percentUsed = ((snapshot.limitPerMinute - snapshot.remaining) / snapshot.limitPerMinute) * 100
+                    if (!snapshot || typeof snapshot !== 'object') return null
+                    
+                    const limit = snapshot.limitPerMinute ?? 1
+                    const remaining = snapshot.remaining ?? 0
+                    const percentUsed = ((limit - remaining) / limit) * 100
                     
                     return (
                       <div key={idx} className="grid grid-cols-7 gap-4 py-2 text-sm font-mono border-b border-border/50 hover:bg-muted/30">
                         <div className="text-xs">
-                          {new Date(snapshot.timestamp).toLocaleTimeString()}
+                          {new Date(snapshot.timestamp ?? Date.now()).toLocaleTimeString()}
                         </div>
-                        <div>{snapshot.limitPerMinute}</div>
+                        <div>{limit}</div>
                         <div className={
-                          snapshot.remaining === 0 ? 'text-destructive font-semibold' :
-                          snapshot.remaining < snapshot.limitPerMinute * 0.2 ? 'text-yellow-600 dark:text-yellow-400' :
+                          remaining === 0 ? 'text-destructive font-semibold' :
+                          remaining < limit * 0.2 ? 'text-yellow-600 dark:text-yellow-400' :
                           ''
                         }>
-                          {snapshot.remaining}
+                          {remaining}
                         </div>
                         <div>{percentUsed.toFixed(1)}%</div>
-                        <div>{snapshot.queueLength}</div>
-                        <div>{snapshot.requestsInProgress}</div>
-                        <div>{snapshot.backoffMultiplier.toFixed(1)}x</div>
+                        <div>{snapshot.queueLength ?? 0}</div>
+                        <div>{snapshot.requestsInProgress ?? 0}</div>
+                        <div>{(snapshot.backoffMultiplier ?? 1).toFixed(1)}x</div>
                       </div>
                     )
                   })}
