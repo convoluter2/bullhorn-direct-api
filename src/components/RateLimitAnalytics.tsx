@@ -97,9 +97,11 @@ export function RateLimitAnalytics() {
           const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000)
           return updated.filter(s => s.timestamp > cutoff)
         })
+        
+        setCurrentStatus(status)
+      } else {
+        setCurrentStatus(null)
       }
-
-      setCurrentStatus(status)
     }
 
     captureSnapshot()
@@ -111,7 +113,11 @@ export function RateLimitAnalytics() {
   useEffect(() => {
     const updateStatus = () => {
       const status = bullhornAPI.getRateLimiterStatus()
-      setCurrentStatus(status)
+      if (status && status.rateLimitInfo) {
+        setCurrentStatus(status)
+      } else {
+        setCurrentStatus(null)
+      }
     }
 
     updateStatus()
