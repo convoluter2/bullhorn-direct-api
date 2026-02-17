@@ -171,7 +171,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       setCreateNew(persistedState.createNew)
       setDryRun(persistedState.dryRun)
       setCurrentIndex(persistedState.currentIndex)
-      setResults(persistedState.results || [])
+      setResults((persistedState.results || []).filter(r => r != null))
       setProgress(persistedState.progress)
       setExecutionState('paused')
       setShowRestorePrompt(false)
@@ -477,11 +477,11 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     const importResults: ImportResult[] = isResume ? [...results] : []
     const errorDetails: string[] = []
 
-    let successCount = isResume ? results.filter(r => r.status === 'success').length : 0
-    let errorCount = isResume ? results.filter(r => r.status === 'error').length : 0
-    let createdCount = isResume ? results.filter(r => r.action === 'created').length : 0
-    let updatedCount = isResume ? results.filter(r => r.action === 'updated').length : 0
-    let skippedCount = isResume ? results.filter(r => r.action === 'skipped').length : 0
+    let successCount = isResume ? results.filter(r => r && r.status === 'success').length : 0
+    let errorCount = isResume ? results.filter(r => r && r.status === 'error').length : 0
+    let createdCount = isResume ? results.filter(r => r && r.action === 'created').length : 0
+    let updatedCount = isResume ? results.filter(r => r && r.action === 'updated').length : 0
+    let skippedCount = isResume ? results.filter(r => r && r.action === 'skipped').length : 0
 
     const snapshotUpdates: Array<{
       entityId: number
@@ -873,6 +873,11 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       const batchResults = await Promise.all(batch)
       
       for (const result of batchResults) {
+        if (!result) {
+          console.warn('Received undefined result in batch processing')
+          continue
+        }
+        
         importResults.push(result)
         
         if (result.status === 'success') {
@@ -1559,10 +1564,10 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               <div>
                 <CardTitle>{dryRun ? 'Preview Results' : 'Import Results'}</CardTitle>
                 <CardDescription>
-                  {results.filter(r => r.action === 'created').length} {dryRun ? 'would create' : 'created'}, 
-                  {' '}{results.filter(r => r.action === 'updated').length} {dryRun ? 'would update' : 'updated'},
-                  {' '}{results.filter(r => r.action === 'skipped').length} {dryRun ? 'would skip' : 'skipped'},
-                  {' '}{results.filter(r => r.status === 'error').length} errors
+                  {results.filter(r => r && r.action === 'created').length} {dryRun ? 'would create' : 'created'}, 
+                  {' '}{results.filter(r => r && r.action === 'updated').length} {dryRun ? 'would update' : 'updated'},
+                  {' '}{results.filter(r => r && r.action === 'skipped').length} {dryRun ? 'would skip' : 'skipped'},
+                  {' '}{results.filter(r => r && r.status === 'error').length} errors
                 </CardDescription>
               </div>
               <div className="flex gap-2">
@@ -1608,7 +1613,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           <CardContent className="space-y-4">
             <ScrollArea className="h-[300px]">
               <div className="space-y-2">
-                {results.map((result) => (
+                {results.filter(result => result != null).map((result) => (
                   <div key={result.row} className="space-y-2">
                     <div className="flex items-center gap-2 p-2 rounded border">
                       {result.status === 'success' ? (
