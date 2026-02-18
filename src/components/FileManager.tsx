@@ -175,7 +175,7 @@ export function FileManager({ onLog }: FileManagerProps) {
         fileName: selectedFile.name,
         fileSize: selectedFile.size,
         fileType: uploadFileType,
-        response
+        fileId: response?.fileId || response?.id || 'unknown'
       })
 
       setSelectedFile(null)

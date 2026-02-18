@@ -55,6 +55,9 @@ export function sanitizeLogDetails(details: any, maxDepth: number = 3): any {
   }
 
   const seen = new WeakSet()
+  const MAX_STRING_LENGTH = 10000
+  const MAX_ARRAY_LENGTH = 50
+  const MAX_OBJECT_KEYS = 30
 
   function sanitize(value: any, depth: number): any {
     if (depth > maxDepth) {
@@ -71,7 +74,14 @@ export function sanitizeLogDetails(details: any, maxDepth: number = 3): any {
       return value
     }
 
-    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    if (typeof value === 'string') {
+      if (value.length > MAX_STRING_LENGTH) {
+        return `${value.substring(0, MAX_STRING_LENGTH)}... [truncated, original length: ${value.length}]`
+      }
+      return value
+    }
+
+    if (typeof value === 'number' || typeof value === 'boolean') {
       return value
     }
 
@@ -79,19 +89,35 @@ export function sanitizeLogDetails(details: any, maxDepth: number = 3): any {
       return {
         name: value.name,
         message: value.message,
-        stack: value.stack
+        stack: value.stack ? value.stack.substring(0, 1000) : undefined
       }
+    }
+
+    if (value instanceof Blob || value instanceof File) {
+      return `[${value.constructor.name}: ${value.size} bytes]`
+    }
+
+    if (value instanceof FormData) {
+      return '[FormData]'
     }
 
     if (typeof value === 'function') {
       return '[Function]'
     }
 
+    if (ArrayBuffer.isView(value)) {
+      return `[Binary Data: ${value.byteLength} bytes]`
+    }
+
+    if (value instanceof ArrayBuffer) {
+      return `[Binary Data: ${value.byteLength} bytes]`
+    }
+
     if (Array.isArray(value)) {
-      if (value.length > 100) {
+      if (value.length > MAX_ARRAY_LENGTH) {
         return [
-          ...value.slice(0, 100).map(item => sanitize(item, depth + 1)),
-          `... ${value.length - 100} more items`
+          ...value.slice(0, MAX_ARRAY_LENGTH).map(item => sanitize(item, depth + 1)),
+          `... ${value.length - MAX_ARRAY_LENGTH} more items`
         ]
       }
       return value.map(item => sanitize(item, depth + 1))
@@ -106,15 +132,24 @@ export function sanitizeLogDetails(details: any, maxDepth: number = 3): any {
       const result: any = {}
       const keys = Object.keys(value)
       
-      if (keys.length > 50) {
-        for (let i = 0; i < 50; i++) {
+      if (keys.length > MAX_OBJECT_KEYS) {
+        for (let i = 0; i < MAX_OBJECT_KEYS; i++) {
           const key = keys[i]
           result[key] = sanitize(value[key], depth + 1)
         }
-        result['...'] = `${keys.length - 50} more properties`
+        result['...'] = `${keys.length - MAX_OBJECT_KEYS} more properties`
       } else {
         for (const key of keys) {
           result[key] = sanitize(value[key], depth + 1)
+        }
+      }
+      
+      const resultStr = JSON.stringify(result)
+      if (resultStr.length > 100000) {
+        return { 
+          _truncated: true, 
+          _originalSize: resultStr.length,
+          _summary: `Large object with ${keys.length} keys`
         }
       }
       
@@ -124,5 +159,17 @@ export function sanitizeLogDetails(details: any, maxDepth: number = 3): any {
     return value
   }
 
-  return sanitize(details, 0)
+  const sanitized = sanitize(details, 0)
+  
+  const sanitizedStr = JSON.stringify(sanitized)
+  if (sanitizedStr && sanitizedStr.length > 400000) {
+    return {
+      _truncated: true,
+      _error: 'Log details too large for storage',
+      _originalSizeEstimate: `${Math.round(sanitizedStr.length / 1024)}KB`,
+      _limit: '400KB'
+    }
+  }
+  
+  return sanitized
 }
