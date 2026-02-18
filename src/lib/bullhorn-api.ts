@@ -2181,10 +2181,14 @@ export class BullhornAPI {
       throw new Error(`File download failed: ${error}`)
     }
 
-    const blob = await response.blob()
+    const contentType = response.headers.get('Content-Type') || 'application/octet-stream'
+    const arrayBuffer = await response.arrayBuffer()
+    const blob = new Blob([arrayBuffer], { type: contentType })
+    
     console.log('✅ File downloaded successfully:', {
       size: blob.size,
-      type: blob.type
+      type: blob.type,
+      contentType
     })
     return blob
   }

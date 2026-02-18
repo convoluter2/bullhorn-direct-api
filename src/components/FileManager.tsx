@@ -449,23 +449,36 @@ export function FileManager({ onLog }: FileManagerProps) {
     try {
       setDownloadingFileId(fileId)
       
+      console.log('📥 Starting download:', { fileId, fileName })
       const blob = await bullhornAPI.downloadFile(downloadEntity, parseInt(downloadEntityId), fileId)
+      
+      console.log('📦 Blob received:', {
+        size: blob.size,
+        type: blob.type,
+        fileName
+      })
       
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       a.download = fileName
+      a.style.display = 'none'
       document.body.appendChild(a)
       a.click()
-      document.body.removeChild(a)
-      window.URL.revokeObjectURL(url)
+      
+      setTimeout(() => {
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+      }, 100)
 
       toast.success(`Downloaded: ${fileName}`)
       onLog('File Download', 'success', `Downloaded file from ${downloadEntity} ID ${downloadEntityId}`, {
         entity: downloadEntity,
         entityId: downloadEntityId,
         fileId,
-        fileName
+        fileName,
+        fileSize: blob.size,
+        contentType: blob.type
       })
     } catch (error) {
       console.error('File download error:', error)
