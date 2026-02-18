@@ -12,6 +12,8 @@ export function ProxyStatus() {
   const [restarting, setRestarting] = useState(false)
   const [healthData, setHealthData] = useState<any>(null)
   const [lastCheck, setLastCheck] = useState<Date | null>(null)
+  
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
 
   const checkProxy = async () => {
     setChecking(true)
@@ -22,7 +24,9 @@ export function ProxyStatus() {
       
       if (isHealthy) {
         try {
-          const response = await fetch(`${import.meta.env.VITE_PROXY_URL || 'http://localhost:3001'}/health`)
+          const response = await fetch(`${import.meta.env.VITE_PROXY_URL || 'http://localhost:3001'}/health`, {
+            signal: AbortSignal.timeout(2000)
+          })
           const data = await response.json()
           setHealthData(data)
         } catch (e) {
@@ -37,9 +41,16 @@ export function ProxyStatus() {
   }
 
   useEffect(() => {
-    checkProxy()
-    const interval = setInterval(checkProxy, 30000)
-    return () => clearInterval(interval)
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    
+    if (isLocalhost) {
+      checkProxy()
+      const interval = setInterval(checkProxy, 30000)
+      return () => clearInterval(interval)
+    } else {
+      setProxyHealthy(false)
+      setChecking(false)
+    }
   }, [])
 
   const handleRetry = () => {
@@ -150,6 +161,10 @@ export function ProxyStatus() {
     } finally {
       setRestarting(false)
     }
+  }
+
+  if (!isLocalhost) {
+    return null
   }
 
   if (checking && proxyHealthy === null) {
