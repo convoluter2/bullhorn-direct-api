@@ -325,16 +325,30 @@ export function FileManager({ onLog }: FileManagerProps) {
       const entityIdNum = parseInt(downloadEntityId)
       const response = await bullhornAPI.getEntityFiles(downloadEntity, entityIdNum, downloadType)
 
-      if (response && response.data && Array.isArray(response.data)) {
-        setFiles(response.data)
-        toast.success(`Loaded ${response.data.length} file(s)`)
+      console.log('📦 Get entity files response:', response)
+
+      let filesArray: EntityFile[] = []
+      
+      if (response && response.EntityFiles && Array.isArray(response.EntityFiles)) {
+        filesArray = response.EntityFiles
+      } else if (response && response.data && Array.isArray(response.data)) {
+        filesArray = response.data
+      } else if (Array.isArray(response)) {
+        filesArray = response
+      }
+
+      if (filesArray.length > 0) {
+        console.log('✅ Found files:', filesArray)
+        setFiles(filesArray)
+        toast.success(`Loaded ${filesArray.length} file(s)`)
         onLog('Load Files', 'success', `Loaded files from ${downloadEntity} ID ${downloadEntityId}`, {
           entity: downloadEntity,
           entityId: downloadEntityId,
           type: downloadType,
-          fileCount: response.data.length
+          fileCount: filesArray.length
         })
       } else {
+        console.log('ℹ️ No files found in response')
         setFiles([])
         toast.info('No files found')
       }
@@ -817,7 +831,29 @@ export function FileManager({ onLog }: FileManagerProps) {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label>Files {downloadType && `(${fileTypeOptions.find(t => t.value === downloadType)?.label})`}</Label>
-                  <Badge variant="secondary">{files.length} file(s)</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">{files.length} file(s)</Badge>
+                    {files.length > 1 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          toast.info(`Downloading ${files.length} files...`)
+                          for (const file of files) {
+                            try {
+                              await handleDownload(file.id, file.name)
+                              await new Promise(resolve => setTimeout(resolve, 500))
+                            } catch (error) {
+                              console.error(`Failed to download ${file.name}:`, error)
+                            }
+                          }
+                        }}
+                      >
+                        <Download size={14} />
+                        Download All
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <ScrollArea className="h-[400px] border rounded-md">
                   <Table>
