@@ -2071,25 +2071,24 @@ export class BullhornAPI {
 
     const fullUrl = `${this.session.restUrl}file/${encodedEntity}/${entityId}/raw?${params.toString()}`
     
-    console.log('📤 Uploading file:', {
       fileName: file.name,
-      fileSize: file.size,
+      fileName: file.name,
       fileType: 'SAMPLE',
       type: documentType,
-      externalID,
+      type: documentType,
       contentType,
       endpoint: fullUrl
     })
-
+    })
     const response = await this.throttledFetch(
-      fullUrl,
+    const response = await this.throttledFetch(
       {
-        method: 'PUT',
+      {,
+        body: formData
         body: formData
       }
     )
-
-    if (!response.ok) {
+(!response.ok) {
       const errorText = await response.text()
       console.error('❌ File upload failed:', {
         status: response.status,
