@@ -54,7 +54,12 @@ export function FileManager({ onLog }: FileManagerProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [uploadResults, setUploadResults] = useState<Array<{ file: string; status: 'success' | 'error'; message?: string; fileId?: number }>>([])
   const [currentUploadIndex, setCurrentUploadIndex] = useState(0)
+  const [isPaused, setIsPaused] = useState(false)
+  const [startTime, setStartTime] = useState<number | null>(null)
+  const [uploadSpeed, setUploadSpeed] = useState<number>(0)
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const pauseRef = useRef(false)
 
   const [downloadEntity, setDownloadEntity] = useState('')
   const [downloadEntityId, setDownloadEntityId] = useState('')
@@ -217,6 +222,38 @@ export function FileManager({ onLog }: FileManagerProps) {
     }
   }
 
+  const handlePauseResume = () => {
+    if (isPaused) {
+      setIsPaused(false)
+      pauseRef.current = false
+      toast.info('Resuming upload...')
+    } else {
+      setIsPaused(true)
+      pauseRef.current = true
+      toast.info('Upload paused')
+    }
+  }
+
+  const handleCancelUpload = () => {
+    pauseRef.current = true
+    setIsPaused(false)
+    setIsUploading(false)
+    setUploadProgress(0)
+    setStartTime(null)
+    toast.info('Upload cancelled')
+  }
+
+  const formatTimeRemaining = (seconds: number): string => {
+    if (!seconds || seconds < 1) return 'Calculating...'
+    if (seconds < 60) return `${Math.ceil(seconds)}s`
+    const minutes = Math.floor(seconds / 60)
+    const secs = Math.ceil(seconds % 60)
+    if (minutes < 60) return `${minutes}m ${secs}s`
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    return `${hours}h ${mins}m`
+  }
+
   const handleUpload = async () => {
     if (selectedFiles.length === 0 || !uploadEntity || !uploadEntityId) {
       toast.error('Please select file(s), entity, and entity ID')
@@ -225,16 +262,33 @@ export function FileManager({ onLog }: FileManagerProps) {
 
     try {
       setIsUploading(true)
+      setIsPaused(false)
+      pauseRef.current = false
       setUploadProgress(0)
       setUploadResults([])
       setCurrentUploadIndex(0)
+      setStartTime(Date.now())
+      setUploadSpeed(0)
+      setEstimatedTimeRemaining(null)
 
       const results: Array<{ file: string; status: 'success' | 'error'; message?: string; fileId?: number }> = []
       const totalFiles = selectedFiles.length
+      const totalBytes = selectedFiles.reduce((sum, f) => sum + f.size, 0)
+      let uploadedBytes = 0
 
       for (let i = 0; i < selectedFiles.length; i++) {
+        while (pauseRef.current) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+
+        if (!isUploading) {
+          break
+        }
+
         const file = selectedFiles[i]
         setCurrentUploadIndex(i + 1)
+        
+        const fileStartTime = Date.now()
         
         try {
           const response = await bullhornAPI.uploadFile(
@@ -245,10 +299,22 @@ export function FileManager({ onLog }: FileManagerProps) {
             uploadDescription || file.name
           )
 
+          const fileEndTime = Date.now()
+          const fileDuration = (fileEndTime - fileStartTime) / 1000
+          uploadedBytes += file.size
+
+          const elapsedTime = (Date.now() - (startTime || Date.now())) / 1000
+          const currentSpeed = uploadedBytes / elapsedTime
+          setUploadSpeed(currentSpeed)
+
+          const remainingBytes = totalBytes - uploadedBytes
+          const estimatedSeconds = remainingBytes / currentSpeed
+          setEstimatedTimeRemaining(estimatedSeconds)
+
           results.push({
             file: file.name,
             status: 'success',
-            message: `Uploaded successfully`,
+            message: `Uploaded in ${fileDuration.toFixed(1)}s`,
             fileId: response?.fileId || response?.id
           })
 
@@ -258,7 +324,8 @@ export function FileManager({ onLog }: FileManagerProps) {
             fileName: file.name,
             fileSize: file.size,
             type: uploadType,
-            fileId: response?.fileId || response?.id || 'unknown'
+            fileId: response?.fileId || response?.id || 'unknown',
+            duration: fileDuration
           })
         } catch (error) {
           console.error(`File upload error for ${file.name}:`, error)
@@ -302,6 +369,9 @@ export function FileManager({ onLog }: FileManagerProps) {
       setTimeout(() => {
         setUploadProgress(0)
         setCurrentUploadIndex(0)
+        setStartTime(null)
+        setUploadSpeed(0)
+        setEstimatedTimeRemaining(null)
       }, 3000)
     } catch (error) {
       console.error('Bulk upload error:', error)
@@ -309,6 +379,8 @@ export function FileManager({ onLog }: FileManagerProps) {
       toast.error(`Upload failed: ${errorMessage}`)
     } finally {
       setIsUploading(false)
+      setIsPaused(false)
+      pauseRef.current = false
     }
   }
 
@@ -636,15 +708,68 @@ export function FileManager({ onLog }: FileManagerProps) {
             </div>
 
             {isUploading && (
-              <div className="space-y-3">
+              <div className="space-y-3 p-4 border rounded-lg bg-accent/5">
                 <div className="flex items-center justify-between">
                   <Label>Upload Progress</Label>
-                  <Badge variant="outline">
-                    {currentUploadIndex} of {selectedFiles.length} files
+                  <Badge variant={isPaused ? 'secondary' : 'default'}>
+                    {isPaused ? 'Paused' : `${currentUploadIndex} of ${selectedFiles.length} files`}
                   </Badge>
                 </div>
-                <Progress value={uploadProgress} className="h-2" />
-                <p className="text-sm text-muted-foreground text-center">{uploadProgress}%</p>
+                <Progress value={uploadProgress} className="h-3" />
+                
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Completion</p>
+                    <p className="font-semibold text-accent">{uploadProgress}%</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Upload Speed</p>
+                    <p className="font-semibold text-accent">
+                      {uploadSpeed > 0 ? `${formatFileSize(uploadSpeed)}/s` : 'Calculating...'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Files Remaining</p>
+                    <p className="font-semibold text-accent">
+                      {selectedFiles.length - currentUploadIndex}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Time Remaining</p>
+                    <p className="font-semibold text-accent">
+                      {estimatedTimeRemaining ? formatTimeRemaining(estimatedTimeRemaining) : 'Calculating...'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handlePauseResume}
+                    className="flex-1"
+                  >
+                    {isPaused ? (
+                      <>
+                        <CheckCircle size={16} />
+                        Resume Upload
+                      </>
+                    ) : (
+                      <>
+                        <XCircle size={16} />
+                        Pause Upload
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={handleCancelUpload}
+                  >
+                    <Trash size={16} />
+                    Cancel
+                  </Button>
+                </div>
               </div>
             )}
 
