@@ -1317,7 +1317,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                   {(mappings || [])
                     .filter(m => m && m.csvColumn && m.csvColumn.trim() !== '')
                     .map((mapping) => {
-                    const fieldMeta = mapping.bullhornField && mapping.bullhornField !== '__skip__' && metadata && metadata.fieldsMap && metadata.fieldsMap[mapping.bullhornField]
+                    const fieldMeta = mapping?.bullhornField && mapping.bullhornField !== '__skip__' && metadata?.fieldsMap?.[mapping.bullhornField]
                       ? metadata.fieldsMap[mapping.bullhornField] 
                       : undefined
                     const isToMany = fieldMeta?.associationType === 'TO_MANY'
@@ -1336,7 +1336,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                                 <Skeleton className="h-10 w-full" />
                               ) : (
                                 <Select
-                                  value={mapping.bullhornField && mapping.bullhornField !== '' ? mapping.bullhornField : '__skip__'}
+                                  value={mapping?.bullhornField && mapping.bullhornField !== '' ? mapping.bullhornField : '__skip__'}
                                   onValueChange={(value) => updateMapping(mapping.csvColumn, value)}
                                   disabled={loading}
                                 >
@@ -1345,9 +1345,9 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="__skip__">Skip</SelectItem>
-                                    {(availableFields || []).map((field) => (
+                                    {(availableFields || []).filter(field => field && field.name).map((field) => (
                                       <SelectItem key={field.name} value={field.name}>
-                                        {formatFieldLabel(field.label, field.name)}
+                                        {formatFieldLabel(field.label || field.name, field.name)}
                                         {field.associationType === 'TO_MANY' && ' (To-Many)'}
                                         {field.associationType === 'TO_ONE' && ' (To-One)'}
                                         {lookupField === field.name && (

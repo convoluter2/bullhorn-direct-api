@@ -56,10 +56,13 @@ export function EntitySidebar({
     isCached: entityMetadata.has(id)
   }))
 
-  const filteredEntities = allEntities.filter(entity =>
-    entity.label.toLowerCase().includes(search.toLowerCase()) ||
-    entity.id.toLowerCase().includes(search.toLowerCase())
-  )
+  const filteredEntities = allEntities.filter(entity => {
+    const searchLower = search.toLowerCase()
+    const entityLabel = entity.label || ''
+    const entityId = entity.id || ''
+    return entityLabel.toLowerCase().includes(searchLower) ||
+           entityId.toLowerCase().includes(searchLower)
+  })
 
   return (
     <div className="flex flex-col h-full border-r border-border bg-card">
