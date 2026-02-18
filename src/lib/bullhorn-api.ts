@@ -2130,15 +2130,14 @@ export class BullhornAPI {
     const encodedEntity = encodeURIComponent(entity)
 
     const params = new URLSearchParams({
-      BhRestToken: this.session.BhRestToken,
-      fileType: 'SAMPLE'
+      BhRestToken: this.session.BhRestToken
     })
 
     if (type) {
       params.append('type', type)
     }
 
-    console.log(`📥 Fetching files for ${entity}/${entityId}`, { fileType: 'SAMPLE', type })
+    console.log(`📥 Fetching files for ${entity}/${entityId}`, { type: type || 'all' })
 
     const response = await this.throttledFetch(
       `${this.session.restUrl}entityFiles/${encodedEntity}/${entityId}?${params.toString()}`,
