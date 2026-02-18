@@ -48,9 +48,11 @@ export function FileManager({ onLog }: FileManagerProps) {
   const [uploadEntityId, setUploadEntityId] = useState('')
   const [uploadFileType, setUploadFileType] = useState<string>('SAMPLE')
   const [uploadDescription, setUploadDescription] = useState('')
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadResults, setUploadResults] = useState<Array<{ file: string; status: 'success' | 'error'; message?: string; fileId?: number }>>([])
+  const [currentUploadIndex, setCurrentUploadIndex] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [downloadEntity, setDownloadEntity] = useState('')
@@ -128,87 +130,140 @@ export function FileManager({ onLog }: FileManagerProps) {
   }, [onLog])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = e.target.files
+    if (!files || files.length === 0) return
 
-    const fileSizeMB = file.size / (1024 * 1024)
+    const fileArray = Array.from(files)
+    const validFiles: File[] = []
+    let totalSize = 0
+    
+    for (const file of fileArray) {
+      const fileSizeMB = file.size / (1024 * 1024)
+      
+      if (file.size > 50 * 1024 * 1024) {
+        toast.error(`File "${file.name}" (${fileSizeMB.toFixed(1)} MB) exceeds the 50 MB limit and will be skipped`)
+        continue
+      }
+      
+      validFiles.push(file)
+      totalSize += file.size
+    }
 
-    if (file.size > 50 * 1024 * 1024) {
-      toast.error(`File size (${fileSizeMB.toFixed(1)} MB) exceeds the 50 MB limit`)
+    if (validFiles.length === 0) {
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
       return
     }
 
-    if (fileSizeMB > 25) {
-      toast.warning(`Large file detected (${fileSizeMB.toFixed(1)} MB). Upload may take longer.`, {
+    const totalSizeMB = totalSize / (1024 * 1024)
+    
+    if (totalSizeMB > 100) {
+      toast.warning(`Total file size (${totalSizeMB.toFixed(1)} MB) is large. Upload may take several minutes.`, {
         duration: 5000
-      })
-    } else if (fileSizeMB > 10) {
-      toast.info(`File size: ${fileSizeMB.toFixed(1)} MB`, {
-        duration: 3000
       })
     }
 
-    setSelectedFile(file)
-    toast.success(`Selected file: ${file.name} (${formatFileSize(file.size)})`)
+    setSelectedFiles(validFiles)
+    setUploadResults([])
+    
+    if (validFiles.length === 1) {
+      toast.success(`Selected file: ${validFiles[0].name} (${formatFileSize(validFiles[0].size)})`)
+    } else {
+      toast.success(`Selected ${validFiles.length} files (${formatFileSize(totalSize)} total)`)
+    }
   }
 
   const handleUpload = async () => {
-    if (!selectedFile || !uploadEntity || !uploadEntityId) {
-      toast.error('Please select a file, entity, and entity ID')
+    if (selectedFiles.length === 0 || !uploadEntity || !uploadEntityId) {
+      toast.error('Please select file(s), entity, and entity ID')
       return
     }
 
     try {
       setIsUploading(true)
       setUploadProgress(0)
+      setUploadResults([])
+      setCurrentUploadIndex(0)
 
-      const formData = new FormData()
-      formData.append('file', selectedFile)
+      const results: Array<{ file: string; status: 'success' | 'error'; message?: string; fileId?: number }> = []
+      const totalFiles = selectedFiles.length
 
-      const interval = setInterval(() => {
-        setUploadProgress(prev => Math.min(prev + 10, 90))
-      }, 100)
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i]
+        setCurrentUploadIndex(i + 1)
+        
+        try {
+          const response = await bullhornAPI.uploadFile(
+            uploadEntity,
+            parseInt(uploadEntityId),
+            file,
+            uploadFileType,
+            uploadDescription || file.name
+          )
 
-      const response = await bullhornAPI.uploadFile(
-        uploadEntity,
-        parseInt(uploadEntityId),
-        selectedFile,
-        uploadFileType,
-        uploadDescription || selectedFile.name
-      )
+          results.push({
+            file: file.name,
+            status: 'success',
+            message: `Uploaded successfully`,
+            fileId: response?.fileId || response?.id
+          })
 
-      clearInterval(interval)
-      setUploadProgress(100)
+          onLog('File Upload', 'success', `Uploaded file to ${uploadEntity} ID ${uploadEntityId}`, {
+            entity: uploadEntity,
+            entityId: uploadEntityId,
+            fileName: file.name,
+            fileSize: file.size,
+            fileType: uploadFileType,
+            fileId: response?.fileId || response?.id || 'unknown'
+          })
+        } catch (error) {
+          console.error(`File upload error for ${file.name}:`, error)
+          const errorMessage = error instanceof Error ? error.message : 'Upload failed'
+          
+          results.push({
+            file: file.name,
+            status: 'error',
+            message: errorMessage
+          })
 
-      toast.success(`File uploaded successfully: ${selectedFile.name}`)
-      onLog('File Upload', 'success', `Uploaded file to ${uploadEntity} ID ${uploadEntityId}`, {
-        entity: uploadEntity,
-        entityId: uploadEntityId,
-        fileName: selectedFile.name,
-        fileSize: selectedFile.size,
-        fileType: uploadFileType,
-        fileId: response?.fileId || response?.id || 'unknown'
-      })
+          onLog('File Upload', 'error', errorMessage, {
+            entity: uploadEntity,
+            entityId: uploadEntityId,
+            fileName: file.name,
+            error: errorMessage
+          })
+        }
 
-      setSelectedFile(null)
+        setUploadProgress(Math.round(((i + 1) / totalFiles) * 100))
+        setUploadResults([...results])
+      }
+
+      const successCount = results.filter(r => r.status === 'success').length
+      const errorCount = results.filter(r => r.status === 'error').length
+
+      if (errorCount === 0) {
+        toast.success(`All ${successCount} file(s) uploaded successfully!`)
+      } else if (successCount === 0) {
+        toast.error(`All ${errorCount} file(s) failed to upload`)
+      } else {
+        toast.warning(`${successCount} file(s) uploaded, ${errorCount} failed`)
+      }
+
+      setSelectedFiles([])
       setUploadDescription('')
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
-      setTimeout(() => setUploadProgress(0), 2000)
+      
+      setTimeout(() => {
+        setUploadProgress(0)
+        setCurrentUploadIndex(0)
+      }, 3000)
     } catch (error) {
-      console.error('File upload error:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to upload file'
+      console.error('Bulk upload error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload files'
       toast.error(`Upload failed: ${errorMessage}`)
-      onLog('File Upload', 'error', errorMessage, {
-        entity: uploadEntity,
-        entityId: uploadEntityId,
-        fileName: selectedFile.name,
-        error: errorMessage
-      })
     } finally {
       setIsUploading(false)
     }
@@ -436,56 +491,82 @@ export function FileManager({ onLog }: FileManagerProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="file-upload">Select File</Label>
+              <Label htmlFor="file-upload">Select Files</Label>
               <Input
                 id="file-upload"
                 ref={fileInputRef}
                 type="file"
+                multiple
                 onChange={handleFileSelect}
                 disabled={!uploadEntity || !uploadEntityId || isUploading}
                 className="cursor-pointer"
               />
               <p className="text-xs text-muted-foreground">
-                Maximum file size: 50 MB
+                Maximum file size per file: 50 MB | You can select multiple files at once
               </p>
-              {selectedFile && (
+              {selectedFiles.length > 0 && (
                 <>
-                  <div className={`flex items-center gap-2 p-2 rounded-md border ${
-                    selectedFile.size > 25 * 1024 * 1024 
-                      ? 'bg-orange-500/10 border-orange-500/30' 
-                      : selectedFile.size > 10 * 1024 * 1024
-                      ? 'bg-blue-500/10 border-blue-500/30'
-                      : 'bg-accent/10 border-accent/20'
-                  }`}>
-                    <File size={20} className={
-                      selectedFile.size > 25 * 1024 * 1024 
-                        ? 'text-orange-500' 
-                        : selectedFile.size > 10 * 1024 * 1024
-                        ? 'text-blue-500'
-                        : 'text-accent'
-                    } />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{selectedFile.name}</p>
-                      <p className={`text-xs ${
-                        selectedFile.size > 25 * 1024 * 1024 
-                          ? 'text-orange-600 font-medium' 
-                          : selectedFile.size > 10 * 1024 * 1024
-                          ? 'text-blue-600'
-                          : 'text-muted-foreground'
-                      }`}>
-                        {formatFileSize(selectedFile.size)}
-                        {selectedFile.size > 25 * 1024 * 1024 && ' - Large file, may take longer to upload'}
-                        {selectedFile.size > 10 * 1024 * 1024 && selectedFile.size <= 25 * 1024 * 1024 && ' - Medium-sized file'}
-                      </p>
+                  <div className="space-y-2 mt-4">
+                    <div className="flex items-center justify-between">
+                      <Label>Selected Files ({selectedFiles.length})</Label>
+                      <Badge variant="secondary">
+                        Total: {formatFileSize(selectedFiles.reduce((sum, f) => sum + f.size, 0))}
+                      </Badge>
                     </div>
-                    <Badge variant="secondary">{selectedFile.type || 'Unknown type'}</Badge>
+                    <ScrollArea className="h-[200px] border rounded-md p-3">
+                      <div className="space-y-2">
+                        {selectedFiles.map((file, index) => {
+                          const fileSizeMB = file.size / (1024 * 1024)
+                          return (
+                            <div
+                              key={index}
+                              className={`flex items-center gap-2 p-2 rounded-md border ${
+                                fileSizeMB > 25
+                                  ? 'bg-orange-500/10 border-orange-500/30'
+                                  : fileSizeMB > 10
+                                  ? 'bg-blue-500/10 border-blue-500/30'
+                                  : 'bg-accent/10 border-accent/20'
+                              }`}
+                            >
+                              <File
+                                size={18}
+                                className={
+                                  fileSizeMB > 25
+                                    ? 'text-orange-500'
+                                    : fileSizeMB > 10
+                                    ? 'text-blue-500'
+                                    : 'text-accent'
+                                }
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{file.name}</p>
+                                <p
+                                  className={`text-xs ${
+                                    fileSizeMB > 25
+                                      ? 'text-orange-600 font-medium'
+                                      : fileSizeMB > 10
+                                      ? 'text-blue-600'
+                                      : 'text-muted-foreground'
+                                  }`}
+                                >
+                                  {formatFileSize(file.size)}
+                                </p>
+                              </div>
+                              <Badge variant="outline" className="text-xs">
+                                {file.type || 'Unknown'}
+                              </Badge>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </ScrollArea>
                   </div>
-                  {selectedFile.size > 25 * 1024 * 1024 && (
-                    <Alert className="bg-orange-500/10 border-orange-500/20">
+                  {selectedFiles.some((f) => f.size > 25 * 1024 * 1024) && (
+                    <Alert className="bg-orange-500/10 border-orange-500/20 mt-2">
                       <Info className="h-4 w-4 text-orange-600" />
-                      <AlertTitle className="text-orange-600">Large File Warning</AlertTitle>
+                      <AlertTitle className="text-orange-600">Large File(s) Detected</AlertTitle>
                       <AlertDescription className="text-orange-600 text-sm">
-                        This file is over 25 MB. Upload may take several minutes depending on your connection speed.
+                        Some files are over 25 MB. Upload may take several minutes depending on your connection speed.
                       </AlertDescription>
                     </Alert>
                   )}
@@ -494,27 +575,81 @@ export function FileManager({ onLog }: FileManagerProps) {
             </div>
 
             {isUploading && (
-              <div className="space-y-2">
-                <Label>Upload Progress</Label>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Upload Progress</Label>
+                  <Badge variant="outline">
+                    {currentUploadIndex} of {selectedFiles.length} files
+                  </Badge>
+                </div>
                 <Progress value={uploadProgress} className="h-2" />
                 <p className="text-sm text-muted-foreground text-center">{uploadProgress}%</p>
+              </div>
+            )}
+
+            {uploadResults.length > 0 && (
+              <div className="space-y-2">
+                <Label>Upload Results</Label>
+                <ScrollArea className="h-[200px] border rounded-md">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>File Name</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Message</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {uploadResults.map((result, index) => (
+                        <TableRow key={index}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              <File size={16} />
+                              {result.file}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {result.status === 'success' ? (
+                                <CheckCircle size={16} className="text-green-600" weight="fill" />
+                              ) : (
+                                <XCircle size={16} className="text-destructive" weight="fill" />
+                              )}
+                              <span
+                                className={
+                                  result.status === 'success' ? 'text-green-600' : 'text-destructive'
+                                }
+                              >
+                                {result.status === 'success' ? 'Success' : 'Failed'}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {result.message || '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
               </div>
             )}
 
             <div className="flex gap-2">
               <Button
                 onClick={handleUpload}
-                disabled={!selectedFile || !uploadEntity || !uploadEntityId || isUploading}
+                disabled={selectedFiles.length === 0 || !uploadEntity || !uploadEntityId || isUploading}
                 className="flex-1"
               >
                 <FileArrowUp />
-                {isUploading ? 'Uploading...' : 'Upload File'}
+                {isUploading ? `Uploading ${currentUploadIndex} of ${selectedFiles.length}...` : `Upload ${selectedFiles.length > 0 ? selectedFiles.length + ' File(s)' : 'Files'}`}
               </Button>
-              {selectedFile && !isUploading && (
+              {selectedFiles.length > 0 && !isUploading && (
                 <Button
                   variant="outline"
                   onClick={() => {
-                    setSelectedFile(null)
+                    setSelectedFiles([])
+                    setUploadResults([])
                     if (fileInputRef.current) {
                       fileInputRef.current.value = ''
                     }
