@@ -2048,17 +2048,15 @@ export class BullhornAPI {
     const encodedEntity = encodeURIComponent(entity)
     const fileDescription = description || file.name
     const externalID = `upload-${Date.now()}`
+    const documentType = type || 'cover'
 
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken,
       externalID: externalID,
       fileType: 'SAMPLE',
-      name: fileDescription
+      name: fileDescription,
+      type: documentType
     })
-
-    if (type) {
-      params.append('type', type)
-    }
 
     if (description) {
       params.append('description', description)
@@ -2072,19 +2070,21 @@ export class BullhornAPI {
     const formData = new FormData()
     formData.append('file', file)
 
+    const fullUrl = `${this.session.restUrl}file/${encodedEntity}/${entityId}/raw?${params.toString()}`
+    
     console.log(`📤 Uploading file to ${entity}/${entityId}/raw:`, {
       fileName: file.name,
       fileSize: file.size,
       fileType: 'SAMPLE',
-      type: type || 'none',
+      type: documentType,
       description: fileDescription,
       externalID,
       contentType,
-      endpoint: `${this.session.restUrl}file/${encodedEntity}/${entityId}/raw`
+      endpoint: fullUrl
     })
 
     const response = await this.throttledFetch(
-      `${this.session.restUrl}file/${encodedEntity}/${entityId}/raw?${params.toString()}`,
+      fullUrl,
       {
         method: 'PUT',
         body: formData
