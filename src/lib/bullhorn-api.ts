@@ -2056,10 +2056,10 @@ export class BullhornAPI {
       fileType: 'SAMPLE',
       type: documentType
     })
-    })
 
     if (description) {
       params.append('description', description)
+    }
 
     const contentType = file.type || 'application/octet-stream'
     if (contentType) {
@@ -2070,25 +2070,23 @@ export class BullhornAPI {
     formData.append('file', file)
 
     const fullUrl = `${this.session.restUrl}file/${encodedEntity}/${entityId}/raw?${params.toString()}`
-    const fullUrl = `${this.session.restUrl}file/${encodedEntity}/${entityId}/raw?${params.toString()}`
     
+    console.log('📤 Uploading file:', {
       fileName: file.name,
-      fileSize: file.size,
       fileSize: file.size,
       fileType: 'SAMPLE',
       type: documentType,
       externalID,
       contentType,
       endpoint: fullUrl
-      endpoint: fullUrl
+    })
 
     const response = await this.throttledFetch(
       fullUrl,
-      fullUrl,
+      {
         method: 'PUT',
         body: formData
-      },
-      },
+      }
     )
 
     if (!response.ok) {
