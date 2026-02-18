@@ -12,7 +12,6 @@ export interface CachedEntity {
 export interface EntityCacheData {
   entities: CachedEntity[]
   lastFullRefresh: number
-  metadata: any
   lastUpdated: number
 }
 
@@ -77,7 +76,6 @@ export class EntityCacheService {
       const cacheData: EntityCacheData = {
         entities: allEntities,
         lastFullRefresh: Date.now(),
-        metadata: entitiesData,
         lastUpdated: Date.now()
       }
 
@@ -142,7 +140,6 @@ export class EntityCacheService {
           newEntity
         ].sort((a, b) => a.entity.localeCompare(b.entity)),
         lastFullRefresh: cache?.lastFullRefresh || Date.now(),
-        metadata: cache?.metadata || {},
         lastUpdated: Date.now()
       }
 
