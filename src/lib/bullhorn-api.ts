@@ -2046,28 +2046,40 @@ export class BullhornAPI {
     }
 
     const encodedEntity = encodeURIComponent(entity)
-    const fileName = encodeURIComponent(file.name)
     const fileDescription = description || file.name
+    const externalID = `upload-${Date.now()}`
 
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken,
-      externalID: fileType,
+      externalID: externalID,
       fileType: fileType,
       name: fileDescription
     })
 
+    if (description) {
+      params.append('description', description)
+    }
+
+    const contentType = file.type || 'application/octet-stream'
+    if (contentType) {
+      params.append('contentType', contentType)
+    }
+
     const formData = new FormData()
     formData.append('file', file)
 
-    console.log(`📤 Uploading file to ${entity}/${entityId}:`, {
+    console.log(`📤 Uploading file to ${entity}/${entityId}/raw:`, {
       fileName: file.name,
       fileSize: file.size,
       fileType,
-      description: fileDescription
+      description: fileDescription,
+      externalID,
+      contentType,
+      endpoint: `${this.session.restUrl}file/${encodedEntity}/${entityId}/raw`
     })
 
     const response = await this.throttledFetch(
-      `${this.session.restUrl}file/${encodedEntity}/${entityId}?${params.toString()}`,
+      `${this.session.restUrl}file/${encodedEntity}/${entityId}/raw?${params.toString()}`,
       {
         method: 'PUT',
         body: formData
@@ -2076,9 +2088,24 @@ export class BullhornAPI {
     )
 
     if (!response.ok) {
-      const error = await response.text()
-      console.error('❌ File upload failed:', error)
-      throw new Error(`File upload failed: ${error}`)
+      const errorText = await response.text()
+      console.error('❌ File upload failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText
+      })
+      
+      let errorMessage = `File upload failed (${response.status})`
+      try {
+        const errorJson = JSON.parse(errorText)
+        if (errorJson.errorMessage) {
+          errorMessage = errorJson.errorMessage
+        }
+      } catch {
+        errorMessage = errorText || errorMessage
+      }
+      
+      throw new Error(errorMessage)
     }
 
     const result = await response.json()
