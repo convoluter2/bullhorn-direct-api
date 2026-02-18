@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -59,12 +59,28 @@ export function FileManager({ onLog }: FileManagerProps) {
   const [files, setFiles] = useState<EntityFile[]>([])
   const [loadingFiles, setLoadingFiles] = useState(false)
   const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null)
+  
+  const [fileTypeOptions, setFileTypeOptions] = useState<Array<{ value: string; label: string }>>([])
+  const [loadingFileTypes, setLoadingFileTypes] = useState(false)
+
+  const fileAttachmentEntities = [
+    'Candidate',
+    'Placement',
+    'Opportunity',
+    'Certification',
+    'JobOrder',
+    'ClientContact'
+  ]
 
   const { entities, loading: entitiesLoading } = useEntities()
   const { metadata: uploadMetadata, loading: uploadMetadataLoading } = useEntityMetadata(uploadEntity || undefined)
   const { metadata: downloadMetadata, loading: downloadMetadataLoading } = useEntityMetadata(downloadEntity || undefined)
 
-  const fileTypes = [
+  const filteredEntities = entities.filter(entity => 
+    fileAttachmentEntities.includes(entity)
+  )
+
+  const defaultFileTypes = [
     { value: 'SAMPLE', label: 'Sample File' },
     { value: 'RESUME', label: 'Resume' },
     { value: 'COVER_LETTER', label: 'Cover Letter' },
@@ -73,6 +89,43 @@ export function FileManager({ onLog }: FileManagerProps) {
     { value: 'DOCUMENT', label: 'Document' },
     { value: 'IMAGE', label: 'Image' }
   ]
+
+  useEffect(() => {
+    const loadFileTypes = async () => {
+      try {
+        setLoadingFileTypes(true)
+        
+        const options = await bullhornAPI.getFieldOptions('EntityFileAttachment', 'type')
+        
+        if (options && options.length > 0) {
+          const typeOptions = options.map(opt => ({
+            value: opt.value || opt.label || opt,
+            label: opt.label || opt.value || opt
+          }))
+          
+          setFileTypeOptions(typeOptions)
+          console.log('✅ Loaded file type options from API:', typeOptions)
+          onLog('Load File Types', 'success', `Loaded ${typeOptions.length} file types from API`, {
+            fileTypes: typeOptions
+          })
+        } else {
+          console.log('⚠️ No file type options returned, using defaults')
+          setFileTypeOptions(defaultFileTypes)
+        }
+      } catch (error) {
+        console.error('❌ Failed to load file type options:', error)
+        console.log('Using default file types')
+        setFileTypeOptions(defaultFileTypes)
+        onLog('Load File Types', 'error', 'Failed to load file types from API, using defaults', {
+          error: error instanceof Error ? error.message : String(error)
+        })
+      } finally {
+        setLoadingFileTypes(false)
+      }
+    }
+
+    loadFileTypes()
+  }, [onLog])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -301,7 +354,7 @@ export function FileManager({ onLog }: FileManagerProps) {
               <Info className="h-4 w-4" />
               <AlertTitle>Upload Files to Bullhorn</AlertTitle>
               <AlertDescription>
-                Select an entity type (e.g., Candidate, JobOrder), provide the entity's ID, choose a file type, and upload your file.
+                Upload files to entities with FileAttachment support: Candidate, Placement, Opportunity, Certification, JobOrder, and ClientContact.
               </AlertDescription>
             </Alert>
 
@@ -313,13 +366,16 @@ export function FileManager({ onLog }: FileManagerProps) {
                     <SelectValue placeholder="Select entity type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {entities.map((entity) => (
+                    {filteredEntities.map((entity) => (
                       <SelectItem key={entity} value={entity}>
                         {entity}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  Only entities with FileAttachment tables are shown
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -336,12 +392,12 @@ export function FileManager({ onLog }: FileManagerProps) {
 
               <div className="space-y-2">
                 <Label htmlFor="upload-file-type">File Type / Folder</Label>
-                <Select value={uploadFileType} onValueChange={setUploadFileType}>
+                <Select value={uploadFileType} onValueChange={setUploadFileType} disabled={loadingFileTypes}>
                   <SelectTrigger id="upload-file-type">
-                    <SelectValue placeholder="Select file type" />
+                    <SelectValue placeholder={loadingFileTypes ? "Loading file types..." : "Select file type"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {fileTypes.map((type) => (
+                    {fileTypeOptions.map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         {type.label}
                       </SelectItem>
@@ -349,7 +405,7 @@ export function FileManager({ onLog }: FileManagerProps) {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  This determines which folder the file will be saved to in Bullhorn
+                  File types loaded from your tenant's configuration
                 </p>
               </div>
 
@@ -420,15 +476,18 @@ export function FileManager({ onLog }: FileManagerProps) {
 
             <Alert className="bg-blue-500/10 border-blue-500/20">
               <Info className="h-4 w-4 text-blue-600" />
-              <AlertTitle className="text-blue-600">File Type Information</AlertTitle>
+              <AlertTitle className="text-blue-600">Supported Entities</AlertTitle>
               <AlertDescription className="text-blue-600 text-sm">
-                <ul className="list-disc list-inside space-y-1 mt-2">
-                  <li><strong>Resume</strong>: Candidate resumes and CVs</li>
-                  <li><strong>Cover Letter</strong>: Candidate cover letters</li>
-                  <li><strong>Sample File</strong>: Work samples and portfolio items</li>
-                  <li><strong>Document</strong>: General documents and forms</li>
-                  <li><strong>Attachment</strong>: Email attachments and misc files</li>
+                <p className="mb-2">Files can be uploaded to the following entities with FileAttachment support:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li><strong>Candidate</strong>: Resumes, certifications, work samples</li>
+                  <li><strong>Placement</strong>: Placement-related documents</li>
+                  <li><strong>Opportunity</strong>: Opportunity documentation</li>
+                  <li><strong>Certification</strong>: Certification documents</li>
+                  <li><strong>JobOrder</strong>: Job order files</li>
+                  <li><strong>ClientContact</strong>: Contact-related files</li>
                 </ul>
+                <p className="mt-2 text-xs">File types are loaded from your tenant's EntityFileAttachment metadata.</p>
               </AlertDescription>
             </Alert>
           </TabsContent>
@@ -450,13 +509,16 @@ export function FileManager({ onLog }: FileManagerProps) {
                     <SelectValue placeholder="Select entity type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {entities.map((entity) => (
+                    {filteredEntities.map((entity) => (
                       <SelectItem key={entity} value={entity}>
                         {entity}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  Only entities with FileAttachment tables
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -473,12 +535,12 @@ export function FileManager({ onLog }: FileManagerProps) {
 
               <div className="space-y-2">
                 <Label htmlFor="download-file-type">Folder / File Type</Label>
-                <Select value={downloadFileType} onValueChange={setDownloadFileType}>
+                <Select value={downloadFileType} onValueChange={setDownloadFileType} disabled={loadingFileTypes}>
                   <SelectTrigger id="download-file-type">
-                    <SelectValue placeholder="Select folder" />
+                    <SelectValue placeholder={loadingFileTypes ? "Loading..." : "Select folder"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {fileTypes.map((type) => (
+                    {fileTypeOptions.map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         <div className="flex items-center gap-2">
                           <Folder size={16} />
@@ -489,7 +551,7 @@ export function FileManager({ onLog }: FileManagerProps) {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Select which folder to view files from
+                  File types from tenant configuration
                 </p>
               </div>
             </div>
@@ -507,7 +569,7 @@ export function FileManager({ onLog }: FileManagerProps) {
             {files.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label>Files in {fileTypes.find(t => t.value === downloadFileType)?.label} Folder</Label>
+                  <Label>Files in {fileTypeOptions.find(t => t.value === downloadFileType)?.label} Folder</Label>
                   <Badge variant="secondary">{files.length} file(s)</Badge>
                 </div>
                 <ScrollArea className="h-[400px] border rounded-md">
@@ -574,7 +636,7 @@ export function FileManager({ onLog }: FileManagerProps) {
                 <Info className="h-4 w-4" />
                 <AlertTitle>No Files Found</AlertTitle>
                 <AlertDescription>
-                  No files found in the {fileTypes.find(t => t.value === downloadFileType)?.label} folder for this entity.
+                  No files found in the {fileTypeOptions.find(t => t.value === downloadFileType)?.label} folder for this entity.
                   Try loading files or upload a new file.
                 </AlertDescription>
               </Alert>
