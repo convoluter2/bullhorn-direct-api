@@ -47,7 +47,7 @@ export function FileManager({ onLog }: FileManagerProps) {
   
   const [uploadEntity, setUploadEntity] = useState('')
   const [uploadEntityId, setUploadEntityId] = useState('')
-  const [uploadFileType, setUploadFileType] = useState<string>('SAMPLE')
+  const [uploadType, setUploadType] = useState<string>('cover')
   const [uploadDescription, setUploadDescription] = useState('')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -58,7 +58,7 @@ export function FileManager({ onLog }: FileManagerProps) {
 
   const [downloadEntity, setDownloadEntity] = useState('')
   const [downloadEntityId, setDownloadEntityId] = useState('')
-  const [downloadFileType, setDownloadFileType] = useState<string>('SAMPLE')
+  const [downloadType, setDownloadType] = useState<string>('')
   const [files, setFiles] = useState<EntityFile[]>([])
   const [loadingFiles, setLoadingFiles] = useState(false)
   const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null)
@@ -84,13 +84,55 @@ export function FileManager({ onLog }: FileManagerProps) {
   )
 
   const defaultFileTypes = [
-    { value: 'SAMPLE', label: 'Sample File' },
-    { value: 'RESUME', label: 'Resume' },
-    { value: 'COVER_LETTER', label: 'Cover Letter' },
-    { value: 'FILE', label: 'General File' },
-    { value: 'ATTACHMENT', label: 'Attachment' },
-    { value: 'DOCUMENT', label: 'Document' },
-    { value: 'IMAGE', label: 'Image' }
+    { value: 'cover', label: 'Assignment Agreement Letter' },
+    { value: 'autosubmit', label: 'Auto-Submit Signoff' },
+    { value: 'background', label: 'Background Check' },
+    { value: 'benefits', label: 'Benefit Forms' },
+    { value: 'board', label: 'Board Certification' },
+    { value: 'meal', label: 'California Meal Waiver' },
+    { value: 'client', label: 'Client Packet' },
+    { value: 'competency', label: 'Competency Exam' },
+    { value: 'compliance', label: 'Compliance Paperwork' },
+    { value: 'confirmation', label: 'Confirmation Letters' },
+    { value: 'dd', label: 'DD Proof Document' },
+    { value: 'directdeposit', label: 'Direct Deposit' },
+    { value: 'drugscreen', label: 'Drug Screen' },
+    { value: 'education', label: 'Education-Manual' },
+    { value: 'employment', label: 'Employment-Manual' },
+    { value: 'exhibit', label: 'Exhibit' },
+    { value: 'facility', label: 'Facility Forms-Manual' },
+    { value: 'federal', label: 'Federal/State-Manual' },
+    { value: 'health', label: 'Health Record-Manual' },
+    { value: 'hiring', label: 'Hiring Document-Manual' },
+    { value: 'jobdesc', label: 'Job Description' },
+    { value: 'life', label: 'Life Cert-Manual' },
+    { value: 'nda', label: 'Non-Disclosure Agreement' },
+    { value: 'nurseprofile', label: 'Nurse Profile' },
+    { value: 'other', label: 'Other' },
+    { value: 'payroll', label: 'Payroll Document' },
+    { value: 'paystub', label: 'Paystub' },
+    { value: 'perfassessment', label: 'Perf Assessment-Manual' },
+    { value: 'agreement', label: 'Primary Applicant Agreement' },
+    { value: 'profcert', label: 'Prof Cert-Manual' },
+    { value: 'proflic', label: 'Prof Lic-Manual' },
+    { value: 'po', label: 'Purchase Order' },
+    { value: 'reference', label: 'Reference' },
+    { value: 'reimbursement', label: 'Reimbursement' },
+    { value: 'resume', label: 'Resume' },
+    { value: 'skills', label: 'Skills Assessment' },
+    { value: 'statew4', label: 'State W4' },
+    { value: 'sow', label: 'Statement of Work' },
+    { value: 'stitched', label: 'Stitched Nurse Profile' },
+    { value: 'submittal', label: 'Submittal Packet' },
+    { value: 'timesheet', label: 'Timesheet' },
+    { value: 'timesheetscan', label: 'Timesheet Scan' },
+    { value: 'travel', label: 'Travel/Lodging Information' },
+    { value: 'w4', label: 'W4' },
+    { value: 'w4federal', label: 'W4-Federal' },
+    { value: 'w4home', label: 'W4-Home' },
+    { value: 'w4working', label: 'W4-Working' },
+    { value: 'workerscomp', label: "Worker's Compensation" },
+    { value: 'onboarding365', label: 'Onboarding365' }
   ]
 
   useEffect(() => {
@@ -199,7 +241,7 @@ export function FileManager({ onLog }: FileManagerProps) {
             uploadEntity,
             parseInt(uploadEntityId),
             file,
-            uploadFileType,
+            uploadType,
             uploadDescription || file.name
           )
 
@@ -215,7 +257,7 @@ export function FileManager({ onLog }: FileManagerProps) {
             entityId: uploadEntityId,
             fileName: file.name,
             fileSize: file.size,
-            fileType: uploadFileType,
+            type: uploadType,
             fileId: response?.fileId || response?.id || 'unknown'
           })
         } catch (error) {
@@ -281,7 +323,7 @@ export function FileManager({ onLog }: FileManagerProps) {
       setFiles([])
 
       const entityIdNum = parseInt(downloadEntityId)
-      const response = await bullhornAPI.getEntityFiles(downloadEntity, entityIdNum, downloadFileType)
+      const response = await bullhornAPI.getEntityFiles(downloadEntity, entityIdNum, downloadType)
 
       if (response && response.data && Array.isArray(response.data)) {
         setFiles(response.data)
@@ -289,7 +331,7 @@ export function FileManager({ onLog }: FileManagerProps) {
         onLog('Load Files', 'success', `Loaded files from ${downloadEntity} ID ${downloadEntityId}`, {
           entity: downloadEntity,
           entityId: downloadEntityId,
-          fileType: downloadFileType,
+          type: downloadType,
           fileCount: response.data.length
         })
       } else {
@@ -466,10 +508,10 @@ export function FileManager({ onLog }: FileManagerProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="upload-file-type">File Type / Folder</Label>
-                <Select value={uploadFileType} onValueChange={setUploadFileType} disabled={loadingFileTypes}>
-                  <SelectTrigger id="upload-file-type">
-                    <SelectValue placeholder={loadingFileTypes ? "Loading file types..." : "Select file type"} />
+                <Label htmlFor="upload-type">Document Type</Label>
+                <Select value={uploadType} onValueChange={setUploadType} disabled={loadingFileTypes}>
+                  <SelectTrigger id="upload-type">
+                    <SelectValue placeholder={loadingFileTypes ? "Loading file types..." : "Select document type"} />
                   </SelectTrigger>
                   <SelectContent>
                     {fileTypeOptions.map((type) => (
@@ -480,7 +522,7 @@ export function FileManager({ onLog }: FileManagerProps) {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  File types loaded from your tenant's configuration
+                  Document type category (fileType: SAMPLE is always sent)
                 </p>
               </div>
 
@@ -738,12 +780,13 @@ export function FileManager({ onLog }: FileManagerProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="download-file-type">Folder / File Type</Label>
-                <Select value={downloadFileType} onValueChange={setDownloadFileType} disabled={loadingFileTypes}>
-                  <SelectTrigger id="download-file-type">
-                    <SelectValue placeholder={loadingFileTypes ? "Loading..." : "Select folder"} />
+                <Label htmlFor="download-type">Document Type Filter (Optional)</Label>
+                <Select value={downloadType} onValueChange={setDownloadType} disabled={loadingFileTypes}>
+                  <SelectTrigger id="download-type">
+                    <SelectValue placeholder={loadingFileTypes ? "Loading..." : "All types"} />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="">All Types</SelectItem>
                     {fileTypeOptions.map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         <div className="flex items-center gap-2">
@@ -755,7 +798,7 @@ export function FileManager({ onLog }: FileManagerProps) {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  File types from tenant configuration
+                  Filter by document type (fileType: SAMPLE is always used)
                 </p>
               </div>
             </div>
@@ -767,13 +810,13 @@ export function FileManager({ onLog }: FileManagerProps) {
               variant="outline"
             >
               <Folder />
-              {loadingFiles ? 'Loading Files...' : 'Load Files from Folder'}
+              {loadingFiles ? 'Loading Files...' : 'Load Files'}
             </Button>
 
             {files.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label>Files in {fileTypeOptions.find(t => t.value === downloadFileType)?.label} Folder</Label>
+                  <Label>Files {downloadType && `(${fileTypeOptions.find(t => t.value === downloadType)?.label})`}</Label>
                   <Badge variant="secondary">{files.length} file(s)</Badge>
                 </div>
                 <ScrollArea className="h-[400px] border rounded-md">
@@ -840,8 +883,8 @@ export function FileManager({ onLog }: FileManagerProps) {
                 <Info className="h-4 w-4" />
                 <AlertTitle>No Files Found</AlertTitle>
                 <AlertDescription>
-                  No files found in the {fileTypeOptions.find(t => t.value === downloadFileType)?.label} folder for this entity.
-                  Try loading files or upload a new file.
+                  No files found for this entity{downloadType && ` with type "${fileTypeOptions.find(t => t.value === downloadType)?.label}"`}.
+                  Try clearing the filter or upload a new file.
                 </AlertDescription>
               </Alert>
             )}

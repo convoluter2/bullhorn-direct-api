@@ -2038,7 +2038,7 @@ export class BullhornAPI {
     entity: string,
     entityId: number,
     file: File,
-    fileType: string = 'SAMPLE',
+    type?: string,
     description?: string
   ): Promise<any> {
     if (!this.session) {
@@ -2052,9 +2052,13 @@ export class BullhornAPI {
     const params = new URLSearchParams({
       BhRestToken: this.session.BhRestToken,
       externalID: externalID,
-      fileType: fileType,
+      fileType: 'SAMPLE',
       name: fileDescription
     })
+
+    if (type) {
+      params.append('type', type)
+    }
 
     if (description) {
       params.append('description', description)
@@ -2071,7 +2075,8 @@ export class BullhornAPI {
     console.log(`📤 Uploading file to ${entity}/${entityId}/raw:`, {
       fileName: file.name,
       fileSize: file.size,
-      fileType,
+      fileType: 'SAMPLE',
+      type: type || 'none',
       description: fileDescription,
       externalID,
       contentType,
@@ -2116,7 +2121,7 @@ export class BullhornAPI {
   async getEntityFiles(
     entity: string,
     entityId: number,
-    fileType?: string
+    type?: string
   ): Promise<any> {
     if (!this.session) {
       throw new Error('Not authenticated')
@@ -2125,14 +2130,15 @@ export class BullhornAPI {
     const encodedEntity = encodeURIComponent(entity)
 
     const params = new URLSearchParams({
-      BhRestToken: this.session.BhRestToken
+      BhRestToken: this.session.BhRestToken,
+      fileType: 'SAMPLE'
     })
 
-    if (fileType) {
-      params.append('type', fileType)
+    if (type) {
+      params.append('type', type)
     }
 
-    console.log(`📥 Fetching files for ${entity}/${entityId}`, { fileType })
+    console.log(`📥 Fetching files for ${entity}/${entityId}`, { fileType: 'SAMPLE', type })
 
     const response = await this.throttledFetch(
       `${this.session.restUrl}entityFiles/${encodedEntity}/${entityId}?${params.toString()}`,
@@ -2163,10 +2169,11 @@ export class BullhornAPI {
     const encodedEntity = encodeURIComponent(entity)
 
     const params = new URLSearchParams({
-      BhRestToken: this.session.BhRestToken
+      BhRestToken: this.session.BhRestToken,
+      fileType: 'SAMPLE'
     })
 
-    console.log(`📥 Downloading file ${fileId} from ${entity}/${entityId}`)
+    console.log(`📥 Downloading file ${fileId} from ${entity}/${entityId} (fileType: SAMPLE)`)
 
     const response = await this.throttledFetch(
       `${this.session.restUrl}file/${encodedEntity}/${entityId}/${fileId}?${params.toString()}`,
@@ -2200,10 +2207,11 @@ export class BullhornAPI {
     const encodedEntity = encodeURIComponent(entity)
 
     const params = new URLSearchParams({
-      BhRestToken: this.session.BhRestToken
+      BhRestToken: this.session.BhRestToken,
+      fileType: 'SAMPLE'
     })
 
-    console.log(`🗑️ Deleting file ${fileId} from ${entity}/${entityId}`)
+    console.log(`🗑️ Deleting file ${fileId} from ${entity}/${entityId} (fileType: SAMPLE)`)
 
     const response = await this.throttledFetch(
       `${this.session.restUrl}file/${encodedEntity}/${entityId}/${fileId}?${params.toString()}`,
