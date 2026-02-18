@@ -15,7 +15,16 @@ export async function fetchWithCorsProxy(
   if (tryDirectFirst) {
     try {
       console.log('🔗 Attempting direct fetch (no proxy)...')
-      const response = await fetch(url, options)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000)
+      
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      })
+      
+      clearTimeout(timeoutId)
+      
       if (response.ok || response.status >= 400) {
         console.log('✅ Direct fetch succeeded')
         return response
@@ -43,13 +52,19 @@ async function fetchWithProxy(
   console.log(`🌐 Using CORS proxy ${proxyIndex + 1}/${CORS_PROXIES.length}:`, proxy.replace(/\?$/, ''))
 
   try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000)
+
     const response = await fetch(proxiedUrl, {
       ...options,
       headers: {
         ...options?.headers,
         'X-Requested-With': 'XMLHttpRequest'
-      }
+      },
+      signal: controller.signal
     })
+
+    clearTimeout(timeoutId)
 
     if (!response.ok && proxyIndex < CORS_PROXIES.length - 1) {
       console.log(`⚠️ Proxy ${proxyIndex + 1} failed with status ${response.status}, trying next...`)

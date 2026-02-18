@@ -48,11 +48,18 @@ function App() {
   const [isOAuthCallback, setIsOAuthCallback] = useState(false)
   const [currentConnectionId, setCurrentConnectionId] = useKV<string | null>('current-connection-id', null)
   const [preselectedConnection, setPreselectedConnection] = useState<SavedConnection | null>(null)
+  const [isInitializing, setIsInitializing] = useState(true)
 
   useEffect(() => {
     const loadConnections = async () => {
-      const connections = await secureCredentialsAPI.getConnections()
-      setSavedConnections(connections)
+      try {
+        const connections = await secureCredentialsAPI.getConnections()
+        setSavedConnections(connections)
+      } catch (error) {
+        console.error('Failed to load connections:', error)
+      } finally {
+        setIsInitializing(false)
+      }
     }
     loadConnections()
   }, [])
@@ -400,6 +407,20 @@ function App() {
       bullhornAPI.setSession(session)
     }
   }, [session])
+
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Database size={64} className="mx-auto text-accent animate-pulse" weight="duotone" />
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold">Loading Bullhorn Data Manager</h2>
+            <p className="text-muted-foreground">Initializing application...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (isOAuthCallback) {
     console.log('App - Rendering OAuthCallback component')
