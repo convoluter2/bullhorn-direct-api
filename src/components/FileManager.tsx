@@ -10,11 +10,12 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { FileArrowUp, FileArrowDown, Folder, File, Download, Trash, CheckCircle, XCircle, Info, FolderOpen } from '@phosphor-icons/react'
+import { FileArrowUp, FileArrowDown, Folder, File, Download, Trash, CheckCircle, XCircle, Info, FolderOpen, FileCsv } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
+import { CSVFileUploader } from '@/components/CSVFileUploader'
 
 interface FileManagerProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -42,7 +43,7 @@ interface FileFolder {
 }
 
 export function FileManager({ onLog }: FileManagerProps) {
-  const [activeTab, setActiveTab] = useState<'upload' | 'download'>('upload')
+  const [activeTab, setActiveTab] = useState<'upload' | 'download' | 'csv-bulk'>('upload')
   
   const [uploadEntity, setUploadEntity] = useState('')
   const [uploadEntityId, setUploadEntityId] = useState('')
@@ -407,11 +408,15 @@ export function FileManager({ onLog }: FileManagerProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'upload' | 'download')} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'upload' | 'download' | 'csv-bulk')} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="upload" className="gap-2">
               <FileArrowUp size={18} />
               Upload Files
+            </TabsTrigger>
+            <TabsTrigger value="csv-bulk" className="gap-2">
+              <FileCsv size={18} />
+              CSV Bulk Upload
             </TabsTrigger>
             <TabsTrigger value="download" className="gap-2">
               <FileArrowDown size={18} />
@@ -840,6 +845,10 @@ export function FileManager({ onLog }: FileManagerProps) {
                 </AlertDescription>
               </Alert>
             )}
+          </TabsContent>
+
+          <TabsContent value="csv-bulk" className="space-y-6">
+            <CSVFileUploader onLog={onLog} />
           </TabsContent>
         </Tabs>
       </CardContent>
