@@ -395,7 +395,8 @@ export function FileManager({ onLog }: FileManagerProps) {
       setFiles([])
 
       const entityIdNum = parseInt(downloadEntityId)
-      const response = await bullhornAPI.getEntityFiles(downloadEntity, entityIdNum, downloadType)
+      const typeFilter = downloadType === 'ALL_TYPES' ? '' : downloadType
+      const response = await bullhornAPI.getEntityFiles(downloadEntity, entityIdNum, typeFilter)
 
       console.log('📦 Get entity files response:', response)
 
@@ -925,7 +926,7 @@ export function FileManager({ onLog }: FileManagerProps) {
                     <SelectValue placeholder={loadingFileTypes ? "Loading..." : "All types"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Types</SelectItem>
+                    <SelectItem value="ALL_TYPES">All Types</SelectItem>
                     {fileTypeOptions.map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         <div className="flex items-center gap-2">
