@@ -131,13 +131,28 @@ export function FileManager({ onLog }: FileManagerProps) {
     const file = e.target.files?.[0]
     if (!file) return
 
+    const fileSizeMB = file.size / (1024 * 1024)
+
     if (file.size > 50 * 1024 * 1024) {
-      toast.error('File size must be less than 50MB')
+      toast.error(`File size (${fileSizeMB.toFixed(1)} MB) exceeds the 50 MB limit`)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
       return
     }
 
+    if (fileSizeMB > 25) {
+      toast.warning(`Large file detected (${fileSizeMB.toFixed(1)} MB). Upload may take longer.`, {
+        duration: 5000
+      })
+    } else if (fileSizeMB > 10) {
+      toast.info(`File size: ${fileSizeMB.toFixed(1)} MB`, {
+        duration: 3000
+      })
+    }
+
     setSelectedFile(file)
-    toast.success(`Selected file: ${file.name}`)
+    toast.success(`Selected file: ${file.name} (${formatFileSize(file.size)})`)
   }
 
   const handleUpload = async () => {
@@ -430,15 +445,51 @@ export function FileManager({ onLog }: FileManagerProps) {
                 disabled={!uploadEntity || !uploadEntityId || isUploading}
                 className="cursor-pointer"
               />
+              <p className="text-xs text-muted-foreground">
+                Maximum file size: 50 MB
+              </p>
               {selectedFile && (
-                <div className="flex items-center gap-2 p-2 bg-accent/10 rounded-md border border-accent/20">
-                  <File size={20} className="text-accent" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{selectedFile.name}</p>
-                    <p className="text-xs text-muted-foreground">{formatFileSize(selectedFile.size)}</p>
+                <>
+                  <div className={`flex items-center gap-2 p-2 rounded-md border ${
+                    selectedFile.size > 25 * 1024 * 1024 
+                      ? 'bg-orange-500/10 border-orange-500/30' 
+                      : selectedFile.size > 10 * 1024 * 1024
+                      ? 'bg-blue-500/10 border-blue-500/30'
+                      : 'bg-accent/10 border-accent/20'
+                  }`}>
+                    <File size={20} className={
+                      selectedFile.size > 25 * 1024 * 1024 
+                        ? 'text-orange-500' 
+                        : selectedFile.size > 10 * 1024 * 1024
+                        ? 'text-blue-500'
+                        : 'text-accent'
+                    } />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{selectedFile.name}</p>
+                      <p className={`text-xs ${
+                        selectedFile.size > 25 * 1024 * 1024 
+                          ? 'text-orange-600 font-medium' 
+                          : selectedFile.size > 10 * 1024 * 1024
+                          ? 'text-blue-600'
+                          : 'text-muted-foreground'
+                      }`}>
+                        {formatFileSize(selectedFile.size)}
+                        {selectedFile.size > 25 * 1024 * 1024 && ' - Large file, may take longer to upload'}
+                        {selectedFile.size > 10 * 1024 * 1024 && selectedFile.size <= 25 * 1024 * 1024 && ' - Medium-sized file'}
+                      </p>
+                    </div>
+                    <Badge variant="secondary">{selectedFile.type || 'Unknown type'}</Badge>
                   </div>
-                  <Badge variant="secondary">{selectedFile.type || 'Unknown type'}</Badge>
-                </div>
+                  {selectedFile.size > 25 * 1024 * 1024 && (
+                    <Alert className="bg-orange-500/10 border-orange-500/20">
+                      <Info className="h-4 w-4 text-orange-600" />
+                      <AlertTitle className="text-orange-600">Large File Warning</AlertTitle>
+                      <AlertDescription className="text-orange-600 text-sm">
+                        This file is over 25 MB. Upload may take several minutes depending on your connection speed.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </>
               )}
             </div>
 
@@ -487,7 +538,20 @@ export function FileManager({ onLog }: FileManagerProps) {
                   <li><strong>JobOrder</strong>: Job order files</li>
                   <li><strong>ClientContact</strong>: Contact-related files</li>
                 </ul>
-                <p className="mt-2 text-xs">File types are loaded from your tenant's EntityFileAttachment metadata.</p>
+                <p className="mt-3 text-xs">File types are loaded from your tenant's EntityFileAttachment metadata.</p>
+              </AlertDescription>
+            </Alert>
+
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>File Size Guidelines</AlertTitle>
+              <AlertDescription className="text-sm">
+                <ul className="space-y-1 mt-2">
+                  <li>• <strong>Small files (0-10 MB):</strong> Fast upload, recommended for most documents</li>
+                  <li>• <strong>Medium files (10-25 MB):</strong> Acceptable, may take a few moments</li>
+                  <li>• <strong>Large files (25-50 MB):</strong> Slower upload, please be patient</li>
+                  <li className="text-destructive font-medium">• <strong>Files over 50 MB:</strong> Not allowed - please compress or split your file</li>
+                </ul>
               </AlertDescription>
             </Alert>
           </TabsContent>
