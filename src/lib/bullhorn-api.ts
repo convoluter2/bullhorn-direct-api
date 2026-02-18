@@ -2033,6 +2033,169 @@ export class BullhornAPI {
     
     return fallbackEntities.sort()
   }
+
+  async uploadFile(
+    entity: string,
+    entityId: number,
+    file: File,
+    fileType: string = 'SAMPLE',
+    description?: string
+  ): Promise<any> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const encodedEntity = encodeURIComponent(entity)
+    const fileName = encodeURIComponent(file.name)
+    const fileDescription = description || file.name
+
+    const params = new URLSearchParams({
+      BhRestToken: this.session.BhRestToken,
+      externalID: fileType,
+      fileType: fileType,
+      name: fileDescription
+    })
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    console.log(`📤 Uploading file to ${entity}/${entityId}:`, {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType,
+      description: fileDescription
+    })
+
+    const response = await this.throttledFetch(
+      `${this.session.restUrl}file/${encodedEntity}/${entityId}?${params.toString()}`,
+      {
+        method: 'PUT',
+        body: formData
+      },
+      3
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error('❌ File upload failed:', error)
+      throw new Error(`File upload failed: ${error}`)
+    }
+
+    const result = await response.json()
+    console.log('✅ File uploaded successfully:', result)
+    return result
+  }
+
+  async getEntityFiles(
+    entity: string,
+    entityId: number,
+    fileType?: string
+  ): Promise<any> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const encodedEntity = encodeURIComponent(entity)
+
+    const params = new URLSearchParams({
+      BhRestToken: this.session.BhRestToken
+    })
+
+    if (fileType) {
+      params.append('type', fileType)
+    }
+
+    console.log(`📥 Fetching files for ${entity}/${entityId}`, { fileType })
+
+    const response = await this.throttledFetch(
+      `${this.session.restUrl}entityFiles/${encodedEntity}/${entityId}?${params.toString()}`,
+      undefined,
+      1
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error('❌ Get entity files failed:', error)
+      throw new Error(`Get entity files failed: ${error}`)
+    }
+
+    const result = await response.json()
+    console.log('✅ Entity files retrieved:', result)
+    return result
+  }
+
+  async downloadFile(
+    entity: string,
+    entityId: number,
+    fileId: number
+  ): Promise<Blob> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const encodedEntity = encodeURIComponent(entity)
+
+    const params = new URLSearchParams({
+      BhRestToken: this.session.BhRestToken
+    })
+
+    console.log(`📥 Downloading file ${fileId} from ${entity}/${entityId}`)
+
+    const response = await this.throttledFetch(
+      `${this.session.restUrl}file/${encodedEntity}/${entityId}/${fileId}?${params.toString()}`,
+      undefined,
+      2
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error('❌ File download failed:', error)
+      throw new Error(`File download failed: ${error}`)
+    }
+
+    const blob = await response.blob()
+    console.log('✅ File downloaded successfully:', {
+      size: blob.size,
+      type: blob.type
+    })
+    return blob
+  }
+
+  async deleteFile(
+    entity: string,
+    entityId: number,
+    fileId: number
+  ): Promise<any> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const encodedEntity = encodeURIComponent(entity)
+
+    const params = new URLSearchParams({
+      BhRestToken: this.session.BhRestToken
+    })
+
+    console.log(`🗑️ Deleting file ${fileId} from ${entity}/${entityId}`)
+
+    const response = await this.throttledFetch(
+      `${this.session.restUrl}file/${encodedEntity}/${entityId}/${fileId}?${params.toString()}`,
+      {
+        method: 'DELETE'
+      },
+      3
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error('❌ File deletion failed:', error)
+      throw new Error(`File deletion failed: ${error}`)
+    }
+
+    const result = await response.json()
+    console.log('✅ File deleted successfully:', result)
+    return result
+  }
 }
 
 export const bullhornAPI = new BullhornAPI()

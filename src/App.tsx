@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, Flask, BookOpen } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, Flask, BookOpen, FolderOpen } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -13,6 +13,7 @@ import { SmartStack } from '@/components/SmartStack'
 import { QueryStack } from '@/components/QueryStack'
 import { AuditLogs } from '@/components/AuditLogs'
 import { WFNExport } from '@/components/WFNExport'
+import { FileManager } from '@/components/FileManager'
 import { SessionDebugPanel } from '@/components/SessionDebugPanel'
 import { ConnectionManager, type SavedConnection, type SecureCredentials } from '@/components/ConnectionManager'
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
@@ -523,7 +524,7 @@ function App() {
               environment={savedConnections.find(c => c.id === currentConnectionId)?.environment}
             />
             
-            <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -543,6 +544,10 @@ function App() {
               <TabsTrigger value="wfn-export" className="gap-2">
                 <Export size={18} />
                 <span className="hidden sm:inline">WFN Export</span>
+              </TabsTrigger>
+              <TabsTrigger value="file-manager" className="gap-2">
+                <FolderOpen size={18} />
+                <span className="hidden sm:inline">File Manager</span>
               </TabsTrigger>
               <TabsTrigger value="documentation" className="gap-2">
                 <BookOpen size={18} />
@@ -581,6 +586,10 @@ function App() {
 
             <TabsContent value="wfn-export" className="space-y-6">
               <WFNExport onLog={addLog} />
+            </TabsContent>
+
+            <TabsContent value="file-manager" className="space-y-6">
+              <FileManager onLog={addLog} />
             </TabsContent>
 
             <TabsContent value="documentation" className="space-y-6">

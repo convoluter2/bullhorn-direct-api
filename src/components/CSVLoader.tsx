@@ -1317,7 +1317,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                   {(mappings || [])
                     .filter(m => m && m.csvColumn && m.csvColumn.trim() !== '')
                     .map((mapping) => {
-                    const fieldMeta = mapping.bullhornField && mapping.bullhornField !== '__skip__' && metadata?.fieldsMap 
+                    const fieldMeta = mapping.bullhornField && mapping.bullhornField !== '__skip__' && metadata && metadata.fieldsMap && metadata.fieldsMap[mapping.bullhornField]
                       ? metadata.fieldsMap[mapping.bullhornField] 
                       : undefined
                     const isToMany = fieldMeta?.associationType === 'TO_MANY'
