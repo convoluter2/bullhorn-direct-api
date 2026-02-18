@@ -9,10 +9,117 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="/src/main.css" rel="stylesheet" />
+    <style>
+        #rate-limit-screen {
+            display: none;
+            min-height: 100vh;
+            background: oklch(0.15 0.01 260);
+            color: oklch(0.98 0 0);
+            font-family: 'Inter', sans-serif;
+            padding: 2rem;
+            align-items: center;
+            justify-content: center;
+        }
+        #rate-limit-screen.active {
+            display: flex;
+        }
+        .rate-limit-content {
+            max-width: 500px;
+            background: oklch(0.22 0.01 260);
+            border: 1px solid oklch(0.35 0.01 260);
+            border-radius: 0.5rem;
+            padding: 2rem;
+        }
+        .rate-limit-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: oklch(0.70 0.15 210);
+        }
+        .rate-limit-text {
+            line-height: 1.6;
+            margin-bottom: 1rem;
+            color: oklch(0.85 0 0);
+        }
+        .rate-limit-list {
+            margin-left: 1.5rem;
+            margin-bottom: 1.5rem;
+            list-style: disc;
+        }
+        .rate-limit-list li {
+            margin-bottom: 0.5rem;
+        }
+        .rate-limit-button {
+            background: oklch(0.35 0.12 265);
+            color: oklch(0.98 0 0);
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 500;
+            width: 100%;
+            margin-top: 1rem;
+        }
+        .rate-limit-button:hover {
+            background: oklch(0.45 0.12 265);
+        }
+    </style>
 </head>
 
 <body>
+    <div id="rate-limit-screen">
+        <div class="rate-limit-content">
+            <h1 class="rate-limit-title">⚠️ Platform Rate Limit</h1>
+            <p class="rate-limit-text">
+                The GitHub/Spark hosting platform is temporarily restricting access due to high traffic. 
+                This is a <strong>platform-level limitation</strong>, not an issue with the Bullhorn Data Manager application.
+            </p>
+            <p class="rate-limit-text"><strong>Solutions:</strong></p>
+            <ul class="rate-limit-list">
+                <li>Wait 1-2 minutes and refresh this page</li>
+                <li>Clear your browser cache and cookies for this site</li>
+                <li>Try accessing the app in an incognito/private window</li>
+                <li>If the issue persists for more than 5 minutes, the platform may be experiencing high load</li>
+            </ul>
+            <p class="rate-limit-text" style="font-size: 0.875rem; color: oklch(0.65 0.01 260);">
+                This error typically resolves itself within 60-120 seconds.
+            </p>
+            <button class="rate-limit-button" onclick="window.location.reload()">
+                🔄 Refresh Page
+            </button>
+        </div>
+    </div>
     <div id="root"></div>
+    <script>
+        if (document.title && document.title.includes('429')) {
+            document.getElementById('rate-limit-screen').classList.add('active');
+        }
+        
+        window.addEventListener('error', function(e) {
+            if (e.message && (e.message.includes('429') || e.message.toLowerCase().includes('rate limit'))) {
+                document.getElementById('rate-limit-screen').classList.add('active');
+            }
+        });
+        
+        fetch(window.location.href, { method: 'HEAD' })
+            .catch(err => {
+                if (err.message.includes('429')) {
+                    document.getElementById('rate-limit-screen').classList.add('active');
+                }
+            });
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker registered:', registration);
+                    })
+                    .catch(err => {
+                        console.log('Service Worker registration failed:', err);
+                    });
+            });
+        }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
 </body>
 
