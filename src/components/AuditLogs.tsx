@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { ClockCounterClockwise, DownloadSimple, MagnifyingGlass, Trash, ArrowCounterClockwise, ArrowBendUpLeft, XCircle, ArrowsClockwise } from '@phosphor-icons/react'
+import { ClockCounterClockwise, DownloadSimple, MagnifyingGlass, Trash, ArrowCounterClockwise, ArrowBendUpLeft, XCircle, ArrowsClockwise, PlugsConnected, ListChecks } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
 import { bullhornAPI } from '@/lib/bullhorn-api'
@@ -32,6 +33,7 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [highlightedLogId, setHighlightedLogId] = useState<string | null>(null)
+  const [logTab, setLogTab] = useState<'connections' | 'actions'>('actions')
   const [rollbackDialog, setRollbackDialog] = useState<{ open: boolean; log: AuditLog | null }>({
     open: false,
     log: null
@@ -45,7 +47,31 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
 
   const safeLogs = Array.isArray(logs) ? logs : []
   
-  const filteredLogs = safeLogs.filter(log => {
+  const connectionOperations = ['Authentication', 'Disconnect', 'Token Refresh', 'Connection Switch']
+  
+  const connectionLogs = safeLogs.filter(log => {
+    try {
+      if (!log || typeof log !== 'object') return false
+      return connectionOperations.includes(log.operation || '')
+    } catch (error) {
+      console.error('Error filtering connection log:', error)
+      return false
+    }
+  })
+  
+  const actionLogs = safeLogs.filter(log => {
+    try {
+      if (!log || typeof log !== 'object') return false
+      return !connectionOperations.includes(log.operation || '')
+    } catch (error) {
+      console.error('Error filtering action log:', error)
+      return false
+    }
+  })
+  
+  const currentLogs = logTab === 'connections' ? connectionLogs : actionLogs
+  
+  const filteredLogs = currentLogs.filter(log => {
     try {
       if (!log || typeof log !== 'object') return false
       const matchesSearch = (log.operation || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -486,30 +512,43 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex gap-2">
-          <div className="flex-1 relative">
-            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-            <Input
-              placeholder="Search logs..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="success">Success</SelectItem>
-              <SelectItem value="error">Error</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Tabs value={logTab} onValueChange={(value) => setLogTab(value as 'connections' | 'actions')} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="actions" className="gap-2">
+              <ListChecks size={18} />
+              Actions ({actionLogs.length})
+            </TabsTrigger>
+            <TabsTrigger value="connections" className="gap-2">
+              <PlugsConnected size={18} />
+              Connections ({connectionLogs.length})
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value={logTab} className="space-y-4 mt-0">
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                <Input
+                  placeholder="Search logs..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="success">Success</SelectItem>
+                  <SelectItem value="error">Error</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-        <ScrollArea className="h-[500px]">
+            <ScrollArea className="h-[500px]">
           {filteredLogs.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <ClockCounterClockwise size={48} className="mx-auto mb-4 opacity-50" />
@@ -885,6 +924,8 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
             </div>
           )}
         </ScrollArea>
+          </TabsContent>
+        </Tabs>
       </CardContent>
 
       <AlertDialog open={rollbackDialog.open} onOpenChange={(open) => !isRollingBack && setRollbackDialog({ open, log: null })}>
