@@ -28,10 +28,12 @@ interface EntityFile {
   id: number
   name: string
   contentType: string
+  contentSubType?: string
   description?: string
   fileSize?: number
   dateAdded?: number
   type?: string
+  fileExtension?: string
   fileOwner?: {
     id: number
     name: string
@@ -622,7 +624,7 @@ export function FileManager({ onLog }: FileManagerProps) {
     })
   }
 
-  const handleDownload = async (fileId: number, fileName: string) => {
+  const handleDownload = async (fileId: number, fileName: string, fileExtension?: string) => {
     if (!downloadEntity || !downloadEntityId) {
       toast.error('Entity information missing')
       return
@@ -631,7 +633,7 @@ export function FileManager({ onLog }: FileManagerProps) {
     try {
       setDownloadingFileId(fileId)
       
-      console.log('📥 Starting download:', { fileId, fileName })
+      console.log('📥 Starting download:', { fileId, fileName, fileExtension })
       const blob = await bullhornAPI.downloadFile(downloadEntity, parseInt(downloadEntityId), fileId)
       
       console.log('📦 Blob received:', {
@@ -640,7 +642,7 @@ export function FileManager({ onLog }: FileManagerProps) {
         fileName
       })
       
-      let entityName = 'Unknown'
+      let entityName = downloadEntity
       try {
         const entityData = await bullhornAPI.query(
           downloadEntity,
@@ -667,7 +669,12 @@ export function FileManager({ onLog }: FileManagerProps) {
         console.warn('Could not fetch entity name:', nameError)
       }
       
-      const newFileName = `${downloadEntityId}-${entityName}-${fileName}`
+      let finalFileName = fileName
+      if (fileExtension && !fileName.endsWith(fileExtension)) {
+        finalFileName = `${fileName}${fileExtension}`
+      }
+      
+      const newFileName = `${downloadEntityId}-${entityName}-${finalFileName}`
       
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -1719,7 +1726,7 @@ export function FileManager({ onLog }: FileManagerProps) {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => handleDownload(file.id, file.name)}
+                                  onClick={() => handleDownload(file.id, file.name, file.fileExtension)}
                                   disabled={downloadingFileId === file.id}
                                 >
                                   <Download size={14} />
