@@ -31,6 +31,7 @@ import { PauseResumeTests } from '@/components/PauseResumeTests'
 import { SpeedTest } from '@/components/SpeedTest'
 import { DiagnosticPanel } from '@/components/DiagnosticPanel'
 import { EntityDocumentation } from '@/components/documentation/EntityDocumentation'
+import { APIBandwidthTracker } from '@/components/APIBandwidthTracker'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { sanitizeLogDetails } from '@/lib/utils'
@@ -516,13 +517,16 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <SessionDebugPanel 
-              session={session}
-              currentConnectionId={currentConnectionId || null}
-              connectionName={savedConnections.find(c => c.id === currentConnectionId)?.name}
-              tenant={savedConnections.find(c => c.id === currentConnectionId)?.tenant}
-              environment={savedConnections.find(c => c.id === currentConnectionId)?.environment}
-            />
+            <div className="flex flex-col gap-4">
+              <SessionDebugPanel 
+                session={session}
+                currentConnectionId={currentConnectionId || null}
+                connectionName={savedConnections.find(c => c.id === currentConnectionId)?.name}
+                tenant={savedConnections.find(c => c.id === currentConnectionId)?.tenant}
+                environment={savedConnections.find(c => c.id === currentConnectionId)?.environment}
+              />
+              <APIBandwidthTracker />
+            </div>
             
             <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">

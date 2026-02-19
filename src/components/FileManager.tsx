@@ -52,7 +52,7 @@ export function FileManager({ onLog }: FileManagerProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isUploading, setIsUploading] = useState(false)
-  const [uploadResults, setUploadResults] = useState<Array<{ file: string; status: 'success' | 'error'; message?: string; fileId?: number }>>([])
+  const [uploadResults, setUploadResults] = useState<Array<{ file: string; status: 'success' | 'error'; message?: string; fileId?: number; retryCount?: number }>>([])
   const [currentUploadIndex, setCurrentUploadIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
   const [startTime, setStartTime] = useState<number | null>(null)
@@ -254,6 +254,46 @@ export function FileManager({ onLog }: FileManagerProps) {
     return `${hours}h ${mins}m`
   }
 
+  const uploadFileWithRetry = async (
+    file: File, 
+    retryCount: number = 0
+  ): Promise<{ success: boolean; fileId?: number; message: string; retries: number }> => {
+    try {
+      const response = await bullhornAPI.uploadFile(
+        uploadEntity,
+        parseInt(uploadEntityId),
+        file,
+        uploadType,
+        uploadDescription || file.name
+      )
+      
+      return {
+        success: true,
+        fileId: response?.fileId || response?.id,
+        message: 'Upload successful',
+        retries: retryCount
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase()
+      const isFetchError = errorMessage.includes('failed to fetch') || 
+                          errorMessage.includes('network') || 
+                          errorMessage.includes('networkerror')
+      
+      if (isFetchError && retryCount === 0) {
+        console.log(`🔄 Retrying upload for ${file.name} (attempt ${retryCount + 2}/2) due to fetch error`)
+        toast.info(`Retrying upload for ${file.name}...`, { duration: 2000 })
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        return uploadFileWithRetry(file, retryCount + 1)
+      }
+      
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Upload failed',
+        retries: retryCount
+      }
+    }
+  }
+
   const handleUpload = async () => {
     if (selectedFiles.length === 0 || !uploadEntity || !uploadEntityId) {
       toast.error('Please select file(s), entity, and entity ID')
@@ -271,7 +311,7 @@ export function FileManager({ onLog }: FileManagerProps) {
       setUploadSpeed(0)
       setEstimatedTimeRemaining(null)
 
-      const results: Array<{ file: string; status: 'success' | 'error'; message?: string; fileId?: number }> = []
+      const results: Array<{ file: string; status: 'success' | 'error'; message?: string; fileId?: number; retryCount?: number }> = []
       const totalFiles = selectedFiles.length
       const totalBytes = selectedFiles.reduce((sum, f) => sum + f.size, 0)
       let uploadedBytes = 0
@@ -290,32 +330,27 @@ export function FileManager({ onLog }: FileManagerProps) {
         
         const fileStartTime = Date.now()
         
-        try {
-          const response = await bullhornAPI.uploadFile(
-            uploadEntity,
-            parseInt(uploadEntityId),
-            file,
-            uploadType,
-            uploadDescription || file.name
-          )
+        const uploadResult = await uploadFileWithRetry(file)
+        
+        const fileEndTime = Date.now()
+        const fileDuration = (fileEndTime - fileStartTime) / 1000
+        uploadedBytes += file.size
 
-          const fileEndTime = Date.now()
-          const fileDuration = (fileEndTime - fileStartTime) / 1000
-          uploadedBytes += file.size
+        const elapsedTime = (Date.now() - (startTime || Date.now())) / 1000
+        const currentSpeed = uploadedBytes / elapsedTime
+        setUploadSpeed(currentSpeed)
 
-          const elapsedTime = (Date.now() - (startTime || Date.now())) / 1000
-          const currentSpeed = uploadedBytes / elapsedTime
-          setUploadSpeed(currentSpeed)
+        const remainingBytes = totalBytes - uploadedBytes
+        const estimatedSeconds = remainingBytes / currentSpeed
+        setEstimatedTimeRemaining(estimatedSeconds)
 
-          const remainingBytes = totalBytes - uploadedBytes
-          const estimatedSeconds = remainingBytes / currentSpeed
-          setEstimatedTimeRemaining(estimatedSeconds)
-
+        if (uploadResult.success) {
           results.push({
             file: file.name,
             status: 'success',
-            message: `Uploaded in ${fileDuration.toFixed(1)}s`,
-            fileId: response?.fileId || response?.id
+            message: `Uploaded in ${fileDuration.toFixed(1)}s${uploadResult.retries > 0 ? ` (retried ${uploadResult.retries}x)` : ''}`,
+            fileId: uploadResult.fileId,
+            retryCount: uploadResult.retries
           })
 
           onLog('File Upload', 'success', `Uploaded file to ${uploadEntity} ID ${uploadEntityId}`, {
@@ -324,24 +359,24 @@ export function FileManager({ onLog }: FileManagerProps) {
             fileName: file.name,
             fileSize: file.size,
             type: uploadType,
-            fileId: response?.fileId || response?.id || 'unknown',
-            duration: fileDuration
+            fileId: uploadResult.fileId || 'unknown',
+            duration: fileDuration,
+            retryCount: uploadResult.retries
           })
-        } catch (error) {
-          console.error(`File upload error for ${file.name}:`, error)
-          const errorMessage = error instanceof Error ? error.message : 'Upload failed'
-          
+        } else {
           results.push({
             file: file.name,
             status: 'error',
-            message: errorMessage
+            message: uploadResult.message,
+            retryCount: uploadResult.retries
           })
 
-          onLog('File Upload', 'error', errorMessage, {
+          onLog('File Upload', 'error', uploadResult.message, {
             entity: uploadEntity,
             entityId: uploadEntityId,
             fileName: file.name,
-            error: errorMessage
+            error: uploadResult.message,
+            retryCount: uploadResult.retries
           })
         }
 
@@ -351,13 +386,14 @@ export function FileManager({ onLog }: FileManagerProps) {
 
       const successCount = results.filter(r => r.status === 'success').length
       const errorCount = results.filter(r => r.status === 'error').length
+      const retriedCount = results.filter(r => r.retryCount && r.retryCount > 0).length
 
       if (errorCount === 0) {
-        toast.success(`All ${successCount} file(s) uploaded successfully!`)
+        toast.success(`All ${successCount} file(s) uploaded successfully!${retriedCount > 0 ? ` (${retriedCount} retried)` : ''}`)
       } else if (successCount === 0) {
         toast.error(`All ${errorCount} file(s) failed to upload`)
       } else {
-        toast.warning(`${successCount} file(s) uploaded, ${errorCount} failed`)
+        toast.warning(`${successCount} file(s) uploaded, ${errorCount} failed${retriedCount > 0 ? ` (${retriedCount} retried)` : ''}`)
       }
 
       setSelectedFiles([])
@@ -381,6 +417,70 @@ export function FileManager({ onLog }: FileManagerProps) {
       setIsUploading(false)
       setIsPaused(false)
       pauseRef.current = false
+    }
+  }
+
+  const handleRetryErrors = async () => {
+    const failedUploads = uploadResults.filter(r => r.status === 'error')
+    
+    if (failedUploads.length === 0) {
+      toast.info('No failed uploads to retry')
+      return
+    }
+
+    const filesToRetry = selectedFiles.filter(f => 
+      failedUploads.some(failed => failed.file === f.name)
+    )
+
+    if (filesToRetry.length === 0) {
+      toast.error('Failed files are no longer available. Please re-select them.')
+      return
+    }
+
+    toast.info(`Retrying ${filesToRetry.length} failed upload(s)...`)
+    
+    const currentResults = [...uploadResults]
+    
+    for (const file of filesToRetry) {
+      const uploadResult = await uploadFileWithRetry(file)
+      
+      const resultIndex = currentResults.findIndex(r => r.file === file.name)
+      if (resultIndex !== -1) {
+        if (uploadResult.success) {
+          currentResults[resultIndex] = {
+            file: file.name,
+            status: 'success',
+            message: `Retried successfully${uploadResult.retries > 0 ? ` (${uploadResult.retries + 1} total attempts)` : ''}`,
+            fileId: uploadResult.fileId,
+            retryCount: (currentResults[resultIndex].retryCount || 0) + uploadResult.retries + 1
+          }
+
+          onLog('File Upload Retry', 'success', `Retried upload for ${file.name}`, {
+            entity: uploadEntity,
+            entityId: uploadEntityId,
+            fileName: file.name,
+            fileId: uploadResult.fileId,
+            totalRetries: (currentResults[resultIndex].retryCount || 0) + 1
+          })
+        } else {
+          currentResults[resultIndex] = {
+            ...currentResults[resultIndex],
+            message: `Retry failed: ${uploadResult.message}`,
+            retryCount: (currentResults[resultIndex].retryCount || 0) + 1
+          }
+        }
+      }
+      
+      setUploadResults([...currentResults])
+    }
+
+    const newSuccessCount = currentResults.filter(r => r.status === 'success').length
+    const newErrorCount = currentResults.filter(r => r.status === 'error').length
+    
+    if (newErrorCount === 0) {
+      toast.success(`All retries successful! ${newSuccessCount} total files uploaded.`)
+    } else {
+      toast.warning(`Retry complete: ${newSuccessCount} successful, ${newErrorCount} still failed`)
     }
   }
 
@@ -789,7 +889,20 @@ export function FileManager({ onLog }: FileManagerProps) {
 
             {uploadResults.length > 0 && (
               <div className="space-y-2">
-                <Label>Upload Results</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Upload Results</Label>
+                  {uploadResults.some(r => r.status === 'error') && !isUploading && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleRetryErrors}
+                      className="gap-2"
+                    >
+                      <CheckCircle size={16} />
+                      Retry Failed Uploads
+                    </Button>
+                  )}
+                </div>
                 <ScrollArea className="h-[200px] border rounded-md">
                   <Table>
                     <TableHeader>
@@ -822,6 +935,11 @@ export function FileManager({ onLog }: FileManagerProps) {
                               >
                                 {result.status === 'success' ? 'Success' : 'Failed'}
                               </span>
+                              {result.retryCount && result.retryCount > 0 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {result.retryCount} {result.retryCount === 1 ? 'retry' : 'retries'}
+                                </Badge>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
