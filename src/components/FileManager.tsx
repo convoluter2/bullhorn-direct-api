@@ -765,6 +765,122 @@ export function FileManager({ onLog }: FileManagerProps) {
     }
   }
 
+  const handleDownloadAllAsZip = async () => {
+    if (files.length === 0) {
+      toast.error('No files to download')
+      return
+    }
+
+    if (!downloadEntity || !downloadEntityId) {
+      toast.error('Entity information missing')
+      return
+    }
+
+    try {
+      setIsBatchDownloading(true)
+      setBatchDownloadProgress(0)
+
+      const zip = new JSZip()
+      let successCount = 0
+      let failCount = 0
+      const errors: string[] = []
+
+      toast.info(`Downloading and zipping ${files.length} file(s)...`, {
+        duration: 5000
+      })
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        
+        try {
+          console.log(`📥 Downloading file ${i + 1}/${files.length}:`, file.name)
+          const blob = await bullhornAPI.downloadFile(downloadEntity, parseInt(downloadEntityId), file.id)
+          
+          zip.file(file.name, blob)
+          successCount++
+          
+          const progress = Math.round(((i + 1) / files.length) * 100)
+          setBatchDownloadProgress(progress)
+        } catch (error) {
+          console.error(`❌ Failed to download ${file.name}:`, error)
+          failCount++
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+          errors.push(`${file.name}: ${errorMessage}`)
+        }
+      }
+
+      if (successCount === 0) {
+        toast.error('Failed to download any files')
+        onLog('Download All as ZIP', 'error', 'All file downloads failed', {
+          entity: downloadEntity,
+          entityId: downloadEntityId,
+          totalFiles: files.length,
+          errors
+        })
+        return
+      }
+
+      console.log('📦 Generating ZIP file...')
+      toast.info('Generating ZIP file...', { id: 'zip-generation' })
+      
+      const zipBlob = await zip.generateAsync({ 
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: {
+          level: 6
+        }
+      })
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0]
+      const zipFileName = `${downloadEntity}_${downloadEntityId}_files_${timestamp}.zip`
+
+      const url = window.URL.createObjectURL(zipBlob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = zipFileName
+      a.style.display = 'none'
+      document.body.appendChild(a)
+      a.click()
+
+      setTimeout(() => {
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+      }, 100)
+
+      if (failCount === 0) {
+        toast.success(`Successfully downloaded ${successCount} file(s) as ZIP`, { id: 'zip-generation' })
+      } else {
+        toast.warning(`Downloaded ${successCount} file(s), ${failCount} failed. Check logs for details.`, { 
+          id: 'zip-generation',
+          duration: 5000
+        })
+      }
+
+      onLog('Download All as ZIP', successCount > 0 ? 'success' : 'error', 
+        `Downloaded ${successCount} files as ZIP`, {
+        entity: downloadEntity,
+        entityId: downloadEntityId,
+        zipFileName,
+        zipSize: zipBlob.size,
+        successCount,
+        failCount,
+        errors: errors.length > 0 ? errors : undefined
+      })
+    } catch (error) {
+      console.error('Download all ZIP error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create ZIP'
+      toast.error(`ZIP creation failed: ${errorMessage}`)
+      onLog('Download All as ZIP', 'error', errorMessage, {
+        entity: downloadEntity,
+        entityId: downloadEntityId,
+        error: errorMessage
+      })
+    } finally {
+      setIsBatchDownloading(false)
+      setBatchDownloadProgress(0)
+    }
+  }
+
   const toggleFileSelection = (fileId: number) => {
     setSelectedFileIds(prev => {
       const newSet = new Set(prev)
@@ -1266,20 +1382,11 @@ export function FileManager({ onLog }: FileManagerProps) {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={async () => {
-                          toast.info(`Downloading ${files.length} files...`)
-                          for (const file of files) {
-                            try {
-                              await handleDownload(file.id, file.name)
-                              await new Promise(resolve => setTimeout(resolve, 500))
-                            } catch (error) {
-                              console.error(`Failed to download ${file.name}:`, error)
-                            }
-                          }
-                        }}
+                        onClick={handleDownloadAllAsZip}
+                        disabled={isBatchDownloading}
                       >
-                        <Download size={14} />
-                        Download All
+                        <FileZip size={14} weight="fill" />
+                        {isBatchDownloading ? 'Creating ZIP...' : `Download All (${files.length}) as ZIP`}
                       </Button>
                     )}
                   </div>
