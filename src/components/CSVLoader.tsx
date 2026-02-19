@@ -584,47 +584,35 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       })
 
       if (lookupField && lookupField !== '__none__' && lookupValue) {
-        try {
-          const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f && f !== '__skip__' && f !== 'id')]
-          const searchResult = await bullhornAPI.search({
-            entity,
-            fields: fieldsToFetch,
-            filters: [{ field: lookupField, operator: 'equals', value: lookupValue }],
-            count: 1,
-            start: 0
-          })
-          
-          if (searchResult.data && searchResult.data.length > 0) {
-            existingRecord = searchResult.data[0]
-          } else if (lookupField.toLowerCase() === 'id') {
-            const recordId = parseInt(lookupValue, 10)
-            if (!isNaN(recordId)) {
-              try {
-                const record = await bullhornAPI.getEntity(entity, recordId, fieldsToFetch)
-                if (record && record.id) {
-                  existingRecord = record
-                  console.log(`✅ Found ${entity} ${recordId} via direct GET (search returned no results)`)
-                }
-              } catch (fallbackError) {
-                console.log(`Record ${entity} ${recordId} not found via search or direct GET`)
+        const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f && f !== '__skip__' && f !== 'id')]
+        
+        if (lookupField.toLowerCase() === 'id') {
+          const recordId = parseInt(lookupValue, 10)
+          if (!isNaN(recordId)) {
+            try {
+              const record = await bullhornAPI.getEntity(entity, recordId, fieldsToFetch)
+              if (record && record.id) {
+                existingRecord = record
               }
+            } catch (getError) {
+              console.log(`Record ${entity} ${recordId} not found via GET`)
             }
           }
-        } catch (searchError) {
-          if (lookupField.toLowerCase() === 'id') {
-            const recordId = parseInt(lookupValue, 10)
-            if (!isNaN(recordId)) {
-              try {
-                const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f && f !== '__skip__' && f !== 'id')]
-                const record = await bullhornAPI.getEntity(entity, recordId, fieldsToFetch)
-                if (record && record.id) {
-                  existingRecord = record
-                  console.log(`✅ Found ${entity} ${recordId} via direct GET (search failed)`)
-                }
-              } catch (fallbackError) {
-                console.error(`Fallback entity lookup failed:`, fallbackError)
-              }
+        } else {
+          try {
+            const searchResult = await bullhornAPI.search({
+              entity,
+              fields: fieldsToFetch,
+              filters: [{ field: lookupField, operator: 'equals', value: lookupValue }],
+              count: 1,
+              start: 0
+            })
+            
+            if (searchResult.data && searchResult.data.length > 0) {
+              existingRecord = searchResult.data[0]
             }
+          } catch (searchError) {
+            console.error(`Search failed for ${entity} ${lookupField}=${lookupValue}:`, searchError)
           }
         }
       }
