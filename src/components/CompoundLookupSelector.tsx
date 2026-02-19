@@ -1,19 +1,19 @@
 import { useState } from 'react'
-import { Select, SelectContent, SelectItem, S
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Plus, X, Key, Info } from '@phosphor-i
-import type { EntityField } from '@/hooks/use
+import { Plus, X, Key, Info } from '@phosphor-icons/react'
+import { formatFieldLabel } from '@/lib/utils'
+import type { EntityField } from '@/hooks/use-entity-metadata'
+
 interface CompoundLookupSelectorProps {
+  fields: EntityField[]
   selectedFields: string[]
+  onSelectFields: (fields: string[]) => void
   label?: string
-}
-
-  selectedFields,
-  label = 'Compound Loo
-}: CompoundLookupSelectorP
-
-    field => !se
-
+  maxFields?: number
 }
 
 export function CompoundLookupSelector({
@@ -34,11 +34,11 @@ export function CompoundLookupSelector({
       onSelectFields([...selectedFields, pendingField])
       setPendingField('')
     }
-   
+  }
 
   const handleRemoveField = (fieldName: string) => {
     onSelectFields(selectedFields.filter(f => f !== fieldName))
-   
+  }
 
   const getFieldLabel = (fieldName: string) => {
     const field = fields.find(f => f.name === fieldName)
@@ -46,15 +46,15 @@ export function CompoundLookupSelector({
   }
 
   return (
-                    {field?.dat
+    <div className="space-y-3">
       <div className="flex items-center gap-2">
-                      </div>
+        <Key size={18} className="text-accent" />
         <Label>{label}</Label>
       </div>
 
-                    onClick={() => han
+      {selectedFields.length === 0 ? (
         <div className="rounded-md border border-dashed border-border bg-muted/20 p-4 text-center">
-                    <X size={16} />
+          <p className="text-sm text-muted-foreground">
             No compound lookup fields selected. Add fields to create a unique composite key.
           </p>
         </div>
@@ -62,7 +62,7 @@ export function CompoundLookupSelector({
         <div className="space-y-2">
           {selectedFields.map((fieldName, index) => {
             const field = fields.find(f => f.name === fieldName)
-            <Select 
+            return (
               <Card key={fieldName} className="p-3">
                 <div className="flex items-center gap-3">
                   <Badge variant="outline" className="font-mono text-xs">
@@ -74,19 +74,19 @@ export function CompoundLookupSelector({
                       <div className="text-xs text-muted-foreground">
                         Type: {field.dataType}
                       </div>
-          <Button
+                    )}
                   </div>
-            variant="outl
+                  <Button
                     size="sm"
                     variant="ghost"
                     onClick={() => handleRemoveField(fieldName)}
                     className="h-8 w-8 p-0"
                   >
-        <div className="rounded-md 
+                    <X size={16} />
                   </Button>
-            <div class
+                </div>
               </Card>
-             
+            )
           })}
         </div>
       )}
@@ -98,7 +98,7 @@ export function CompoundLookupSelector({
               <SelectTrigger>
                 <SelectValue placeholder="Select a field to add..." />
               </SelectTrigger>
-      {selectedFields.length 
+              <SelectContent>
                 {availableFields.map(field => (
                   <SelectItem key={field.name} value={field.name}>
                     {formatFieldLabel(field.label, field.name)}
@@ -106,21 +106,21 @@ export function CompoundLookupSelector({
                       <span className="ml-2 text-xs text-muted-foreground">
                         ({field.dataType})
                       </span>
-
+                    )}
                   </SelectItem>
-
+                ))}
               </SelectContent>
-
+            </Select>
           </div>
-
+          <Button
             onClick={handleAddField}
             disabled={!pendingField}
             variant="outline"
-
+          >
             <Plus size={16} />
             Add Field
           </Button>
-
+        </div>
       )}
 
       {selectedFields.length > 0 && (
@@ -132,29 +132,29 @@ export function CompoundLookupSelector({
               <p className="text-xs text-muted-foreground">
                 Records will be matched when <strong>all {selectedFields.length} fields</strong> match the CSV values.
                 This creates a unique composite key using: <code className="px-1 py-0.5 rounded bg-accent/10 font-mono text-xs">
-
+                  {selectedFields.join(' + ')}
                 </code>
-
+              </p>
               <p className="text-xs text-muted-foreground mt-2">
                 Example: A record matches only when {selectedFields.map((f, i) => (
                   <span key={f}>
-
+                    {i > 0 && <strong> AND </strong>}
                     <code className="px-1 py-0.5 rounded bg-accent/10">{f}</code>=CSV value
-
+                  </span>
                 ))}
-
+              </p>
             </div>
-
+          </div>
         </div>
-
+      )}
 
       {selectedFields.length >= maxFields && (
         <div className="rounded-md border border-yellow-500/50 bg-yellow-500/10 p-3">
           <p className="text-xs text-yellow-700 dark:text-yellow-300">
             Maximum of {maxFields} fields reached. Remove a field to add a different one.
-
+          </p>
         </div>
-
+      )}
     </div>
-
+  )
 }

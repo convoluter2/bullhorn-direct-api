@@ -16,7 +16,7 @@ import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { useEntities } from '@/hooks/use-entities'
 import Papa from 'papaparse'
-import JSZip from 'jszip'
+import * as JSZip from 'jszip'
 
 interface BulkFileDownloaderProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
