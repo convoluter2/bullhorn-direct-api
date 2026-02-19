@@ -10,12 +10,14 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { FileArrowUp, FileArrowDown, Folder, File, Download, Trash, CheckCircle, XCircle, Info, FolderOpen, FileCsv } from '@phosphor-icons/react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { FileArrowUp, FileArrowDown, Folder, File, Download, Trash, CheckCircle, XCircle, Info, FolderOpen, FileCsv, FileZip } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { CSVFileUploader } from '@/components/CSVFileUploader'
+import JSZip from 'jszip'
 
 interface FileManagerProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -67,6 +69,9 @@ export function FileManager({ onLog }: FileManagerProps) {
   const [files, setFiles] = useState<EntityFile[]>([])
   const [loadingFiles, setLoadingFiles] = useState(false)
   const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null)
+  const [selectedFileIds, setSelectedFileIds] = useState<Set<number>>(new Set())
+  const [isBatchDownloading, setIsBatchDownloading] = useState(false)
+  const [batchDownloadProgress, setBatchDownloadProgress] = useState(0)
   
   const [fileTypeOptions, setFileTypeOptions] = useState<Array<{ value: string; label: string }>>([])
   const [loadingFileTypes, setLoadingFileTypes] = useState(false)
@@ -631,6 +636,161 @@ export function FileManager({ onLog }: FileManagerProps) {
     }
   }
 
+  const handleBatchDownloadAsZip = async () => {
+    if (selectedFileIds.size === 0) {
+      toast.error('Please select files to download')
+      return
+    }
+
+    if (!downloadEntity || !downloadEntityId) {
+      toast.error('Entity information missing')
+      return
+    }
+
+    const selectedFiles = files.filter(f => selectedFileIds.has(f.id))
+    const pdfFiles = selectedFiles.filter(f => 
+      f.name.toLowerCase().endsWith('.pdf') || 
+      f.contentType?.toLowerCase().includes('pdf')
+    )
+
+    if (pdfFiles.length === 0) {
+      toast.error('No PDF files selected. Please select at least one PDF file.')
+      return
+    }
+
+    try {
+      setIsBatchDownloading(true)
+      setBatchDownloadProgress(0)
+
+      const zip = new JSZip()
+      let successCount = 0
+      let failCount = 0
+      const errors: string[] = []
+
+      toast.info(`Downloading and zipping ${pdfFiles.length} PDF file(s)...`, {
+        duration: 5000
+      })
+
+      for (let i = 0; i < pdfFiles.length; i++) {
+        const file = pdfFiles[i]
+        
+        try {
+          console.log(`📥 Downloading file ${i + 1}/${pdfFiles.length}:`, file.name)
+          const blob = await bullhornAPI.downloadFile(downloadEntity, parseInt(downloadEntityId), file.id)
+          
+          zip.file(file.name, blob)
+          successCount++
+          
+          const progress = Math.round(((i + 1) / pdfFiles.length) * 100)
+          setBatchDownloadProgress(progress)
+        } catch (error) {
+          console.error(`❌ Failed to download ${file.name}:`, error)
+          failCount++
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+          errors.push(`${file.name}: ${errorMessage}`)
+        }
+      }
+
+      if (successCount === 0) {
+        toast.error('Failed to download any files')
+        onLog('Batch Download ZIP', 'error', 'All file downloads failed', {
+          entity: downloadEntity,
+          entityId: downloadEntityId,
+          totalFiles: pdfFiles.length,
+          errors
+        })
+        return
+      }
+
+      console.log('📦 Generating ZIP file...')
+      toast.info('Generating ZIP file...', { id: 'zip-generation' })
+      
+      const zipBlob = await zip.generateAsync({ 
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: {
+          level: 6
+        }
+      })
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0]
+      const zipFileName = `${downloadEntity}_${downloadEntityId}_PDFs_${timestamp}.zip`
+
+      const url = window.URL.createObjectURL(zipBlob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = zipFileName
+      a.style.display = 'none'
+      document.body.appendChild(a)
+      a.click()
+
+      setTimeout(() => {
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+      }, 100)
+
+      if (failCount === 0) {
+        toast.success(`Successfully downloaded ${successCount} PDF(s) as ZIP`, { id: 'zip-generation' })
+      } else {
+        toast.warning(`Downloaded ${successCount} PDF(s), ${failCount} failed. Check logs for details.`, { 
+          id: 'zip-generation',
+          duration: 5000
+        })
+      }
+
+      onLog('Batch Download ZIP', successCount > 0 ? 'success' : 'error', 
+        `Downloaded ${successCount} PDF files as ZIP`, {
+        entity: downloadEntity,
+        entityId: downloadEntityId,
+        zipFileName,
+        zipSize: zipBlob.size,
+        successCount,
+        failCount,
+        errors: errors.length > 0 ? errors : undefined
+      })
+
+      setSelectedFileIds(new Set())
+    } catch (error) {
+      console.error('Batch ZIP download error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create ZIP'
+      toast.error(`ZIP creation failed: ${errorMessage}`)
+      onLog('Batch Download ZIP', 'error', errorMessage, {
+        entity: downloadEntity,
+        entityId: downloadEntityId,
+        error: errorMessage
+      })
+    } finally {
+      setIsBatchDownloading(false)
+      setBatchDownloadProgress(0)
+    }
+  }
+
+  const toggleFileSelection = (fileId: number) => {
+    setSelectedFileIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(fileId)) {
+        newSet.delete(fileId)
+      } else {
+        newSet.add(fileId)
+      }
+      return newSet
+    })
+  }
+
+  const toggleSelectAll = () => {
+    const pdfFiles = files.filter(f => 
+      f.name.toLowerCase().endsWith('.pdf') || 
+      f.contentType?.toLowerCase().includes('pdf')
+    )
+
+    if (selectedFileIds.size === pdfFiles.length && pdfFiles.length > 0) {
+      setSelectedFileIds(new Set())
+    } else {
+      setSelectedFileIds(new Set(pdfFiles.map(f => f.id)))
+    }
+  }
+
+
   const formatFileSize = (bytes?: number): string => {
     if (!bytes) return 'Unknown'
     if (bytes < 1024) return `${bytes} B`
@@ -1090,6 +1250,18 @@ export function FileManager({ onLog }: FileManagerProps) {
                   <Label>Files {downloadType && `(${fileTypeOptions.find(t => t.value === downloadType)?.label})`}</Label>
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary">{files.length} file(s)</Badge>
+                    {files.filter(f => f.name.toLowerCase().endsWith('.pdf') || f.contentType?.toLowerCase().includes('pdf')).length > 0 && selectedFileIds.size > 0 && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={handleBatchDownloadAsZip}
+                        disabled={isBatchDownloading}
+                        className="gap-2"
+                      >
+                        <FileZip size={14} weight="fill" />
+                        {isBatchDownloading ? `Zipping... ${batchDownloadProgress}%` : `Download ${selectedFileIds.size} PDF(s) as ZIP`}
+                      </Button>
+                    )}
                     {files.length > 1 && (
                       <Button
                         size="sm"
@@ -1112,10 +1284,39 @@ export function FileManager({ onLog }: FileManagerProps) {
                     )}
                   </div>
                 </div>
+
+                {isBatchDownloading && (
+                  <div className="space-y-2 p-4 border rounded-lg bg-accent/5">
+                    <div className="flex items-center justify-between">
+                      <Label>ZIP Creation Progress</Label>
+                      <Badge>{batchDownloadProgress}%</Badge>
+                    </div>
+                    <Progress value={batchDownloadProgress} className="h-2" />
+                    <p className="text-xs text-muted-foreground">
+                      Downloading and compressing PDF files...
+                    </p>
+                  </div>
+                )}
+
                 <ScrollArea className="h-[400px] border rounded-md">
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[50px]">
+                          <Checkbox
+                            checked={
+                              files.filter(f => 
+                                f.name.toLowerCase().endsWith('.pdf') || 
+                                f.contentType?.toLowerCase().includes('pdf')
+                              ).length > 0 && 
+                              selectedFileIds.size === files.filter(f => 
+                                f.name.toLowerCase().endsWith('.pdf') || 
+                                f.contentType?.toLowerCase().includes('pdf')
+                              ).length
+                            }
+                            onCheckedChange={toggleSelectAll}
+                          />
+                        </TableHead>
                         <TableHead>File Name</TableHead>
                         <TableHead>Type</TableHead>
                         <TableHead>Size</TableHead>
@@ -1124,47 +1325,59 @@ export function FileManager({ onLog }: FileManagerProps) {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {files.map((file) => (
-                        <TableRow key={file.id}>
-                          <TableCell className="font-medium">
-                            <div className="flex items-center gap-2">
-                              <File size={16} className="text-accent" />
-                              {file.name}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-xs">
-                              {file.contentType || 'Unknown'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {formatFileSize(file.fileSize)}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {file.dateAdded ? new Date(file.dateAdded).toLocaleDateString() : 'Unknown'}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleDownload(file.id, file.name)}
-                                disabled={downloadingFileId === file.id}
-                              >
-                                <Download size={14} />
-                                {downloadingFileId === file.id ? 'Downloading...' : 'Download'}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => handleDeleteFile(file.id, file.name)}
-                              >
-                                <Trash size={14} />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {files.map((file) => {
+                        const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.contentType?.toLowerCase().includes('pdf')
+                        return (
+                          <TableRow key={file.id}>
+                            <TableCell>
+                              {isPdf && (
+                                <Checkbox
+                                  checked={selectedFileIds.has(file.id)}
+                                  onCheckedChange={() => toggleFileSelection(file.id)}
+                                />
+                              )}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-2">
+                                <File size={16} className="text-accent" />
+                                {file.name}
+                                {isPdf && <Badge variant="outline" className="text-xs">PDF</Badge>}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs">
+                                {file.contentType || 'Unknown'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {formatFileSize(file.fileSize)}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground">
+                              {file.dateAdded ? new Date(file.dateAdded).toLocaleDateString() : 'Unknown'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleDownload(file.id, file.name)}
+                                  disabled={downloadingFileId === file.id}
+                                >
+                                  <Download size={14} />
+                                  {downloadingFileId === file.id ? 'Downloading...' : 'Download'}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleDeleteFile(file.id, file.name)}
+                                >
+                                  <Trash size={14} />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
                     </TableBody>
                   </Table>
                 </ScrollArea>
