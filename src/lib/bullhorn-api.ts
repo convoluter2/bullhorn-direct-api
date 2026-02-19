@@ -2,6 +2,7 @@ import type { BullhornCredentials, BullhornSession, QueryConfig, QueryResult } f
 import { toast } from 'sonner'
 import { fetchWithCorsProxy } from './cors-proxy'
 import { bullhornRateLimiter } from './rate-limiter'
+import { getQueryMethod, supportsSearch, supportsQuery, getRecommendedMethod } from './entity-query-support'
 
 const BULLHORN_LOGIN_INFO_URL = 'https://rest.bullhornstaffing.com/rest-services/loginInfo'
 const BULLHORN_LOGIN_URL = 'https://rest.bullhornstaffing.com/rest-services/login'
@@ -846,7 +847,7 @@ export class BullhornAPI {
     return operatorMap[operator] || ':'
   }
 
-  async query(entity: string, fields: string[], where?: string, params?: Record<string, any>, expectedCorporationId?: number): Promise<any> {
+  async query(entity: string, fields: string[], where?: string, params?: Record<string, any>, expectedCorporationId?: number): Promise<QueryResult> {
     if (!this.session) {
       throw new Error('Not authenticated')
     }
@@ -856,6 +857,18 @@ export class BullhornAPI {
     }
 
     const encodedEntity = encodeURIComponent(entity)
+
+    const event = new CustomEvent('entity-usage', { detail: { entityName: entity } })
+    window.dispatchEvent(event)
+
+    console.log('🔍 Executing query:', {
+      entity,
+      encodedEntity,
+      corporationId: this.session.corporationId,
+      restUrl: this.session.restUrl,
+      where: where || 'none',
+      fields: fields.length
+    })
 
     const queryParams = new URLSearchParams({
       fields: fields.join(','),
@@ -872,18 +885,42 @@ export class BullhornAPI {
       })
     }
 
+    const fullUrl = `${this.session.restUrl}query/${encodedEntity}?${queryParams.toString()}`
+    console.log(`📡 Full QUERY URL:`, fullUrl)
+
     const response = await this.throttledFetch(
-      `${this.session.restUrl}query/${encodedEntity}?${queryParams.toString()}`,
+      fullUrl,
       undefined,
       1
     )
 
     if (!response.ok) {
       const error = await response.text()
+      console.error(`❌ Query failed for ${entity}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        error,
+        where,
+        url: fullUrl
+      })
       throw new Error(`Query failed: ${error}`)
     }
 
-    return await response.json()
+    const result = await response.json()
+    
+    console.log('✅ Query complete:', {
+      entity,
+      total: result.total,
+      count: result.count,
+      corporationId: this.session.corporationId
+    })
+    
+    return {
+      data: result.data || [],
+      total: result.total || 0,
+      count: result.count || 0,
+      start: result.start || 0
+    }
   }
 
   async getEntity(entity: string, id: number, fields: string[]): Promise<any> {
