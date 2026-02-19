@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Toaster } from '@/components/ui/sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -39,6 +39,7 @@ import { toast } from 'sonner'
 import type { BullhornSession, AuditLog } from '@/lib/types'
 
 function App() {
+  const isRefreshingRef = useRef(false)
   const [session, setSession] = useKV<BullhornSession | null>('bullhorn-session', null)
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const [connectionManagerOpen, setConnectionManagerOpen] = useState(false)
@@ -106,12 +107,8 @@ function App() {
   }, [])
 
   useEffect(() => {
-    let isRefreshing = false
-    let refreshTimeout: NodeJS.Timeout | null = null
-    let checkInterval: NodeJS.Timeout | null = null
-
     const checkTokenExpiry = async () => {
-      if (isRefreshing) {
+      if (isRefreshingRef.current) {
         console.log('⏸️ Refresh already in progress, skipping check')
         return
       }
@@ -127,7 +124,7 @@ function App() {
       const timeUntilExpiry = currentSession.expiresAt - now
 
       if (timeUntilExpiry < 60000 && timeUntilExpiry > 0) {
-        isRefreshing = true
+        isRefreshingRef.current = true
         try {
           console.log('🔄 Token expiring soon, refreshing...', {
             currentConnectionId: currentConnId,
@@ -140,7 +137,7 @@ function App() {
           if (!credentials) {
             toast.error('Failed to retrieve credentials for token refresh')
             console.error('❌ No credentials found for connection:', currentConnId)
-            isRefreshing = false
+            isRefreshingRef.current = false
             return
           }
 
@@ -180,9 +177,12 @@ function App() {
         } catch (error) {
           console.error('❌ Token refresh failed:', error)
           const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+          const fullError = error instanceof Error ? error.stack : String(error)
+          console.error('Full error details:', fullError)
           toast.error('Failed to refresh access token. Please reconnect.')
           addLog('Token Refresh', 'error', 'Token refresh failed', { 
             error: errorMessage,
+            fullError: fullError,
             connectionId: currentConnId,
             timestamp: new Date().toISOString()
           })
@@ -190,17 +190,16 @@ function App() {
           setSession(() => null)
           setCurrentConnectionId(() => null)
         } finally {
-          isRefreshing = false
+          isRefreshingRef.current = false
         }
       }
     }
 
-    checkInterval = setInterval(checkTokenExpiry, 30000)
+    const checkInterval = setInterval(checkTokenExpiry, 30000)
     checkTokenExpiry()
     
     return () => {
-      if (checkInterval) clearInterval(checkInterval)
-      if (refreshTimeout) clearTimeout(refreshTimeout)
+      clearInterval(checkInterval)
     }
   }, [currentConnectionId, addLog, setSession, setCurrentConnectionId])
 
