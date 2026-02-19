@@ -1,3 +1,5 @@
+import { getQueryMethod, getCSVImportWarning } from './entity-query-support'
+
 export interface ValidationRule {
   name: string
   message: string
@@ -340,6 +342,25 @@ export function validateImportConfiguration(config: {
       message: 'Cannot update existing records without a lookup field',
       severity: 'error'
     })
+  }
+
+  if (config.entity) {
+    const queryMethod = getQueryMethod(config.entity)
+    const warning = getCSVImportWarning(config.entity)
+    
+    if (warning && queryMethod === 'search') {
+      warnings.push({
+        name: 'search_only_entity',
+        message: warning,
+        severity: 'warning'
+      })
+    } else if (warning && queryMethod === 'query') {
+      warnings.push({
+        name: 'query_only_entity',
+        message: warning,
+        severity: 'warning'
+      })
+    }
   }
 
   return {

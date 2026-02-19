@@ -78,3 +78,21 @@ export function getQueryMethodDescription(entityName: string): string {
       return 'This entity supports both Search (Lucene) and Query (SQL WHERE) methods'
   }
 }
+
+export function getCSVImportWarning(entityName: string): string | null {
+  const method = getQueryMethod(entityName)
+  
+  switch (method) {
+    case 'search':
+      return `⚠️ ${entityName} only supports Search (Lucene syntax). CSV import uses Query for lookups, which may have limitations. For best results, use exact ID matches as your lookup field.`
+    case 'query':
+      return `ℹ️ ${entityName} only supports Query (SQL WHERE syntax). Search is not available for this entity.`
+    case 'both':
+      return null
+  }
+}
+
+export function hasLimitedQuerySupport(entityName: string): boolean {
+  const method = getQueryMethod(entityName)
+  return method === 'search' || method === 'query'
+}
