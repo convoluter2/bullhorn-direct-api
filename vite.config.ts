@@ -22,4 +22,11 @@ export default defineConfig({
       '@': resolve(projectRoot, 'src')
     }
   },
+  optimizeDeps: {
+    include: ['jszip']
+  },
+  define: {
+    'process.env': {},
+    'global': 'globalThis'
+  }
 });
