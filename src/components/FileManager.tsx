@@ -563,10 +563,39 @@ export function FileManager({ onLog }: FileManagerProps) {
         fileName
       })
       
+      let entityName = 'Unknown'
+      try {
+        const entityData = await bullhornAPI.query(
+          downloadEntity,
+          ['id', 'name', 'title', 'firstName', 'lastName'],
+          `id=${downloadEntityId}`
+        )
+        
+        if (entityData?.data?.[0]) {
+          const entity = entityData.data[0]
+          if (entity.name) {
+            entityName = entity.name
+          } else if (entity.title) {
+            entityName = entity.title
+          } else if (entity.firstName && entity.lastName) {
+            entityName = `${entity.firstName}_${entity.lastName}`
+          } else if (entity.firstName) {
+            entityName = entity.firstName
+          } else if (entity.lastName) {
+            entityName = entity.lastName
+          }
+          entityName = entityName.replace(/[^a-zA-Z0-9_-]/g, '_')
+        }
+      } catch (nameError) {
+        console.warn('Could not fetch entity name:', nameError)
+      }
+      
+      const newFileName = `${downloadEntityId}-${entityName}-${fileName}`
+      
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = fileName
+      a.download = newFileName
       a.style.display = 'none'
       document.body.appendChild(a)
       a.click()
@@ -576,12 +605,13 @@ export function FileManager({ onLog }: FileManagerProps) {
         window.URL.revokeObjectURL(url)
       }, 100)
 
-      toast.success(`Downloaded: ${fileName}`)
+      toast.success(`Downloaded: ${newFileName}`)
       onLog('File Download', 'success', `Downloaded file from ${downloadEntity} ID ${downloadEntityId}`, {
         entity: downloadEntity,
         entityId: downloadEntityId,
         fileId,
         fileName,
+        downloadedAs: newFileName,
         fileSize: blob.size,
         contentType: blob.type
       })
@@ -662,6 +692,33 @@ export function FileManager({ onLog }: FileManagerProps) {
       setIsBatchDownloading(true)
       setBatchDownloadProgress(0)
 
+      let entityName = 'Unknown'
+      try {
+        const entityData = await bullhornAPI.query(
+          downloadEntity,
+          ['id', 'name', 'title', 'firstName', 'lastName'],
+          `id=${downloadEntityId}`
+        )
+        
+        if (entityData?.data?.[0]) {
+          const entity = entityData.data[0]
+          if (entity.name) {
+            entityName = entity.name
+          } else if (entity.title) {
+            entityName = entity.title
+          } else if (entity.firstName && entity.lastName) {
+            entityName = `${entity.firstName}_${entity.lastName}`
+          } else if (entity.firstName) {
+            entityName = entity.firstName
+          } else if (entity.lastName) {
+            entityName = entity.lastName
+          }
+          entityName = entityName.replace(/[^a-zA-Z0-9_-]/g, '_')
+        }
+      } catch (nameError) {
+        console.warn('Could not fetch entity name:', nameError)
+      }
+
       const zip = new JSZip()
       let successCount = 0
       let failCount = 0
@@ -678,7 +735,8 @@ export function FileManager({ onLog }: FileManagerProps) {
           console.log(`📥 Downloading file ${i + 1}/${pdfFiles.length}:`, file.name)
           const blob = await bullhornAPI.downloadFile(downloadEntity, parseInt(downloadEntityId), file.id)
           
-          zip.file(file.name, blob)
+          const newFileName = `${downloadEntityId}-${entityName}-${file.name}`
+          zip.file(newFileName, blob)
           successCount++
           
           const progress = Math.round(((i + 1) / pdfFiles.length) * 100)
@@ -780,6 +838,33 @@ export function FileManager({ onLog }: FileManagerProps) {
       setIsBatchDownloading(true)
       setBatchDownloadProgress(0)
 
+      let entityName = 'Unknown'
+      try {
+        const entityData = await bullhornAPI.query(
+          downloadEntity,
+          ['id', 'name', 'title', 'firstName', 'lastName'],
+          `id=${downloadEntityId}`
+        )
+        
+        if (entityData?.data?.[0]) {
+          const entity = entityData.data[0]
+          if (entity.name) {
+            entityName = entity.name
+          } else if (entity.title) {
+            entityName = entity.title
+          } else if (entity.firstName && entity.lastName) {
+            entityName = `${entity.firstName}_${entity.lastName}`
+          } else if (entity.firstName) {
+            entityName = entity.firstName
+          } else if (entity.lastName) {
+            entityName = entity.lastName
+          }
+          entityName = entityName.replace(/[^a-zA-Z0-9_-]/g, '_')
+        }
+      } catch (nameError) {
+        console.warn('Could not fetch entity name:', nameError)
+      }
+
       const zip = new JSZip()
       let successCount = 0
       let failCount = 0
@@ -796,7 +881,8 @@ export function FileManager({ onLog }: FileManagerProps) {
           console.log(`📥 Downloading file ${i + 1}/${files.length}:`, file.name)
           const blob = await bullhornAPI.downloadFile(downloadEntity, parseInt(downloadEntityId), file.id)
           
-          zip.file(file.name, blob)
+          const newFileName = `${downloadEntityId}-${entityName}-${file.name}`
+          zip.file(newFileName, blob)
           successCount++
           
           const progress = Math.round(((i + 1) / files.length) * 100)
