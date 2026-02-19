@@ -982,7 +982,7 @@ export class BullhornAPI {
 
     const result = await response.json()
     console.log(`✅ Successfully fetched ${entity}/${id}:`, result)
-    return result
+    return result.data || result
   }
 
   async createEntity(entity: string, data: any, expectedCorporationId?: number): Promise<any> {
