@@ -342,25 +342,25 @@ export function validateImportConfiguration(config: {
       message: 'Cannot update existing records without a lookup field',
       severity: 'error'
     })
-  }
-
   if (config.entity) {
+    const { getQueryMethod, getQueryMethodDescription } = require('./entity-query-support')
     const queryMethod = getQueryMethod(config.entity)
-    const warning = getCSVImportWarning(config.entity)
     
-    if (warning && queryMethod === 'search') {
+    if (queryMethod === 'search') {
       warnings.push({
         name: 'search_only_entity',
-        message: warning,
+        message: `⚠️ ${config.entity} only supports Search (Lucene query syntax). Record lookups during CSV import use Query and may have limitations. Consider using exact ID matches in your lookup field.`,
         severity: 'warning'
       })
-    } else if (warning && queryMethod === 'query') {
+    } else if (queryMethod === 'query') {
       warnings.push({
         name: 'query_only_entity',
-        message: warning,
+        message: `ℹ️ ${config.entity} only supports Query (SQL-like WHERE syntax). Search is not available for this entity type.`,
         severity: 'warning'
       })
     }
+  }
+
   }
 
   return {
