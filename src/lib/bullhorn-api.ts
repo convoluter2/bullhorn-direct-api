@@ -2181,16 +2181,50 @@ export class BullhornAPI {
       throw new Error(`File download failed: ${error}`)
     }
 
-    const contentType = response.headers.get('Content-Type') || 'application/octet-stream'
-    const arrayBuffer = await response.arrayBuffer()
-    const blob = new Blob([arrayBuffer], { type: contentType })
+    const responseContentType = response.headers.get('Content-Type') || ''
     
-    console.log('✅ File downloaded successfully:', {
-      size: blob.size,
-      type: blob.type,
-      contentType
-    })
-    return blob
+    if (responseContentType.includes('application/json')) {
+      console.log('📦 Response is JSON, extracting base64 content')
+      const jsonData = await response.json()
+      
+      if (jsonData.File && jsonData.File.fileContent) {
+        const base64Content = jsonData.File.fileContent
+        const contentType = jsonData.File.contentType || 'application/octet-stream'
+        
+        console.log('📦 Decoding base64 file content:', {
+          name: jsonData.File.name,
+          contentType,
+          base64Length: base64Content.length
+        })
+        
+        const binaryString = atob(base64Content)
+        const bytes = new Uint8Array(binaryString.length)
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i)
+        }
+        
+        const blob = new Blob([bytes], { type: contentType })
+        
+        console.log('✅ File decoded successfully:', {
+          size: blob.size,
+          type: blob.type
+        })
+        
+        return blob
+      } else {
+        throw new Error('Invalid JSON response: missing File.fileContent')
+      }
+    } else {
+      const arrayBuffer = await response.arrayBuffer()
+      const blob = new Blob([arrayBuffer], { type: responseContentType })
+      
+      console.log('✅ File downloaded successfully (raw):', {
+        size: blob.size,
+        type: blob.type,
+        contentType: responseContentType
+      })
+      return blob
+    }
   }
 
   async deleteFile(
