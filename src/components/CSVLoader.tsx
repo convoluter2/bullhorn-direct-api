@@ -596,6 +596,19 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           
           if (searchResult.data && searchResult.data.length > 0) {
             existingRecord = searchResult.data[0]
+          } else if (lookupField.toLowerCase() === 'id') {
+            const recordId = parseInt(lookupValue, 10)
+            if (!isNaN(recordId)) {
+              try {
+                const record = await bullhornAPI.getEntity(entity, recordId, fieldsToFetch)
+                if (record && record.id) {
+                  existingRecord = record
+                  console.log(`✅ Found ${entity} ${recordId} via direct GET (search returned no results)`)
+                }
+              } catch (fallbackError) {
+                console.log(`Record ${entity} ${recordId} not found via search or direct GET`)
+              }
+            }
           }
         } catch (searchError) {
           if (lookupField.toLowerCase() === 'id') {
@@ -606,6 +619,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                 const record = await bullhornAPI.getEntity(entity, recordId, fieldsToFetch)
                 if (record && record.id) {
                   existingRecord = record
+                  console.log(`✅ Found ${entity} ${recordId} via direct GET (search failed)`)
                 }
               } catch (fallbackError) {
                 console.error(`Fallback entity lookup failed:`, fallbackError)
