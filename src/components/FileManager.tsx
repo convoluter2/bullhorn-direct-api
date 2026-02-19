@@ -17,6 +17,7 @@ import { bullhornAPI } from '@/lib/bullhorn-api'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { CSVFileUploader } from '@/components/CSVFileUploader'
+import { BulkFileDownloader } from '@/components/BulkFileDownloader'
 import JSZip from 'jszip'
 
 interface FileManagerProps {
@@ -45,7 +46,7 @@ interface FileFolder {
 }
 
 export function FileManager({ onLog }: FileManagerProps) {
-  const [activeTab, setActiveTab] = useState<'upload' | 'download' | 'csv-bulk'>('upload')
+  const [activeTab, setActiveTab] = useState<'upload' | 'download' | 'csv-bulk' | 'bulk-download'>('upload')
   
   const [uploadEntity, setUploadEntity] = useState('')
   const [uploadEntityId, setUploadEntityId] = useState('')
@@ -1012,8 +1013,8 @@ export function FileManager({ onLog }: FileManagerProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'upload' | 'download' | 'csv-bulk')} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'upload' | 'download' | 'csv-bulk' | 'bulk-download')} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="upload" className="gap-2">
               <FileArrowUp size={18} />
               Upload Files
@@ -1025,6 +1026,10 @@ export function FileManager({ onLog }: FileManagerProps) {
             <TabsTrigger value="download" className="gap-2">
               <FileArrowDown size={18} />
               Download Files
+            </TabsTrigger>
+            <TabsTrigger value="bulk-download" className="gap-2">
+              <FileZip size={18} />
+              Bulk Download
             </TabsTrigger>
           </TabsList>
 
@@ -1591,6 +1596,10 @@ export function FileManager({ onLog }: FileManagerProps) {
 
           <TabsContent value="csv-bulk" className="space-y-6">
             <CSVFileUploader onLog={onLog} />
+          </TabsContent>
+
+          <TabsContent value="bulk-download" className="space-y-6">
+            <BulkFileDownloader onLog={onLog} />
           </TabsContent>
         </Tabs>
       </CardContent>
