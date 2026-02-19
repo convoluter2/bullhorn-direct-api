@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Checkbox } from '@/components/ui/checkbox'
-import { FileArrowUp, FileArrowDown, Folder, File, Download, Trash, CheckCircle, XCircle, Info, FolderOpen, FileCsv, FileZip } from '@phosphor-icons/react'
+import { FileArrowUp, FileArrowDown, Folder, File, Download, Trash, CheckCircle, XCircle, Info, FolderOpen, FileCsv, FileZip, Faders } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
@@ -67,7 +67,11 @@ export function FileManager({ onLog }: FileManagerProps) {
   const [downloadEntity, setDownloadEntity] = useState('')
   const [downloadEntityId, setDownloadEntityId] = useState('')
   const [downloadType, setDownloadType] = useState<string>('')
+  const [downloadFileTypes, setDownloadFileTypes] = useState<string[]>([])
+  const [downloadStartDate, setDownloadStartDate] = useState('')
+  const [downloadEndDate, setDownloadEndDate] = useState('')
   const [files, setFiles] = useState<EntityFile[]>([])
+  const [allFiles, setAllFiles] = useState<EntityFile[]>([])
   const [loadingFiles, setLoadingFiles] = useState(false)
   const [downloadingFileId, setDownloadingFileId] = useState<number | null>(null)
   const [selectedFileIds, setSelectedFileIds] = useState<Set<number>>(new Set())
@@ -499,10 +503,10 @@ export function FileManager({ onLog }: FileManagerProps) {
     try {
       setLoadingFiles(true)
       setFiles([])
+      setAllFiles([])
 
       const entityIdNum = parseInt(downloadEntityId)
-      const typeFilter = downloadType === 'ALL_TYPES' ? '' : downloadType
-      const response = await bullhornAPI.getEntityFiles(downloadEntity, entityIdNum, typeFilter)
+      const response = await bullhornAPI.getEntityFiles(downloadEntity, entityIdNum, '')
 
       console.log('📦 Get entity files response:', response)
 
@@ -518,17 +522,22 @@ export function FileManager({ onLog }: FileManagerProps) {
 
       if (filesArray.length > 0) {
         console.log('✅ Found files:', filesArray)
-        setFiles(filesArray)
-        toast.success(`Loaded ${filesArray.length} file(s)`)
+        setAllFiles(filesArray)
+        
+        let filteredFiles = applyFilters(filesArray)
+        
+        setFiles(filteredFiles)
+        toast.success(`Loaded ${filesArray.length} file(s)${filteredFiles.length !== filesArray.length ? `, showing ${filteredFiles.length} after filters` : ''}`)
         onLog('Load Files', 'success', `Loaded files from ${downloadEntity} ID ${downloadEntityId}`, {
           entity: downloadEntity,
           entityId: downloadEntityId,
-          type: downloadType,
-          fileCount: filesArray.length
+          totalFiles: filesArray.length,
+          filteredFiles: filteredFiles.length
         })
       } else {
         console.log('ℹ️ No files found in response')
         setFiles([])
+        setAllFiles([])
         toast.info('No files found')
       }
     } catch (error) {
@@ -541,9 +550,76 @@ export function FileManager({ onLog }: FileManagerProps) {
         error: errorMessage
       })
       setFiles([])
+      setAllFiles([])
     } finally {
       setLoadingFiles(false)
     }
+  }
+
+  const applyFilters = (filesList: EntityFile[]) => {
+    let filtered = [...filesList]
+    
+    if (downloadFileTypes.length > 0) {
+      filtered = filtered.filter(file => {
+        if (!file.type) return false
+        return downloadFileTypes.includes(file.type)
+      })
+    }
+    
+    if (downloadStartDate) {
+      const startTimestamp = new Date(downloadStartDate).getTime()
+      filtered = filtered.filter(file => {
+        if (!file.dateAdded) return false
+        return file.dateAdded >= startTimestamp
+      })
+    }
+    
+    if (downloadEndDate) {
+      const endTimestamp = new Date(downloadEndDate + 'T23:59:59').getTime()
+      filtered = filtered.filter(file => {
+        if (!file.dateAdded) return false
+        return file.dateAdded <= endTimestamp
+      })
+    }
+    
+    return filtered
+  }
+
+  const handleApplyFilters = () => {
+    if (allFiles.length === 0) {
+      toast.error('Please load files first')
+      return
+    }
+    
+    const filtered = applyFilters(allFiles)
+    setFiles(filtered)
+    
+    if (filtered.length === 0) {
+      toast.info('No files match the current filters')
+    } else {
+      toast.success(`Showing ${filtered.length} of ${allFiles.length} file(s)`)
+    }
+  }
+
+  const handleClearFilters = () => {
+    setDownloadFileTypes([])
+    setDownloadStartDate('')
+    setDownloadEndDate('')
+    
+    if (allFiles.length > 0) {
+      setFiles(allFiles)
+      toast.success(`Showing all ${allFiles.length} file(s)`)
+    }
+  }
+
+  const toggleFileTypeFilter = (fileType: string) => {
+    setDownloadFileTypes(prev => {
+      if (prev.includes(fileType)) {
+        return prev.filter(t => t !== fileType)
+      } else {
+        return [...prev, fileType]
+      }
+    })
   }
 
   const handleDownload = async (fileId: number, fileName: string) => {
@@ -1418,28 +1494,113 @@ export function FileManager({ onLog }: FileManagerProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="download-type">Document Type Filter (Optional)</Label>
-                <Select value={downloadType} onValueChange={setDownloadType} disabled={loadingFileTypes}>
-                  <SelectTrigger id="download-type">
-                    <SelectValue placeholder={loadingFileTypes ? "Loading..." : "All types"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL_TYPES">All Types</SelectItem>
-                    {fileTypeOptions.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        <div className="flex items-center gap-2">
-                          <Folder size={16} />
-                          {type.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Filters {downloadFileTypes.length > 0 || downloadStartDate || downloadEndDate ? <Badge variant="secondary" className="ml-2">{(downloadFileTypes.length > 0 ? 1 : 0) + (downloadStartDate || downloadEndDate ? 1 : 0)} active</Badge> : null}</Label>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-muted-foreground"
+                  onClick={() => {
+                    const card = document.getElementById('filter-card')
+                    if (card) {
+                      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+                    }
+                  }}
+                >
+                  <Faders size={16} className="mr-2" />
+                  Configure Filters
+                </Button>
                 <p className="text-xs text-muted-foreground">
-                  Filter by document type (fileType: SAMPLE is always used)
+                  Filter by type and/or date range
                 </p>
               </div>
             </div>
+
+            <Card id="filter-card" className="bg-accent/10">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Faders size={20} className="text-accent" />
+                  Filter Options
+                </CardTitle>
+                <CardDescription>Filter files by document type and/or date range</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <Label>Document Types (select multiple or none for all)</Label>
+                  <ScrollArea className="h-[160px] border rounded-md p-3">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {fileTypeOptions.map((type) => (
+                        <div key={type.value} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`filter-${type.value}`}
+                            checked={downloadFileTypes.includes(type.value)}
+                            onCheckedChange={() => toggleFileTypeFilter(type.value)}
+                          />
+                          <label
+                            htmlFor={`filter-${type.value}`}
+                            className="text-sm cursor-pointer leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {type.label}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                  {downloadFileTypes.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {downloadFileTypes.map(type => {
+                        const typeLabel = fileTypeOptions.find(t => t.value === type)?.label || type
+                        return (
+                          <Badge key={type} variant="secondary" className="text-xs">
+                            {typeLabel}
+                          </Badge>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="download-start-date">Start Date (Optional)</Label>
+                    <Input
+                      id="download-start-date"
+                      type="date"
+                      value={downloadStartDate}
+                      onChange={(e) => setDownloadStartDate(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="download-end-date">End Date (Optional)</Label>
+                    <Input
+                      id="download-end-date"
+                      type="date"
+                      value={downloadEndDate}
+                      onChange={(e) => setDownloadEndDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleApplyFilters}
+                    disabled={allFiles.length === 0}
+                    className="flex-1"
+                  >
+                    <CheckCircle size={16} className="mr-2" />
+                    Apply Filters
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={handleClearFilters}
+                    disabled={downloadFileTypes.length === 0 && !downloadStartDate && !downloadEndDate}
+                  >
+                    <XCircle size={16} className="mr-2" />
+                    Clear
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
 
             <Button
               onClick={loadFiles}
