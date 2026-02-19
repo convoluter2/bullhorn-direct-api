@@ -106,36 +106,47 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!session || !session.refreshToken || !session.expiresAt || !currentConnectionId) {
-      return
-    }
+    let isRefreshing = false
+    let refreshTimeout: NodeJS.Timeout | null = null
+    let checkInterval: NodeJS.Timeout | null = null
 
     const checkTokenExpiry = async () => {
-      if (!session || !session.refreshToken || !session.expiresAt || !currentConnectionId) {
+      if (isRefreshing) {
+        console.log('⏸️ Refresh already in progress, skipping check')
+        return
+      }
+
+      const currentSession = bullhornAPI.getSession()
+      const currentConnId = currentConnectionId
+
+      if (!currentSession || !currentSession.refreshToken || !currentSession.expiresAt || !currentConnId) {
         return
       }
       
       const now = Date.now()
-      const timeUntilExpiry = session.expiresAt - now
+      const timeUntilExpiry = currentSession.expiresAt - now
 
       if (timeUntilExpiry < 60000 && timeUntilExpiry > 0) {
+        isRefreshing = true
         try {
           console.log('🔄 Token expiring soon, refreshing...', {
-            currentConnectionId,
-            corporationId: session.corporationId,
-            timeUntilExpiry: Math.floor(timeUntilExpiry / 1000) + 's'
+            currentConnectionId: currentConnId,
+            corporationId: currentSession.corporationId,
+            timeUntilExpiry: Math.floor(timeUntilExpiry / 1000) + 's',
+            expiresAt: new Date(currentSession.expiresAt).toISOString()
           })
           
-          const credentials = await secureCredentialsAPI.getCredentials(currentConnectionId)
+          const credentials = await secureCredentialsAPI.getCredentials(currentConnId)
           if (!credentials) {
             toast.error('Failed to retrieve credentials for token refresh')
-            console.error('❌ No credentials found for connection:', currentConnectionId)
+            console.error('❌ No credentials found for connection:', currentConnId)
+            isRefreshing = false
             return
           }
 
           console.log('🔑 Refreshing token with credentials for:', credentials.username)
           const tokenData = await bullhornAPI.refreshAccessToken(
-            session.refreshToken,
+            currentSession.refreshToken,
             credentials.clientId,
             credentials.clientSecret,
             credentials.username
@@ -151,16 +162,18 @@ function App() {
             corporationId: newSession.corporationId,
             restUrl: newSession.restUrl,
             newExpiresIn: tokenData.expiresIn + 's',
-            expiresAt: new Date(newSession.expiresAt).toISOString()
+            expiresAt: new Date(newSession.expiresAt).toISOString(),
+            timeUntilNextRefresh: Math.floor((newSession.expiresAt - Date.now()) / 1000) + 's'
           })
           
           setSession(() => newSession)
           bullhornAPI.setSession(newSession)
           
           addLog('Token Refresh', 'success', 'Access token refreshed automatically', {
-            connectionId: currentConnectionId,
+            connectionId: currentConnId,
             corporationId: newSession.corporationId,
-            expiresIn: tokenData.expiresIn
+            expiresIn: tokenData.expiresIn,
+            newExpiresAt: new Date(newSession.expiresAt).toISOString()
           })
           
           toast.success('Session refreshed successfully', { duration: 2000 })
@@ -168,18 +181,28 @@ function App() {
           console.error('❌ Token refresh failed:', error)
           const errorMessage = error instanceof Error ? error.message : 'Unknown error'
           toast.error('Failed to refresh access token. Please reconnect.')
-          addLog('Token Refresh', 'error', 'Token refresh failed', { error: errorMessage })
+          addLog('Token Refresh', 'error', 'Token refresh failed', { 
+            error: errorMessage,
+            connectionId: currentConnId,
+            timestamp: new Date().toISOString()
+          })
           bullhornAPI.clearSession()
           setSession(() => null)
           setCurrentConnectionId(() => null)
+        } finally {
+          isRefreshing = false
         }
       }
     }
 
-    const interval = setInterval(checkTokenExpiry, 30000)
+    checkInterval = setInterval(checkTokenExpiry, 30000)
     checkTokenExpiry()
-    return () => clearInterval(interval)
-  }, [session, currentConnectionId, addLog, setSession, setCurrentConnectionId])
+    
+    return () => {
+      if (checkInterval) clearInterval(checkInterval)
+      if (refreshTimeout) clearTimeout(refreshTimeout)
+    }
+  }, [currentConnectionId, addLog, setSession, setCurrentConnectionId])
 
   const handleAuthenticated = (newSession: BullhornSession, connectionId?: string) => {
     console.log('App - handleAuthenticated called:', { 
