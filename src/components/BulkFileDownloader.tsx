@@ -50,7 +50,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
   const { entities, loading: entitiesLoading } = useEntities()
 
   const fileAttachmentEntities = [
-    'Candidate',
+    'Placement',
     'Placement',
     'Opportunity',
     'Certification',
