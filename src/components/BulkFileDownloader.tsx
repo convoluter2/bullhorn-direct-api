@@ -227,7 +227,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
     toast.info('Download cancelled')
   }
 
-            filesArray = filesResponse.EntityFiles
+  const handleRetryFailed = () => {
     const failedDownloads = downloadResults.filter(r => r.status === 'error')
     
     if (failedDownloads.length === 0) {
