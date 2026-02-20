@@ -342,8 +342,9 @@ export function validateImportConfiguration(config: {
       message: 'Cannot update existing records without a lookup field',
       severity: 'error'
     })
+  }
+
   if (config.entity) {
-    const { getQueryMethod, getQueryMethodDescription } = require('./entity-query-support')
     const queryMethod = getQueryMethod(config.entity)
     
     if (queryMethod === 'search') {
@@ -359,8 +360,6 @@ export function validateImportConfiguration(config: {
         severity: 'warning'
       })
     }
-  }
-
   }
 
   return {
