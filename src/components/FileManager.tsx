@@ -11,7 +11,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Checkbox } from '@/components/ui/checkbox'
-import { FileArrowUp, FileArrowDown, Folder, File, Download, Trash, CheckCircle, XCircle, Info, FolderOpen, FileCsv, FileZip, Faders } from '@phosphor-icons/react'
+import { Slider } from '@/components/ui/slider'
+import { FileArrowUp, FileArrowDown, Folder, File, Download, Trash, CheckCircle, XCircle, Info, FolderOpen, FileCsv, FileZip, Faders, Pause, Play, ArrowClockwise } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
@@ -63,6 +64,7 @@ export function FileManager({ onLog }: FileManagerProps) {
   const [startTime, setStartTime] = useState<number | null>(null)
   const [uploadSpeed, setUploadSpeed] = useState<number>(0)
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null)
+  const [concurrentUploads, setConcurrentUploads] = useState(3)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pauseRef = useRef(false)
 
@@ -327,26 +329,25 @@ export function FileManager({ onLog }: FileManagerProps) {
       const totalFiles = selectedFiles.length
       const totalBytes = selectedFiles.reduce((sum, f) => sum + f.size, 0)
       let uploadedBytes = 0
+      let completedCount = 0
 
-      for (let i = 0; i < selectedFiles.length; i++) {
+      const uploadSingleFile = async (file: File, fileIndex: number) => {
         while (pauseRef.current) {
           await new Promise(resolve => setTimeout(resolve, 100))
         }
 
         if (!isUploading) {
-          break
+          return
         }
-
-        const file = selectedFiles[i]
-        setCurrentUploadIndex(i + 1)
         
         const fileStartTime = Date.now()
-        
         const uploadResult = await uploadFileWithRetry(file)
-        
         const fileEndTime = Date.now()
         const fileDuration = (fileEndTime - fileStartTime) / 1000
+        
         uploadedBytes += file.size
+        completedCount++
+        setCurrentUploadIndex(completedCount)
 
         const elapsedTime = (Date.now() - (startTime || Date.now())) / 1000
         const currentSpeed = uploadedBytes / elapsedTime
@@ -357,13 +358,13 @@ export function FileManager({ onLog }: FileManagerProps) {
         setEstimatedTimeRemaining(estimatedSeconds)
 
         if (uploadResult.success) {
-          results.push({
+          results[fileIndex] = {
             file: file.name,
             status: 'success',
             message: `Uploaded in ${fileDuration.toFixed(1)}s${uploadResult.retries > 0 ? ` (retried ${uploadResult.retries}x)` : ''}`,
             fileId: uploadResult.fileId,
             retryCount: uploadResult.retries
-          })
+          }
 
           onLog('File Upload', 'success', `Uploaded file to ${uploadEntity} ID ${uploadEntityId}`, {
             entity: uploadEntity,
@@ -376,12 +377,12 @@ export function FileManager({ onLog }: FileManagerProps) {
             retryCount: uploadResult.retries
           })
         } else {
-          results.push({
+          results[fileIndex] = {
             file: file.name,
             status: 'error',
             message: uploadResult.message,
             retryCount: uploadResult.retries
-          })
+          }
 
           onLog('File Upload', 'error', uploadResult.message, {
             entity: uploadEntity,
@@ -392,8 +393,17 @@ export function FileManager({ onLog }: FileManagerProps) {
           })
         }
 
-        setUploadProgress(Math.round(((i + 1) / totalFiles) * 100))
+        setUploadProgress(Math.round((completedCount / totalFiles) * 100))
         setUploadResults([...results])
+      }
+
+      for (let i = 0; i < selectedFiles.length; i += concurrentUploads) {
+        const batch = selectedFiles.slice(i, i + concurrentUploads)
+        const batchPromises = batch.map((file, batchIndex) => 
+          uploadSingleFile(file, i + batchIndex)
+        )
+        
+        await Promise.all(batchPromises)
       }
 
       const successCount = results.filter(r => r.status === 'success').length
@@ -1206,6 +1216,47 @@ export function FileManager({ onLog }: FileManagerProps) {
               </div>
             </div>
 
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+              <div className="flex items-center gap-2">
+                <Faders size={20} className="text-accent" weight="duotone" />
+                <Label className="text-base font-semibold">Upload Settings</Label>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="concurrent-uploads" className="text-sm">
+                    Simultaneous Uploads
+                  </Label>
+                  <Badge variant="outline" className="font-mono text-sm">
+                    {concurrentUploads} {concurrentUploads === 1 ? 'file' : 'files'} at once
+                  </Badge>
+                </div>
+                
+                <Slider
+                  id="concurrent-uploads"
+                  min={1}
+                  max={5}
+                  step={1}
+                  value={[concurrentUploads]}
+                  onValueChange={(values) => setConcurrentUploads(values[0])}
+                  disabled={isUploading}
+                  className="cursor-pointer"
+                />
+                
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Slower (1)</span>
+                  <span>Faster (5)</span>
+                </div>
+                
+                <Alert className="bg-blue-500/5 border-blue-500/20">
+                  <Info className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-xs text-blue-600">
+                    Higher concurrency = faster uploads but may increase server load. Recommended: 3 files at once.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="file-upload">Select Files</Label>
               <Input
@@ -1334,12 +1385,12 @@ export function FileManager({ onLog }: FileManagerProps) {
                   >
                     {isPaused ? (
                       <>
-                        <CheckCircle size={16} />
+                        <Play size={16} weight="fill" />
                         Resume Upload
                       </>
                     ) : (
                       <>
-                        <XCircle size={16} />
+                        <Pause size={16} weight="fill" />
                         Pause Upload
                       </>
                     )}
@@ -1367,7 +1418,7 @@ export function FileManager({ onLog }: FileManagerProps) {
                       onClick={handleRetryErrors}
                       className="gap-2"
                     >
-                      <CheckCircle size={16} />
+                      <ArrowClockwise size={16} />
                       Retry Failed Uploads
                     </Button>
                   )}

@@ -12,7 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Slider } from '@/components/ui/slider'
-import { FileZip, FileCsv, Download, CheckCircle, XCircle, Info, Upload, Trash, Faders } from '@phosphor-icons/react'
+import { FileZip, FileCsv, Download, CheckCircle, XCircle, Info, Upload, Trash, Faders, Pause, Play, ArrowClockwise } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { useEntities } from '@/hooks/use-entities'
@@ -33,6 +33,7 @@ interface DownloadResult {
   currentFile?: string
   filesDownloaded?: number
   totalFiles?: number
+  retryCount?: number
 }
 
 export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
@@ -45,7 +46,11 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
   const [currentEntityIndex, setCurrentEntityIndex] = useState(0)
   const [downloadResults, setDownloadResults] = useState<DownloadResult[]>([])
   const [concurrentDownloads, setConcurrentDownloads] = useState(5)
+  const [isPaused, setIsPaused] = useState(false)
+  const [startTime, setStartTime] = useState<number | null>(null)
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const pauseRef = useRef(false)
 
   const { entities, loading: entitiesLoading } = useEntities()
 
@@ -189,6 +194,58 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
     return entity
   }
 
+  const formatTimeRemaining = (seconds: number): string => {
+    if (!seconds || seconds < 1) return 'Calculating...'
+    if (seconds < 60) return `${Math.ceil(seconds)}s`
+    const minutes = Math.floor(seconds / 60)
+    const secs = Math.ceil(seconds % 60)
+    if (minutes < 60) return `${minutes}m ${secs}s`
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    return `${hours}h ${mins}m`
+  }
+
+  const handlePauseResume = () => {
+    if (isPaused) {
+      setIsPaused(false)
+      pauseRef.current = false
+      toast.info('Resuming downloads...')
+    } else {
+      setIsPaused(true)
+      pauseRef.current = true
+      toast.info('Download paused')
+    }
+  }
+
+  const handleCancelDownload = () => {
+    pauseRef.current = true
+    setIsPaused(false)
+    setIsDownloading(false)
+    setDownloadProgress(0)
+    setStartTime(null)
+    setEstimatedTimeRemaining(null)
+    toast.info('Download cancelled')
+  }
+
+  const handleRetryFailed = async () => {
+    const failedDownloads = downloadResults.filter(r => r.status === 'error')
+    
+    if (failedDownloads.length === 0) {
+      toast.info('No failed downloads to retry')
+      return
+    }
+
+    const failedIds = failedDownloads.map(r => r.entityId)
+    toast.info(`Retrying ${failedIds.length} failed download(s)...`)
+    
+    setEntityIds(failedIds)
+    setDownloadResults([])
+    
+    setTimeout(() => {
+      handleBulkDownload()
+    }, 500)
+  }
+
   const handleBulkDownload = async () => {
     if (entityIds.length === 0) {
       toast.error('Please load entity IDs first')
@@ -202,8 +259,12 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
 
     try {
       setIsDownloading(true)
+      setIsPaused(false)
+      pauseRef.current = false
       setDownloadProgress(0)
       setCurrentEntityIndex(0)
+      setStartTime(Date.now())
+      setEstimatedTimeRemaining(null)
       
       const results: DownloadResult[] = entityIds.map(id => ({
         entityId: id,
@@ -216,8 +277,25 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
       let errorCount = 0
 
       for (let i = 0; i < entityIds.length; i++) {
+        while (pauseRef.current) {
+          await new Promise(resolve => setTimeout(resolve, 100))
+        }
+
+        if (!isDownloading) {
+          break
+        }
+
         const entityId = entityIds[i]
         setCurrentEntityIndex(i + 1)
+        
+        const elapsedTime = (Date.now() - (startTime || Date.now())) / 1000
+        const entitiesProcessed = i
+        if (entitiesProcessed > 0) {
+          const averageTimePerEntity = elapsedTime / entitiesProcessed
+          const remainingEntities = entityIds.length - i
+          const estimatedSeconds = remainingEntities * averageTimePerEntity
+          setEstimatedTimeRemaining(estimatedSeconds)
+        }
         
         try {
           console.log(`📥 Processing entity ${i + 1}/${entityIds.length}: ${entity} ID ${entityId}`)
@@ -242,6 +320,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             }
             errorCount++
             setDownloadResults([...results])
+            setDownloadProgress(Math.round(((i + 1) / entityIds.length) * 100))
             continue
           }
 
@@ -281,6 +360,14 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
           }
 
           for (let fileIndex = 0; fileIndex < filesArray.length; fileIndex += concurrentDownloads) {
+            while (pauseRef.current) {
+              await new Promise(resolve => setTimeout(resolve, 100))
+            }
+
+            if (!isDownloading) {
+              break
+            }
+
             const batch = filesArray.slice(fileIndex, fileIndex + concurrentDownloads)
             const batchPromises = batch.map((file, batchIdx) => 
               downloadFile(file, fileIndex + batchIdx)
@@ -298,6 +385,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             }
             errorCount++
             setDownloadResults([...results])
+            setDownloadProgress(Math.round(((i + 1) / entityIds.length) * 100))
             continue
           }
 
@@ -385,8 +473,14 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
       onLog('Bulk Download', 'error', errorMessage, { error: errorMessage })
     } finally {
       setIsDownloading(false)
-      setDownloadProgress(0)
-      setCurrentEntityIndex(0)
+      setIsPaused(false)
+      pauseRef.current = false
+      setTimeout(() => {
+        setDownloadProgress(0)
+        setCurrentEntityIndex(0)
+        setStartTime(null)
+        setEstimatedTimeRemaining(null)
+      }, 3000)
     }
   }
 
@@ -588,7 +682,9 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
           <div className="space-y-3 p-4 border rounded-lg bg-accent/5">
             <div className="flex items-center justify-between">
               <Label>Download Progress</Label>
-              <Badge>{currentEntityIndex} of {entityIds.length} entities</Badge>
+              <Badge variant={isPaused ? 'secondary' : 'default'}>
+                {isPaused ? 'Paused' : `${currentEntityIndex} of ${entityIds.length} entities`}
+              </Badge>
             </div>
             <Progress value={downloadProgress} className="h-3" />
             <div className="grid grid-cols-2 gap-4 text-sm">
@@ -602,13 +698,67 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
                   {entityIds.length - currentEntityIndex}
                 </p>
               </div>
+              <div>
+                <p className="text-muted-foreground">Time Remaining</p>
+                <p className="font-semibold text-accent">
+                  {estimatedTimeRemaining ? formatTimeRemaining(estimatedTimeRemaining) : 'Calculating...'}
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Status</p>
+                <p className="font-semibold text-accent">
+                  {isPaused ? 'Paused' : 'Downloading...'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handlePauseResume}
+                className="flex-1"
+              >
+                {isPaused ? (
+                  <>
+                    <Play size={16} weight="fill" />
+                    Resume Download
+                  </>
+                ) : (
+                  <>
+                    <Pause size={16} weight="fill" />
+                    Pause Download
+                  </>
+                )}
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={handleCancelDownload}
+              >
+                <Trash size={16} />
+                Cancel
+              </Button>
             </div>
           </div>
         )}
 
         {downloadResults.length > 0 && (
           <div className="space-y-2">
-            <Label>Download Results</Label>
+            <div className="flex items-center justify-between">
+              <Label>Download Results</Label>
+              {downloadResults.some(r => r.status === 'error') && !isDownloading && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleRetryFailed}
+                  className="gap-2"
+                >
+                  <ArrowClockwise size={16} />
+                  Retry Failed Downloads
+                </Button>
+              )}
+            </div>
             <ScrollArea className="h-[300px] border rounded-md">
               <Table>
                 <TableHeader>
