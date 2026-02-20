@@ -808,29 +808,48 @@ export function FileManager({ onLog }: FileManagerProps) {
       let failCount = 0
       const errors: string[] = []
 
-      toast.info(`Downloading and zipping ${pdfFiles.length} PDF file(s)...`, {
+      toast.info(`Downloading ${pdfFiles.length} PDF file(s) concurrently...`, {
         duration: 5000
       })
 
-      for (let i = 0; i < pdfFiles.length; i++) {
-        const file = pdfFiles[i]
-        
+      const CONCURRENT_LIMIT = 5
+      let completedCount = 0
+
+      const downloadFile = async (file: EntityFile, index: number) => {
         try {
-          console.log(`📥 Downloading file ${i + 1}/${pdfFiles.length}:`, file.name)
+          console.log(`📥 Downloading file ${index + 1}/${pdfFiles.length}:`, file.name)
           const blob = await bullhornAPI.downloadFile(downloadEntity, parseInt(downloadEntityId), file.id)
           
           const newFileName = `${downloadEntityId}-${entityName}-${file.name}`
           zip.file(newFileName, blob)
           successCount++
           
-          const progress = Math.round(((i + 1) / pdfFiles.length) * 100)
+          completedCount++
+          const progress = Math.round((completedCount / pdfFiles.length) * 100)
           setBatchDownloadProgress(progress)
+          
+          return { success: true, fileName: file.name }
         } catch (error) {
           console.error(`❌ Failed to download ${file.name}:`, error)
           failCount++
           const errorMessage = error instanceof Error ? error.message : 'Unknown error'
           errors.push(`${file.name}: ${errorMessage}`)
+          
+          completedCount++
+          const progress = Math.round((completedCount / pdfFiles.length) * 100)
+          setBatchDownloadProgress(progress)
+          
+          return { success: false, fileName: file.name, error: errorMessage }
         }
+      }
+
+      for (let i = 0; i < pdfFiles.length; i += CONCURRENT_LIMIT) {
+        const batch = pdfFiles.slice(i, i + CONCURRENT_LIMIT)
+        const batchPromises = batch.map((file, batchIndex) => 
+          downloadFile(file, i + batchIndex)
+        )
+        
+        await Promise.all(batchPromises)
       }
 
       if (successCount === 0) {

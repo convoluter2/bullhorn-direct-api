@@ -248,10 +248,9 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
           const zip = new JSZip()
           let downloadedCount = 0
           const totalFiles = filesArray.length
+          const CONCURRENT_LIMIT = 5
 
-          for (let fileIndex = 0; fileIndex < filesArray.length; fileIndex++) {
-            const file = filesArray[fileIndex]
-            
+          const downloadFile = async (file: any, fileIndex: number) => {
             results[i] = {
               ...results[i],
               currentFile: file.name,
@@ -272,9 +271,21 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
                 totalFiles: totalFiles
               }
               setDownloadResults([...results])
+              
+              return { success: true, fileName: file.name }
             } catch (fileError) {
               console.error(`❌ Failed to download file ${file.id} (${file.name}):`, fileError)
+              return { success: false, fileName: file.name, error: fileError }
             }
+          }
+
+          for (let fileIndex = 0; fileIndex < filesArray.length; fileIndex += CONCURRENT_LIMIT) {
+            const batch = filesArray.slice(fileIndex, fileIndex + CONCURRENT_LIMIT)
+            const batchPromises = batch.map((file, batchIdx) => 
+              downloadFile(file, fileIndex + batchIdx)
+            )
+            
+            await Promise.all(batchPromises)
           }
 
           if (downloadedCount === 0) {
