@@ -362,8 +362,6 @@ export function validateImportConfiguration(config: {
     }
   }
 
-  return {
-    isValid: errors.length === 0,
     errors,
     warnings
   }
