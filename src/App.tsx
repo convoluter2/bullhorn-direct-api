@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, Flask, BookOpen, FolderOpen } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -19,17 +19,6 @@ import { ConnectionManager, type SavedConnection, type SecureCredentials } from 
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { CookieSessionClearer } from '@/components/CookieSessionClearer'
 import { DataStorageClearer } from '@/components/DataStorageClearer'
-import { RateLimitStatus } from '@/components/RateLimitStatus'
-import { RateLimitAnalytics } from '@/components/RateLimitAnalytics'
-import { OperatorTestSuite } from '@/components/OperatorTestSuite'
-import { OAuthTestSuite } from '@/components/OAuthTestSuite'
-import { OAuthDiagnostics } from '@/components/OAuthDiagnostics'
-import { ConsoleMonitor } from '@/components/ConsoleMonitor'
-import { ToOneFieldTest } from '@/components/ToOneFieldTest'
-import { ComprehensiveFieldTest } from '@/components/ComprehensiveFieldTest'
-import { PauseResumeTests } from '@/components/PauseResumeTests'
-import { SpeedTest } from '@/components/SpeedTest'
-import { DiagnosticPanel } from '@/components/DiagnosticPanel'
 import { EntityDocumentation } from '@/components/documentation/EntityDocumentation'
 import { APIBandwidthTracker } from '@/components/APIBandwidthTracker'
 import { bullhornAPI } from '@/lib/bullhorn-api'
@@ -45,7 +34,6 @@ function App() {
   const [connectionManagerOpen, setConnectionManagerOpen] = useState(false)
   const [logs, setLogs] = useKV<AuditLog[]>('audit-logs', [])
   const [activeTab, setActiveTab] = useState('queryblast')
-  const [testingSubTab, setTestingSubTab] = useState('operators')
   const [savedConnections, setSavedConnections] = useState<SavedConnection[]>([])
   const [isOAuthCallback, setIsOAuthCallback] = useState(false)
   const [currentConnectionId, setCurrentConnectionId] = useKV<string | null>('current-connection-id', null)
@@ -550,7 +538,7 @@ function App() {
               <APIBandwidthTracker />
             </div>
             
-            <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -578,10 +566,6 @@ function App() {
               <TabsTrigger value="documentation" className="gap-2">
                 <BookOpen size={18} />
                 <span className="hidden sm:inline">Documentation</span>
-              </TabsTrigger>
-              <TabsTrigger value="testing-tools" className="gap-2">
-                <Flask size={18} />
-                <span className="hidden sm:inline">Testing Tools</span>
               </TabsTrigger>
               <TabsTrigger value="logs" className="gap-2">
                 <ClockCounterClockwise size={18} />
@@ -620,55 +604,6 @@ function App() {
 
             <TabsContent value="documentation" className="space-y-6">
               <EntityDocumentation session={session} />
-            </TabsContent>
-
-            <TabsContent value="testing-tools" className="space-y-6">
-              <Tabs value={testingSubTab} onValueChange={setTestingSubTab} className="space-y-6">
-                <TabsList className="grid w-full grid-cols-8 lg:w-auto lg:inline-grid">
-                  <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>
-                  <TabsTrigger value="operators">Operators</TabsTrigger>
-                  <TabsTrigger value="toone-test">To-One Test</TabsTrigger>
-                  <TabsTrigger value="field-tests">Field Tests</TabsTrigger>
-                  <TabsTrigger value="oauth-test">OAuth Test</TabsTrigger>
-                  <TabsTrigger value="pause-resume">Pause/Resume</TabsTrigger>
-                  <TabsTrigger value="speed-test">Speed Test</TabsTrigger>
-                  <TabsTrigger value="rate-limits">Rate Limits</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="diagnostics">
-                  <DiagnosticPanel />
-                </TabsContent>
-
-                <TabsContent value="operators">
-                  <OperatorTestSuite />
-                </TabsContent>
-
-                <TabsContent value="toone-test">
-                  <ToOneFieldTest />
-                </TabsContent>
-
-                <TabsContent value="field-tests">
-                  <ComprehensiveFieldTest />
-                </TabsContent>
-
-                <TabsContent value="oauth-test">
-                  <ConsoleMonitor />
-                  <OAuthDiagnostics />
-                  <OAuthTestSuite />
-                </TabsContent>
-
-                <TabsContent value="pause-resume">
-                  <PauseResumeTests />
-                </TabsContent>
-
-                <TabsContent value="speed-test">
-                  <SpeedTest />
-                </TabsContent>
-
-                <TabsContent value="rate-limits">
-                  <RateLimitAnalytics />
-                </TabsContent>
-              </Tabs>
             </TabsContent>
 
             <TabsContent value="logs" className="space-y-6">
