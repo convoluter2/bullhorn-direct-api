@@ -29,6 +29,9 @@ interface DownloadResult {
   fileCount?: number
   zipSize?: number
   fileName?: string
+  currentFile?: string
+  filesDownloaded?: number
+  totalFiles?: number
 }
 
 export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
@@ -244,13 +247,31 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
           
           const zip = new JSZip()
           let downloadedCount = 0
+          const totalFiles = filesArray.length
 
-          for (const file of filesArray) {
+          for (let fileIndex = 0; fileIndex < filesArray.length; fileIndex++) {
+            const file = filesArray[fileIndex]
+            
+            results[i] = {
+              ...results[i],
+              currentFile: file.name,
+              filesDownloaded: downloadedCount,
+              totalFiles: totalFiles
+            }
+            setDownloadResults([...results])
+            
             try {
               const blob = await bullhornAPI.downloadFile(entity, parseInt(entityId), file.id)
-              const newFileName = `${file.name}`
+              const newFileName = `${entityId}-${file.name}`
               zip.file(newFileName, blob)
               downloadedCount++
+              
+              results[i] = {
+                ...results[i],
+                filesDownloaded: downloadedCount,
+                totalFiles: totalFiles
+              }
+              setDownloadResults([...results])
             } catch (fileError) {
               console.error(`❌ Failed to download file ${file.id} (${file.name}):`, fileError)
             }
@@ -539,7 +560,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
                   <TableRow>
                     <TableHead>Entity ID</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Files</TableHead>
+                    <TableHead>Progress</TableHead>
                     <TableHead>Message</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -572,15 +593,28 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {result.fileCount !== undefined ? (
+                        {result.status === 'pending' && result.totalFiles !== undefined ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-xs">
+                                {result.filesDownloaded || 0}/{result.totalFiles}
+                              </Badge>
+                            </div>
+                            {result.currentFile && (
+                              <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                {result.currentFile}
+                              </p>
+                            )}
+                          </div>
+                        ) : result.fileCount !== undefined ? (
                           <Badge variant="secondary">{result.fileCount} files</Badge>
                         ) : (
                           '-'
                         )}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="text-sm text-muted-foreground max-w-[250px]">
                         {result.fileName ? (
-                          <code className="text-xs bg-muted px-1 py-0.5 rounded">{result.fileName}</code>
+                          <code className="text-xs bg-muted px-1 py-0.5 rounded block truncate">{result.fileName}</code>
                         ) : (
                           result.message || '-'
                         )}
@@ -620,15 +654,20 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
           <Info className="h-4 w-4" />
           <AlertTitle>File Naming Convention</AlertTitle>
           <AlertDescription className="text-sm space-y-2">
-            <p>Each entity will have its files downloaded as a separate ZIP file with the name format:</p>
-            <code className="block bg-muted px-3 py-2 rounded text-xs mt-2">
+            <p><strong>ZIP file names:</strong></p>
+            <code className="block bg-muted px-3 py-2 rounded text-xs mt-1 mb-3">
               [EntityID]-[EntityType]-[EntityName].zip
             </code>
-            <p className="mt-2 text-xs">
+            <p className="text-xs">
               Example: <code className="bg-muted px-1 py-0.5 rounded">19641937-Candidate-John_Doe.zip</code>
             </p>
-            <p className="mt-2 text-xs">
-              Files inside each ZIP maintain their original names from Bullhorn.
+            
+            <p className="mt-3"><strong>Files inside each ZIP:</strong></p>
+            <code className="block bg-muted px-3 py-2 rounded text-xs mt-1 mb-3">
+              [EntityID]-[OriginalFileName]
+            </code>
+            <p className="text-xs">
+              Example: <code className="bg-muted px-1 py-0.5 rounded">19641937-Resume.pdf</code>
             </p>
           </AlertDescription>
         </Alert>
