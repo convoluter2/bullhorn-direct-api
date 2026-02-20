@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Slider } from '@/components/ui/slider'
 import { FileZip, FileCsv, Download, CheckCircle, XCircle, Info, Upload, Trash, Faders } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
@@ -43,6 +44,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
   const [downloadProgress, setDownloadProgress] = useState(0)
   const [currentEntityIndex, setCurrentEntityIndex] = useState(0)
   const [downloadResults, setDownloadResults] = useState<DownloadResult[]>([])
+  const [concurrentDownloads, setConcurrentDownloads] = useState(5)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { entities, loading: entitiesLoading } = useEntities()
@@ -248,7 +250,6 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
           const zip = new JSZip()
           let downloadedCount = 0
           const totalFiles = filesArray.length
-          const CONCURRENT_LIMIT = 5
 
           const downloadFile = async (file: any, fileIndex: number) => {
             results[i] = {
@@ -279,8 +280,8 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             }
           }
 
-          for (let fileIndex = 0; fileIndex < filesArray.length; fileIndex += CONCURRENT_LIMIT) {
-            const batch = filesArray.slice(fileIndex, fileIndex + CONCURRENT_LIMIT)
+          for (let fileIndex = 0; fileIndex < filesArray.length; fileIndex += concurrentDownloads) {
+            const batch = filesArray.slice(fileIndex, fileIndex + concurrentDownloads)
             const batchPromises = batch.map((file, batchIdx) => 
               downloadFile(file, fileIndex + batchIdx)
             )
@@ -523,21 +524,64 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
         </div>
 
         {entityIds.length > 0 && (
-          <div className="space-y-3 p-4 border rounded-lg bg-blue-500/5 border-blue-500/20">
-            <div className="flex items-center justify-between">
-              <Label className="text-blue-600 font-semibold">Ready to Download</Label>
-              <Badge className="bg-blue-600">{entityIds.length} entities</Badge>
-            </div>
-            <ScrollArea className="h-[120px] border rounded-md bg-background p-3">
-              <div className="flex flex-wrap gap-2">
-                {entityIds.map((id, index) => (
-                  <Badge key={index} variant="outline" className="font-mono">
-                    {id}
-                  </Badge>
-                ))}
+          <>
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+              <div className="flex items-center gap-2">
+                <Faders size={20} className="text-accent" weight="duotone" />
+                <Label className="text-base font-semibold">Concurrency Settings</Label>
               </div>
-            </ScrollArea>
-          </div>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="concurrent-downloads" className="text-sm">
+                    Simultaneous Downloads
+                  </Label>
+                  <Badge variant="outline" className="font-mono text-sm">
+                    {concurrentDownloads} {concurrentDownloads === 1 ? 'file' : 'files'} at once
+                  </Badge>
+                </div>
+                
+                <Slider
+                  id="concurrent-downloads"
+                  min={1}
+                  max={10}
+                  step={1}
+                  value={[concurrentDownloads]}
+                  onValueChange={(values) => setConcurrentDownloads(values[0])}
+                  disabled={isDownloading}
+                  className="cursor-pointer"
+                />
+                
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Slower (1)</span>
+                  <span>Faster (10)</span>
+                </div>
+                
+                <Alert className="bg-blue-500/5 border-blue-500/20">
+                  <Info className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-xs text-blue-600">
+                    Higher concurrency = faster downloads but may trigger rate limits. Start with 5 and adjust as needed.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            </div>
+
+            <div className="space-y-3 p-4 border rounded-lg bg-blue-500/5 border-blue-500/20">
+              <div className="flex items-center justify-between">
+                <Label className="text-blue-600 font-semibold">Ready to Download</Label>
+                <Badge className="bg-blue-600">{entityIds.length} entities</Badge>
+              </div>
+              <ScrollArea className="h-[120px] border rounded-md bg-background p-3">
+                <div className="flex flex-wrap gap-2">
+                  {entityIds.map((id, index) => (
+                    <Badge key={index} variant="outline" className="font-mono">
+                      {id}
+                    </Badge>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          </>
         )}
 
         {isDownloading && (
