@@ -10,7 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Slider } from '@/components/ui/slider'
-import { FileZip, Upload, CheckCircle, XCircle, Info, Trash, Faders, Pause, Play, FolderOpen } from '@phosphor-icons/react'
+import { FileZip, Upload, CheckCircle, XCircle, Info, Trash, Faders, Pause, Play, FolderOpen, ArrowClockwise } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { useEntities } from '@/hooks/use-entities'
@@ -28,6 +28,8 @@ interface UploadResult {
   fileCount?: number
   uploadedCount?: number
   currentFile?: string
+  retryCount?: number
+  error?: any
 }
 
 interface ParsedZipFile {
@@ -308,7 +310,9 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
           results[i] = {
             ...results[i],
             status: 'error',
-            message: errorMessage
+            message: errorMessage,
+            error: error,
+            retryCount: results[i].retryCount || 0
           }
           errorCount++
 
@@ -353,6 +357,176 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
         setUploadProgress(0)
         setCurrentFileIndex(0)
       }, 3000)
+    }
+  }
+
+  const handleRetryUpload = async (index: number) => {
+    if (!entity) {
+      toast.error('Entity type not selected')
+      return
+    }
+
+    const zipFile = zipFiles[index]
+    const currentResult = uploadResults[index]
+    
+    if (!zipFile || !currentResult) {
+      toast.error('Invalid upload entry')
+      return
+    }
+
+    const retryCount = (currentResult.retryCount || 0) + 1
+    
+    toast.info(`Retrying upload for ${zipFile.fileName} (Attempt ${retryCount})...`)
+    
+    const results = [...uploadResults]
+    results[index] = {
+      ...results[index],
+      status: 'uploading',
+      message: `Retrying (Attempt ${retryCount})...`,
+      retryCount
+    }
+    setUploadResults(results)
+
+    try {
+      console.log(`🔄 Retrying upload ${index + 1}: ${zipFile.fileName} for ${entity} ID ${zipFile.entityId} (Attempt ${retryCount})`)
+      
+      const zip = new JSZip()
+      const zipContent = await zip.loadAsync(zipFile.file)
+      
+      const filesToUpload: Array<{ name: string; blob: Blob }> = []
+      
+      for (const [fileName, zipEntry] of Object.entries(zipContent.files)) {
+        if (!zipEntry.dir) {
+          const blob = await zipEntry.async('blob')
+          filesToUpload.push({ name: fileName, blob })
+        }
+      }
+
+      if (filesToUpload.length === 0) {
+        results[index] = {
+          ...results[index],
+          status: 'error',
+          message: 'No files found in ZIP',
+          fileCount: 0
+        }
+        setUploadResults(results)
+        toast.error('No files found in ZIP')
+        return
+      }
+
+      results[index] = {
+        ...results[index],
+        fileCount: filesToUpload.length,
+        uploadedCount: 0,
+        message: `Uploading ${filesToUpload.length} file(s)...`
+      }
+      setUploadResults(results)
+
+      let uploadedCount = 0
+
+      const uploadFile = async (fileData: { name: string; blob: Blob }) => {
+        results[index] = {
+          ...results[index],
+          currentFile: fileData.name,
+          uploadedCount: uploadedCount,
+          message: `Uploading ${fileData.name}...`
+        }
+        setUploadResults([...results])
+        
+        try {
+          const file = new File([fileData.blob], fileData.name, { type: fileData.blob.type })
+          await bullhornAPI.uploadFile(entity, parseInt(zipFile.entityId), file)
+          uploadedCount++
+          results[index] = {
+            ...results[index],
+            uploadedCount: uploadedCount
+          }
+          setUploadResults([...results])
+          return { success: true, fileName: fileData.name }
+        } catch (fileError) {
+          console.error(`❌ Failed to upload file ${fileData.name}:`, fileError)
+          return { success: false, fileName: fileData.name, error: fileError }
+        }
+      }
+
+      for (let fileIndex = 0; fileIndex < filesToUpload.length; fileIndex += concurrentUploads) {
+        const batch = filesToUpload.slice(fileIndex, fileIndex + concurrentUploads)
+        const batchPromises = batch.map(fileData => uploadFile(fileData))
+        await Promise.all(batchPromises)
+      }
+
+      if (uploadedCount === 0) {
+        results[index] = {
+          ...results[index],
+          status: 'error',
+          message: 'Failed to upload all files',
+          fileCount: filesToUpload.length,
+          uploadedCount: 0
+        }
+        setUploadResults(results)
+        toast.error(`Retry failed for ${zipFile.fileName}`)
+        onLog('Bulk Upload Retry', 'error', `Failed to upload files from ${zipFile.fileName} on retry attempt ${retryCount}`, {
+          entity,
+          entityId: zipFile.entityId,
+          fileName: zipFile.fileName,
+          retryCount
+        })
+      } else {
+        results[index] = {
+          ...results[index],
+          status: 'success',
+          message: `Uploaded ${uploadedCount} file(s)`,
+          fileCount: filesToUpload.length,
+          uploadedCount: uploadedCount
+        }
+        setUploadResults(results)
+        toast.success(`Successfully uploaded ${uploadedCount} file(s) from ${zipFile.fileName}`)
+        onLog('Bulk Upload Retry', 'success', `Uploaded ${uploadedCount} file(s) from ${zipFile.fileName} to ${entity} ID ${zipFile.entityId} on retry attempt ${retryCount}`, {
+          entity,
+          entityId: zipFile.entityId,
+          fileName: zipFile.fileName,
+          fileCount: uploadedCount,
+          retryCount
+        })
+      }
+
+    } catch (error) {
+      console.error(`❌ Retry failed for ${zipFile.fileName}:`, error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      results[index] = {
+        ...results[index],
+        status: 'error',
+        message: errorMessage,
+        error: error
+      }
+      setUploadResults(results)
+      toast.error(`Retry failed: ${errorMessage}`)
+      
+      onLog('Bulk Upload Retry', 'error', `Failed to upload files from ${zipFile.fileName} on retry attempt ${retryCount}`, {
+        entity,
+        entityId: zipFile.entityId,
+        fileName: zipFile.fileName,
+        error: errorMessage,
+        retryCount
+      })
+    }
+  }
+
+  const handleRetryAllFailed = async () => {
+    const failedIndices = uploadResults
+      .map((result, index) => ({ result, index }))
+      .filter(({ result }) => result.status === 'error')
+      .map(({ index }) => index)
+
+    if (failedIndices.length === 0) {
+      toast.info('No failed uploads to retry')
+      return
+    }
+
+    toast.info(`Retrying ${failedIndices.length} failed upload(s)...`)
+
+    for (const index of failedIndices) {
+      await handleRetryUpload(index)
     }
   }
 
@@ -566,7 +740,20 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
 
         {uploadResults.length > 0 && (
           <div className="space-y-2">
-            <Label>Upload Results</Label>
+            <div className="flex items-center justify-between">
+              <Label>Upload Results</Label>
+              {uploadResults.some(r => r.status === 'error') && !isUploading && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleRetryAllFailed}
+                  className="gap-1.5"
+                >
+                  <ArrowClockwise size={16} weight="bold" />
+                  Retry All Failed ({uploadResults.filter(r => r.status === 'error').length})
+                </Button>
+              )}
+            </div>
             <ScrollArea className="h-[300px] border rounded-md">
               <Table>
                 <TableHeader>
@@ -576,6 +763,7 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
                     <TableHead>Status</TableHead>
                     <TableHead>Progress</TableHead>
                     <TableHead>Message</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -633,6 +821,24 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
                           <span className="text-xs truncate block">{result.currentFile}</span>
                         ) : (
                           result.message || '-'
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {result.status === 'error' && !isUploading && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRetryUpload(index)}
+                            className="gap-1.5 h-8"
+                          >
+                            <ArrowClockwise size={14} weight="bold" />
+                            Retry
+                            {result.retryCount && result.retryCount > 0 && (
+                              <Badge variant="outline" className="ml-1 h-5 px-1 text-xs">
+                                {result.retryCount}
+                              </Badge>
+                            )}
+                          </Button>
                         )}
                       </TableCell>
                     </TableRow>
