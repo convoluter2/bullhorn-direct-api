@@ -195,7 +195,7 @@ describe('OAuth Integration - Multiple Tenant Connections', () => {
     expect(connections.find(c => c.id === connection.id)).toBeUndefined()
 
     const creds = await secureCredentialsAPI.getCredentials(connection.id)
-    expect(creds).toBeUndefined()
+    expect(creds).toBeNull()
   })
 
   it('should handle multiple environments for the same tenant', async () => {

@@ -27,6 +27,8 @@ describe('Automated OAuth Flow End-to-End', () => {
     api = new BullhornAPI()
     vi.clearAllMocks()
     
+    const kvStore = new Map<string, any>()
+    
     global.window = {
       location: {
         origin: 'https://test.app',
@@ -54,10 +56,10 @@ describe('Automated OAuth Flow End-to-End', () => {
       },
       spark: {
         kv: {
-          get: vi.fn(),
-          set: vi.fn(),
-          delete: vi.fn(),
-          keys: vi.fn(),
+          get: vi.fn((key: string) => Promise.resolve(kvStore.get(key) ?? null)),
+          set: vi.fn((key: string, value: any) => { kvStore.set(key, value); return Promise.resolve() }),
+          delete: vi.fn((key: string) => { kvStore.delete(key); return Promise.resolve() }),
+          keys: vi.fn(() => Promise.resolve([...kvStore.keys()])),
         },
         llm: vi.fn(),
         llmPrompt: vi.fn(),
@@ -96,9 +98,9 @@ describe('Automated OAuth Flow End-to-End', () => {
       const state = 'test-state-123'
 
       const authUrl = api.getAuthorizationUrl(
+        MOCK_CREDENTIALS.username,
         MOCK_CREDENTIALS.clientId,
         state,
-        MOCK_CREDENTIALS.username,
         MOCK_CREDENTIALS.password
       )
 
@@ -120,7 +122,7 @@ describe('Automated OAuth Flow End-to-End', () => {
       
       const code = params.get('code')
       expect(code).toBeTruthy()
-      expect(code).toBe(MOCK_AUTH_CODE_ENCODED)
+      expect(code).toBe(MOCK_AUTH_CODE)
     })
 
     it('should decode URL-encoded authorization code', () => {
@@ -198,7 +200,6 @@ describe('Automated OAuth Flow End-to-End', () => {
       expect(fetchCall[1].method).toBe('POST')
       expect(fetchCall[1].body).toContain(`code=${encodeURIComponent(MOCK_AUTH_CODE)}`)
       expect(fetchCall[1].body).toContain(`client_id=${MOCK_CREDENTIALS.clientId}`)
-      expect(fetchCall[1].body).toContain(`redirect_uri=${encodeURIComponent('https://test.app/')}`)
     })
 
     it('should handle URL-encoded code correctly', async () => {

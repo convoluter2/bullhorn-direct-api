@@ -284,7 +284,11 @@ export class BullhornAPI {
         errorObj = { error: 'unknown', error_description: errorText }
       }
       
-      if (errorObj.error === 'invalid_grant' && errorObj.error_description?.includes('expired')) {
+      if (errorObj.error === 'invalid_grant' && (
+        errorObj.error_description === 'Authorization code expired.' ||
+        errorObj.error_description?.toLowerCase().startsWith('the authorization code has expired') ||
+        errorObj.error_description?.toLowerCase().startsWith('authorization code expired')
+      )) {
         throw new Error(`Authorization code expired or already used. Please try authenticating again. The code must be exchanged within 60 seconds of generation.`)
       }
       
@@ -1805,27 +1809,31 @@ export class BullhornAPI {
     if (!data.fields || data.fields.length === 0) {
       console.warn(`No fields returned for ${entity}, trying alternative approach...`)
       
-      const altParams = new URLSearchParams({
-        BhRestToken: this.session.BhRestToken
-      })
-      
-      const altResponse = await this.throttledFetch(
-        `${this.session.restUrl}meta/${encodedEntity}?${altParams.toString()}`,
-        undefined,
-        0
-      )
-      
-      if (altResponse.ok) {
-        const altData = await altResponse.json()
-        console.log(`Alternative metadata response for ${entity}:`, {
-          entity: altData.entity,
-          label: altData.label,
-          fieldCount: altData.fields ? altData.fields.length : 0
+      try {
+        const altParams = new URLSearchParams({
+          BhRestToken: this.session.BhRestToken
         })
         
-        if (altData.fields && altData.fields.length > 0) {
-          return altData
+        const altResponse = await this.throttledFetch(
+          `${this.session.restUrl}meta/${encodedEntity}?${altParams.toString()}`,
+          undefined,
+          0
+        )
+        
+        if (altResponse && altResponse.ok) {
+          const altData = await altResponse.json()
+          console.log(`Alternative metadata response for ${entity}:`, {
+            entity: altData.entity,
+            label: altData.label,
+            fieldCount: altData.fields ? altData.fields.length : 0
+          })
+          
+          if (altData.fields && altData.fields.length > 0) {
+            return altData
+          }
         }
+      } catch (altError) {
+        console.warn(`Alternative metadata fetch failed for ${entity}:`, altError)
       }
     }
     

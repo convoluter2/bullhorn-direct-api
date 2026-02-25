@@ -31,6 +31,7 @@ export class BullhornRateLimiter {
   }
 
   parseRateLimitHeaders(headers: Headers): void {
+    if (!headers) return
     const limitHeader = headers.get('X-RateLimit-Limit') || headers.get('X-Rate-Limit-Limit')
     const remainingHeader = headers.get('X-RateLimit-Remaining') || headers.get('X-Rate-Limit-Remaining')
     const resetHeader = headers.get('X-RateLimit-Reset') || headers.get('X-Rate-Limit-Reset')
@@ -185,12 +186,16 @@ export class BullhornRateLimiter {
     try {
       const response = await requestFn()
 
+      if (!response) {
+        throw new Error('No response received from server')
+      }
+
       this.parseRateLimitHeaders(response.headers)
 
       if (response.status === 429) {
         console.error('🚫 Received 429 Too Many Requests!')
         
-        const retryAfter = response.headers.get('Retry-After')
+        const retryAfter = response.headers?.get('Retry-After')
         const retryDelay = retryAfter 
           ? parseInt(retryAfter, 10) * 1000 
           : 60000
