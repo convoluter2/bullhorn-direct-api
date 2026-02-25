@@ -31,6 +31,7 @@ export class BullhornRateLimiter {
   }
 
   parseRateLimitHeaders(headers: Headers): void {
+    if (!headers) return
     const limitHeader = headers.get('X-RateLimit-Limit') || headers.get('X-Rate-Limit-Limit')
     const remainingHeader = headers.get('X-RateLimit-Remaining') || headers.get('X-Rate-Limit-Remaining')
     const resetHeader = headers.get('X-RateLimit-Reset') || headers.get('X-Rate-Limit-Reset')
