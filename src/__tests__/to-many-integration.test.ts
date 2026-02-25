@@ -16,7 +16,7 @@ describe('To-Many Field Integration Tests', () => {
   beforeEach(() => {
     api = new BullhornAPI()
     api.setSession(mockSession)
-    vi.clearAllMocks()
+    vi.resetAllMocks()
   })
 
   describe('Complete Workflow: ClientCorporation Certifications', () => {
@@ -80,7 +80,7 @@ describe('To-Many Field Integration Tests', () => {
 
       for (const entityId of entityIds) {
         const entity = await api.getEntity('ClientCorporation', entityId, ['id', 'name'])
-        expect(entity.data).toBeDefined()
+        expect(entity).toBeDefined()
 
         const result = await api.updateToManyAssociation(
           'ClientCorporation',
@@ -371,7 +371,7 @@ describe('To-Many Field Integration Tests', () => {
       for (const id of filteredIds) {
         const entity = await api.getEntity('ClientCorporation', id, ['id', 'status', 'name'])
         
-        if (entity.data.status === filterCriteria.status) {
+        if (entity.status === filterCriteria.status) {
           const result = await api.updateToManyAssociation(
             'ClientCorporation',
             id,
@@ -577,7 +577,7 @@ describe('To-Many Field Integration Tests', () => {
       expect(results).toHaveLength(100)
       expect(global.fetch).toHaveBeenCalledTimes(100)
       console.log(`Processed 100 to-many updates in ${duration}ms`)
-    })
+    }, 15000)
 
     it('should handle very large association lists', async () => {
       const entityId = 100

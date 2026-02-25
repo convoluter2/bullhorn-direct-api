@@ -302,7 +302,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
         try {
           const entityData = await bullhornAPI.getEntity(effectiveEntity, numericId, fieldsToFetch)
           
-          if (!entityData || !entityData.data) {
+          if (!entityData) {
             errors.push(`Entity not found: ${id}`)
             failedCount++
             if (dryRun) {
@@ -322,7 +322,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
           
           if (validFilters.length > 0) {
             passesFilters = validFilters.every(filter => {
-              const fieldValue = entityData.data[filter.field]
+              const fieldValue = entityData[filter.field]
               const filterValue = filter.value
 
               switch (filter.operator) {
@@ -351,13 +351,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
                   id,
                   willUpdate: false,
                   reason: 'Does not match update filters',
-                  currentValues: entityData.data,
-                  newValues: {}
-                })
-              }
-              continue
-            }
-          }
+                  currentValues: entityData,
 
           fieldUpdates.forEach(update => {
             const fieldMeta = targetMetadata?.fieldsMap[update.field]
@@ -395,7 +389,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
           })
 
           if (useConditionalLogic && conditionalAssociations.length > 0) {
-            const conditionalActions = getAssociationsForRecord(conditionalAssociations, entityData.data)
+            const conditionalActions = getAssociationsForRecord(conditionalAssociations, entityData)
             const mergedActions = mergeAssociationActions(conditionalActions)
             
             mergedActions.forEach((action, field) => {
@@ -458,14 +452,14 @@ export function QueryStack({ onLog }: QueryStackProps) {
             preview.push({
               id,
               willUpdate: true,
-              currentValues: entityData.data,
+              currentValues: entityData,
               newValues: previewNewValues
             })
             successCount++
           } else {
             snapshotUpdates.push({
               entityId: numericId,
-              previousValues: entityData.data,
+              previousValues: entityData,
               newValues: updateData
             })
             

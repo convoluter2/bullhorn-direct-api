@@ -32,9 +32,9 @@ describe('ToManyFieldInput Component', () => {
         />
       )
 
-      expect(screen.getByText('To-Many Operation')).toBeInTheDocument()
-      expect(screen.getByText('Association IDs')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('Enter IDs (comma or space separated)')).toBeInTheDocument()
+      expect(screen.getByText('Operation Type')).toBeInTheDocument()
+      expect(screen.getByText('Certification IDs')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('e.g., 12345, 67890, 11111')).toBeInTheDocument()
     })
 
     it('should render operation dropdown with all options', () => {
@@ -59,7 +59,7 @@ describe('ToManyFieldInput Component', () => {
         />
       )
 
-      expect(screen.getByText(/Operation Details:/)).toBeInTheDocument()
+      expect(screen.getByText(/📋 Operation Summary:/)).toBeInTheDocument()
     })
   })
 
@@ -73,7 +73,7 @@ describe('ToManyFieldInput Component', () => {
         />
       )
 
-      const input = screen.getByPlaceholderText('Enter IDs (comma or space separated)')
+      const input = screen.getByPlaceholderText('e.g., 12345, 67890, 11111')
       const addButton = screen.getByRole('button', { name: /Add/i })
 
       fireEvent.change(input, { target: { value: '123' } })
@@ -97,7 +97,7 @@ describe('ToManyFieldInput Component', () => {
         />
       )
 
-      const input = screen.getByPlaceholderText('Enter IDs (comma or space separated)')
+      const input = screen.getByPlaceholderText('e.g., 12345, 67890, 11111')
       const addButton = screen.getByRole('button', { name: /Add/i })
 
       fireEvent.change(input, { target: { value: '123, 456, 789' } })
@@ -121,7 +121,7 @@ describe('ToManyFieldInput Component', () => {
         />
       )
 
-      const input = screen.getByPlaceholderText('Enter IDs (comma or space separated)')
+      const input = screen.getByPlaceholderText('e.g., 12345, 67890, 11111')
       const addButton = screen.getByRole('button', { name: /Add/i })
 
       fireEvent.change(input, { target: { value: '111 222 333' } })
@@ -145,7 +145,7 @@ describe('ToManyFieldInput Component', () => {
         />
       )
 
-      const input = screen.getByPlaceholderText('Enter IDs (comma or space separated)')
+      const input = screen.getByPlaceholderText('e.g., 12345, 67890, 11111')
 
       fireEvent.change(input, { target: { value: '999' } })
       fireEvent.keyPress(input, { key: 'Enter', code: 'Enter', charCode: 13 })
@@ -168,7 +168,7 @@ describe('ToManyFieldInput Component', () => {
         />
       )
 
-      const input = screen.getByPlaceholderText('Enter IDs (comma or space separated)')
+      const input = screen.getByPlaceholderText('e.g., 12345, 67890, 11111')
       const addButton = screen.getByRole('button', { name: /Add/i })
 
       fireEvent.change(input, { target: { value: '123, 456' } })
@@ -193,7 +193,7 @@ describe('ToManyFieldInput Component', () => {
         />
       )
 
-      const input = screen.getByPlaceholderText('Enter IDs (comma or space separated)')
+      const input = screen.getByPlaceholderText('e.g., 12345, 67890, 11111')
       const addButton = screen.getByRole('button', { name: /Add/i })
 
       fireEvent.change(input, { target: { value: 'abc, 123, xyz, 456' } })
@@ -217,7 +217,7 @@ describe('ToManyFieldInput Component', () => {
         />
       )
 
-      const input = screen.getByPlaceholderText('Enter IDs (comma or space separated)') as HTMLInputElement
+      const input = screen.getByPlaceholderText('e.g., 12345, 67890, 11111') as HTMLInputElement
       const addButton = screen.getByRole('button', { name: /Add/i })
 
       fireEvent.change(input, { target: { value: '123' } })
@@ -240,9 +240,9 @@ describe('ToManyFieldInput Component', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('123')).toBeInTheDocument()
-        expect(screen.getByText('456')).toBeInTheDocument()
-        expect(screen.getByText('789')).toBeInTheDocument()
+        expect(screen.getByText('ID: 123')).toBeInTheDocument()
+        expect(screen.getByText('ID: 456')).toBeInTheDocument()
+        expect(screen.getByText('ID: 789')).toBeInTheDocument()
       })
     })
 
@@ -256,7 +256,7 @@ describe('ToManyFieldInput Component', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('3 ID(s) selected')).toBeInTheDocument()
+        expect(screen.getByText('3 Certification Record(s) Selected')).toBeInTheDocument()
       })
     })
 
@@ -332,7 +332,7 @@ describe('ToManyFieldInput Component', () => {
         />
       )
 
-      expect(screen.getByText(/IDs will be added to existing/)).toBeInTheDocument()
+      expect(screen.getByText(/will be preserved/)).toBeInTheDocument()
     })
 
     it('should display correct operation details for remove', () => {
@@ -344,7 +344,7 @@ describe('ToManyFieldInput Component', () => {
         />
       )
 
-      expect(screen.getByText(/IDs will be removed from/)).toBeInTheDocument()
+      expect(screen.getByText(/will remain unchanged/)).toBeInTheDocument()
     })
 
     it('should display correct operation details for replace', () => {
@@ -356,7 +356,7 @@ describe('ToManyFieldInput Component', () => {
         />
       )
 
-      expect(screen.getByText(/All existing .* will be removed and replaced/)).toBeInTheDocument()
+      expect(screen.getByText(/will be removed first/)).toBeInTheDocument()
     })
   })
 
@@ -371,7 +371,7 @@ describe('ToManyFieldInput Component', () => {
         />
       )
 
-      const input = screen.getByPlaceholderText('Enter IDs (comma or space separated)')
+      const input = screen.getByPlaceholderText('e.g., 12345, 67890, 11111')
       expect(input).toBeDisabled()
     })
 
@@ -427,10 +427,10 @@ describe('ToManyFieldInput Component', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('100')).toBeInTheDocument()
-        expect(screen.getByText('200')).toBeInTheDocument()
-        expect(screen.getByText('300')).toBeInTheDocument()
-        expect(screen.getByText('3 ID(s) selected')).toBeInTheDocument()
+        expect(screen.getByText('ID: 100')).toBeInTheDocument()
+        expect(screen.getByText('ID: 200')).toBeInTheDocument()
+        expect(screen.getByText('ID: 300')).toBeInTheDocument()
+        expect(screen.getByText('3 Certification Record(s) Selected')).toBeInTheDocument()
       })
     })
 
@@ -444,9 +444,9 @@ describe('ToManyFieldInput Component', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('100')).toBeInTheDocument()
-        expect(screen.getByText('200')).toBeInTheDocument()
-        expect(screen.getByText('300')).toBeInTheDocument()
+        expect(screen.getByText('ID: 100')).toBeInTheDocument()
+        expect(screen.getByText('ID: 200')).toBeInTheDocument()
+        expect(screen.getByText('ID: 300')).toBeInTheDocument()
       })
     })
   })
@@ -477,7 +477,7 @@ describe('ToManyFieldInput Component', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText('100 ID(s) selected')).toBeInTheDocument()
+        expect(screen.getByText('100 Certification Record(s) Selected')).toBeInTheDocument()
       })
     })
 
@@ -490,7 +490,7 @@ describe('ToManyFieldInput Component', () => {
         />
       )
 
-      const input = screen.getByPlaceholderText('Enter IDs (comma or space separated)')
+      const input = screen.getByPlaceholderText('e.g., 12345, 67890, 11111')
       const addButton = screen.getByRole('button', { name: /Add/i })
 
       fireEvent.change(input, { target: { value: '   ' } })
@@ -507,7 +507,7 @@ describe('ToManyFieldInput Component', () => {
         />
       )
 
-      const input = screen.getByPlaceholderText('Enter IDs (comma or space separated)')
+      const input = screen.getByPlaceholderText('e.g., 12345, 67890, 11111')
       const addButton = screen.getByRole('button', { name: /Add/i })
 
       fireEvent.change(input, { target: { value: '123, abc, 456, , 789' } })
@@ -531,7 +531,7 @@ describe('ToManyFieldInput Component', () => {
         />
       )
 
-      const input = screen.getByPlaceholderText('Enter IDs (comma or space separated)')
+      const input = screen.getByPlaceholderText('e.g., 12345, 67890, 11111')
       const addButton = screen.getByRole('button', { name: /Add/i })
 
       fireEvent.change(input, { target: { value: '123' } })
@@ -554,7 +554,7 @@ describe('ToManyFieldInput Component', () => {
         />
       )
 
-      const input = screen.getByPlaceholderText('Enter IDs (comma or space separated)')
+      const input = screen.getByPlaceholderText('e.g., 12345, 67890, 11111')
       const addButton = screen.getByRole('button', { name: /Add/i })
 
       fireEvent.change(input, { target: { value: '555' } })

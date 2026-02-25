@@ -4,6 +4,7 @@ import '@testing-library/jest-dom'
 
 afterEach(() => {
   cleanup()
+  kvStore.clear()
 })
 
 global.URL.createObjectURL = vi.fn(() => 'blob:test-url')
@@ -23,6 +24,8 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 })
 
+const kvStore = new Map<string, any>()
+
 const mockSpark = {
   llmPrompt: (strings: TemplateStringsArray, ...values: any[]) => {
     return strings.reduce((acc, str, i) => acc + str + (values[i] || ''), '')
@@ -36,10 +39,10 @@ const mockSpark = {
     login: 'testuser'
   })),
   kv: {
-    keys: vi.fn(async () => []),
-    get: vi.fn(async () => undefined),
-    set: vi.fn(async () => {}),
-    delete: vi.fn(async () => {})
+    keys: vi.fn(async () => [...kvStore.keys()]),
+    get: vi.fn(async (key: string) => kvStore.get(key) ?? null),
+    set: vi.fn(async (key: string, value: any) => { kvStore.set(key, value) }),
+    delete: vi.fn(async (key: string) => { kvStore.delete(key) })
   }
 }
 

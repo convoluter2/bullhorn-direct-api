@@ -264,9 +264,9 @@ export function OAuthTestSuite() {
 
       try {
         const authUrl = bullhornAPI.getAuthorizationUrl(
+          credentials.username,
           credentials.clientId,
           'test-state',
-          credentials.username,
           credentials.password
         )
 

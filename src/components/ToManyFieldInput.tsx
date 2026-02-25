@@ -253,7 +253,7 @@ export function ToManyFieldInput({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setIds([])}
+              onClick={() => { setIds([]); updateParent(operation, [], subField) }}
               disabled={disabled}
             >
               <X />
