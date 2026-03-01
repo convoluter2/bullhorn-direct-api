@@ -352,6 +352,15 @@ export function QueryStack({ onLog }: QueryStackProps) {
                   willUpdate: false,
                   reason: 'Does not match update filters',
                   currentValues: entityData,
+                  newValues: {}
+                })
+              }
+              continue
+            }
+          }
+
+          const updateData: any = {}
+          const toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField: string }> = []
 
           fieldUpdates.forEach(update => {
             const fieldMeta = targetMetadata?.fieldsMap[update.field]

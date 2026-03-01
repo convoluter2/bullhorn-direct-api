@@ -15,13 +15,9 @@ import { AuditLogs } from '@/components/AuditLogs'
 import { WFNExport } from '@/components/WFNExport'
 import { FileManager } from '@/components/FileManager'
 import { BulkZipUploader } from '@/components/BulkZipUploader'
-import { SessionDebugPanel } from '@/components/SessionDebugPanel'
 import { ConnectionManager, type SavedConnection, type SecureCredentials } from '@/components/ConnectionManager'
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
-import { CookieSessionClearer } from '@/components/CookieSessionClearer'
-import { DataStorageClearer } from '@/components/DataStorageClearer'
 import { EntityDocumentation } from '@/components/documentation/EntityDocumentation'
-import { APIBandwidthTracker } from '@/components/APIBandwidthTracker'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { sanitizeLogDetails } from '@/lib/utils'
@@ -466,15 +462,6 @@ function App() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <DataStorageClearer />
-              <CookieSessionClearer 
-                onClear={() => {
-                  console.log('🧹 Cookies cleared, disconnecting session')
-                  bullhornAPI.clearSession()
-                  setSession(() => null)
-                  setCurrentConnectionId(() => null)
-                }}
-              />
               {session ? (
                 <>
                   <ConnectionSwitcher
@@ -528,17 +515,6 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <div className="flex flex-col gap-4">
-              <SessionDebugPanel 
-                session={session}
-                currentConnectionId={currentConnectionId || null}
-                connectionName={savedConnections.find(c => c.id === currentConnectionId)?.name}
-                tenant={savedConnections.find(c => c.id === currentConnectionId)?.tenant}
-                environment={savedConnections.find(c => c.id === currentConnectionId)?.environment}
-              />
-              <APIBandwidthTracker />
-            </div>
-            
             <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
