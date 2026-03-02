@@ -609,7 +609,9 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                   variant="outline"
                   onClick={async () => {
                     await copyAuthUrl()
-                    toast.info('Link copied! Open an Incognito/Private window and paste this link to avoid cached credentials', { duration: 6000 })
+                    const url = getAuthUrl()
+                    window.open(url, '_blank')
+                    toast.info('Link copied and opened in new window! Use Incognito/Private mode to avoid cached credentials', { duration: 6000 })
                   }}
                   className="flex-1"
                   disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password}
