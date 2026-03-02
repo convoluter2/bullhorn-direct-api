@@ -485,7 +485,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
           }
           
           fieldUpdates.forEach(update => {
-            const fieldMeta = fieldsMap[update.field]
+            const fieldMeta = update.field ? fieldsMap[update.field] : undefined
             
             if (update.value === '' || update.value.toLowerCase() === 'null') {
               updateData[update.field] = null
@@ -1091,21 +1091,27 @@ export function SmartStack({ onLog }: SmartStackProps) {
               ) : (
                 <div className="space-y-2">
                   {fieldUpdates.map((update) => {
-                    const fieldMeta = fieldsMap[update.field]
-                    const isToMany = fieldMeta?.associationType === 'TO_MANY' || fieldMeta?.type === 'TO_MANY'
+                    const fieldMeta = update.field ? fieldsMap[update.field] : undefined
+                    const isToMany = fieldMeta?.associationType === 'TO_MANY'
                     
-                    if (update.field) {
+                    if (update.field && fieldMeta) {
                       console.log('SmartStack Field Update Debug:', {
                         updateId: update.id,
                         field: update.field,
-                        fieldMeta: fieldMeta ? {
+                        fieldMeta: {
                           name: fieldMeta.name,
                           type: fieldMeta.type,
                           dataType: fieldMeta.dataType,
                           associationType: fieldMeta.associationType,
                           associatedEntity: fieldMeta.associatedEntity
-                        } : 'undefined',
+                        },
                         isToMany
+                      })
+                    } else if (update.field && !fieldMeta) {
+                      console.warn('SmartStack Field Update - Field not found in metadata:', {
+                        updateId: update.id,
+                        field: update.field,
+                        availableFields: Object.keys(fieldsMap).slice(0, 10)
                       })
                     }
                     
