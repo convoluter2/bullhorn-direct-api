@@ -6,7 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Plus, Trash, X, MagnifyingGlass } from '@phosphor-icons/react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Plus, Trash, X, MagnifyingGlass, CaretDown, Check } from '@phosphor-icons/react'
 import { cn, formatFieldLabel } from '@/lib/utils'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { toast } from 'sonner'
@@ -29,6 +31,15 @@ interface ToManyValue {
   subField?: string
 }
 
+interface LookupRecord {
+  id: number
+  title: string
+  name?: string
+  firstName?: string
+  lastName?: string
+  email?: string
+}
+
 export function ToManyFieldInput({
   field,
   value,
@@ -44,6 +55,9 @@ export function ToManyFieldInput({
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [searching, setSearching] = useState(false)
   const [showSearchResults, setShowSearchResults] = useState(false)
+  const [availableRecords, setAvailableRecords] = useState<LookupRecord[]>([])
+  const [loadingRecords, setLoadingRecords] = useState(false)
+  const [showMultiSelect, setShowMultiSelect] = useState(false)
 
   const associatedEntity = field?.associatedEntity?.entity
   const { metadata: subEntityMetadata, loading: subEntityLoading } = useEntityMetadata(associatedEntity)
@@ -196,6 +210,53 @@ export function ToManyFieldInput({
     return `ID: ${record.id}`
   }
 
+  const loadAvailableRecords = async () => {
+    if (!associatedEntity || subField !== 'id') {
+      return
+    }
+
+    setLoadingRecords(true)
+    try {
+      const searchFields = ['id', 'name', 'title', 'firstName', 'lastName', 'email']
+      const fields = searchFields.join(',')
+      
+      const response = await bullhornAPI.query(associatedEntity, fields, '', 'id', 500, 0)
+      
+      if (response?.data) {
+        const records: LookupRecord[] = response.data.map((r: any) => ({
+          id: r.id,
+          title: getRecordTitle(r),
+          name: r.name,
+          firstName: r.firstName,
+          lastName: r.lastName,
+          email: r.email
+        }))
+        setAvailableRecords(records)
+        toast.success(`Loaded ${records.length} ${associatedEntity} records`)
+      } else {
+        setAvailableRecords([])
+      }
+    } catch (error) {
+      console.error('Failed to load records:', error)
+      toast.error(`Failed to load ${associatedEntity} records`)
+      setAvailableRecords([])
+    } finally {
+      setLoadingRecords(false)
+    }
+  }
+
+  const toggleRecordSelection = (recordId: number) => {
+    const newIds = ids.includes(recordId)
+      ? ids.filter(id => id !== recordId)
+      : [...ids, recordId]
+    setIds(newIds)
+    updateParent(operation, newIds, subField)
+  }
+
+  const isRecordSelected = (recordId: number): boolean => {
+    return ids.includes(recordId)
+  }
+
   useEffect(() => {
     if (searchQuery.length > 2 && subField === 'id') {
       const debounceTimer = setTimeout(() => {
@@ -314,9 +375,112 @@ export function ToManyFieldInput({
 
       {subField === 'id' && associatedEntity && (
         <div className="space-y-2">
-          <Label className="font-semibold">
-            Search & Select {associatedEntity} Records
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label className="font-semibold">
+              Select {associatedEntity} Records
+            </Label>
+            <div className="flex gap-2">
+              <Button
+                onClick={loadAvailableRecords}
+                disabled={disabled || loadingRecords}
+                size="sm"
+                variant="outline"
+              >
+                {loadingRecords ? (
+                  <>
+                    <MagnifyingGlass className="animate-pulse" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <CaretDown />
+                    Load Records
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {availableRecords.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                <span className="text-sm text-muted-foreground">
+                  {availableRecords.length} records available
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      const allIds = availableRecords.map(r => r.id)
+                      setIds(allIds)
+                      updateParent(operation, allIds, subField)
+                      toast.success(`Selected all ${allIds.length} records`)
+                    }}
+                    disabled={disabled}
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setIds([])
+                      updateParent(operation, [], subField)
+                    }}
+                    disabled={disabled || ids.length === 0}
+                  >
+                    Deselect All
+                  </Button>
+                </div>
+              </div>
+              
+              <Card className="p-2">
+                <ScrollArea className="h-64">
+                  <div className="space-y-1">
+                    {availableRecords.map((record) => (
+                      <div
+                        key={record.id}
+                        className={cn(
+                          "flex items-center gap-2 p-2 rounded hover:bg-accent/10 border transition-colors cursor-pointer",
+                          isRecordSelected(record.id) 
+                            ? "border-accent bg-accent/5" 
+                            : "border-transparent"
+                        )}
+                        onClick={() => !disabled && toggleRecordSelection(record.id)}
+                      >
+                        <Checkbox
+                          checked={isRecordSelected(record.id)}
+                          onCheckedChange={() => toggleRecordSelection(record.id)}
+                          disabled={disabled}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{record.title}</div>
+                          <div className="text-xs text-muted-foreground flex items-center gap-2">
+                            <Badge variant="outline" className="font-mono text-xs">
+                              ID: {record.id}
+                            </Badge>
+                            {record.email && (
+                              <span className="truncate">{record.email}</span>
+                            )}
+                          </div>
+                        </div>
+                        {isRecordSelected(record.id) && (
+                          <Check size={18} className="text-accent shrink-0" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </Card>
+            </div>
+          )}
+
+          <div className="pt-2">
+            <Label className="font-semibold">
+              Or Search & Select Individually
+            </Label>
+          </div>
           <div className="flex gap-2">
             <div className="flex-1 relative">
               <Input
@@ -377,14 +541,14 @@ export function ToManyFieldInput({
             </Card>
           )}
           <p className="text-xs text-muted-foreground">
-            Type at least 3 characters to search for existing {associatedEntity} records, or manually enter IDs below
+            Search for specific {associatedEntity} records or use "Load Records" above to browse and multi-select
           </p>
         </div>
       )}
 
       <div className="space-y-2">
         <Label className="font-semibold">
-          {subField === 'id' ? `${associatedEntity} IDs` : `Values for "${subField}" Field`}
+          Or Manually Enter {subField === 'id' ? `${associatedEntity} IDs` : `Values for "${subField}" Field`}
         </Label>
         <div className="flex gap-2">
           <Input
