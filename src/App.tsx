@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen, FileZip } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen, FileZip, TestTube } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -18,6 +18,7 @@ import { BulkZipUploader } from '@/components/BulkZipUploader'
 import { ConnectionManager, type SavedConnection, type SecureCredentials } from '@/components/ConnectionManager'
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { EntityDocumentation } from '@/components/documentation/EntityDocumentation'
+import { ToManyFieldTest } from '@/components/ToManyFieldTest'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { sanitizeLogDetails } from '@/lib/utils'
@@ -515,7 +516,7 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-10 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -547,6 +548,10 @@ function App() {
               <TabsTrigger value="documentation" className="gap-2">
                 <BookOpen size={18} />
                 <span className="hidden sm:inline">Documentation</span>
+              </TabsTrigger>
+              <TabsTrigger value="to-many-test" className="gap-2">
+                <TestTube size={18} />
+                <span className="hidden sm:inline">To-Many Test</span>
               </TabsTrigger>
               <TabsTrigger value="logs" className="gap-2">
                 <ClockCounterClockwise size={18} />
@@ -589,6 +594,10 @@ function App() {
 
             <TabsContent value="documentation" className="space-y-6">
               <EntityDocumentation session={session} />
+            </TabsContent>
+
+            <TabsContent value="to-many-test" className="space-y-6">
+              <ToManyFieldTest />
             </TabsContent>
 
             <TabsContent value="logs" className="space-y-6">
