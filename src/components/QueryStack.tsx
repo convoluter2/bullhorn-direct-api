@@ -1212,6 +1212,22 @@ export function QueryStack({ onLog }: QueryStackProps) {
                         const fieldMeta = (targetEntity ? targetFieldsMap : fieldsMap)[update.field]
                         const isToMany = fieldMeta?.associationType === 'TO_MANY'
                         
+                        if (update.field) {
+                          console.log('QueryStack Field Update Debug:', {
+                            updateId: update.id,
+                            field: update.field,
+                            targetEntity,
+                            fieldMeta: fieldMeta ? {
+                              name: fieldMeta.name,
+                              type: fieldMeta.type,
+                              dataType: fieldMeta.dataType,
+                              associationType: fieldMeta.associationType,
+                              associatedEntity: fieldMeta.associatedEntity
+                            } : 'undefined',
+                            isToMany
+                          })
+                        }
+                        
                         return (
                           <Card key={update.id} className="p-3">
                             <div className="space-y-3">

@@ -1094,6 +1094,21 @@ export function SmartStack({ onLog }: SmartStackProps) {
                     const fieldMeta = fieldsMap[update.field]
                     const isToMany = fieldMeta?.associationType === 'TO_MANY' || fieldMeta?.type === 'TO_MANY'
                     
+                    if (update.field) {
+                      console.log('SmartStack Field Update Debug:', {
+                        updateId: update.id,
+                        field: update.field,
+                        fieldMeta: fieldMeta ? {
+                          name: fieldMeta.name,
+                          type: fieldMeta.type,
+                          dataType: fieldMeta.dataType,
+                          associationType: fieldMeta.associationType,
+                          associatedEntity: fieldMeta.associatedEntity
+                        } : 'undefined',
+                        isToMany
+                      })
+                    }
+                    
                     return (
                       <Card key={update.id} className="p-3">
                         <div className="space-y-3">

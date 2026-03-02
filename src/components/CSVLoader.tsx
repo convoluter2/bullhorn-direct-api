@@ -1325,6 +1325,22 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                     const isToMany = fieldMeta?.associationType === 'TO_MANY' || fieldMeta?.type === 'TO_MANY'
                     const isToOne = fieldMeta?.associationType === 'TO_ONE' || fieldMeta?.type === 'TO_ONE'
                     
+                    if (mapping.bullhornField && mapping.bullhornField !== '__skip__') {
+                      console.log('CSV Loader Field Mapping Debug:', {
+                        csvColumn: mapping.csvColumn,
+                        bullhornField: mapping.bullhornField,
+                        fieldMeta: fieldMeta ? {
+                          name: fieldMeta.name,
+                          type: fieldMeta.type,
+                          dataType: fieldMeta.dataType,
+                          associationType: fieldMeta.associationType,
+                          associatedEntity: fieldMeta.associatedEntity
+                        } : 'undefined',
+                        isToMany,
+                        isToOne
+                      })
+                    }
+                    
                     return (
                       <Card key={mapping.csvColumn} className="p-3">
                         <div className="space-y-3">
@@ -1383,13 +1399,13 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                           </div>
                           
                           {mapping.bullhornField && mapping.bullhornField !== '__skip__' && fieldMeta && (
-                            <div className="mt-2 p-2 bg-muted/30 rounded border text-xs space-y-1">
+                            <div className={`mt-2 p-2 rounded border text-xs space-y-1 ${isToMany ? 'bg-accent/20 border-accent' : 'bg-muted/30'}`}>
                               <div><strong>Field Type:</strong> {fieldMeta.type}</div>
                               <div><strong>Association Type:</strong> {fieldMeta.associationType || 'N/A'}</div>
                               <div><strong>Data Type:</strong> {fieldMeta.dataType}</div>
                               <div><strong>Associated Entity:</strong> {fieldMeta.associatedEntity?.entity || 'N/A'}</div>
-                              <div><strong>Is TO_MANY:</strong> {isToMany ? 'YES' : 'NO'}</div>
-                              <div><strong>Is TO_ONE:</strong> {isToOne ? 'YES' : 'NO'}</div>
+                              <div className={isToMany ? 'text-accent font-bold' : ''}><strong>Is TO_MANY:</strong> {isToMany ? '✅ YES' : '❌ NO'}</div>
+                              <div className={isToOne ? 'text-accent font-bold' : ''}><strong>Is TO_ONE:</strong> {isToOne ? '✅ YES' : '❌ NO'}</div>
                             </div>
                           )}
                           
