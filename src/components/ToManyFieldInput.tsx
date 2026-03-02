@@ -181,8 +181,17 @@ export function ToManyFieldInput({
                 .map(f => (
                   <SelectItem key={f.name} value={f.name}>
                     <div className="space-y-1">
-                      <div className="font-semibold">{formatFieldLabel(f.label, f.name)}</div>
-                      <div className="text-xs text-muted-foreground">{f.type} field on {associatedEntity}</div>
+                      <div className="font-semibold">
+                        {formatFieldLabel(f.label, f.name)}
+                        {(f.type || f.dataType) && (
+                          <span className="ml-2 text-xs font-normal text-muted-foreground">
+                            [{f.type === 'TO_ONE' ? 'TO_ONE' : (f.type === 'SCALAR' ? 'SCALAR' : f.type)}{f.dataType && f.dataType !== 'String' && f.dataType !== f.type ? `, ${f.dataType}` : ''}]
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {f.type === 'TO_ONE' ? `${f.type} → ${f.associatedEntity?.entity || 'Unknown'}` : `${f.type || f.dataType} field on ${associatedEntity}`}
+                      </div>
                     </div>
                   </SelectItem>
                 ))}

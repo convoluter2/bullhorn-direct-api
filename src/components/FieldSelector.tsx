@@ -45,7 +45,30 @@ export function FieldSelector({
   }, [fieldsWithCapabilities, searchTerm])
 
   const getFieldDisplayLabel = (field: EntityField & { capability?: ReturnType<typeof getFieldEndpointCapability> }) => {
-    return formatFieldLabel(field.label, field.name)
+    const baseLabel = formatFieldLabel(field.label, field.name)
+    const typeInfo: string[] = []
+    
+    if (field.type) {
+      if (field.type === 'TO_ONE') {
+        typeInfo.push('TO_ONE')
+      } else if (field.type === 'TO_MANY') {
+        typeInfo.push('TO_MANY')
+      } else if (field.type === 'SCALAR') {
+        typeInfo.push('SCALAR')
+      } else if (field.type !== 'String' && field.type !== field.dataType) {
+        typeInfo.push(field.type)
+      }
+    }
+    
+    if (field.dataType && field.dataType !== 'String') {
+      typeInfo.push(field.dataType)
+    }
+    
+    if (typeInfo.length > 0) {
+      return `${baseLabel} [${typeInfo.join(', ')}]`
+    }
+    
+    return baseLabel
   }
 
   const getEndpointIcon = (capability: ReturnType<typeof getFieldEndpointCapability>) => {

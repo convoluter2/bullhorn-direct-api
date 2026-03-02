@@ -83,7 +83,7 @@ export function ToManyConfigSelector({
             <SelectContent>
               <SelectItem value="id">
                 <div className="space-y-0.5">
-                  <div>ID</div>
+                  <div>ID [Integer]</div>
                   <div className="text-[10px] text-muted-foreground">
                     Match by entity ID
                   </div>
@@ -92,9 +92,9 @@ export function ToManyConfigSelector({
               {!subEntityLoading && availableSubFields.map((field) => (
                 <SelectItem key={field.name} value={field.name}>
                   <div className="space-y-0.5">
-                    <div>{formatFieldLabel(field.label, field.name)}</div>
+                    <div>{formatFieldLabel(field.label, field.name)} [{field.type || field.dataType}]</div>
                     <div className="text-[10px] text-muted-foreground">
-                      {field.dataType}
+                      {field.type === field.dataType ? field.dataType : `${field.type} - ${field.dataType}`}
                     </div>
                   </div>
                 </SelectItem>

@@ -1558,30 +1558,87 @@ export class BullhornAPI {
       resolvedIds = associationIds.map(id => typeof id === 'number' ? id : parseInt(String(id), 10)).filter(id => !isNaN(id))
     }
 
+    const encodedEntity = encodeURIComponent(entity)
+    const params = new URLSearchParams({
+      BhRestToken: this.session.BhRestToken
+    })
+
+    const updatePayload: any = {
+      changedEntityType: entity,
+      changedEntityId: entityId,
+      changeType: 'UPDATE',
+      data: {
+        [association]: {}
+      }
+    }
+
     switch (operation) {
       case 'add':
-        return this.associateToMany(entity, entityId, association, resolvedIds)
+        updatePayload.data[association].add = resolvedIds
+        break
       
       case 'remove':
-        return this.disassociateToMany(entity, entityId, association, resolvedIds)
+        updatePayload.data[association].remove = resolvedIds
+        break
       
       case 'replace':
         const currentAssociations = await this.getToManyAssociation(entity, entityId, association)
         const currentIds = currentAssociations.data?.map((item: any) => item.id) || []
         
         if (currentIds.length > 0) {
-          await this.disassociateToMany(entity, entityId, association, currentIds)
+          updatePayload.data[association].remove = currentIds
         }
         
         if (resolvedIds.length > 0) {
-          return this.associateToMany(entity, entityId, association, resolvedIds)
+          if (!updatePayload.data[association].add) {
+            updatePayload.data[association].add = []
+          }
+          updatePayload.data[association].add = resolvedIds
         }
-        
-        return { success: true, message: 'Association replaced successfully' }
+        break
       
       default:
         throw new Error(`Invalid operation: ${operation}`)
     }
+
+    console.log(`🔄 Updating to-many association ${entity}/${entityId}/${association}:`, updatePayload)
+
+    const fullUrl = `${this.session.restUrl}entity/${encodedEntity}/${entityId}?${params.toString()}`
+    
+    const response = await this.throttledFetch(
+      fullUrl,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatePayload.data)
+      },
+      2
+    )
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error(`❌ To-many update failed for ${entity}/${entityId}/${association}:`, errorText)
+      
+      const ownershipError = this.extractOwningEntity(errorText, entity, association)
+      if (ownershipError && operation === 'add') {
+        console.warn(`Association owned by ${ownershipError.owningEntity}, attempting inverse operation...`)
+        toast.info(`Redirecting: Association is owned by ${ownershipError.owningEntity}. Updating those records instead...`)
+        return await this.associateToManyInverse(
+          ownershipError.owningEntity,
+          resolvedIds,
+          ownershipError.inverseField,
+          entityId
+        )
+      }
+      
+      throw new Error(`To-many ${operation} operation failed: ${errorText}`)
+    }
+
+    const result = await response.json()
+    console.log(`✅ Successfully updated to-many association ${entity}/${entityId}/${association}:`, result)
+    return result
   }
 
   async getToManyAssociation(
