@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Plus, Trash, X, GitBranch, FunnelSimple } from '@phosphor-icons/react'
-import { cn, formatFieldLabel } from '@/lib/utils'
+import { cn, formatFieldLabel, formatFieldLabelWithType } from '@/lib/utils'
 import type { EntityField } from '@/hooks/use-entity-metadata'
 
 export type ConditionalRule = {
@@ -307,7 +307,7 @@ export function ConditionalAssociationBuilder({
                                 <SelectContent>
                                   {fields.filter(f => f.dataType !== 'TO_MANY').map(field => (
                                     <SelectItem key={field.name} value={field.name}>
-                                      {formatFieldLabel(field.label, field.name)}
+                                      {formatFieldLabelWithType(field.label, field.name, field.type, field.dataType)}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>

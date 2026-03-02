@@ -16,7 +16,7 @@ import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye, Ar
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV, exportToCSV, exportToJSON } from '@/lib/csv-utils'
-import { formatFieldLabel, formatFieldValue } from '@/lib/utils'
+import { formatFieldLabel, formatFieldLabelWithType, formatFieldValue } from '@/lib/utils'
 import { validateCSVFile, validateCSVContent, validateFieldMappings, validateImportConfiguration, type ValidationRule } from '@/lib/csv-validation'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
@@ -1349,9 +1349,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                                     <SelectItem value="__skip__">Skip</SelectItem>
                                     {(availableFields || []).filter(field => field && field.name).map((field) => (
                                       <SelectItem key={field.name} value={field.name}>
-                                        {formatFieldLabel(field.label || field.name, field.name)}
-                                        {field.associationType === 'TO_MANY' && ' (To-Many)'}
-                                        {field.associationType === 'TO_ONE' && ' (To-One)'}
+                                        {formatFieldLabelWithType(field.label || field.name, field.name, field.type, field.dataType)}
                                         {lookupField === field.name && (
                                           <span className="ml-2 text-xs text-accent">
                                             (Lookup)

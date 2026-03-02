@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { MagnifyingGlass, Database, CheckCircle, WarningCircle, Info } from '@phosphor-icons/react'
-import { formatFieldLabel } from '@/lib/utils'
+import { formatFieldLabel, formatFieldLabelWithType } from '@/lib/utils'
 import { getFieldEndpointCapability } from '@/lib/field-endpoint-validator'
 import type { EntityField } from '@/hooks/use-entity-metadata'
 
@@ -81,7 +81,7 @@ export function LookupFieldSelector({
           {fieldsWithCapabilities.map(field => (
             <SelectItem key={field.name} value={field.name}>
               <div className="flex items-center gap-2 justify-between w-full">
-                <span>{formatFieldLabel(field.label, field.name)}</span>
+                <span>{formatFieldLabelWithType(field.label, field.name, field.type, field.dataType)}</span>
                 {showEndpointInfo && getEndpointBadge(field.capability.recommendation)}
               </div>
             </SelectItem>

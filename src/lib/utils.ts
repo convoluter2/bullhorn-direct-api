@@ -12,6 +12,33 @@ export function formatFieldLabel(label: string, fieldName: string): string {
   return `${label} (${fieldName})`
 }
 
+export function formatFieldLabelWithType(label: string, fieldName: string, type?: string, dataType?: string): string {
+  const baseLabel = formatFieldLabel(label, fieldName)
+  const typeInfo: string[] = []
+  
+  if (type) {
+    if (type === 'TO_ONE') {
+      typeInfo.push('TO_ONE')
+    } else if (type === 'TO_MANY') {
+      typeInfo.push('TO_MANY')
+    } else if (type === 'SCALAR') {
+      typeInfo.push('SCALAR')
+    } else if (type !== 'String' && type !== dataType) {
+      typeInfo.push(type)
+    }
+  }
+  
+  if (dataType && dataType !== 'String' && dataType !== type) {
+    typeInfo.push(dataType)
+  }
+  
+  if (typeInfo.length > 0) {
+    return `${baseLabel} [${typeInfo.join(', ')}]`
+  }
+  
+  return baseLabel
+}
+
 export function formatFieldValue(value: any): string {
   if (value === null || value === undefined) {
     return '-'

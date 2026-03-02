@@ -15,7 +15,7 @@ import { MagnifyingGlass, Plus, Trash, Lightning, DownloadSimple, X, CaretLeft, 
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
-import { formatFieldLabel, formatFieldValue } from '@/lib/utils'
+import { formatFieldLabel, formatFieldLabelWithType, formatFieldValue } from '@/lib/utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { FieldSelector } from '@/components/FieldSelector'
@@ -914,7 +914,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                         <SelectContent>
                           {availableFields.map((field) => (
                             <SelectItem key={field.name} value={field.name}>
-                              {formatFieldLabel(field.label, field.name)} ({field.type})
+                              {formatFieldLabelWithType(field.label, field.name, field.type, field.dataType)}
                             </SelectItem>
                           ))}
                         </SelectContent>

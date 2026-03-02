@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { MagnifyingGlass, X, Database, CheckCircle } from '@phosphor-icons/react'
-import { formatFieldLabel } from '@/lib/utils'
+import { formatFieldLabelWithType } from '@/lib/utils'
 import { getFieldEndpointCapability } from '@/lib/field-endpoint-validator'
 import type { EntityField } from '@/hooks/use-entity-metadata'
 
@@ -45,30 +45,7 @@ export function FieldSelector({
   }, [fieldsWithCapabilities, searchTerm])
 
   const getFieldDisplayLabel = (field: EntityField & { capability?: ReturnType<typeof getFieldEndpointCapability> }) => {
-    const baseLabel = formatFieldLabel(field.label, field.name)
-    const typeInfo: string[] = []
-    
-    if (field.type) {
-      if (field.type === 'TO_ONE') {
-        typeInfo.push('TO_ONE')
-      } else if (field.type === 'TO_MANY') {
-        typeInfo.push('TO_MANY')
-      } else if (field.type === 'SCALAR') {
-        typeInfo.push('SCALAR')
-      } else if (field.type !== 'String' && field.type !== field.dataType) {
-        typeInfo.push(field.type)
-      }
-    }
-    
-    if (field.dataType && field.dataType !== 'String') {
-      typeInfo.push(field.dataType)
-    }
-    
-    if (typeInfo.length > 0) {
-      return `${baseLabel} [${typeInfo.join(', ')}]`
-    }
-    
-    return baseLabel
+    return formatFieldLabelWithType(field.label, field.name, field.type, field.dataType)
   }
 
   const getEndpointIcon = (capability: ReturnType<typeof getFieldEndpointCapability>) => {

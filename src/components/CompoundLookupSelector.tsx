@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Plus, X, Key, Info } from '@phosphor-icons/react'
-import { formatFieldLabel } from '@/lib/utils'
+import { formatFieldLabel, formatFieldLabelWithType } from '@/lib/utils'
 import type { EntityField } from '@/hooks/use-entity-metadata'
 
 interface CompoundLookupSelectorProps {
@@ -101,12 +101,7 @@ export function CompoundLookupSelector({
               <SelectContent>
                 {availableFields.map(field => (
                   <SelectItem key={field.name} value={field.name}>
-                    {formatFieldLabel(field.label, field.name)}
-                    {field.dataType && (
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        ({field.dataType})
-                      </span>
-                    )}
+                    {formatFieldLabelWithType(field.label, field.name, field.type, field.dataType)}
                   </SelectItem>
                 ))}
               </SelectContent>
