@@ -609,18 +609,9 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                   variant="outline"
                   onClick={async () => {
                     await copyAuthUrl()
-                    const url = getAuthUrl()
                     
-                    const width = 800
-                    const height = 900
-                    const left = Math.max(0, (window.screen.width - width) / 2)
-                    const top = Math.max(0, (window.screen.height - height) / 2)
-                    
-                    const features = `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,location=yes,status=no,scrollbars=yes,resizable=yes`
-                    
-                    window.open(url, '_blank', features)
-                    
-                    toast.info('Link copied! Opening in new incognito window - paste the URL there if it doesn\'t load automatically', { duration: 8000 })
+                    toast.success('Link copied to clipboard!', { duration: 3000 })
+                    toast.info('Open a new Incognito/Private window and paste the URL to avoid cookie conflicts', { duration: 10000 })
                   }}
                   className="flex-1"
                   disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password}
@@ -633,8 +624,9 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                 <AlertDescription className="text-xs">
                   <strong>What to expect:</strong>
                   <ol className="list-decimal ml-4 mt-1 space-y-0.5">
-                    <li>Popup opens with Bullhorn login (or auto-logs in)</li>
-                    <li>Page redirects to <code className="text-xs bg-black/10 px-1 rounded">https://welcome.bullhornstaffing.com/</code></li>
+                    <li><strong>"Open in Popup":</strong> Opens in a regular popup window</li>
+                    <li><strong>"Copy for Incognito":</strong> Copies URL - you must manually open an Incognito/Private window (Ctrl+Shift+N or Cmd+Shift+N) and paste the URL there</li>
+                    <li>After login, page redirects to <code className="text-xs bg-black/10 px-1 rounded">https://welcome.bullhornstaffing.com/</code></li>
                     <li>You'll see "Welcome to Bullhorn - Thank you for using Bullhorn"</li>
                     <li>Copy the <strong>entire URL</strong> from the address bar (includes code parameter)</li>
                     <li>Paste it in the field below</li>
