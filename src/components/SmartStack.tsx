@@ -1092,7 +1092,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
                 <div className="space-y-2">
                   {fieldUpdates.map((update) => {
                     const fieldMeta = fieldsMap[update.field]
-                    const isToMany = fieldMeta?.associationType === 'TO_MANY'
+                    const isToMany = fieldMeta?.associationType === 'TO_MANY' || fieldMeta?.type === 'TO_MANY'
                     
                     return (
                       <Card key={update.id} className="p-3">
