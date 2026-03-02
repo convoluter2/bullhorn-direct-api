@@ -1,228 +1,357 @@
-# Candidate.primarySkills Testing Documentation
+# To-Many Field Bugfix Testing Suite
 
-## 📋 Overview
+## 📖 Quick Start
 
-This test suite helps verify how the `Candidate.primarySkills` field behaves in the CSV Loader component, with enhanced console logging to show field metadata, type detection, and import behavior.
+This testing suite helps you verify that **Candidate.primarySkills** and other to-many fields correctly display the `ToManyFieldInput` component with operation options.
 
-## 🎯 Purpose
-
-Determine whether `primarySkills` is:
-- **SCALAR**: A plain text field (comma-separated string)
-- **TO_MANY**: An entity association to Skill records
-
-This affects how CSV data should be formatted and how imports are processed.
-
-## 📚 Documentation Files
-
-| File | Purpose | Use When |
-|------|---------|----------|
-| **QUICK_REFERENCE.md** | Fast 30-second test guide | You need quick steps |
-| **CANDIDATE_PRIMARY_SKILLS_TEST.md** | Complete test procedure | First time testing |
-| **CONSOLE_OUTPUT_GUIDE.md** | Console output reference | Interpreting results |
-| **candidate_skills_test.csv** | Sample test data | Running the test |
-
-## 🚀 Quick Start
-
-**For experienced users** (30 seconds):
-1. Read: `QUICK_REFERENCE.md`
-2. Use CSV: `candidate_skills_test.csv`
-3. Check console for `🎯` markers
-
-**For first-time users** (5 minutes):
-1. Read: `CANDIDATE_PRIMARY_SKILLS_TEST.md`
-2. Follow step-by-step instructions
-3. Refer to: `CONSOLE_OUTPUT_GUIDE.md` for output interpretation
-
-## 🔍 What This Test Does
-
-### Code Changes Made
-
-1. **Enhanced CSVLoader.tsx** (lines 1344-1359)
-   - Added special detection for `primarySkills` field
-   - Logs complete field metadata when mapped
-   - Shows To-Many configuration status
-   - Displays field type indicators (✅/❌)
-
-2. **Enhanced use-entity-metadata.ts** (lines 135-157)
-   - Logs when Candidate metadata is loaded
-   - Shows primarySkills field details
-   - Lists all TO_MANY fields in Candidate
-   - Helps identify field type immediately
-
-### Console Markers
-
-Look for these special console indicators:
-
-```
-🎯 CANDIDATE METADATA LOADED 🎯
-🎯 CANDIDATE.PRIMARYSKILLS FIELD DETECTED 🎯
-```
-
-These markers make it easy to find relevant output in the console.
-
-## 📊 Test Scenarios
-
-### Scenario 1: SCALAR Field (Expected)
-```csv
-id,primarySkills
-12345,"JavaScript, React, TypeScript"
-```
-- Values imported as plain text
-- No entity associations created
-- Stored exactly as entered
-
-### Scenario 2: TO_MANY Field (Possible)
-```csv
-id,primarySkills
-12345,"101,102,103"
-```
-- Values must be Skill entity IDs
-- Creates associations to Skill records
-- Requires To-Many configuration
-
-## 🎬 Step-by-Step Test Procedure
-
-### Preparation
-1. Open the application
-2. Open browser DevTools (F12)
-3. Navigate to Console tab
-4. Ensure you're authenticated to Bullhorn
-
-### Test Execution
-1. Go to **CSV Loader** tab
-2. Select **Candidate** from Entity Type dropdown
-   - ✅ Console logs: "CANDIDATE METADATA LOADED"
-3. Upload **candidate_skills_test.csv**
-   - ✅ Console logs: CSV loaded message
-4. Map the **primarySkills** field
-   - ✅ Console logs: "PRIMARYSKILLS FIELD DETECTED"
-5. Review console output and UI
-
-### Verification
-- [ ] Console shows field type
-- [ ] Console shows association type
-- [ ] UI field info box displays correctly
-- [ ] To-Many config appears (or doesn't) as expected
-- [ ] Test import works with dry run
-
-## 📸 What to Capture
-
-Take screenshots or copy text of:
-
-1. **Console output** when Candidate is selected
-2. **Console output** when primarySkills is mapped
-3. **UI field mapping section** showing the field info box
-4. **UI To-Many configuration** (if it appears)
-
-## 🔎 Key Information to Document
-
-From console output, record:
-
-```
-Field: primarySkills
-Type: _____________ (SCALAR / TO_MANY)
-DataType: _____________ (String / other)
-AssociationType: _____________ (undefined / TO_MANY)
-AssociatedEntity: _____________ (undefined / Skill)
-```
-
-## 📈 Expected Results
-
-### Most Common: SCALAR Field
-
-**Console Output:**
-```javascript
-type: "SCALAR"
-dataType: "String"
-associationType: undefined
-Is TO_MANY? ❌ NO - Plain field
-```
-
-**UI Behavior:**
-- Field info shows "Is TO_MANY: ❌ NO"
-- No To-Many configuration selector
-- Transform dropdown available
-
-### Less Common: TO_MANY Field
-
-**Console Output:**
-```javascript
-type: "TO_MANY"
-associationType: "TO_MANY"
-associatedEntity: { entity: "Skill" }
-Is TO_MANY? ✅ YES - Will show To-Many config selector
-```
-
-**UI Behavior:**
-- Field info shows "Is TO_MANY: ✅ YES"
-- To-Many configuration selector appears
-- Transform dropdown disabled
-
-## 🐛 Troubleshooting
-
-### No Console Output
-- Ensure DevTools Console is open
-- Check console filters (show all levels)
-- Verify field name is exactly `primarySkills`
-
-### Field Not Found
-- Click refresh icon next to Entity Type
-- Check that Candidate entity is selected
-- Verify authentication is active
-
-### Unexpected Behavior
-- Different Bullhorn instances have different configs
-- Custom fields may behave differently
-- Consult your Bullhorn administrator
-
-## 🔗 Related Files
-
-**Source Code:**
-- `/src/components/CSVLoader.tsx` - Main CSV import component
-- `/src/hooks/use-entity-metadata.ts` - Metadata loading hook
-- `/src/components/ToManyConfigSelector.tsx` - To-Many config UI
-
-**Test Files:**
-- `/candidate_skills_test.csv` - Sample test data
-
-**Documentation:**
-- `/QUICK_REFERENCE.md` - Quick start guide
-- `/CANDIDATE_PRIMARY_SKILLS_TEST.md` - Detailed test procedure
-- `/CONSOLE_OUTPUT_GUIDE.md` - Console output reference
-
-## ✅ Success Criteria
-
-A successful test should produce:
-
-1. ✅ Clear console output showing field metadata
-2. ✅ Correct field type detection (SCALAR or TO_MANY)
-3. ✅ UI displays appropriate configuration options
-4. ✅ Dry run import processes correctly
-5. ✅ Documentation of results
-
-## 📞 Next Steps
-
-After completing the test:
-
-1. Document the field type in your instance
-2. Update CSV templates accordingly
-3. Train users on correct data format
-4. Test actual import with real data
-5. Monitor results in Bullhorn
-
-## 🎓 Learning Outcomes
-
-This test demonstrates:
-
-- How field metadata is loaded from Bullhorn API
-- How field types are detected and displayed
-- How CSV Loader adapts to different field types
-- How console logging aids in debugging
-- How To-Many associations are configured
+### Access the Test Page
+1. Launch the Bullhorn Data Manager application
+2. Authenticate with your Bullhorn connection
+3. Navigate to the **"To-Many Test"** tab (test tube icon 🧪)
 
 ---
 
-**Quick Links:**
-- [Quick Reference](QUICK_REFERENCE.md) - 30-second guide
-- [Full Test Guide](CANDIDATE_PRIMARY_SKILLS_TEST.md) - Complete procedure
-- [Console Guide](CONSOLE_OUTPUT_GUIDE.md) - Output interpretation
+## 📚 Documentation Files
+
+This testing suite includes comprehensive documentation:
+
+| File | Purpose |
+|------|---------|
+| **TESTING_SUMMARY.md** | Quick reference checklist and testing overview |
+| **TO_MANY_FIELD_TEST_GUIDE.md** | Complete step-by-step testing instructions |
+| **SCREENSHOT_GUIDE.md** | Detailed guide for capturing test screenshots |
+| **README_TESTING.md** | This file - overview and getting started |
+
+---
+
+## 🎯 What's Being Tested
+
+### The Bug
+Previously, to-many fields like `Candidate.primarySkills` may have been rendered as plain text inputs instead of the specialized `ToManyFieldInput` component.
+
+### The Fix
+The field detection logic now correctly identifies to-many fields and renders the appropriate component with:
+- ✅ Add/Remove/Replace operation options
+- ✅ Associated entity metadata (e.g., Skill for primarySkills)
+- ✅ ID badge display with add/remove functionality
+- ✅ Sub-field selection (direct ID association or field-based)
+- ✅ Proper JSON value format
+
+---
+
+## 🧪 Test Suite Components
+
+### 1. ToManyFieldTest Component
+**Location:** `src/components/ToManyFieldTest.tsx`
+
+The main test page with three test cases:
+- **Candidate.primarySkills** → associates with Skill entity
+- **ClientCorporation.requirements** → associates with SpecialtyCategory entity
+- **JobOrder.categories** → associates with Category entity
+
+**Features:**
+- Quick test buttons (Test ADD/REMOVE/REPLACE)
+- Live console monitor (displays logs in the UI)
+- Field type debugger (visual inspection of field properties)
+- Raw JSON value display
+- Expected API format examples
+
+### 2. ToManyFieldInput Component
+**Location:** `src/components/ToManyFieldInput.tsx`
+
+The component being tested - handles to-many field editing.
+
+**Enhanced with:**
+- 🎯 Render logging
+- 🔄 Value change tracking
+- ✅ Parse success/failure logging
+- 📤 Update propagation logging
+
+### 3. FieldTypeDebugger Component
+**Location:** `src/components/FieldTypeDebugger.tsx`
+
+Visual inspector showing:
+- Field name and label
+- Type detection (type, associationType, dataType)
+- Associated entity information
+- Detection status (✅ or ❌)
+- Full field object in JSON format
+
+### 4. ConsoleMonitorForTests Component
+**Location:** `src/components/ConsoleMonitorForTests.tsx`
+
+Live console log display within the UI showing:
+- 🧪 Test component state changes
+- 🔧 Value setter calls
+- 🎯 Component renders
+- 🔄 Value changes
+- ✅ Parse successes
+- ⚠️ Warnings
+- 📤 Parent updates
+- 🔍 Field inspections
+
+---
+
+## 🚀 Testing Workflow
+
+### Step 1: Navigate to Test Page
+Open the "To-Many Test" tab after authenticating
+
+### Step 2: Load Test Data
+Click "Test ADD" on the **Candidate.primarySkills** test case
+
+### Step 3: Visual Verification
+Check that you see:
+- [ ] ToManyFieldInput component (not plain text input)
+- [ ] "associates with Skill" text
+- [ ] Operation dropdown with Add/Remove/Replace
+- [ ] Association Mode dropdown
+- [ ] Three ID badges (100, 200, 300)
+- [ ] Operation Summary section
+
+### Step 4: Check Field Detection
+In the **FieldTypeDebugger** card, verify:
+- [ ] Type: TO_MANY (green badge)
+- [ ] Associated Entity: Skill (with ✅)
+- [ ] "✅ Correctly Detected as TO_MANY" message
+
+### Step 5: Check Console Logs
+In the **Live Console Monitor**, look for:
+- [ ] 🔧 Setting testValue1 (primarySkills)
+- [ ] 🔍 FieldTypeDebugger logs showing isToMany: true
+- [ ] 🎯 ToManyFieldInput render logs
+- [ ] ✅ Parsed value successfully
+
+### Step 6: Test Interactions
+- [ ] Change operation to "Remove" - summary updates
+- [ ] Change operation to "Replace" - warning appears
+- [ ] Add new ID (type 500, click Add) - badge appears
+- [ ] Remove ID (click X on badge) - badge disappears
+- [ ] Change Association Mode - fields dropdown shows Skill entity fields
+
+### Step 7: Verify Data Format
+Check the "Current Value (Raw JSON)" section shows:
+```json
+{"operation":"add","ids":[100,200,300],"subField":"id"}
+```
+
+### Step 8: Test Other Cases
+Repeat for:
+- [ ] ClientCorporation.requirements
+- [ ] JobOrder.categories
+
+---
+
+## 📸 Screenshot Checklist
+
+Capture these screenshots (see **SCREENSHOT_GUIDE.md** for details):
+
+- [ ] 1. Test Page Overview
+- [ ] 2. Field Type Debugger (primarySkills)
+- [ ] 3. ToManyFieldInput Initial State
+- [ ] 4. Operation Dropdown Expanded
+- [ ] 5. Association Mode Dropdown
+- [ ] 6. Replace Operation Warning
+- [ ] 7. Adding New ID
+- [ ] 8. New ID Badge
+- [ ] 9. Console Logs - Field Detection
+- [ ] 10. Console Logs - Value Parsing
+- [ ] 11. Raw JSON Value
+- [ ] 12. All Three Test Cases
+
+---
+
+## ✅ Success Criteria
+
+The test passes if ALL of the following are true:
+
+### Visual
+✅ ToManyFieldInput component renders (not text input)  
+✅ Component shows "associates with Skill"  
+✅ Three operations available (Add, Remove, Replace)  
+✅ IDs display as removable badges  
+✅ Operation summary updates based on selection  
+
+### Field Detection
+✅ FieldTypeDebugger shows Type: TO_MANY  
+✅ FieldTypeDebugger shows Associated Entity: Skill  
+✅ Detection status: "✅ Correctly Detected as TO_MANY"  
+
+### Console Logs
+✅ Field type logs show: `fieldType: "TO_MANY"`  
+✅ Associated entity logs show: `associatedEntity: "Skill"`  
+✅ Value parsing shows: `✅ Parsed value successfully`  
+✅ No errors in console or monitor  
+
+### Data Format
+✅ JSON format: `{"operation":"...","ids":[...],"subField":"..."}`  
+✅ Parsed value shows operation, IDs array, and subField  
+
+### Interaction
+✅ Can add IDs and see badges appear  
+✅ Can remove IDs and see badges disappear  
+✅ Can change operations and see summary update  
+✅ Can select different fields in Association Mode  
+
+---
+
+## 🐛 Common Issues
+
+### Issue: Test tab not showing
+**Cause:** Not authenticated  
+**Fix:** Log in to Bullhorn Data Manager first
+
+### Issue: ToManyFieldInput not rendering
+**Cause:** Field not detected as TO_MANY  
+**Fix:** Check FieldTypeDebugger - should show Type: TO_MANY  
+**Debug:** Console should log `fieldType: "TO_MANY"`
+
+### Issue: "associates with Skill" doesn't show
+**Cause:** Associated entity not set  
+**Fix:** Check FieldTypeDebugger - should show Associated Entity: Skill  
+**Debug:** Console should log `associatedEntity: "Skill"`
+
+### Issue: Association Mode dropdown empty
+**Cause:** Metadata not loading or no connection  
+**Fix:** Ensure authenticated with valid Bullhorn connection  
+**Debug:** Check network tab for metadata API calls
+
+### Issue: Console Monitor not showing logs
+**Cause:** Logs not matching patterns  
+**Fix:** Check browser console to see if logs are appearing there  
+**Debug:** Look for emoji prefixes (🧪, 🔧, 🎯, etc.)
+
+---
+
+## 📊 Debug Log Reference
+
+### Log Types and Meanings
+
+| Emoji | Type | Component | Meaning |
+|-------|------|-----------|---------|
+| 🧪 | Test | ToManyFieldTest | Component state render |
+| 🔧 | Setter | ToManyFieldTest | Value being set via setter |
+| 🔍 | Inspect | FieldTypeDebugger | Field properties inspection |
+| 🎯 | Render | ToManyFieldInput | Component render with props |
+| 🔄 | Change | ToManyFieldInput | Value prop changed |
+| ✅ | Success | ToManyFieldInput | Value parsed successfully |
+| ⚠️ | Warning | ToManyFieldInput | Parse failed or other warning |
+| 📤 | Update | ToManyFieldInput | Sending update to parent |
+
+### Expected Log Sequence
+
+When clicking "Test ADD":
+```
+1. 🔧 Setting testValue1 (primarySkills): {"operation":"add",...}
+2. 🔍 FieldTypeDebugger - Candidate.primarySkills: {isToMany: true, ...}
+3. 🎯 ToManyFieldInput - Render: {fieldType: "TO_MANY", ...}
+4. 🔄 ToManyFieldInput - Value changed: {"operation":"add",...}
+5. ✅ ToManyFieldInput - Parsed value successfully: {operation: "add", ...}
+```
+
+When adding a new ID:
+```
+1. 📤 ToManyFieldInput - Updating parent with: {operation: "add", ids: [100,200,300,500], ...}
+2. 🔧 Setting testValue1 (primarySkills): {"operation":"add","ids":[100,200,300,500],...}
+3. 🔄 ToManyFieldInput - Value changed: {"operation":"add","ids":[100,200,300,500],...}
+4. ✅ ToManyFieldInput - Parsed value successfully: {operation: "add", ids: [100,200,300,500], ...}
+```
+
+---
+
+## 💡 Tips
+
+### For Best Results
+- Use Chrome or Edge for best DevTools experience
+- Keep Console Monitor expanded to see logs in real-time
+- Use "Clear All" button to reset tests between runs
+- Test all three test cases, not just primarySkills
+- Capture screenshots at each step for documentation
+
+### For Debugging
+- Open browser DevTools (F12) alongside Console Monitor
+- Check Network tab if metadata doesn't load
+- Expand collapsed objects in console logs to see full details
+- Use "Preserve log" in console to keep logs across actions
+
+### For Screenshots
+- Set browser zoom to 100%
+- Use light theme for better contrast in screenshots
+- Expand dropdowns fully before capturing
+- Include relevant context in each screenshot
+- Annotate screenshots after capturing to highlight key elements
+
+---
+
+## 🎓 Understanding the Components
+
+### Field Type Detection
+The system checks both `field.type` and `field.associationType` for "TO_MANY":
+```typescript
+const isToMany = field.type === 'TO_MANY' || field.associationType === 'TO_MANY'
+```
+
+### Associated Entity
+To-many fields reference another entity:
+```typescript
+{
+  name: 'primarySkills',
+  type: 'TO_MANY',
+  associatedEntity: { entity: 'Skill' }
+}
+```
+
+### Value Format
+To-many field values are stored as JSON:
+```typescript
+{
+  operation: 'add' | 'remove' | 'replace',
+  ids: [100, 200, 300],
+  subField: 'id'
+}
+```
+
+---
+
+## 📝 Next Steps After Testing
+
+1. ✅ Complete all test steps in TESTING_SUMMARY.md
+2. 📸 Capture all 12 required screenshots
+3. 📋 Review console logs for any errors
+4. ✏️ Document any issues found
+5. 🎉 Confirm bugfix resolves the original problem
+
+---
+
+## 🆘 Need Help?
+
+If you encounter issues:
+1. Review **TO_MANY_FIELD_TEST_GUIDE.md** for detailed instructions
+2. Check **TESTING_SUMMARY.md** for troubleshooting tips
+3. Consult **SCREENSHOT_GUIDE.md** for screenshot requirements
+4. Review console logs for specific error messages
+5. Check FieldTypeDebugger for field property details
+
+---
+
+## 📄 File Structure
+
+```
+/workspaces/spark-template/
+├── src/
+│   └── components/
+│       ├── ToManyFieldTest.tsx          ← Main test page
+│       ├── ToManyFieldInput.tsx         ← Component being tested
+│       ├── FieldTypeDebugger.tsx        ← Field inspector
+│       └── ConsoleMonitorForTests.tsx   ← Log display
+├── README_TESTING.md                    ← This file
+├── TESTING_SUMMARY.md                   ← Quick reference
+├── TO_MANY_FIELD_TEST_GUIDE.md         ← Detailed instructions
+└── SCREENSHOT_GUIDE.md                  ← Screenshot checklist
+```
+
+---
+
+**Happy Testing! 🎉**
+
+For any questions or issues, refer to the detailed guides or check the console logs for debugging information.

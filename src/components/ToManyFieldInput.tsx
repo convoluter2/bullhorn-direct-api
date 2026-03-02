@@ -42,17 +42,34 @@ export function ToManyFieldInput({
   const associatedEntity = field?.associatedEntity?.entity
   const { metadata: subEntityMetadata, loading: subEntityLoading } = useEntityMetadata(associatedEntity)
 
+  console.log('🎯 ToManyFieldInput - Render:', {
+    fieldName: field?.name,
+    fieldType: field?.type,
+    associatedEntity,
+    hasMetadata: !!subEntityMetadata,
+    metadataLoading: subEntityLoading,
+    currentValue: value,
+    currentOperation: operation,
+    currentIds: ids,
+    currentSubField: subField
+  })
+
   useEffect(() => {
+    console.log('🔄 ToManyFieldInput - Value changed:', value)
     if (value) {
       try {
         const parsed = JSON.parse(value) as ToManyValue
+        console.log('✅ ToManyFieldInput - Parsed value successfully:', parsed)
         setOperation(parsed.operation || 'add')
         setIds(parsed.ids || [])
         setSubField(parsed.subField || 'id')
-      } catch {
+      } catch (error) {
+        console.warn('⚠️ ToManyFieldInput - Failed to parse JSON, trying regex:', error)
         const idMatches = value.match(/\d+/g)
         if (idMatches) {
-          setIds(idMatches.map(id => parseInt(id, 10)))
+          const extractedIds = idMatches.map(id => parseInt(id, 10))
+          console.log('📋 ToManyFieldInput - Extracted IDs via regex:', extractedIds)
+          setIds(extractedIds)
         }
       }
     }
@@ -64,7 +81,9 @@ export function ToManyFieldInput({
       ids: newIds,
       subField: newSubField
     }
-    onChange(JSON.stringify(toManyValue))
+    const jsonValue = JSON.stringify(toManyValue)
+    console.log('📤 ToManyFieldInput - Updating parent with:', toManyValue, 'JSON:', jsonValue)
+    onChange(jsonValue)
   }
 
   const handleAddId = () => {

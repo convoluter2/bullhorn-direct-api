@@ -6,12 +6,23 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { TestTube, CheckCircle, Info } from '@phosphor-icons/react'
 import { ToManyFieldInput } from '@/components/ToManyFieldInput'
+import { FieldTypeDebugger } from '@/components/FieldTypeDebugger'
+import { ConsoleMonitorForTests } from '@/components/ConsoleMonitorForTests'
 import type { EntityField } from '@/hooks/use-entity-metadata'
 
 export function ToManyFieldTest() {
   const [testValue1, setTestValue1] = useState('')
   const [testValue2, setTestValue2] = useState('')
   const [testValue3, setTestValue3] = useState('')
+
+  console.log('🧪 ToManyFieldTest - Render State:', {
+    testValue1Length: testValue1.length,
+    testValue2Length: testValue2.length,
+    testValue3Length: testValue3.length,
+    testValue1Preview: testValue1.substring(0, 50),
+    testValue2Preview: testValue2.substring(0, 50),
+    testValue3Preview: testValue3.substring(0, 50)
+  })
   
   const testCases = [
     {
@@ -26,7 +37,10 @@ export function ToManyFieldTest() {
         dataType: 'Integer'
       } as EntityField,
       value: testValue1,
-      setValue: setTestValue1,
+      setValue: (newValue: string) => {
+        console.log('🔧 Setting testValue1 (primarySkills):', newValue)
+        setTestValue1(newValue)
+      },
       testIds: [100, 200, 300]
     },
     {
@@ -41,7 +55,10 @@ export function ToManyFieldTest() {
         dataType: 'Integer'
       } as EntityField,
       value: testValue2,
-      setValue: setTestValue2,
+      setValue: (newValue: string) => {
+        console.log('🔧 Setting testValue2 (requirements):', newValue)
+        setTestValue2(newValue)
+      },
       testIds: [66, 77, 88]
     },
     {
@@ -56,7 +73,10 @@ export function ToManyFieldTest() {
         dataType: 'Integer'
       } as EntityField,
       value: testValue3,
-      setValue: setTestValue3,
+      setValue: (newValue: string) => {
+        console.log('🔧 Setting testValue3 (categories):', newValue)
+        setTestValue3(newValue)
+      },
       testIds: [1, 2, 3, 4, 5]
     }
   ]
@@ -96,6 +116,8 @@ export function ToManyFieldTest() {
         </AlertDescription>
       </Alert>
 
+      <ConsoleMonitorForTests />
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -130,6 +152,11 @@ export function ToManyFieldTest() {
                         <Badge variant="secondary">Data Type: {testCase.field.dataType}</Badge>
                       </div>
                     </div>
+
+                    <FieldTypeDebugger 
+                      field={testCase.field} 
+                      testName={testCase.name}
+                    />
                     
                     <div className="space-y-2">
                       <Label className="text-sm font-semibold">
