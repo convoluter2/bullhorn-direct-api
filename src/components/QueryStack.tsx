@@ -86,8 +86,8 @@ export function QueryStack({ onLog }: QueryStackProps) {
   const [useConditionalLogic, setUseConditionalLogic] = useState(false)
 
   const { entities, loading: entitiesLoading, error: entitiesError, refresh: refreshEntities, refreshInBackground, addEntity, lastRefresh } = useEntities()
-  const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
-  const { metadata: targetMetadata, loading: targetMetadataLoading, error: targetMetadataError } = useEntityMetadata(targetEntity || undefined)
+  const { metadata, loading: metadataLoading, error: metadataError, refresh: refreshMetadata } = useEntityMetadata(entity || undefined)
+  const { metadata: targetMetadata, loading: targetMetadataLoading, error: targetMetadataError, refresh: refreshTargetMetadata } = useEntityMetadata(targetEntity || undefined)
 
   const availableFields = metadata?.fields || []
   const fieldsMap = metadata?.fieldsMap || {}
@@ -776,18 +776,37 @@ export function QueryStack({ onLog }: QueryStackProps) {
                     </Button>
                   </div>
                 ) : (
-                  <Select value={entity || undefined} onValueChange={setEntity}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select entity" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {entities.map((e) => (
-                        <SelectItem key={e} value={e}>
-                          {e}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Select value={entity || undefined} onValueChange={setEntity}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select entity" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {entities.map((e) => (
+                          <SelectItem key={e} value={e}>
+                            {e}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {entity && (
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => {
+                          toast.loading('Refreshing field metadata...', { id: 'refresh-metadata' })
+                          refreshMetadata()
+                          setTimeout(() => {
+                            toast.success('Field metadata refreshed', { id: 'refresh-metadata' })
+                          }, 500)
+                        }}
+                        disabled={queryLoading || metadataLoading}
+                        title="Refresh field metadata for selected entity"
+                      >
+                        <ArrowsClockwise size={18} className={metadataLoading ? 'animate-spin' : ''} />
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -1093,6 +1112,27 @@ export function QueryStack({ onLog }: QueryStackProps) {
                         ))}
                       </SelectContent>
                     </Select>
+                    {(targetEntity || entity) && (
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => {
+                          toast.loading('Refreshing field metadata...', { id: 'refresh-target-metadata' })
+                          if (targetEntity) {
+                            refreshTargetMetadata()
+                          } else {
+                            refreshMetadata()
+                          }
+                          setTimeout(() => {
+                            toast.success('Field metadata refreshed', { id: 'refresh-target-metadata' })
+                          }, 500)
+                        }}
+                        disabled={loading || (targetEntity ? targetMetadataLoading : metadataLoading)}
+                        title="Refresh field metadata for target entity"
+                      >
+                        <ArrowsClockwise size={18} className={(targetEntity ? targetMetadataLoading : metadataLoading) ? 'animate-spin' : ''} />
+                      </Button>
+                    )}
                     {targetEntity && targetEntity !== entity && (
                       <Button
                         size="sm"

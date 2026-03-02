@@ -96,7 +96,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const lastProgressUpdateRef = useRef<{ time: number; index: number }>({ time: 0, index: 0 })
 
   const { entities, loading: entitiesLoading, refresh: refreshEntities, refreshInBackground, addEntity, lastRefresh } = useEntities()
-  const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(entity || undefined)
+  const { metadata, loading: metadataLoading, error: metadataError, refresh: refreshMetadata } = useEntityMetadata(entity || undefined)
   
   const availableFields = metadata?.fields || []
   
@@ -1186,18 +1186,37 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                   </Button>
                 </div>
               ) : (
-                <Select value={entity || undefined} onValueChange={setEntity}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select entity" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {entities.map((e) => (
-                      <SelectItem key={e} value={e}>
-                        {e}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Select value={entity || undefined} onValueChange={setEntity}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select entity" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {entities.map((e) => (
+                        <SelectItem key={e} value={e}>
+                          {e}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {entity && (
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => {
+                        toast.loading('Refreshing field metadata...', { id: 'refresh-metadata' })
+                        refreshMetadata()
+                        setTimeout(() => {
+                          toast.success('Field metadata refreshed', { id: 'refresh-metadata' })
+                        }, 500)
+                      }}
+                      disabled={loading || metadataLoading}
+                      title="Refresh field metadata for selected entity"
+                    >
+                      <ArrowsClockwise size={18} className={metadataLoading ? 'animate-spin' : ''} />
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
 

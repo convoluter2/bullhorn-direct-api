@@ -104,7 +104,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
   const [showRestorePrompt, setShowRestorePrompt] = useState(false)
 
   const { entities, loading: entitiesLoading, refresh: refreshEntities, refreshInBackground, addEntity, lastRefresh } = useEntities()
-  const { metadata, loading: metadataLoading, error: metadataError } = useEntityMetadata(selectedEntity || undefined)
+  const { metadata, loading: metadataLoading, error: metadataError, refresh: refreshMetadata } = useEntityMetadata(selectedEntity || undefined)
   
   const availableFields = metadata?.fields || []
   const fieldsMap = metadata?.fieldsMap || {}
@@ -918,40 +918,61 @@ export function SmartStack({ onLog }: SmartStackProps) {
                   </div>
                 )}
               </div>
-              {entitiesLoading ? (
-                <Skeleton className="h-10 w-full" />
-              ) : entities.length === 0 ? (
-                <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">No entities available</div>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  {entitiesLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : entities.length === 0 ? (
+                    <div className="space-y-2">
+                      <div className="text-sm text-muted-foreground">No entities available</div>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => {
+                          toast.loading('Loading entities...', { id: 'load-entities' })
+                          refreshEntities()
+                          setTimeout(() => {
+                            toast.success('Entity list loaded', { id: 'load-entities' })
+                          }, 500)
+                        }}
+                      >
+                        <ArrowsClockwise size={14} className={entitiesLoading ? 'animate-spin' : ''} />
+                        Load Entities
+                      </Button>
+                    </div>
+                  ) : (
+                    <Select value={selectedEntity} onValueChange={setSelectedEntity} disabled={loading}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select entity type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {entities.map((entity) => (
+                          <SelectItem key={entity} value={entity}>
+                            {entity}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+                {selectedEntity && (
+                  <Button
+                    size="icon"
+                    variant="outline"
                     onClick={() => {
-                      toast.loading('Loading entities...', { id: 'load-entities' })
-                      refreshEntities()
+                      toast.loading('Refreshing field metadata...', { id: 'refresh-metadata' })
+                      refreshMetadata()
                       setTimeout(() => {
-                        toast.success('Entity list loaded', { id: 'load-entities' })
+                        toast.success('Field metadata refreshed', { id: 'refresh-metadata' })
                       }, 500)
                     }}
+                    disabled={loading || metadataLoading}
+                    title="Refresh field metadata for selected entity"
                   >
-                    <ArrowsClockwise size={14} className={entitiesLoading ? 'animate-spin' : ''} />
-                    Load Entities
+                    <ArrowsClockwise size={18} className={metadataLoading ? 'animate-spin' : ''} />
                   </Button>
-                </div>
-              ) : (
-                <Select value={selectedEntity} onValueChange={setSelectedEntity} disabled={loading}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select entity type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {entities.map((entity) => (
-                      <SelectItem key={entity} value={entity}>
-                        {entity}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+                )}
+              </div>
               {metadataError && selectedEntity && (
                 <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md border border-destructive/20">
                   Failed to load entity metadata: {metadataError}
@@ -1135,12 +1156,30 @@ export function SmartStack({ onLog }: SmartStackProps) {
                                 ))}
                               </SelectContent>
                             </Select>
+                            {update.field && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => {
+                                  toast.loading(`Refreshing metadata for ${update.field}...`, { id: `refresh-field-${update.id}` })
+                                  refreshMetadata()
+                                  setTimeout(() => {
+                                    toast.success('Field metadata refreshed', { id: `refresh-field-${update.id}` })
+                                  }, 500)
+                                }}
+                                disabled={loading || metadataLoading}
+                                title={`Refresh metadata for ${update.field}`}
+                                className="shrink-0"
+                              >
+                                <ArrowsClockwise size={18} className={metadataLoading ? 'animate-spin' : ''} />
+                              </Button>
+                            )}
                             <Button
                               size="icon"
                               variant="ghost"
                               onClick={() => removeFieldUpdate(update.id)}
                               disabled={loading}
-                              className="text-destructive"
+                              className="text-destructive shrink-0"
                             >
                               <Trash size={18} />
                             </Button>
