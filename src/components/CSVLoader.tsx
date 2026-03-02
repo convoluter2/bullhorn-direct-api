@@ -1339,6 +1339,16 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                         isToMany,
                         isToOne
                       })
+                      
+                      if (mapping.bullhornField === 'primarySkills') {
+                        console.log('🎯 CANDIDATE.PRIMARYSKILLS FIELD DETECTED 🎯')
+                        console.log('Field Metadata Full Details:', fieldMeta)
+                        console.log('Is TO_MANY?', isToMany ? '✅ YES - Will show To-Many config selector' : '❌ NO - Plain field')
+                        console.log('Is TO_ONE?', isToOne ? '✅ YES - Expects single entity ID' : '❌ NO')
+                        console.log('Current To-Many Config:', toManyConfigs[mapping.bullhornField] || 'Not configured')
+                        console.log('All available fields in metadata:', metadata?.fields?.length || 0)
+                        console.log('=========================================')
+                      }
                     }
                     
                     return (

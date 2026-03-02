@@ -131,6 +131,28 @@ export function useEntityMetadata(entity: string | undefined) {
         await entityCacheService.saveMetadataCache(entity, newMetadata)
         
         console.log('✅ Metadata loaded and cached for:', entity, '- Fields:', fields.length)
+        
+        if (entity === 'Candidate') {
+          console.log('🎯 CANDIDATE METADATA LOADED 🎯')
+          const primarySkillsField = fieldsMap['primarySkills']
+          if (primarySkillsField) {
+            console.log('primarySkills field found:', primarySkillsField)
+            console.log('  - Type:', primarySkillsField.type)
+            console.log('  - DataType:', primarySkillsField.dataType)
+            console.log('  - AssociationType:', primarySkillsField.associationType || 'None')
+            console.log('  - AssociatedEntity:', primarySkillsField.associatedEntity?.entity || 'None')
+          } else {
+            console.log('⚠️ primarySkills field NOT FOUND in Candidate metadata')
+          }
+          
+          console.log('All TO_MANY fields in Candidate:')
+          Object.entries(fieldsMap)
+            .filter(([_, field]) => field.associationType === 'TO_MANY')
+            .forEach(([name, field]) => {
+              console.log(`  - ${name} → ${field.associatedEntity?.entity || 'Unknown'}`)
+            })
+          console.log('=========================================')
+        }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to load metadata'
         console.error('❌ Metadata loading failed for', entity, ':', err)
