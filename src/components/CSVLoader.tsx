@@ -1382,13 +1382,25 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                             </div>
                           </div>
                           
-                          {isToMany && mapping.bullhornField && mapping.bullhornField !== '__skip__' && fieldMeta?.associatedEntity?.entity && (
+                          {mapping.bullhornField && mapping.bullhornField !== '__skip__' && fieldMeta && (
+                            <div className="mt-2 p-2 bg-muted/30 rounded border text-xs space-y-1">
+                              <div><strong>Field Type:</strong> {fieldMeta.type}</div>
+                              <div><strong>Association Type:</strong> {fieldMeta.associationType || 'N/A'}</div>
+                              <div><strong>Data Type:</strong> {fieldMeta.dataType}</div>
+                              <div><strong>Associated Entity:</strong> {fieldMeta.associatedEntity?.entity || 'N/A'}</div>
+                              <div><strong>Is TO_MANY:</strong> {isToMany ? 'YES' : 'NO'}</div>
+                              <div><strong>Is TO_ONE:</strong> {isToOne ? 'YES' : 'NO'}</div>
+                            </div>
+                          )}
+                          
+                          {isToMany && mapping.bullhornField && mapping.bullhornField !== '__skip__' && (
                             <ToManyConfigSelector
                               fieldName={mapping.bullhornField}
-                              fieldLabel={fieldMeta.label || mapping.bullhornField}
-                              associatedEntity={fieldMeta.associatedEntity.entity}
+                              fieldLabel={fieldMeta?.label || mapping.bullhornField}
+                              associatedEntity={fieldMeta?.associatedEntity?.entity || 'Unknown'}
                               config={toManyConfigs[mapping.bullhornField] || { operation: 'add', subField: 'id' }}
                               onChange={(config) => {
+                                console.log('ToManyConfigSelector changed:', config)
                                 setToManyConfigs(prev => ({
                                   ...prev,
                                   [mapping.bullhornField!]: config
