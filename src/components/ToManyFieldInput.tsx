@@ -6,8 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Plus, Trash, X } from '@phosphor-icons/react'
+import { Plus, Trash, X, MagnifyingGlass } from '@phosphor-icons/react'
 import { cn, formatFieldLabel } from '@/lib/utils'
+import { bullhornAPI } from '@/lib/bullhorn-api'
+import { toast } from 'sonner'
 import type { EntityField } from '@/hooks/use-entity-metadata'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 
@@ -38,6 +40,10 @@ export function ToManyFieldInput({
   const [ids, setIds] = useState<(number | string)[]>([])
   const [inputValue, setInputValue] = useState('')
   const [subField, setSubField] = useState<string>('id')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [searching, setSearching] = useState(false)
+  const [showSearchResults, setShowSearchResults] = useState(false)
 
   const associatedEntity = field?.associatedEntity?.entity
   const { metadata: subEntityMetadata, loading: subEntityLoading } = useEntityMetadata(associatedEntity)
@@ -137,6 +143,70 @@ export function ToManyFieldInput({
       handleAddId()
     }
   }
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim() || !associatedEntity) {
+      return
+    }
+
+    setSearching(true)
+    setShowSearchResults(true)
+
+    try {
+      const searchFields = ['id', 'name', 'title', 'firstName', 'lastName', 'email']
+      const fields = searchFields.join(',')
+      
+      const where = `(name='${searchQuery}*' OR title='${searchQuery}*' OR firstName='${searchQuery}*' OR lastName='${searchQuery}*' OR email='${searchQuery}*')`
+      
+      const response = await bullhornAPI.query(associatedEntity, fields, where, 'id', 20, 0)
+      
+      if (response?.data) {
+        setSearchResults(response.data)
+        if (response.data.length === 0) {
+          toast.info(`No ${associatedEntity} records found matching "${searchQuery}"`)
+        }
+      } else {
+        setSearchResults([])
+      }
+    } catch (error) {
+      console.error('Search failed:', error)
+      toast.error(`Failed to search ${associatedEntity} records`)
+      setSearchResults([])
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  const handleAddFromSearch = (record: any) => {
+    if (record.id && !ids.includes(record.id)) {
+      const newIds = [...ids, record.id]
+      setIds(newIds)
+      updateParent(operation, newIds, subField)
+      toast.success(`Added ${getRecordTitle(record)}`)
+    }
+  }
+
+  const getRecordTitle = (record: any): string => {
+    if (record.title) return record.title
+    if (record.name) return record.name
+    if (record.firstName && record.lastName) return `${record.firstName} ${record.lastName}`
+    if (record.firstName) return record.firstName
+    if (record.lastName) return record.lastName
+    if (record.email) return record.email
+    return `ID: ${record.id}`
+  }
+
+  useEffect(() => {
+    if (searchQuery.length > 2 && subField === 'id') {
+      const debounceTimer = setTimeout(() => {
+        handleSearch()
+      }, 500)
+      return () => clearTimeout(debounceTimer)
+    } else {
+      setSearchResults([])
+      setShowSearchResults(false)
+    }
+  }, [searchQuery, subField, associatedEntity])
 
   return (
     <Card className={cn("p-4 space-y-4 border-2", className)}>
@@ -239,6 +309,76 @@ export function ToManyFieldInput({
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {subField === 'id' && associatedEntity && (
+        <div className="space-y-2">
+          <Label className="font-semibold">
+            Search & Select {associatedEntity} Records
+          </Label>
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={`Search ${associatedEntity} by name, title, email...`}
+                disabled={disabled || searching}
+                className="pr-10"
+              />
+              {searching && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <MagnifyingGlass size={16} className="text-muted-foreground animate-pulse" />
+                </div>
+              )}
+            </div>
+            <Button
+              onClick={handleSearch}
+              disabled={disabled || searching || !searchQuery.trim()}
+              size="sm"
+            >
+              <MagnifyingGlass />
+              Search
+            </Button>
+          </div>
+          {showSearchResults && searchResults.length > 0 && (
+            <Card className="p-2">
+              <ScrollArea className="h-48">
+                <div className="space-y-1">
+                  {searchResults.map((record) => (
+                    <div
+                      key={record.id}
+                      className="flex items-center justify-between p-2 rounded hover:bg-accent/10 border border-transparent hover:border-accent/30 transition-colors"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{getRecordTitle(record)}</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2">
+                          <Badge variant="outline" className="font-mono text-xs">
+                            ID: {record.id}
+                          </Badge>
+                          {record.email && (
+                            <span className="truncate">{record.email}</span>
+                          )}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={ids.includes(record.id) ? "secondary" : "default"}
+                        onClick={() => handleAddFromSearch(record)}
+                        disabled={disabled || ids.includes(record.id)}
+                        className="ml-2 shrink-0"
+                      >
+                        {ids.includes(record.id) ? 'Added' : <Plus />}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </Card>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Type at least 3 characters to search for existing {associatedEntity} records, or manually enter IDs below
+          </p>
         </div>
       )}
 

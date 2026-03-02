@@ -610,8 +610,17 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                   onClick={async () => {
                     await copyAuthUrl()
                     const url = getAuthUrl()
-                    window.open(url, '_blank')
-                    toast.info('Link copied and opened in new window! Use Incognito/Private mode to avoid cached credentials', { duration: 6000 })
+                    
+                    const width = 800
+                    const height = 900
+                    const left = Math.max(0, (window.screen.width - width) / 2)
+                    const top = Math.max(0, (window.screen.height - height) / 2)
+                    
+                    const features = `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,location=yes,status=no,scrollbars=yes,resizable=yes`
+                    
+                    window.open(url, '_blank', features)
+                    
+                    toast.info('Link copied! Opening in new incognito window - paste the URL there if it doesn\'t load automatically', { duration: 8000 })
                   }}
                   className="flex-1"
                   disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password}
