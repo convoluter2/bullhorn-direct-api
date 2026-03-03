@@ -610,8 +610,11 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                   onClick={async () => {
                     await copyAuthUrl()
                     
+                    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+                    const shortcut = isMac ? 'Cmd+Shift+N' : 'Ctrl+Shift+N'
+                    
                     toast.success('Link copied to clipboard!', { duration: 3000 })
-                    toast.info('Open a new Incognito/Private window and paste the URL to avoid cookie conflicts', { duration: 10000 })
+                    toast.info(`Press ${shortcut} to open a private window, then paste the URL`, { duration: 10000 })
                   }}
                   className="flex-1"
                   disabled={!manualAuth.clientId || !manualAuth.clientSecret || !manualAuth.username || !manualAuth.password}
