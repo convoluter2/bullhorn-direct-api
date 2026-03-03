@@ -19,8 +19,10 @@ import { ConnectionManager, type SavedConnection, type SecureCredentials } from 
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { EntityDocumentation } from '@/components/documentation/EntityDocumentation'
 import { ToManyFieldTest } from '@/components/ToManyFieldTest'
+import { SessionAwarenessDisplay } from '@/components/SessionAwarenessDisplay'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
+import { sessionManager } from '@/lib/session-manager'
 import { sanitizeLogDetails } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { BullhornSession, AuditLog } from '@/lib/types'
@@ -28,14 +30,14 @@ import { fieldValueCache } from '@/lib/field-value-cache'
 
 function App() {
   const isRefreshingRef = useRef(false)
-  const [session, setSession] = useKV<BullhornSession | null>('bullhorn-session', null)
+  const [session, setSession] = useState<BullhornSession | null>(null)
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const [connectionManagerOpen, setConnectionManagerOpen] = useState(false)
   const [logs, setLogs] = useKV<AuditLog[]>('audit-logs', [])
   const [activeTab, setActiveTab] = useState('queryblast')
   const [savedConnections, setSavedConnections] = useState<SavedConnection[]>([])
   const [isOAuthCallback, setIsOAuthCallback] = useState(false)
-  const [currentConnectionId, setCurrentConnectionId] = useKV<string | null>('current-connection-id', null)
+  const [currentConnectionId, setCurrentConnectionId] = useState<string | null>(null)
   const [preselectedConnection, setPreselectedConnection] = useState<SavedConnection | null>(null)
 
   useEffect(() => {
@@ -46,17 +48,30 @@ function App() {
     loadConnections()
     
     const initSession = async () => {
-      const keys = await spark.kv.keys()
-      const sessionKey = keys.find(k => k === 'bullhorn-session')
-      if (sessionKey) {
-        const storedSession = await spark.kv.get<BullhornSession>('bullhorn-session')
+      const browserId = sessionManager.getBrowserId()
+      console.log('🔄 Initializing session for browser:', browserId)
+      
+      const connections = await secureCredentialsAPI.getConnections()
+      
+      for (const connection of connections) {
+        const storedSession = await sessionManager.getSession(connection.id)
         if (storedSession) {
-          console.log('🔄 Initializing bullhornAPI with stored session:', {
+          console.log('✅ Found existing session for this browser:', {
+            browserId,
+            connectionId: connection.id,
+            connectionName: connection.name,
             corporationId: storedSession.corporationId,
             restUrl: storedSession.restUrl
           })
+          setSession(storedSession)
+          setCurrentConnectionId(connection.id)
           bullhornAPI.setSession(storedSession)
+          break
         }
+      }
+      
+      if (!session) {
+        console.log('📭 No existing session found for this browser')
       }
     }
     initSession()
@@ -123,17 +138,30 @@ function App() {
         return
       }
       
+      const awareness = await sessionManager.getSessionAwareness(currentConnId)
+      
+      if (awareness.activeRefreshCount > 0 && !isRefreshingRef.current) {
+        console.log('⏸️ Another session is already refreshing the token, waiting...', {
+          activeRefreshes: awareness.activeRefreshCount
+        })
+        return
+      }
+      
       const now = Date.now()
       const timeUntilExpiry = currentSession.expiresAt - now
 
       if (timeUntilExpiry < 60000 && timeUntilExpiry > 0) {
         isRefreshingRef.current = true
+        
+        await sessionManager.markRefreshStarted(currentConnId)
+        
         try {
           console.log('🔄 Token expiring soon, refreshing...', {
             currentConnectionId: currentConnId,
             corporationId: currentSession.corporationId,
             timeUntilExpiry: Math.floor(timeUntilExpiry / 1000) + 's',
-            expiresAt: new Date(currentSession.expiresAt).toISOString()
+            expiresAt: new Date(currentSession.expiresAt).toISOString(),
+            browserId: sessionManager.getBrowserId()
           })
           
           const credentials = await secureCredentialsAPI.getCredentials(currentConnId)
@@ -163,17 +191,20 @@ function App() {
             restUrl: newSession.restUrl,
             newExpiresIn: tokenData.expiresIn + 's',
             expiresAt: new Date(newSession.expiresAt).toISOString(),
-            timeUntilNextRefresh: Math.floor((newSession.expiresAt - Date.now()) / 1000) + 's'
+            timeUntilNextRefresh: Math.floor((newSession.expiresAt - Date.now()) / 1000) + 's',
+            browserId: sessionManager.getBrowserId()
           })
           
-          setSession(() => newSession)
+          setSession(newSession)
           bullhornAPI.setSession(newSession)
+          await sessionManager.markRefreshCompleted(currentConnId, newSession)
           
           addLog('Token Refresh', 'success', 'Access token refreshed automatically', {
             connectionId: currentConnId,
             corporationId: newSession.corporationId,
             expiresIn: tokenData.expiresIn,
-            newExpiresAt: new Date(newSession.expiresAt).toISOString()
+            newExpiresAt: new Date(newSession.expiresAt).toISOString(),
+            browserId: sessionManager.getBrowserId()
           })
           
           toast.success('Session refreshed successfully', { duration: 2000 })
@@ -187,11 +218,13 @@ function App() {
             error: errorMessage,
             fullError: fullError,
             connectionId: currentConnId,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            browserId: sessionManager.getBrowserId()
           })
           bullhornAPI.clearSession()
-          setSession(() => null)
-          setCurrentConnectionId(() => null)
+          setSession(null)
+          setCurrentConnectionId(null)
+          await sessionManager.clearSession(currentConnId)
         } finally {
           isRefreshingRef.current = false
         }
@@ -204,7 +237,7 @@ function App() {
     return () => {
       clearInterval(checkInterval)
     }
-  }, [currentConnectionId, addLog, setSession, setCurrentConnectionId])
+  }, [currentConnectionId, addLog])
 
   const handleAuthenticated = (newSession: BullhornSession, connectionId?: string) => {
     console.log('App - handleAuthenticated called:', { 
@@ -212,7 +245,8 @@ function App() {
       connectionId,
       hasToken: !!newSession?.BhRestToken,
       corporationId: newSession?.corporationId,
-      restUrl: newSession?.restUrl
+      restUrl: newSession?.restUrl,
+      browserId: sessionManager.getBrowserId()
     })
     
     try {
@@ -235,17 +269,21 @@ function App() {
             connectionName: connection.name,
             expectedTenant: connection.tenant,
             actualTenant: newSessionTenant,
-            corporationId: newSession.corporationId
+            corporationId: newSession.corporationId,
+            browserId: sessionManager.getBrowserId()
           })
         }
       }
       
-      setSession(() => newSession)
+      setSession(newSession)
       bullhornAPI.setSession(newSession)
       setIsOAuthCallback(false)
       
       if (connectionId) {
-        setCurrentConnectionId(() => connectionId)
+        setCurrentConnectionId(connectionId)
+        
+        sessionManager.saveSession(connectionId, newSession)
+        
         const updatedConnections = savedConnections.map(conn => 
           conn.id === connectionId ? { ...conn, lastUsed: Date.now() } : conn
         )
@@ -259,7 +297,8 @@ function App() {
             tenant: connection.tenant,
             environment: connection.environment,
             corporationId: newSession.corporationId,
-            restUrl: newSession.restUrl
+            restUrl: newSession.restUrl,
+            browserId: sessionManager.getBrowserId()
           })
         }
       }
@@ -286,14 +325,21 @@ function App() {
     toast.info('Authentication cancelled')
   }
 
-  const handleDisconnect = () => {
+  const handleDisconnect = async () => {
     if (confirm('Are you sure you want to disconnect?')) {
       console.log('🔌 Disconnecting - clearing session and cache')
       bullhornAPI.clearSession()
       fieldValueCache.invalidateAll()
-      setSession(() => null)
-      setCurrentConnectionId(() => null)
-      addLog('Disconnect', 'success', 'Disconnected from Bullhorn and cleared session cache')
+      setSession(null)
+      setCurrentConnectionId(null)
+      
+      if (currentConnectionId) {
+        await sessionManager.clearSession(currentConnectionId)
+      }
+      
+      addLog('Disconnect', 'success', 'Disconnected from Bullhorn and cleared session cache', {
+        browserId: sessionManager.getBrowserId()
+      })
     }
   }
 
@@ -367,7 +413,8 @@ function App() {
       console.log('🔄 Switching connection - clearing old session completely')
       console.log('   Previous session:', {
         corporationId: session?.corporationId,
-        restUrl: session?.restUrl
+        restUrl: session?.restUrl,
+        browserId: sessionManager.getBrowserId()
       })
       console.log('   Target connection:', {
         name: connection.name,
@@ -377,8 +424,13 @@ function App() {
       
       bullhornAPI.clearSession()
       fieldValueCache.invalidateAll()
-      setSession(() => null)
-      setCurrentConnectionId(() => null)
+      
+      if (currentConnectionId) {
+        await sessionManager.clearSession(currentConnectionId)
+      }
+      
+      setSession(null)
+      setCurrentConnectionId(null)
       
       await new Promise(resolve => setTimeout(resolve, 100))
 
@@ -400,13 +452,15 @@ function App() {
         corporationId: newSession.corporationId,
         restUrl: newSession.restUrl,
         tenant: newSessionTenant,
-        expectedTenant: connection.tenant
+        expectedTenant: connection.tenant,
+        browserId: sessionManager.getBrowserId()
       })
 
-      setSession(() => newSession)
+      setSession(newSession)
       bullhornAPI.setSession(newSession)
       
-      setCurrentConnectionId(() => connection.id)
+      setCurrentConnectionId(connection.id)
+      await sessionManager.saveSession(connection.id, newSession)
       await secureCredentialsAPI.updateConnection(connection.id, { lastUsed: Date.now() })
       const connections = await secureCredentialsAPI.getConnections()
       setSavedConnections(connections)
@@ -421,29 +475,35 @@ function App() {
         connectionId: connection.id,
         tenant: connection.tenant,
         environment: connection.environment,
-        corporationId: newSession.corporationId
+        corporationId: newSession.corporationId,
+        browserId: sessionManager.getBrowserId()
       })
     } catch (error) {
       console.error('❌ Connection switch failed:', error)
       bullhornAPI.clearSession()
       fieldValueCache.invalidateAll()
-      setSession(() => null)
-      setCurrentConnectionId(() => null)
+      setSession(null)
+      setCurrentConnectionId(null)
       toast.error('Failed to switch connection. Please try again.', { id: 'switch-connection' })
-      addLog('Connection Switch', 'error', `Failed to switch to ${connection.name}`, { error: String(error) })
+      addLog('Connection Switch', 'error', `Failed to switch to ${connection.name}`, { 
+        error: String(error),
+        browserId: sessionManager.getBrowserId()
+      })
     }
   }
 
   const currentLogs = logs || []
 
   useEffect(() => {
-    if (session) {
+    if (session && currentConnectionId) {
       console.log('🔄 Synchronizing session with bullhornAPI:', {
         corporationId: session.corporationId,
         restUrl: session.restUrl,
-        hasToken: !!session.BhRestToken
+        hasToken: !!session.BhRestToken,
+        browserId: sessionManager.getBrowserId()
       })
       bullhornAPI.setSession(session)
+      sessionManager.saveSession(currentConnectionId, session)
     } else {
       console.log('⚠️ No session available to synchronize')
       const currentAPISession = bullhornAPI.getSession()
@@ -452,7 +512,7 @@ function App() {
         bullhornAPI.clearSession()
       }
     }
-  }, [session])
+  }, [session, currentConnectionId])
 
   if (isOAuthCallback) {
     console.log('App - Rendering OAuthCallback component')
@@ -516,9 +576,14 @@ function App() {
                     onManageConnections={() => setConnectionManagerOpen(true)}
                     onNewConnection={() => setAuthDialogOpen(true)}
                   />
-                  <Badge variant="outline" className="font-mono">
-                    Connected
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge variant="outline" className="font-mono">
+                      Connected
+                    </Badge>
+                    <span className="text-xs text-muted-foreground font-mono">
+                      {sessionManager.getBrowserId().substring(0, 15)}...
+                    </span>
+                  </div>
                   <Button variant="outline" size="sm" onClick={handleDisconnect}>
                     <SignOut />
                     Disconnect
@@ -645,6 +710,10 @@ function App() {
             </TabsContent>
 
             <TabsContent value="logs" className="space-y-6">
+              <SessionAwarenessDisplay 
+                connectionId={currentConnectionId} 
+                isRefreshing={isRefreshingRef.current}
+              />
               <AuditLogs logs={currentLogs} onClearLogs={clearLogs} onUpdateLog={updateLog} onLog={addLog} />
             </TabsContent>
           </Tabs>
