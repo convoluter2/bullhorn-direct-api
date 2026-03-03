@@ -865,23 +865,23 @@ export class BullhornAPI {
     const event = new CustomEvent('entity-usage', { detail: { entityName: entity } })
     window.dispatchEvent(event)
 
+    const normalizedWhere = where && where.trim() !== '' ? where : 'id>0'
+
     console.log('🔍 Executing query:', {
       entity,
       encodedEntity,
       corporationId: this.session.corporationId,
       restUrl: this.session.restUrl,
-      where: where || 'none',
+      where: normalizedWhere,
+      originalWhere: where || 'none',
       fields: fields.length
     })
 
     const queryParams = new URLSearchParams({
       fields: fields.join(','),
+      where: normalizedWhere,
       BhRestToken: this.session.BhRestToken
     })
-
-    if (where) {
-      queryParams.append('where', where)
-    }
 
     if (params) {
       Object.entries(params).forEach(([key, value]) => {

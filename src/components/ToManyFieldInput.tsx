@@ -246,7 +246,7 @@ export function ToManyFieldInput({
         limit: 500
       })
       
-      const response = await bullhornAPI.query(associatedEntity, searchFields, '', {
+      const response = await bullhornAPI.query(associatedEntity, searchFields, 'id>0', {
         orderBy: 'id',
         count: '500',
         start: '0'
