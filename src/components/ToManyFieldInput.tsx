@@ -170,14 +170,30 @@ export function ToManyFieldInput({
       const searchFields = ['id', 'name', 'title', 'firstName', 'lastName', 'email']
       const fields = searchFields.join(',')
       
-      const where = `(name='${searchQuery}*' OR title='${searchQuery}*' OR firstName='${searchQuery}*' OR lastName='${searchQuery}*' OR email='${searchQuery}*')`
+      const searchTerm = searchQuery.trim()
+      const where = `(name='*${searchTerm}*' OR title='*${searchTerm}*' OR firstName='*${searchTerm}*' OR lastName='*${searchTerm}*' OR email='*${searchTerm}*')`
+      
+      console.log('🔍 ToManyFieldInput - Search query:', {
+        associatedEntity,
+        searchTerm,
+        where,
+        fields
+      })
       
       const response = await bullhornAPI.query(associatedEntity, fields, where, 'id', 20, 0)
+      
+      console.log('🔍 ToManyFieldInput - Search results:', {
+        totalCount: response?.total,
+        dataCount: response?.data?.length,
+        data: response?.data
+      })
       
       if (response?.data) {
         setSearchResults(response.data)
         if (response.data.length === 0) {
           toast.info(`No ${associatedEntity} records found matching "${searchQuery}"`)
+        } else {
+          toast.success(`Found ${response.data.length} ${associatedEntity} record(s)`)
         }
       } else {
         setSearchResults([])
@@ -220,7 +236,18 @@ export function ToManyFieldInput({
       const searchFields = ['id', 'name', 'title', 'firstName', 'lastName', 'email']
       const fields = searchFields.join(',')
       
+      console.log('📋 ToManyFieldInput - Loading records for:', {
+        associatedEntity,
+        fields,
+        limit: 500
+      })
+      
       const response = await bullhornAPI.query(associatedEntity, fields, '', 'id', 500, 0)
+      
+      console.log('📋 ToManyFieldInput - Load response:', {
+        totalCount: response?.total,
+        dataCount: response?.data?.length
+      })
       
       if (response?.data) {
         const records: LookupRecord[] = response.data.map((r: any) => ({
@@ -237,8 +264,8 @@ export function ToManyFieldInput({
         setAvailableRecords([])
       }
     } catch (error) {
-      console.error('Failed to load records:', error)
-      toast.error(`Failed to load ${associatedEntity} records`)
+      console.error('❌ Failed to load records:', error)
+      toast.error(`Failed to load ${associatedEntity} records: ${error instanceof Error ? error.message : 'Unknown error'}`)
       setAvailableRecords([])
     } finally {
       setLoadingRecords(false)

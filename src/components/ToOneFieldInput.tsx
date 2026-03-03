@@ -105,14 +105,30 @@ export function ToOneFieldInput({
       const searchFields = ['id', 'name', 'title', 'firstName', 'lastName', 'email']
       const fields = searchFields.join(',')
       
-      const where = `(name='${searchQuery}*' OR title='${searchQuery}*' OR firstName='${searchQuery}*' OR lastName='${searchQuery}*' OR email='${searchQuery}*')`
+      const searchTerm = searchQuery.trim()
+      const where = `(name='*${searchTerm}*' OR title='*${searchTerm}*' OR firstName='*${searchTerm}*' OR lastName='*${searchTerm}*' OR email='*${searchTerm}*')`
+      
+      console.log('🔍 ToOneFieldInput - Search query:', {
+        associatedEntity,
+        searchTerm,
+        where,
+        fields
+      })
       
       const response = await bullhornAPI.query(associatedEntity, fields, where, 'id', 20, 0)
+      
+      console.log('🔍 ToOneFieldInput - Search results:', {
+        totalCount: response?.total,
+        dataCount: response?.data?.length,
+        data: response?.data
+      })
       
       if (response?.data) {
         setSearchResults(response.data)
         if (response.data.length === 0) {
           toast.info(`No ${associatedEntity} records found matching "${searchQuery}"`)
+        } else {
+          toast.success(`Found ${response.data.length} ${associatedEntity} record(s)`)
         }
       } else {
         setSearchResults([])
