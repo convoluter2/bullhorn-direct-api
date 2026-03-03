@@ -180,7 +180,11 @@ export function ToManyFieldInput({
         fields
       })
       
-      const response = await bullhornAPI.query(associatedEntity, fields, where, 'id', 20, 0)
+      const response = await bullhornAPI.query(associatedEntity, searchFields, where, { 
+        orderBy: 'id',
+        count: '20',
+        start: '0'
+      })
       
       console.log('🔍 ToManyFieldInput - Search results:', {
         totalCount: response?.total,
@@ -242,7 +246,11 @@ export function ToManyFieldInput({
         limit: 500
       })
       
-      const response = await bullhornAPI.query(associatedEntity, fields, '', 'id', 500, 0)
+      const response = await bullhornAPI.query(associatedEntity, searchFields, '', {
+        orderBy: 'id',
+        count: '500',
+        start: '0'
+      })
       
       console.log('📋 ToManyFieldInput - Load response:', {
         totalCount: response?.total,

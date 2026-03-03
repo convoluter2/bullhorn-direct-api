@@ -115,7 +115,11 @@ export function ToOneFieldInput({
         fields
       })
       
-      const response = await bullhornAPI.query(associatedEntity, fields, where, 'id', 20, 0)
+      const response = await bullhornAPI.query(associatedEntity, searchFields, where, {
+        orderBy: 'id',
+        count: '20',
+        start: '0'
+      })
       
       console.log('🔍 ToOneFieldInput - Search results:', {
         totalCount: response?.total,

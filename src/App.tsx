@@ -43,6 +43,22 @@ function App() {
       setSavedConnections(connections)
     }
     loadConnections()
+    
+    const initSession = async () => {
+      const keys = await spark.kv.keys()
+      const sessionKey = keys.find(k => k === 'bullhorn-session')
+      if (sessionKey) {
+        const storedSession = await spark.kv.get<BullhornSession>('bullhorn-session')
+        if (storedSession) {
+          console.log('🔄 Initializing bullhornAPI with stored session:', {
+            corporationId: storedSession.corporationId,
+            restUrl: storedSession.restUrl
+          })
+          bullhornAPI.setSession(storedSession)
+        }
+      }
+    }
+    initSession()
   }, [])
 
   const addLog = useCallback((operation: string, status: 'success' | 'error', message: string, details?: any) => {
@@ -406,7 +422,19 @@ function App() {
 
   useEffect(() => {
     if (session) {
+      console.log('🔄 Synchronizing session with bullhornAPI:', {
+        corporationId: session.corporationId,
+        restUrl: session.restUrl,
+        hasToken: !!session.BhRestToken
+      })
       bullhornAPI.setSession(session)
+    } else {
+      console.log('⚠️ No session available to synchronize')
+      const currentAPISession = bullhornAPI.getSession()
+      if (currentAPISession) {
+        console.log('🧹 Clearing stale session from bullhornAPI')
+        bullhornAPI.clearSession()
+      }
     }
   }, [session])
 
