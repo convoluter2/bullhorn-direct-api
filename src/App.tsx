@@ -24,6 +24,7 @@ import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { sanitizeLogDetails } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { BullhornSession, AuditLog } from '@/lib/types'
+import { fieldValueCache } from '@/lib/field-value-cache'
 
 function App() {
   const isRefreshingRef = useRef(false)
@@ -263,6 +264,13 @@ function App() {
         }
       }
       
+      console.log('🚀 Prefetching common field values to cache...')
+      fieldValueCache.prefetchCommonEntities().then(() => {
+        console.log('✅ Field value cache prefetch complete')
+      }).catch(err => {
+        console.warn('⚠️ Field value cache prefetch failed:', err)
+      })
+      
       console.log('App - Authentication handling complete')
     } catch (error) {
       console.error('App - Error in handleAuthenticated:', error)
@@ -282,6 +290,7 @@ function App() {
     if (confirm('Are you sure you want to disconnect?')) {
       console.log('🔌 Disconnecting - clearing session and cache')
       bullhornAPI.clearSession()
+      fieldValueCache.invalidateAll()
       setSession(() => null)
       setCurrentConnectionId(() => null)
       addLog('Disconnect', 'success', 'Disconnected from Bullhorn and cleared session cache')
@@ -367,6 +376,7 @@ function App() {
       })
       
       bullhornAPI.clearSession()
+      fieldValueCache.invalidateAll()
       setSession(() => null)
       setCurrentConnectionId(() => null)
       
@@ -401,6 +411,11 @@ function App() {
       const connections = await secureCredentialsAPI.getConnections()
       setSavedConnections(connections)
 
+      console.log('🚀 Prefetching field values for new connection...')
+      fieldValueCache.prefetchCommonEntities().catch(err => {
+        console.warn('⚠️ Field value prefetch failed:', err)
+      })
+
       toast.success(`Switched to ${connection.name}`, { id: 'switch-connection' })
       addLog('Connection Switch', 'success', `Switched to connection: ${connection.name}`, { 
         connectionId: connection.id,
@@ -411,6 +426,7 @@ function App() {
     } catch (error) {
       console.error('❌ Connection switch failed:', error)
       bullhornAPI.clearSession()
+      fieldValueCache.invalidateAll()
       setSession(() => null)
       setCurrentConnectionId(() => null)
       toast.error('Failed to switch connection. Please try again.', { id: 'switch-connection' })

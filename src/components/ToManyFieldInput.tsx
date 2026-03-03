@@ -14,6 +14,8 @@ import { bullhornAPI } from '@/lib/bullhorn-api'
 import { toast } from 'sonner'
 import type { EntityField } from '@/hooks/use-entity-metadata'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
+import { useFieldValues } from '@/hooks/use-field-values'
+import { fieldValueCache } from '@/lib/field-value-cache'
 
 interface ToManyFieldInputProps {
   field: EntityField | null
@@ -61,6 +63,17 @@ export function ToManyFieldInput({
 
   const associatedEntity = field?.associatedEntity?.entity
   const { metadata: subEntityMetadata, loading: subEntityLoading } = useEntityMetadata(associatedEntity)
+  
+  const { 
+    values: cachedValues, 
+    isLoading: cacheLoading, 
+    refresh: refreshCache 
+  } = useFieldValues({
+    entityType: associatedEntity || '',
+    fields: ['id', 'name', 'title', 'firstName', 'lastName', 'email'],
+    enabled: !!associatedEntity && subField === 'id',
+    autoLoad: false
+  })
 
   console.log('🎯 ToManyFieldInput - Render:', {
     fieldName: field?.name,
@@ -71,7 +84,9 @@ export function ToManyFieldInput({
     currentValue: value,
     currentOperation: operation,
     currentIds: ids,
-    currentSubField: subField
+    currentSubField: subField,
+    cachedValuesCount: cachedValues.length,
+    cacheLoading
   })
 
   useEffect(() => {
@@ -167,41 +182,29 @@ export function ToManyFieldInput({
     setShowSearchResults(true)
 
     try {
-      const searchFields = ['id', 'name', 'title', 'firstName', 'lastName', 'email']
-      const fields = searchFields.join(',')
-      
-      const searchTerm = searchQuery.trim()
-      const where = `(name='*${searchTerm}*' OR title='*${searchTerm}*' OR firstName='*${searchTerm}*' OR lastName='*${searchTerm}*' OR email='*${searchTerm}*')`
-      
-      console.log('🔍 ToManyFieldInput - Search query:', {
+      console.log('🔍 ToManyFieldInput - Searching with cache:', {
         associatedEntity,
-        searchTerm,
-        where,
-        fields
+        searchQuery: searchQuery.trim()
       })
       
-      const response = await bullhornAPI.query(associatedEntity, searchFields, where, { 
-        orderBy: 'id',
-        count: '20',
-        start: '0'
+      const results = await fieldValueCache.getFieldValues(
+        associatedEntity,
+        ['id', 'name', 'title', 'firstName', 'lastName', 'email'],
+        searchQuery.trim()
+      )
+      
+      console.log('🔍 ToManyFieldInput - Search results from cache:', {
+        count: results.length,
+        data: results
       })
       
-      console.log('🔍 ToManyFieldInput - Search results:', {
-        totalCount: response?.total,
-        dataCount: response?.data?.length,
-        data: response?.data
-      })
-      
-      if (response?.data) {
-        setSearchResults(response.data)
-        if (response.data.length === 0) {
-          toast.info(`No ${associatedEntity} records found matching "${searchQuery}"`)
-        } else {
-          toast.success(`Found ${response.data.length} ${associatedEntity} record(s)`)
-        }
+      if (results.length === 0) {
+        toast.info(`No ${associatedEntity} records found matching "${searchQuery}"`)
       } else {
-        setSearchResults([])
+        toast.success(`Found ${results.length} ${associatedEntity} record(s)`)
       }
+      
+      setSearchResults(results)
     } catch (error) {
       console.error('Search failed:', error)
       toast.error(`Failed to search ${associatedEntity} records`)
@@ -237,40 +240,31 @@ export function ToManyFieldInput({
 
     setLoadingRecords(true)
     try {
-      const searchFields = ['id', 'name', 'title', 'firstName', 'lastName', 'email']
-      const fields = searchFields.join(',')
-      
-      console.log('📋 ToManyFieldInput - Loading records for:', {
+      console.log('📋 ToManyFieldInput - Loading records from cache:', {
         associatedEntity,
-        fields,
         limit: 500
       })
       
-      const response = await bullhornAPI.query(associatedEntity, searchFields, 'id>0', {
-        orderBy: 'id',
-        count: '500',
-        start: '0'
+      const records = await fieldValueCache.getFieldValues(
+        associatedEntity,
+        ['id', 'name', 'title', 'firstName', 'lastName', 'email']
+      )
+      
+      console.log('📋 ToManyFieldInput - Load response from cache:', {
+        count: records.length
       })
       
-      console.log('📋 ToManyFieldInput - Load response:', {
-        totalCount: response?.total,
-        dataCount: response?.data?.length
-      })
+      const formattedRecords: LookupRecord[] = records.map((r: any) => ({
+        id: r.id,
+        title: getRecordTitle(r),
+        name: r.name,
+        firstName: r.firstName,
+        lastName: r.lastName,
+        email: r.email
+      }))
       
-      if (response?.data) {
-        const records: LookupRecord[] = response.data.map((r: any) => ({
-          id: r.id,
-          title: getRecordTitle(r),
-          name: r.name,
-          firstName: r.firstName,
-          lastName: r.lastName,
-          email: r.email
-        }))
-        setAvailableRecords(records)
-        toast.success(`Loaded ${records.length} ${associatedEntity} records`)
-      } else {
-        setAvailableRecords([])
-      }
+      setAvailableRecords(formattedRecords)
+      toast.success(`Loaded ${formattedRecords.length} ${associatedEntity} records from cache`)
     } catch (error) {
       console.error('❌ Failed to load records:', error)
       toast.error(`Failed to load ${associatedEntity} records: ${error instanceof Error ? error.message : 'Unknown error'}`)

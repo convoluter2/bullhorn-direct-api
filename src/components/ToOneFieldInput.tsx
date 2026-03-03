@@ -8,6 +8,7 @@ import { MagnifyingGlass, XCircle, Plus } from '@phosphor-icons/react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { toast } from 'sonner'
 import type { EntityField } from '@/hooks/use-entity-metadata'
+import { fieldValueCache } from '@/lib/field-value-cache'
 
 interface ToOneFieldInputProps {
   field: EntityField
@@ -57,13 +58,17 @@ export function ToOneFieldInput({
       setError(null)
 
       try {
-        const result = await bullhornAPI.getEntity(associatedEntity, numericId, ['id', 'name', 'title', 'firstName', 'lastName'])
+        const result = await fieldValueCache.getFieldValueById(
+          associatedEntity,
+          numericId,
+          ['id', 'name', 'title', 'firstName', 'lastName']
+        )
         
-        if (result && result.data) {
-          const title = result.data.title || 
-                       result.data.name || 
-                       (result.data.firstName && result.data.lastName 
-                         ? `${result.data.firstName} ${result.data.lastName}` 
+        if (result) {
+          const title = result.title || 
+                       result.name || 
+                       (result.firstName && result.lastName 
+                         ? `${result.firstName} ${result.lastName}` 
                          : undefined)
           
           setLookupData({
@@ -102,41 +107,29 @@ export function ToOneFieldInput({
     setShowSearchResults(true)
 
     try {
-      const searchFields = ['id', 'name', 'title', 'firstName', 'lastName', 'email']
-      const fields = searchFields.join(',')
-      
-      const searchTerm = searchQuery.trim()
-      const where = `(name='*${searchTerm}*' OR title='*${searchTerm}*' OR firstName='*${searchTerm}*' OR lastName='*${searchTerm}*' OR email='*${searchTerm}*')`
-      
-      console.log('🔍 ToOneFieldInput - Search query:', {
+      console.log('🔍 ToOneFieldInput - Searching with cache:', {
         associatedEntity,
-        searchTerm,
-        where,
-        fields
+        searchQuery: searchQuery.trim()
       })
       
-      const response = await bullhornAPI.query(associatedEntity, searchFields, where, {
-        orderBy: 'id',
-        count: '20',
-        start: '0'
+      const results = await fieldValueCache.getFieldValues(
+        associatedEntity,
+        ['id', 'name', 'title', 'firstName', 'lastName', 'email'],
+        searchQuery.trim()
+      )
+      
+      console.log('🔍 ToOneFieldInput - Search results from cache:', {
+        count: results.length,
+        data: results
       })
       
-      console.log('🔍 ToOneFieldInput - Search results:', {
-        totalCount: response?.total,
-        dataCount: response?.data?.length,
-        data: response?.data
-      })
-      
-      if (response?.data) {
-        setSearchResults(response.data)
-        if (response.data.length === 0) {
-          toast.info(`No ${associatedEntity} records found matching "${searchQuery}"`)
-        } else {
-          toast.success(`Found ${response.data.length} ${associatedEntity} record(s)`)
-        }
+      if (results.length === 0) {
+        toast.info(`No ${associatedEntity} records found matching "${searchQuery}"`)
       } else {
-        setSearchResults([])
+        toast.success(`Found ${results.length} ${associatedEntity} record(s)`)
       }
+      
+      setSearchResults(results)
     } catch (err) {
       console.error('Search failed:', err)
       toast.error(`Failed to search ${associatedEntity} records`)
