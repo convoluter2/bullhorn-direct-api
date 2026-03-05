@@ -73,9 +73,9 @@ export function useEntityMetadata(entity: string | undefined) {
         const fieldsMap: Record<string, EntityField> = {}
 
         if (response.fields && Array.isArray(response.fields)) {
-          for (const field of response.fields) {
+          const fieldPromises = response.fields.map(async (field) => {
             if (!field || !field.name) {
-              continue
+              return null
             }
             
             const defaultLabel = field.label || field.name
@@ -117,10 +117,32 @@ export function useEntityMetadata(entity: string | undefined) {
                 value: opt.value,
                 label: opt.label || String(opt.value)
               }))
+            } else if (field.optionsUrl && (field.optionsType === 'SpecializedOptionsLookup' || field.optionsType === 'OptionsLookup')) {
+              try {
+                console.log(`📋 Fetching options for ${entity}.${field.name} from API...`)
+                const fetchedOptions = await bullhornAPI.getFieldOptions(entity, field.name)
+                if (fetchedOptions && fetchedOptions.length > 0) {
+                  fieldInfo.options = fetchedOptions.map((opt: any) => ({
+                    value: opt.value,
+                    label: opt.label || String(opt.value)
+                  }))
+                  console.log(`✅ Loaded ${fieldInfo.options.length} options for ${entity}.${field.name}`)
+                }
+              } catch (error) {
+                console.warn(`⚠️ Failed to load options for ${entity}.${field.name}:`, error)
+              }
             }
 
-            fields.push(fieldInfo)
-            fieldsMap[field.name] = fieldInfo
+            return fieldInfo
+          })
+
+          const resolvedFields = await Promise.all(fieldPromises)
+          
+          for (const fieldInfo of resolvedFields) {
+            if (fieldInfo) {
+              fields.push(fieldInfo)
+              fieldsMap[fieldInfo.name] = fieldInfo
+            }
           }
         }
 
