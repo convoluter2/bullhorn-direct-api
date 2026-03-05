@@ -304,8 +304,32 @@ export function ConditionalAssociationBuilder({
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select field" />
                                 </SelectTrigger>
-                                <SelectContent>
-                                  {fields.filter(f => f.dataType !== 'TO_MANY').map(field => (
+                                <SelectContent className="max-h-[400px]">
+                                  <div className="sticky top-0 z-10 bg-popover p-2">
+                                    <input
+                                      type="text"
+                                      placeholder="Search fields..."
+                                      className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                      onClick={(e) => e.stopPropagation()}
+                                      onChange={(e) => {
+                                        const searchTerm = e.target.value.toLowerCase()
+                                        const items = e.target.closest('[role="listbox"]')?.querySelectorAll('[role="option"]')
+                                        items?.forEach((item) => {
+                                          const text = item.textContent?.toLowerCase() || ''
+                                          if (text.includes(searchTerm)) {
+                                            (item as HTMLElement).style.display = ''
+                                          } else {
+                                            (item as HTMLElement).style.display = 'none'
+                                          }
+                                        })
+                                      }}
+                                    />
+                                  </div>
+                                  {[...fields].filter(f => f.dataType !== 'TO_MANY').sort((a, b) => {
+                                    const labelA = (a.label || a.name).toLowerCase()
+                                    const labelB = (b.label || b.name).toLowerCase()
+                                    return labelA.localeCompare(labelB)
+                                  }).map(field => (
                                     <SelectItem key={field.name} value={field.name}>
                                       {formatFieldLabelWithType(field.label, field.name, field.type, field.dataType)}
                                     </SelectItem>
@@ -392,8 +416,32 @@ export function ConditionalAssociationBuilder({
                           <SelectTrigger>
                             <SelectValue placeholder="Select association field" />
                           </SelectTrigger>
-                          <SelectContent>
-                            {toManyFields.map(field => (
+                          <SelectContent className="max-h-[400px]">
+                            <div className="sticky top-0 z-10 bg-popover p-2">
+                              <input
+                                type="text"
+                                placeholder="Search fields..."
+                                className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => {
+                                  const searchTerm = e.target.value.toLowerCase()
+                                  const items = e.target.closest('[role="listbox"]')?.querySelectorAll('[role="option"]')
+                                  items?.forEach((item) => {
+                                    const text = item.textContent?.toLowerCase() || ''
+                                    if (text.includes(searchTerm)) {
+                                      (item as HTMLElement).style.display = ''
+                                    } else {
+                                      (item as HTMLElement).style.display = 'none'
+                                    }
+                                  })
+                                }}
+                              />
+                            </div>
+                            {[...toManyFields].sort((a, b) => {
+                              const labelA = (a.label || a.name).toLowerCase()
+                              const labelB = (b.label || b.name).toLowerCase()
+                              return labelA.localeCompare(labelB)
+                            }).map(field => (
                               <SelectItem key={field.name} value={field.name}>
                                 {formatFieldLabel(field.label, field.name)}
                               </SelectItem>

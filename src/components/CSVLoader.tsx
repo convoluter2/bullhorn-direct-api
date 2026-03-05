@@ -1390,9 +1390,32 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select Bullhorn field" />
                                   </SelectTrigger>
-                                  <SelectContent>
+                                  <SelectContent className="max-h-[400px]">
+                                    <div className="sticky top-0 z-10 bg-popover p-2">
+                                      <Input
+                                        placeholder="Search fields..."
+                                        className="h-8"
+                                        onClick={(e) => e.stopPropagation()}
+                                        onChange={(e) => {
+                                          const searchTerm = e.target.value.toLowerCase()
+                                          const items = e.target.closest('[role="listbox"]')?.querySelectorAll('[role="option"]')
+                                          items?.forEach((item) => {
+                                            const text = item.textContent?.toLowerCase() || ''
+                                            if (text.includes(searchTerm)) {
+                                              (item as HTMLElement).style.display = ''
+                                            } else {
+                                              (item as HTMLElement).style.display = 'none'
+                                            }
+                                          })
+                                        }}
+                                      />
+                                    </div>
                                     <SelectItem value="__skip__">Skip</SelectItem>
-                                    {(availableFields || []).filter(field => field && field.name).map((field) => (
+                                    {[...(availableFields || [])].filter(field => field && field.name).sort((a, b) => {
+                                      const labelA = (a.label || a.name).toLowerCase()
+                                      const labelB = (b.label || b.name).toLowerCase()
+                                      return labelA.localeCompare(labelB)
+                                    }).map((field) => (
                                       <SelectItem key={field.name} value={field.name}>
                                         {formatFieldLabelWithType(field.label || field.name, field.name, field.type, field.dataType)}
                                         {lookupField === field.name && (

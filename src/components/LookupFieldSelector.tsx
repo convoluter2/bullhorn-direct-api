@@ -26,10 +26,16 @@ export function LookupFieldSelector({
   showEndpointInfo = true
 }: LookupFieldSelectorProps) {
   const fieldsWithCapabilities = useMemo(() => {
-    return fields.map(field => ({
+    const fieldsWithCap = fields.map(field => ({
       ...field,
       capability: getFieldEndpointCapability(field.name, field.label, field.dataType)
     }))
+    
+    return fieldsWithCap.sort((a, b) => {
+      const labelA = (a.label || a.name).toLowerCase()
+      const labelB = (b.label || b.name).toLowerCase()
+      return labelA.localeCompare(labelB)
+    })
   }, [fields])
 
   const selectedFieldInfo = useMemo(() => {
@@ -73,7 +79,27 @@ export function LookupFieldSelector({
         <SelectTrigger id="lookup-field">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="max-h-[400px]">
+          <div className="sticky top-0 z-10 bg-popover p-2">
+            <input
+              type="text"
+              placeholder="Search fields..."
+              className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => {
+                const searchTerm = e.target.value.toLowerCase()
+                const items = e.target.closest('[role="listbox"]')?.querySelectorAll('[role="option"]')
+                items?.forEach((item) => {
+                  const text = item.textContent?.toLowerCase() || ''
+                  if (text.includes(searchTerm)) {
+                    (item as HTMLElement).style.display = ''
+                  } else {
+                    (item as HTMLElement).style.display = 'none'
+                  }
+                })
+              }}
+            />
+          </div>
           <SelectItem value="__none__">
             <span className="text-muted-foreground italic">No lookup (create all new records)</span>
           </SelectItem>

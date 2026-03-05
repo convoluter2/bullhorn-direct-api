@@ -29,10 +29,16 @@ export function FieldSelector({
   const [searchTerm, setSearchTerm] = useState('')
 
   const fieldsWithCapabilities = useMemo(() => {
-    return fields.map(field => ({
+    const fieldsWithCap = fields.map(field => ({
       ...field,
       capability: getFieldEndpointCapability(field.name, field.label, field.dataType)
     }))
+    
+    return fieldsWithCap.sort((a, b) => {
+      const labelA = (a.label || a.name).toLowerCase()
+      const labelB = (b.label || b.name).toLowerCase()
+      return labelA.localeCompare(labelB)
+    })
   }, [fields])
 
   const filteredFields = useMemo(() => {
@@ -40,7 +46,9 @@ export function FieldSelector({
     const term = searchTerm.toLowerCase()
     return fieldsWithCapabilities.filter(field => 
       field.name.toLowerCase().includes(term) || 
-      field.label.toLowerCase().includes(term)
+      field.label.toLowerCase().includes(term) ||
+      (field.type && field.type.toLowerCase().includes(term)) ||
+      (field.dataType && field.dataType.toLowerCase().includes(term))
     )
   }, [fieldsWithCapabilities, searchTerm])
 
