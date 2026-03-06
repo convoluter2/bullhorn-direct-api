@@ -440,7 +440,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         allWarnings.forEach(warn => toast.warning(warn.message))
       }
 
-      if (lookupField && lookupField !== '__none__') {
+      if (updateExisting && lookupField && lookupField !== '__none__') {
         const lookupMapping = validMappings.find(m => 
           m && 
           m.bullhornField && 
@@ -448,7 +448,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           (m.csvColumn && m.csvColumn.toLowerCase() === lookupField.toLowerCase()))
         )
         if (!lookupMapping) {
-          const error = { name: 'lookup_not_mapped', message: 'Lookup field must have a corresponding CSV column', severity: 'error' as const }
+          const error = { name: 'lookup_not_mapped', message: 'Lookup field must have a corresponding CSV column when updating existing records', severity: 'error' as const }
           setValidationErrors([error])
           toast.error(error.message)
           return
@@ -569,8 +569,10 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               const trimmedValue = transformedValue.trim()
               if (trimmedValue && /^\d+$/.test(trimmedValue)) {
                 data[mapping.bullhornField] = { id: parseInt(trimmedValue, 10) }
-              } else {
+              } else if (trimmedValue) {
                 data[mapping.bullhornField] = transformedValue
+              } else {
+                data[mapping.bullhornField] = null
               }
             } else if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
               data[mapping.bullhornField] = Number(transformedValue)
@@ -583,7 +585,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         }
       })
 
-      if (lookupField && lookupField !== '__none__' && lookupValue) {
+      if (updateExisting && lookupField && lookupField !== '__none__' && lookupValue) {
         const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f && f !== '__skip__' && f !== 'id')]
         
         if (lookupField.toLowerCase() === 'id') {

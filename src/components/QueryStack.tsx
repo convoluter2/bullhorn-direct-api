@@ -385,8 +385,10 @@ export function QueryStack({ onLog }: QueryStackProps) {
               const trimmedValue = update.value.trim()
               if (trimmedValue && /^\d+$/.test(trimmedValue)) {
                 updateData[update.field] = { id: parseInt(trimmedValue, 10) }
-              } else {
+              } else if (trimmedValue) {
                 updateData[update.field] = update.value
+              } else {
+                updateData[update.field] = null
               }
             } else if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
               updateData[update.field] = Number(update.value)
