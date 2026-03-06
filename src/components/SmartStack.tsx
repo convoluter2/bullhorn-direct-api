@@ -1115,25 +1115,28 @@ export function SmartStack({ onLog }: SmartStackProps) {
                     const fieldMeta = update.field ? fieldsMap[update.field] : undefined
                     const isToMany = fieldMeta?.associationType === 'TO_MANY'
                     
-                    if (update.field && fieldMeta) {
-                      console.log('SmartStack Field Update Debug:', {
+                    if (update.field) {
+                      console.log('🔍 SmartStack Field Update Debug:', {
                         updateId: update.id,
                         field: update.field,
-                        fieldMeta: {
+                        selectedEntity,
+                        hasMetadata: !!metadata,
+                        fieldsMapKeys: Object.keys(fieldsMap).length,
+                        fieldMeta: fieldMeta ? {
                           name: fieldMeta.name,
                           type: fieldMeta.type,
                           dataType: fieldMeta.dataType,
                           associationType: fieldMeta.associationType,
                           associatedEntity: fieldMeta.associatedEntity
-                        },
-                        isToMany
+                        } : 'NOT FOUND',
+                        isToMany,
+                        metadataLoading
                       })
-                    } else if (update.field && !fieldMeta) {
-                      console.warn('SmartStack Field Update - Field not found in metadata:', {
-                        updateId: update.id,
-                        field: update.field,
-                        availableFields: Object.keys(fieldsMap).slice(0, 10)
-                      })
+                      
+                      if (!fieldMeta) {
+                        console.warn('❌ Field not found in fieldsMap:', update.field)
+                        console.warn('Available fields in fieldsMap:', Object.keys(fieldsMap).sort())
+                      }
                     }
                     
                     return (
@@ -1207,7 +1210,9 @@ export function SmartStack({ onLog }: SmartStackProps) {
                               <Trash size={18} />
                             </Button>
                           </div>
-                          {isToMany ? (
+                          {metadataLoading && update.field ? (
+                            <Skeleton className="h-10 w-full" />
+                          ) : isToMany && fieldMeta ? (
                             <ToManyFieldInput
                               field={fieldMeta}
                               value={update.value}

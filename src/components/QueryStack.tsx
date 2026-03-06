@@ -20,7 +20,7 @@ import {
 } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import { formatFieldLabel, formatFieldValue } from '@/lib/utils'
+import { formatFieldLabel, formatFieldLabelWithType, formatFieldValue } from '@/lib/utils'
 import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
@@ -1318,23 +1318,33 @@ export function QueryStack({ onLog }: QueryStackProps) {
                   ) : (
                     <div className="space-y-2">
                       {fieldUpdates.map((update) => {
-                        const fieldMeta = (targetEntity ? targetFieldsMap : fieldsMap)[update.field]
+                        const currentFieldsMap = targetEntity ? targetFieldsMap : fieldsMap
+                        const fieldMeta = update.field ? currentFieldsMap[update.field] : undefined
                         const isToMany = fieldMeta?.associationType === 'TO_MANY'
+                        const isMetadataLoading = targetEntity ? targetMetadataLoading : metadataLoading
                         
                         if (update.field) {
-                          console.log('QueryStack Field Update Debug:', {
+                          console.log('🔍 QueryStack Field Update Debug:', {
                             updateId: update.id,
                             field: update.field,
                             targetEntity,
+                            entity,
+                            fieldsMapKeys: Object.keys(currentFieldsMap).length,
                             fieldMeta: fieldMeta ? {
                               name: fieldMeta.name,
                               type: fieldMeta.type,
                               dataType: fieldMeta.dataType,
                               associationType: fieldMeta.associationType,
                               associatedEntity: fieldMeta.associatedEntity
-                            } : 'undefined',
-                            isToMany
+                            } : 'NOT FOUND',
+                            isToMany,
+                            isMetadataLoading
                           })
+                          
+                          if (!fieldMeta) {
+                            console.warn('❌ Field not found in fieldsMap:', update.field)
+                            console.warn('Available fields:', Object.keys(currentFieldsMap).sort())
+                          }
                         }
                         
                         return (
@@ -1375,22 +1385,46 @@ export function QueryStack({ onLog }: QueryStackProps) {
                                       return labelA.localeCompare(labelB)
                                     }).map((field) => (
                                       <SelectItem key={field.name} value={field.name}>
-                                        {formatFieldLabel(field.label, field.name)} {field.associationType === 'TO_MANY' ? '(To-Many)' : ''}
+                                        {formatFieldLabelWithType(field.label, field.name, field.type, field.dataType)}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
                                 </Select>
+                                {update.field && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      toast.loading(`Refreshing metadata for ${update.field}...`, { id: `refresh-field-${update.id}` })
+                                      if (targetEntity) {
+                                        refreshTargetMetadata()
+                                      } else {
+                                        refreshMetadata()
+                                      }
+                                      setTimeout(() => {
+                                        toast.success('Field metadata refreshed', { id: `refresh-field-${update.id}` })
+                                      }, 500)
+                                    }}
+                                    disabled={loading || isMetadataLoading}
+                                    title={`Refresh metadata for ${update.field}`}
+                                    className="shrink-0"
+                                  >
+                                    <ArrowsClockwise size={18} className={isMetadataLoading ? 'animate-spin' : ''} />
+                                  </Button>
+                                )}
                                 <Button
                                   size="icon"
                                   variant="ghost"
                                   onClick={() => removeFieldUpdate(update.id)}
                                   disabled={loading}
-                                  className="text-destructive"
+                                  className="text-destructive shrink-0"
                                 >
                                   <Trash size={18} />
                                 </Button>
                               </div>
-                              {isToMany ? (
+                              {isMetadataLoading && update.field ? (
+                                <Skeleton className="h-10 w-full" />
+                              ) : isToMany && fieldMeta ? (
                                 <ToManyFieldInput
                                   field={fieldMeta}
                                   value={update.value}
