@@ -67,8 +67,8 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [mappings, setMappings] = useState<CSVMapping[]>([])
   const [toManyConfigs, setToManyConfigs] = useState<Record<string, ToManyConfig>>({})
   const [lookupField, setLookupField] = useState<string>('')
-  const [updateExisting, setUpdateExisting] = useState(true)
-  const [createNew, setCreateNew] = useState(false)
+  const [updateExisting, setUpdateExisting] = useState(false)
+  const [createNew, setCreateNew] = useState(true)
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [results, setResults] = useState<ImportResult[]>([])
@@ -99,6 +99,22 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const { metadata, loading: metadataLoading, error: metadataError, refresh: refreshMetadata } = useEntityMetadata(entity || undefined)
   
   const availableFields = metadata?.fields || []
+  
+  useEffect(() => {
+    if (lookupField && lookupField !== '__none__') {
+      if (!updateExisting && !createNew) {
+        setCreateNew(true)
+      }
+    } else {
+      if (updateExisting) {
+        setUpdateExisting(false)
+        toast.info('Update Existing disabled - requires a lookup field')
+      }
+      if (!createNew && !updateExisting) {
+        setCreateNew(true)
+      }
+    }
+  }, [lookupField])
   
   useEffect(() => {
     if (csvData && mappings.length > 0 && entity) {
@@ -1294,11 +1310,20 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                   <div className="flex items-center justify-between space-x-2 p-3 rounded-md border bg-card">
                     <div className="space-y-0.5">
                       <Label className="text-sm font-medium">Update Existing</Label>
-                      <p className="text-xs text-muted-foreground">Update records if found</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(!lookupField || lookupField === '__none__') 
+                          ? 'Requires a lookup field to be selected' 
+                          : 'Update records if found'}
+                      </p>
                     </div>
                     <Switch
                       checked={updateExisting}
-                      onCheckedChange={setUpdateExisting}
+                      onCheckedChange={(checked) => {
+                        setUpdateExisting(checked)
+                        if (checked && (!lookupField || lookupField === '__none__')) {
+                          toast.warning('Update Existing requires a lookup field to be selected')
+                        }
+                      }}
                       disabled={!lookupField || lookupField === '__none__'}
                     />
                   </div>
@@ -1311,7 +1336,6 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                     <Switch
                       checked={createNew}
                       onCheckedChange={setCreateNew}
-                      disabled={!lookupField || lookupField === '__none__'}
                     />
                   </div>
                 </div>

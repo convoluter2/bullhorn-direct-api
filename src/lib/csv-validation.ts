@@ -328,19 +328,27 @@ export function validateImportConfiguration(config: {
     })
   }
 
-  if ((config.updateExisting || config.createNew) && (!config.lookupField || config.lookupField === '__none__')) {
-    warnings.push({
-      name: 'no_lookup_field',
-      message: 'No lookup field selected. All records will be treated as new.',
-      severity: 'warning'
-    })
-  }
-
   if (config.updateExisting && (!config.lookupField || config.lookupField === '__none__')) {
     errors.push({
       name: 'update_without_lookup',
       message: 'Cannot update existing records without a lookup field',
       severity: 'error'
+    })
+  }
+
+  if (config.createNew && !config.updateExisting && (!config.lookupField || config.lookupField === '__none__')) {
+    warnings.push({
+      name: 'create_only_no_lookup',
+      message: 'No lookup field selected. All records will be created as new.',
+      severity: 'warning'
+    })
+  }
+
+  if (config.updateExisting && config.createNew && (!config.lookupField || config.lookupField === '__none__')) {
+    warnings.push({
+      name: 'no_lookup_field',
+      message: 'No lookup field selected. All records will be treated as new.',
+      severity: 'warning'
     })
   }
 
