@@ -228,6 +228,20 @@ export function SmartStack({ onLog }: SmartStackProps) {
     setFieldUpdates(fieldUpdates.map(f => 
       f.id === id ? { ...f, ...updates } : f
     ))
+    
+    if (updates.field) {
+      console.log('🔄 Field changed for update, checking metadata:', {
+        updateId: id,
+        newField: updates.field,
+        hasMetadata: !!metadata,
+        fieldsMapHasField: !!fieldsMap[updates.field],
+        fieldMetaPreview: fieldsMap[updates.field] ? {
+          name: fieldsMap[updates.field].name,
+          type: fieldsMap[updates.field].type,
+          associationType: fieldsMap[updates.field].associationType
+        } : 'NOT IN FIELDSMAP'
+      })
+    }
   }
 
   const handlePause = () => {
@@ -1115,28 +1129,31 @@ export function SmartStack({ onLog }: SmartStackProps) {
                     const fieldMeta = update.field ? fieldsMap[update.field] : undefined
                     const isToMany = fieldMeta?.associationType === 'TO_MANY'
                     
-                    if (update.field) {
-                      console.log('🔍 SmartStack Field Update Debug:', {
-                        updateId: update.id,
+                    console.log('🔍 SmartStack Field Update Render:', {
+                      updateId: update.id,
+                      field: update.field,
+                      selectedEntity,
+                      hasMetadata: !!metadata,
+                      fieldsMapKeys: Object.keys(fieldsMap).length,
+                      fieldMeta: fieldMeta ? {
+                        name: fieldMeta.name,
+                        type: fieldMeta.type,
+                        dataType: fieldMeta.dataType,
+                        associationType: fieldMeta.associationType,
+                        associatedEntity: fieldMeta.associatedEntity
+                      } : 'NOT FOUND IN FIELDSMAP',
+                      isToMany,
+                      metadataLoading,
+                      willShowToManyInput: isToMany && fieldMeta,
+                      fieldsMapSample: Object.keys(fieldsMap).slice(0, 10)
+                    })
+                    
+                    if (update.field && !fieldMeta) {
+                      console.error('❌ SmartStack Field Update - Field not found in metadata:', {
                         field: update.field,
-                        selectedEntity,
-                        hasMetadata: !!metadata,
-                        fieldsMapKeys: Object.keys(fieldsMap).length,
-                        fieldMeta: fieldMeta ? {
-                          name: fieldMeta.name,
-                          type: fieldMeta.type,
-                          dataType: fieldMeta.dataType,
-                          associationType: fieldMeta.associationType,
-                          associatedEntity: fieldMeta.associatedEntity
-                        } : 'NOT FOUND',
-                        isToMany,
-                        metadataLoading
+                        availableFields: Object.keys(fieldsMap).sort(),
+                        totalFields: Object.keys(fieldsMap).length
                       })
-                      
-                      if (!fieldMeta) {
-                        console.warn('❌ Field not found in fieldsMap:', update.field)
-                        console.warn('Available fields in fieldsMap:', Object.keys(fieldsMap).sort())
-                      }
                     }
                     
                     return (
@@ -1213,20 +1230,38 @@ export function SmartStack({ onLog }: SmartStackProps) {
                           {metadataLoading && update.field ? (
                             <Skeleton className="h-10 w-full" />
                           ) : isToMany && fieldMeta ? (
-                            <ToManyFieldInput
-                              field={fieldMeta}
-                              value={update.value}
-                              onChange={(v) => updateFieldUpdate(update.id, { value: v })}
-                              disabled={loading}
-                            />
+                            <>
+                              {console.log('✅ Rendering ToManyFieldInput for:', {
+                                field: update.field,
+                                fieldMeta: {
+                                  name: fieldMeta.name,
+                                  associationType: fieldMeta.associationType,
+                                  associatedEntity: fieldMeta.associatedEntity
+                                }
+                              })}
+                              <ToManyFieldInput
+                                field={fieldMeta}
+                                value={update.value}
+                                onChange={(v) => updateFieldUpdate(update.id, { value: v })}
+                                disabled={loading}
+                              />
+                            </>
                           ) : (
-                            <ValidatedFieldInput
-                              field={fieldMeta || null}
-                              value={update.value}
-                              onChange={(v) => updateFieldUpdate(update.id, { value: v })}
-                              disabled={loading}
-                              placeholder="New value"
-                            />
+                            <>
+                              {console.log('❌ NOT rendering ToManyFieldInput for:', {
+                                field: update.field,
+                                isToMany,
+                                hasFieldMeta: !!fieldMeta,
+                                reason: !isToMany ? 'not TO_MANY' : !fieldMeta ? 'no fieldMeta' : 'unknown'
+                              })}
+                              <ValidatedFieldInput
+                                field={fieldMeta || null}
+                                value={update.value}
+                                onChange={(v) => updateFieldUpdate(update.id, { value: v })}
+                                disabled={loading}
+                                placeholder="New value"
+                              />
+                            </>
                           )}
                         </div>
                       </Card>
