@@ -553,6 +553,69 @@ export class BullhornAPI {
     this.currentUsername = null
   }
 
+  async getUserInfo(): Promise<{
+    id: number
+    firstName: string
+    lastName: string
+    email: string
+    username: string
+    enabled: boolean
+    corporation: {
+      id: number
+      name: string
+    }
+  } | null> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const params = new URLSearchParams({
+      BhRestToken: this.session.BhRestToken
+    })
+
+    console.log('🔍 Fetching current user info...')
+
+    const response = await this.throttledFetch(
+      `${this.session.restUrl}settings/userId?${params.toString()}`,
+      undefined,
+      0
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error('❌ Failed to fetch user info:', error)
+      throw new Error(`Failed to fetch user info: ${error}`)
+    }
+
+    const result = await response.json()
+    console.log('✅ User info retrieved:', result)
+    return result
+  }
+
+  getDatacenterInfo(): {
+    dataCenterId: number | null
+    superClusterId: number | null
+    oauthUrl: string | null
+    restUrl: string | null
+  } {
+    if (!this.currentUsername || !this.loginInfoCache.has(this.currentUsername)) {
+      return {
+        dataCenterId: null,
+        superClusterId: null,
+        oauthUrl: null,
+        restUrl: null
+      }
+    }
+
+    const loginInfo = this.loginInfoCache.get(this.currentUsername)!
+    return {
+      dataCenterId: loginInfo.dataCenterId,
+      superClusterId: loginInfo.superClusterId,
+      oauthUrl: loginInfo.oauthUrl,
+      restUrl: loginInfo.restUrl
+    }
+  }
+
   validateConnection(expectedCorporationId?: number, expectedTenant?: string): { 
     valid: boolean
     message?: string

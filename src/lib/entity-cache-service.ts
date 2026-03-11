@@ -258,6 +258,26 @@ export class EntityCacheService {
   private async saveEntityCache(data: EntityCacheData) {
     await window.spark.kv.set('entity-cache-v2', data)
   }
+
+  async clearAllCaches(): Promise<void> {
+    try {
+      console.log('🗑️ Clearing all entity and metadata caches...')
+      
+      const allKeys = await window.spark.kv.keys()
+      const cacheKeys = allKeys.filter(key => 
+        key.startsWith('metadata-cache-') || 
+        key === 'entity-cache-v2'
+      )
+      
+      for (const key of cacheKeys) {
+        await window.spark.kv.delete(key)
+      }
+      
+      console.log(`✅ Cleared ${cacheKeys.length} entity/metadata cache entries`)
+    } catch (error) {
+      console.error('❌ Failed to clear entity caches:', error)
+    }
+  }
 }
 
 export const entityCacheService = new EntityCacheService()

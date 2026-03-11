@@ -27,6 +27,7 @@ import { sanitizeLogDetails } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { BullhornSession, AuditLog } from '@/lib/types'
 import { fieldValueCache } from '@/lib/field-value-cache'
+import { entityCacheService } from '@/lib/entity-cache-service'
 
 function App() {
   const isRefreshingRef = useRef(false)
@@ -39,6 +40,12 @@ function App() {
   const [isOAuthCallback, setIsOAuthCallback] = useState(false)
   const [currentConnectionId, setCurrentConnectionId] = useState<string | null>(null)
   const [preselectedConnection, setPreselectedConnection] = useState<SavedConnection | null>(null)
+  const [datacenterInfo, setDatacenterInfo] = useState<{
+    dataCenterId: number | null
+    superClusterId: number | null
+    oauthUrl: string | null
+    restUrl: string | null
+  } | null>(null)
 
   useEffect(() => {
     const loadConnections = async () => {
@@ -66,6 +73,10 @@ function App() {
           setSession(storedSession)
           setCurrentConnectionId(connection.id)
           bullhornAPI.setSession(storedSession)
+          
+          const dcInfo = bullhornAPI.getDatacenterInfo()
+          setDatacenterInfo(dcInfo)
+          
           break
         }
       }
@@ -195,15 +206,45 @@ function App() {
             browserId: sessionManager.getBrowserId()
           })
           
+          if (currentSession.corporationId && newSession.corporationId !== currentSession.corporationId) {
+            console.error('🚨 CRITICAL: Token refresh returned different corporation!', {
+              expected: currentSession.corporationId,
+              received: newSession.corporationId,
+              currentRestUrl: currentSession.restUrl,
+              newRestUrl: newSession.restUrl
+            })
+            toast.error('Token refresh returned wrong corporation! Disconnecting for safety.')
+            addLog('Token Refresh', 'error', 'Corporation mismatch detected during token refresh - disconnecting for safety', {
+              expectedCorporationId: currentSession.corporationId,
+              receivedCorporationId: newSession.corporationId,
+              connectionId: currentConnId,
+              browserId: sessionManager.getBrowserId()
+            })
+            bullhornAPI.clearSession()
+            fieldValueCache.invalidateAll()
+            await entityCacheService.clearAllCaches()
+            setSession(null)
+            setCurrentConnectionId(null)
+            setDatacenterInfo(null)
+            await sessionManager.clearSession(currentConnId)
+            isRefreshingRef.current = false
+            return
+          }
+          
           setSession(newSession)
           bullhornAPI.setSession(newSession)
           await sessionManager.markRefreshCompleted(currentConnId, newSession)
+          
+          const dcInfo = bullhornAPI.getDatacenterInfo()
+          setDatacenterInfo(dcInfo)
           
           addLog('Token Refresh', 'success', 'Access token refreshed automatically', {
             connectionId: currentConnId,
             corporationId: newSession.corporationId,
             expiresIn: tokenData.expiresIn,
             newExpiresAt: new Date(newSession.expiresAt).toISOString(),
+            dataCenterId: dcInfo.dataCenterId,
+            superClusterId: dcInfo.superClusterId,
             browserId: sessionManager.getBrowserId()
           })
           
@@ -222,8 +263,11 @@ function App() {
             browserId: sessionManager.getBrowserId()
           })
           bullhornAPI.clearSession()
+          fieldValueCache.invalidateAll()
+          await entityCacheService.clearAllCaches()
           setSession(null)
           setCurrentConnectionId(null)
+          setDatacenterInfo(null)
           await sessionManager.clearSession(currentConnId)
         } finally {
           isRefreshingRef.current = false
@@ -250,7 +294,7 @@ function App() {
     })
     
     try {
-      console.log('🧹 Clearing old session before setting new one')
+      console.log('🧹 Clearing old session and ALL caches before setting new one')
       const oldSession = bullhornAPI.getSession()
       if (oldSession) {
         console.log('   Old session:', {
@@ -260,6 +304,10 @@ function App() {
       }
       
       bullhornAPI.clearSession()
+      fieldValueCache.invalidateAll()
+      entityCacheService.clearAllCaches().catch(err => {
+        console.warn('⚠️ Failed to clear entity caches:', err)
+      })
       
       if (connectionId) {
         const connection = savedConnections.find(c => c.id === connectionId)
@@ -277,6 +325,10 @@ function App() {
       
       setSession(newSession)
       bullhornAPI.setSession(newSession)
+      
+      const dcInfo = bullhornAPI.getDatacenterInfo()
+      setDatacenterInfo(dcInfo)
+      
       setIsOAuthCallback(false)
       
       if (connectionId) {
@@ -298,6 +350,8 @@ function App() {
             environment: connection.environment,
             corporationId: newSession.corporationId,
             restUrl: newSession.restUrl,
+            dataCenterId: dcInfo.dataCenterId,
+            superClusterId: dcInfo.superClusterId,
             browserId: sessionManager.getBrowserId()
           })
         }
@@ -327,17 +381,21 @@ function App() {
 
   const handleDisconnect = async () => {
     if (confirm('Are you sure you want to disconnect?')) {
-      console.log('🔌 Disconnecting - clearing session and cache')
+      console.log('🔌 Disconnecting - clearing session and ALL caches')
+      
       bullhornAPI.clearSession()
       fieldValueCache.invalidateAll()
+      await entityCacheService.clearAllCaches()
+      
       setSession(null)
       setCurrentConnectionId(null)
+      setDatacenterInfo(null)
       
       if (currentConnectionId) {
         await sessionManager.clearSession(currentConnectionId)
       }
       
-      addLog('Disconnect', 'success', 'Disconnected from Bullhorn and cleared session cache', {
+      addLog('Disconnect', 'success', 'Disconnected from Bullhorn and cleared all session caches', {
         browserId: sessionManager.getBrowserId()
       })
     }
@@ -410,7 +468,7 @@ function App() {
     try {
       toast.loading('Switching connection...', { id: 'switch-connection' })
 
-      console.log('🔄 Switching connection - clearing old session completely')
+      console.log('🔄 Switching connection - clearing old session and ALL caches completely')
       console.log('   Previous session:', {
         corporationId: session?.corporationId,
         restUrl: session?.restUrl,
@@ -424,6 +482,7 @@ function App() {
       
       bullhornAPI.clearSession()
       fieldValueCache.invalidateAll()
+      await entityCacheService.clearAllCaches()
       
       if (currentConnectionId) {
         await sessionManager.clearSession(currentConnectionId)
@@ -431,6 +490,7 @@ function App() {
       
       setSession(null)
       setCurrentConnectionId(null)
+      setDatacenterInfo(null)
       
       await new Promise(resolve => setTimeout(resolve, 100))
 
@@ -447,12 +507,17 @@ function App() {
         password: credentials.password
       })
       
+      const dcInfo = bullhornAPI.getDatacenterInfo()
+      setDatacenterInfo(dcInfo)
+      
       const newSessionTenant = newSession.restUrl.match(/rest-services\/([^/]+)/)?.[1]
       console.log('✅ New session established:', {
         corporationId: newSession.corporationId,
         restUrl: newSession.restUrl,
         tenant: newSessionTenant,
         expectedTenant: connection.tenant,
+        dataCenterId: dcInfo.dataCenterId,
+        superClusterId: dcInfo.superClusterId,
         browserId: sessionManager.getBrowserId()
       })
 
@@ -476,14 +541,18 @@ function App() {
         tenant: connection.tenant,
         environment: connection.environment,
         corporationId: newSession.corporationId,
+        dataCenterId: dcInfo.dataCenterId,
+        superClusterId: dcInfo.superClusterId,
         browserId: sessionManager.getBrowserId()
       })
     } catch (error) {
       console.error('❌ Connection switch failed:', error)
       bullhornAPI.clearSession()
       fieldValueCache.invalidateAll()
+      await entityCacheService.clearAllCaches()
       setSession(null)
       setCurrentConnectionId(null)
+      setDatacenterInfo(null)
       toast.error('Failed to switch connection. Please try again.', { id: 'switch-connection' })
       addLog('Connection Switch', 'error', `Failed to switch to ${connection.name}`, { 
         error: String(error),
@@ -550,16 +619,31 @@ function App() {
                       <h2 className="text-2xl font-bold tracking-tight text-accent">
                         {savedConnections.find(conn => conn.id === currentConnectionId)?.name}
                       </h2>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Badge 
                           variant={savedConnections.find(conn => conn.id === currentConnectionId)?.environment === 'PROD' ? 'default' : 'secondary'}
                           className="text-sm font-semibold"
                         >
                           {savedConnections.find(conn => conn.id === currentConnectionId)?.environment}
                         </Badge>
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-sm text-muted-foreground font-mono">
                           {savedConnections.find(conn => conn.id === currentConnectionId)?.tenant}
                         </span>
+                        {session.corporationId && (
+                          <span className="text-sm text-muted-foreground">
+                            Corp: {session.corporationId}
+                          </span>
+                        )}
+                        {datacenterInfo?.dataCenterId && (
+                          <span className="text-sm text-muted-foreground">
+                            DC: {datacenterInfo.dataCenterId}
+                          </span>
+                        )}
+                        {datacenterInfo?.superClusterId && (
+                          <span className="text-sm text-muted-foreground">
+                            SC: {datacenterInfo.superClusterId}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </>
