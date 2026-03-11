@@ -46,7 +46,7 @@ export function formatFieldValue(value: any): string {
   
   if (typeof value === 'object' && !Array.isArray(value)) {
     if (value.id !== undefined) {
-      const parts: string[] = [`ID: ${value.id}`]
+      const parts: string[] = []
       
       if (value.name) {
         parts.push(value.name)
@@ -60,7 +60,10 @@ export function formatFieldValue(value: any): string {
         parts.push(value.lastName)
       }
       
-      return parts.join(' - ')
+      if (parts.length > 0) {
+        return `ID: ${value.id} - ${parts.join(' ')}`
+      }
+      return `ID: ${value.id}`
     }
     
     return JSON.stringify(value)
@@ -68,9 +71,32 @@ export function formatFieldValue(value: any): string {
   
   if (Array.isArray(value)) {
     if (value.length === 0) {
-      return '[]'
+      return '-'
     }
-    return `[${value.length} items]`
+    
+    return value.map(item => {
+      if (typeof item === 'object' && item !== null && item.id !== undefined) {
+        const parts: string[] = []
+        
+        if (item.name) {
+          parts.push(item.name)
+        } else if (item.title) {
+          parts.push(item.title)
+        } else if (item.firstName && item.lastName) {
+          parts.push(`${item.firstName} ${item.lastName}`)
+        } else if (item.firstName) {
+          parts.push(item.firstName)
+        } else if (item.lastName) {
+          parts.push(item.lastName)
+        }
+        
+        if (parts.length > 0) {
+          return `ID: ${item.id} - ${parts.join(' ')}`
+        }
+        return `ID: ${item.id}`
+      }
+      return String(item)
+    }).join('; ')
   }
   
   return String(value)

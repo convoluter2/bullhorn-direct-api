@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Format Testing</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test {
+            background: #2a2a2a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #4a9eff;
+        }
+        .test.pass {
+            border-left-color: #4caf50;
+        }
+        .test.fail {
+            border-left-color: #f44336;
+        }
+        .label {
+            font-weight: bold;
+            color: #4a9eff;
+        }
+        .result {
+            margin-top: 5px;
+            padding: 5px;
+            background: #1a1a1a;
+            border-radius: 3px;
+        }
+        h1 { color: #4a9eff; }
+        h2 { color: #64b5f6; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <h1>To-One and To-Many Formatting Tests</h1>
+    
+    <h2>Export Formatting (CSV)</h2>
+    <div id="export-tests"></div>
+    
+    <h2>UI Formatting</h2>
+    <div id="ui-tests"></div>
+    
+    <script>
+        // Export formatting function (from csv-utils.ts)
+        function formatValueForExport(value) {
+            if (value === null || value === undefined) {
+                return '';
+            }
+            
+            if (typeof value === 'object' && !Array.isArray(value)) {
+                if (value.id !== undefined) {
+                    const parts = [];
+                    
+                    if (value.name) {
+                        parts.push(value.name);
+                    } else if (value.title) {
+                        parts.push(value.title);
+                    } else if (value.firstName && value.lastName) {
+                        parts.push(`${value.firstName} ${value.lastName}`);
+                    } else if (value.firstName) {
+                        parts.push(value.firstName);
+                    } else if (value.lastName) {
+                        parts.push(value.lastName);
+                    }
+                    
+                    if (parts.length > 0) {
+                        return `${value.id} - ${parts.join(' ')}`;
+                    }
+                    return String(value.id);
+                }
+                
+                return JSON.stringify(value);
+            }
+            
+            if (Array.isArray(value)) {
+                if (value.length === 0) {
+                    return '';
+                }
+                
+                return value.map(item => {
+                    if (typeof item === 'object' && item !== null && item.id !== undefined) {
+                        const parts = [];
+                        
+                        if (item.name) {
+                            parts.push(item.name);
+                        } else if (item.title) {
+                            parts.push(item.title);
+                        } else if (item.firstName && item.lastName) {
+                            parts.push(`${item.firstName} ${item.lastName}`);
+                        } else if (item.firstName) {
+                            parts.push(item.firstName);
+                        } else if (item.lastName) {
+                            parts.push(item.lastName);
+                        }
+                        
+                        if (parts.length > 0) {
+                            return `${item.id} - ${parts.join(' ')}`;
+                        }
+                        return String(item.id);
+                    }
+                    return String(item);
+                }).join('; ');
+            }
+            
+            return String(value);
+        }
+        
+        // UI formatting function (from utils.ts)
+        function formatFieldValue(value) {
+            if (value === null || value === undefined) {
+                return '-';
+            }
+            
+            if (typeof value === 'object' && !Array.isArray(value)) {
+                if (value.id !== undefined) {
+                    const parts = [];
+                    
+                    if (value.name) {
+                        parts.push(value.name);
+                    } else if (value.title) {
+                        parts.push(value.title);
+                    } else if (value.firstName && value.lastName) {
+                        parts.push(`${value.firstName} ${value.lastName}`);
+                    } else if (value.firstName) {
+                        parts.push(value.firstName);
+                    } else if (value.lastName) {
+                        parts.push(value.lastName);
+                    }
+                    
+                    if (parts.length > 0) {
+                        return `ID: ${value.id} - ${parts.join(' ')}`;
+                    }
+                    return `ID: ${value.id}`;
+                }
+                
+                return JSON.stringify(value);
+            }
+            
+            if (Array.isArray(value)) {
+                if (value.length === 0) {
+                    return '-';
+                }
+                
+                return value.map(item => {
+                    if (typeof item === 'object' && item !== null && item.id !== undefined) {
+                        const parts = [];
+                        
+                        if (item.name) {
+                            parts.push(item.name);
+                        } else if (item.title) {
+                            parts.push(item.title);
+                        } else if (item.firstName && item.lastName) {
+                            parts.push(`${item.firstName} ${item.lastName}`);
+                        } else if (item.firstName) {
+                            parts.push(item.firstName);
+                        } else if (item.lastName) {
+                            parts.push(item.lastName);
+                        }
+                        
+                        if (parts.length > 0) {
+                            return `ID: ${item.id} - ${parts.join(' ')}`;
+                        }
+                        return `ID: ${item.id}`;
+                    }
+                    return String(item);
+                }).join('; ');
+            }
+            
+            return String(value);
+        }
+        
+        // Test data
+        const tests = [
+            {
+                name: 'To-One with name',
+                input: { id: 12345, name: 'Java Programming' },
+                expectedExport: '12345 - Java Programming',
+                expectedUI: 'ID: 12345 - Java Programming'
+            },
+            {
+                name: 'To-One with title',
+                input: { id: 67890, title: 'Senior Developer' },
+                expectedExport: '67890 - Senior Developer',
+                expectedUI: 'ID: 67890 - Senior Developer'
+            },
+            {
+                name: 'To-One with firstName/lastName',
+                input: { id: 11111, firstName: 'John', lastName: 'Doe' },
+                expectedExport: '11111 - John Doe',
+                expectedUI: 'ID: 11111 - John Doe'
+            },
+            {
+                name: 'To-One ID only',
+                input: { id: 99999 },
+                expectedExport: '99999',
+                expectedUI: 'ID: 99999'
+            },
+            {
+                name: 'To-Many with names',
+                input: [
+                    { id: 100, name: 'Python' },
+                    { id: 200, name: 'React' },
+                    { id: 300, name: 'Node.js' }
+                ],
+                expectedExport: '100 - Python; 200 - React; 300 - Node.js',
+                expectedUI: 'ID: 100 - Python; ID: 200 - React; ID: 300 - Node.js'
+            },
+            {
+                name: 'To-Many with titles',
+                input: [
+                    { id: 1, title: 'Skill A' },
+                    { id: 2, title: 'Skill B' }
+                ],
+                expectedExport: '1 - Skill A; 2 - Skill B',
+                expectedUI: 'ID: 1 - Skill A; ID: 2 - Skill B'
+            },
+            {
+                name: 'Empty array',
+                input: [],
+                expectedExport: '',
+                expectedUI: '-'
+            },
+            {
+                name: 'Null value',
+                input: null,
+                expectedExport: '',
+                expectedUI: '-'
+            },
+            {
+                name: 'Undefined value',
+                input: undefined,
+                expectedExport: '',
+                expectedUI: '-'
+            },
+            {
+                name: 'Simple string',
+                input: 'Test String',
+                expectedExport: 'Test String',
+                expectedUI: 'Test String'
+            },
+            {
+                name: 'Simple number',
+                input: 42,
+                expectedExport: '42',
+                expectedUI: '42'
+            }
+        ];
+        
+        // Run export tests
+        const exportTestsDiv = document.getElementById('export-tests');
+        tests.forEach((test, i) => {
+            const result = formatValueForExport(test.input);
+            const passed = result === test.expectedExport;
+            
+            const testDiv = document.createElement('div');
+            testDiv.className = `test ${passed ? 'pass' : 'fail'}`;
+            testDiv.innerHTML = `
+                <div class="label">Test ${i + 1}: ${test.name}</div>
+                <div class="result">Input: ${JSON.stringify(test.input)}</div>
+                <div class="result">Expected: "${test.expectedExport}"</div>
+                <div class="result">Got: "${result}"</div>
+                <div class="result">${passed ? '✅ PASS' : '❌ FAIL'}</div>
+            `;
+            exportTestsDiv.appendChild(testDiv);
+        });
+        
+        // Run UI tests
+        const uiTestsDiv = document.getElementById('ui-tests');
+        tests.forEach((test, i) => {
+            const result = formatFieldValue(test.input);
+            const passed = result === test.expectedUI;
+            
+            const testDiv = document.createElement('div');
+            testDiv.className = `test ${passed ? 'pass' : 'fail'}`;
+            testDiv.innerHTML = `
+                <div class="label">Test ${i + 1}: ${test.name}</div>
+                <div class="result">Input: ${JSON.stringify(test.input)}</div>
+                <div class="result">Expected: "${test.expectedUI}"</div>
+                <div class="result">Got: "${result}"</div>
+                <div class="result">${passed ? '✅ PASS' : '❌ FAIL'}</div>
+            `;
+            uiTestsDiv.appendChild(testDiv);
+        });
+        
+        // Summary
+        const exportPassed = tests.filter((t, i) => formatValueForExport(t.input) === t.expectedExport).length;
+        const uiPassed = tests.filter((t, i) => formatFieldValue(t.input) === t.expectedUI).length;
+        
+        console.log(`Export Tests: ${exportPassed}/${tests.length} passed`);
+        console.log(`UI Tests: ${uiPassed}/${tests.length} passed`);
+        
+        document.title = `Tests: ${exportPassed + uiPassed}/${tests.length * 2} passed`;
+    </script>
+</body>
+</html>

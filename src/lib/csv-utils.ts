@@ -39,6 +39,69 @@ function parseCSVLine(line: string): string[] {
   return result
 }
 
+function formatValueForExport(value: any): string {
+  if (value === null || value === undefined) {
+    return ''
+  }
+  
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    if (value.id !== undefined) {
+      const parts: string[] = []
+      
+      if (value.name) {
+        parts.push(value.name)
+      } else if (value.title) {
+        parts.push(value.title)
+      } else if (value.firstName && value.lastName) {
+        parts.push(`${value.firstName} ${value.lastName}`)
+      } else if (value.firstName) {
+        parts.push(value.firstName)
+      } else if (value.lastName) {
+        parts.push(value.lastName)
+      }
+      
+      if (parts.length > 0) {
+        return `${value.id} - ${parts.join(' ')}`
+      }
+      return String(value.id)
+    }
+    
+    return JSON.stringify(value)
+  }
+  
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return ''
+    }
+    
+    return value.map(item => {
+      if (typeof item === 'object' && item !== null && item.id !== undefined) {
+        const parts: string[] = []
+        
+        if (item.name) {
+          parts.push(item.name)
+        } else if (item.title) {
+          parts.push(item.title)
+        } else if (item.firstName && item.lastName) {
+          parts.push(`${item.firstName} ${item.lastName}`)
+        } else if (item.firstName) {
+          parts.push(item.firstName)
+        } else if (item.lastName) {
+          parts.push(item.lastName)
+        }
+        
+        if (parts.length > 0) {
+          return `${item.id} - ${parts.join(' ')}`
+        }
+        return String(item.id)
+      }
+      return String(item)
+    }).join('; ')
+  }
+  
+  return String(value)
+}
+
 export function exportToCSV(data: any[], filename: string = 'export.csv') {
   if (data.length === 0) {
     console.warn('exportToCSV: No data to export')
@@ -52,7 +115,7 @@ export function exportToCSV(data: any[], filename: string = 'export.csv') {
       ...data.map(row => 
         headers.map(header => {
           const value = row[header]
-          const stringValue = value === null || value === undefined ? '' : String(value)
+          const stringValue = formatValueForExport(value)
           return stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')
             ? `"${stringValue.replace(/"/g, '""')}"`
             : stringValue
