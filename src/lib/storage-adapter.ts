@@ -2,25 +2,25 @@ export interface KeyValueStore {
   keys(): Promise<string[]>
   get<T>(key: string): Promise<T | undefined>
   set<T>(key: string, value: T): Promise<void>
-  delete(key: string): Promise<void>
+
 }
 
 class SparkKVStore implements KeyValueStore {
-  async keys(): Promise<string[]> {
-    return await window.spark.kv.keys()
+  async set<T>(key: string, value: 
   }
+  a
 
-  async get<T>(key: string): Promise<T | undefined> {
-    return await window.spark.kv.get<T>(key)
-  }
+
+  private useLocalStorage: boolean
+
 
   async set<T>(key: string, value: T): Promise<void> {
     await window.spark.kv.set(key, value)
-  }
+   
 
   async delete(key: string): Promise<void> {
     await window.spark.kv.delete(key)
-  }
+
 }
 
 class FallbackStore implements KeyValueStore {
@@ -30,37 +30,37 @@ class FallbackStore implements KeyValueStore {
   constructor() {
     this.useLocalStorage = this.isLocalStorageAvailable()
     this.memoryStore = new Map()
-    
-    if (!this.useLocalStorage) {
-      console.warn('⚠️ localStorage not available, using in-memory storage (data will be lost on page refresh)')
-    }
+  as
+      const item = localStorage.
+      try {
+     
+   
+
+  }
+  async s
+      localStorage.setItem(`kv:${key}
+      this.memoryStore.set(key, value)
+  }
+  async delete(ke
+      localSt
+      this.memoryS
   }
 
-  private isLocalStorageAvailable(): boolean {
+
+  private isSparkKVAvailable: boole
+
+    this.checkPromise = this.ch
+
+    if (this.isSparkKVAvailable !== nul
+    }
     try {
-      const test = '__storage_test__'
-      localStorage.setItem(test, test)
-      localStorage.removeItem(test)
-      return true
-    } catch {
-      return false
-    }
-  }
-
-  async keys(): Promise<string[]> {
-    if (this.useLocalStorage) {
-      const keys: string[] = []
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i)
-        if (key && key.startsWith('kv:')) {
-          keys.push(key.substring(3))
-        }
+        m
       }
-      return keys
-    } else {
-      return Array.from(this.memoryStore.keys())
-    }
-  }
+      this.isSpar
+      if (th
+      } else {
+     
+   
 
   async get<T>(key: string): Promise<T | undefined> {
     if (this.useLocalStorage) {
@@ -126,27 +126,27 @@ class StorageAdapter implements KeyValueStore {
         this.store = new FallbackStore()
       }
     } catch (error) {
-      if (!this.hasLoggedFallback) {
+
         console.warn('⚠️ Spark KV unavailable (connection failed), using fallback storage')
         this.hasLoggedFallback = true
       }
-      this.isSparkKVAvailable = false
+
       this.store = new FallbackStore()
-    }
+
   }
 
   private async ensureReady(): Promise<void> {
-    if (this.checkPromise) {
+
       await this.checkPromise
       this.checkPromise = null
     }
-    if (!this.store) {
+
       this.store = new FallbackStore()
-    }
+
   }
 
   async keys(): Promise<string[]> {
-    await this.ensureReady()
+
     try {
       return await this.store!.keys()
     } catch (error) {
@@ -156,32 +156,32 @@ class StorageAdapter implements KeyValueStore {
   }
 
   async get<T>(key: string): Promise<T | undefined> {
-    await this.ensureReady()
-    try {
-      return await this.store!.get<T>(key)
-    } catch (error) {
-      console.error(`Storage adapter get(${key}) failed:`, error)
-      return undefined
-    }
-  }
 
-  async set<T>(key: string, value: T): Promise<void> {
-    await this.ensureReady()
     try {
-      await this.store!.set(key, value)
-    } catch (error) {
-      console.error(`Storage adapter set(${key}) failed:`, error)
-    }
-  }
 
-  async delete(key: string): Promise<void> {
-    await this.ensureReady()
-    try {
-      await this.store!.delete(key)
-    } catch (error) {
-      console.error(`Storage adapter delete(${key}) failed:`, error)
-    }
-  }
-}
 
-export const storageAdapter = new StorageAdapter()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
