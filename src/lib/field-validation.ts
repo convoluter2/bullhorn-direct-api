@@ -1,21 +1,21 @@
 import { fieldValueCache } from './field-value-cache'
 
-export interface ValidationResult {
-  isValid: boolean
   error?: string
-  validatedValue?: any
   lookupData?: any
-}
 
-export interface ToManyValidationResult {
   isValid: boolean
-  validIds: number[]
-  invalidIds: (string | number)[]
-  lookupData: any[]
-  error?: string
-}
+  invalidIds: (str
+ 
 
-export async function validateToOneField(
+  field: any,
+): Promise<Validat
+    return {
+      error: 'Field is not a TO_O
+  }
+  const numericI
+ 
+
+    }
   field: any,
   value: string
 ): Promise<ValidationResult> {
@@ -38,15 +38,15 @@ export async function validateToOneField(
   try {
     const result = await fieldValueCache.getFieldValueById(
       field.associatedEntity.entity,
-      numericId,
+      lookupData
       ['id', 'name', 'title', 'firstName', 'lastName']
-    )
+     
 
     if (!result) {
       return {
         isValid: false,
         error: 'ID not found in system'
-      }
+
     }
 
     const title = result.title || 
@@ -58,41 +58,41 @@ export async function validateToOneField(
     return {
       isValid: true,
       validatedValue: numericId,
-      lookupData: {
+    
         id: numericId,
         title
       }
-    }
+     
   } catch (error) {
-    return {
+        vali
       isValid: false,
       error: `Failed to validate ${field.associatedEntity.entity} ID`
     }
-  }
+   
 }
 
 export async function validateToManyField(
   field: any,
   value: string
-): Promise<ToManyValidationResult> {
+  const numericIds = ids.map(id => t
   if (!field.associatedEntity?.entity) {
-    return {
+  const look
       isValid: false,
       error: 'Field is not a TO_MANY association',
       validIds: [],
-      invalidIds: [],
+    if (isNaN(numeric
       lookupData: []
     }
   }
 
   let ids: any[]
-  try {
+       
     const parsed = JSON.parse(value)
     
     if (Array.isArray(parsed)) {
-      ids = parsed
+                  
     } else if (parsed && Array.isArray(parsed.ids)) {
-      ids = parsed.ids
+                      
     } else {
       return {
         isValid: false,
@@ -100,15 +100,15 @@ export async function validateToManyField(
         validIds: [],
         invalidIds: [],
         lookupData: []
-      }
+
     }
-  } catch {
+    error: 
     return {
-      isValid: false,
+    validIds,
       error: 'Invalid JSON format',
-      validIds: [],
+  }
       invalidIds: [],
-      lookupData: []
+export async functio
     }
   }
 
@@ -120,11 +120,11 @@ export async function validateToManyField(
   for (let i = 0; i < ids.length; i++) {
     const id = ids[i]
     const numericId = numericIds[i]
-    
+
     if (isNaN(numericId)) {
       invalidIds.push(id)
       continue
-    }
+
 
     try {
       const result = await fieldValueCache.getFieldValueById(
@@ -134,7 +134,7 @@ export async function validateToManyField(
       )
 
       if (result) {
-        validIds.push(numericId)
+
         const title = result.title || 
                      result.name || 
                      (result.firstName && result.lastName 
@@ -144,27 +144,27 @@ export async function validateToManyField(
           id: numericId,
           title
         })
-      } else {
+
         invalidIds.push(id)
-      }
+
     } catch {
       invalidIds.push(id)
     }
-  }
 
-  return {
+
+
     isValid: invalidIds.length === 0,
     error: invalidIds.length > 0 
       ? `${invalidIds.length} invalid ID(s): ${invalidIds.join(', ')}`
-      : undefined,
+
     validIds,
-    invalidIds,
+
     lookupData
-  }
+
 }
 
 export async function validateScalarField(
-  field: any,
+
   value: string
 ): Promise<ValidationResult> {
   return {
