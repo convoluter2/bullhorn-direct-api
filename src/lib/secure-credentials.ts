@@ -26,6 +26,7 @@ class SecureCredentialsAPI {
       hasPassword: !!credentials.password,
       username: credentials.username
     })
+
     await storageAdapter.set(`credentials-${connectionId}`, credentials)
     console.log('✅ SecureCredentialsAPI - Credentials saved successfully')
   }
@@ -33,7 +34,10 @@ class SecureCredentialsAPI {
   async getCredentials(connectionId: string): Promise<SecureCredentials | null> {
     try {
       console.log('🔍 SecureCredentialsAPI - Getting credentials for:', connectionId)
-      const credentials = await storageAdapter.get<SecureCredentials>(`credentials-${connectionId}`)
+
+      // JS-safe: no generic type args
+      const credentials = await storageAdapter.get(`credentials-${connectionId}`)
+
       console.log('📦 SecureCredentialsAPI - Retrieved credentials:', {
         found: !!credentials,
         hasClientId: !!credentials?.clientId,
@@ -41,6 +45,7 @@ class SecureCredentialsAPI {
         hasUsername: !!credentials?.username,
         hasPassword: !!credentials?.password
       })
+
       return credentials || null
     } catch (error) {
       console.error('❌ SecureCredentialsAPI - Failed to get credentials:', error)
@@ -61,10 +66,10 @@ class SecureCredentialsAPI {
       tenant: connection.tenant,
       environment: connection.environment
     })
-    
+
     const connections = await this.getConnections()
     const existingIndex = connections.findIndex(c => c.id === connection.id)
-    
+
     if (existingIndex >= 0) {
       console.log('📝 SecureCredentialsAPI - Updating existing connection at index:', existingIndex)
       connections[existingIndex] = connection
@@ -72,18 +77,20 @@ class SecureCredentialsAPI {
       console.log('➕ SecureCredentialsAPI - Adding new connection')
       connections.push(connection)
     }
-    
+
     await storageAdapter.set('bullhorn-connections', connections)
     console.log('✅ SecureCredentialsAPI - Connection saved. Total connections:', connections.length)
   }
 
   async getConnections(): Promise<SavedConnection[]> {
     console.log('🔍 SecureCredentialsAPI - Getting all connections')
-    const connections = await storageAdapter.get<SavedConnection[]>('bullhorn-connections')
+    const connections = await storageAdapter.get('bullhorn-connections')
+
     console.log('📦 SecureCredentialsAPI - Retrieved connections:', {
       count: connections?.length || 0,
-      connections: connections?.map(c => ({ id: c.id, name: c.name })) || []
+      connections: connections?.map((c: any) => ({ id: c.id, name: c.name })) || []
     })
+
     return connections || []
   }
 
@@ -100,7 +107,7 @@ class SecureCredentialsAPI {
     console.log('📝 SecureCredentialsAPI - Updating connection:', { connectionId, updates })
     const connections = await this.getConnections()
     const index = connections.findIndex(c => c.id === connectionId)
-    
+
     if (index >= 0) {
       connections[index] = { ...connections[index], ...updates }
       await storageAdapter.set('bullhorn-connections', connections)
