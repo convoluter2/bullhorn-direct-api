@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Database, Trash, Warning, CheckCircle, Broom, HardDrives } from '@phosphor-icons/react'
 import { toast } from 'sonner'
+import { storageAdapter } from '@/lib/storage-adapter'
 
 interface StorageItem {
   key: string
@@ -54,12 +55,12 @@ export function DataStorageClearer() {
   const loadStorageData = async () => {
     try {
       setLoading(true)
-      const keys = await window.spark.kv.keys()
+      const keys = await storageAdapter.keys()
       const items = await Promise.all(
         keys.map(async (key) => {
           const item = analyzeStorageKey(key)
           try {
-            const value = await window.spark.kv.get(key)
+            const value = await storageAdapter.get(key)
             const sizeEstimate = JSON.stringify(value).length
             const sizeMB = (sizeEstimate / 1024).toFixed(2)
             item.estimatedSize = `~${sizeMB} KB`
@@ -128,7 +129,7 @@ export function DataStorageClearer() {
 
       for (const key of selectedKeys) {
         try {
-          await window.spark.kv.delete(key)
+          await storageAdapter.delete(key)
           cleared.push(key)
         } catch (error) {
           console.error(`Failed to delete ${key}:`, error)

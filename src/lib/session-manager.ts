@@ -1,4 +1,5 @@
 import type { BullhornSession } from './types'
+import { storageAdapter } from './storage-adapter'
 
 export type SessionInfo = {
   browserId: string
@@ -26,6 +27,9 @@ class SessionManager {
   private readonly HEARTBEAT_INTERVAL = 5000
   private readonly SESSION_TIMEOUT = 300000
   private readonly REFRESH_TIMEOUT = 60000
+  private heartbeatFailureCount = 0
+  private readonly MAX_HEARTBEAT_FAILURES = 3
+  private heartbeatDisabled = false
 
   constructor() {
     this.browserId = this.getOrCreateBrowserId()
@@ -62,7 +66,7 @@ class SessionManager {
     }
 
     const key = `session-${this.browserId}-${connectionId}`
-    await window.spark.kv.set(key, sessionInfo)
+    await storageAdapter.set(key, sessionInfo)
     
     console.log('💾 Session saved:', {
       browserId: this.browserId,
@@ -74,7 +78,7 @@ class SessionManager {
 
   async getSession(connectionId: string): Promise<BullhornSession | null> {
     const key = `session-${this.browserId}-${connectionId}`
-    const sessionInfo = await window.spark.kv.get<SessionInfo>(key)
+    const sessionInfo = await storageAdapter.get<SessionInfo>(key)
     
     if (!sessionInfo) {
       console.log('📭 No session found for this browser:', { browserId: this.browserId, connectionId })
@@ -96,7 +100,7 @@ class SessionManager {
     }
 
     sessionInfo.lastActivity = now
-    await window.spark.kv.set(key, sessionInfo)
+    await storageAdapter.set(key, sessionInfo)
     
     console.log('📬 Session retrieved and heartbeat updated:', {
       browserId: this.browserId,
@@ -109,19 +113,19 @@ class SessionManager {
 
   async clearSession(connectionId: string): Promise<void> {
     const key = `session-${this.browserId}-${connectionId}`
-    await window.spark.kv.delete(key)
+    await storageAdapter.delete(key)
     console.log('🗑️ Session cleared:', { browserId: this.browserId, connectionId })
   }
 
   async markRefreshStarted(connectionId: string): Promise<void> {
     const key = `session-${this.browserId}-${connectionId}`
-    const sessionInfo = await window.spark.kv.get<SessionInfo>(key)
+    const sessionInfo = await storageAdapter.get<SessionInfo>(key)
     
     if (sessionInfo) {
       sessionInfo.isRefreshing = true
       sessionInfo.refreshStartedAt = Date.now()
       sessionInfo.lastActivity = Date.now()
-      await window.spark.kv.set(key, sessionInfo)
+      await storageAdapter.set(key, sessionInfo)
       
       console.log('🔄 Marked session as refreshing:', {
         browserId: this.browserId,
@@ -141,7 +145,7 @@ class SessionManager {
     }
 
     const key = `session-${this.browserId}-${connectionId}`
-    await window.spark.kv.set(key, sessionInfo)
+    await storageAdapter.set(key, sessionInfo)
     
     console.log('✅ Marked session refresh complete:', {
       browserId: this.browserId,
@@ -151,124 +155,173 @@ class SessionManager {
   }
 
   async getSessionAwareness(connectionId: string): Promise<SessionAwareness> {
-    const allKeys = await window.spark.kv.keys()
-    const sessionKeys = allKeys.filter(key => 
-      key.startsWith('session-') && key.endsWith(`-${connectionId}`)
-    )
+    try {
+      const allKeys = await storageAdapter.keys()
+      const sessionKeys = allKeys.filter(key => 
+        key.startsWith('session-') && key.endsWith(`-${connectionId}`)
+      )
 
-    const now = Date.now()
-    const activeSessions: SessionAwareness['activeSessions'] = []
-    let activeRefreshCount = 0
-    let currentBrowserHasSession = false
+      const now = Date.now()
+      const activeSessions: SessionAwareness['activeSessions'] = []
+      let activeRefreshCount = 0
+      let currentBrowserHasSession = false
 
-    for (const key of sessionKeys) {
-      const sessionInfo = await window.spark.kv.get<SessionInfo>(key)
-      
-      if (!sessionInfo) continue
+      for (const key of sessionKeys) {
+        const sessionInfo = await storageAdapter.get<SessionInfo>(key)
+        
+        if (!sessionInfo) continue
 
-      const age = now - sessionInfo.lastActivity
-      
-      if (sessionInfo.isRefreshing && sessionInfo.refreshStartedAt) {
-        const refreshAge = now - sessionInfo.refreshStartedAt
-        if (refreshAge > this.REFRESH_TIMEOUT) {
-          console.log('⚠️ Stale refresh detected, cleaning up:', {
+        const age = now - sessionInfo.lastActivity
+        
+        if (sessionInfo.isRefreshing && sessionInfo.refreshStartedAt) {
+          const refreshAge = now - sessionInfo.refreshStartedAt
+          if (refreshAge > this.REFRESH_TIMEOUT) {
+            console.log('⚠️ Stale refresh detected, cleaning up:', {
+              browserId: sessionInfo.browserId,
+              connectionId: sessionInfo.connectionId,
+              refreshAge
+            })
+            sessionInfo.isRefreshing = false
+            sessionInfo.refreshStartedAt = undefined
+            await storageAdapter.set(key, sessionInfo)
+          }
+        }
+
+        if (age < this.SESSION_TIMEOUT) {
+          activeSessions.push({
             browserId: sessionInfo.browserId,
             connectionId: sessionInfo.connectionId,
-            refreshAge
+            lastActivity: sessionInfo.lastActivity,
+            isRefreshing: sessionInfo.isRefreshing
           })
-          sessionInfo.isRefreshing = false
-          sessionInfo.refreshStartedAt = undefined
-          await window.spark.kv.set(key, sessionInfo)
+
+          if (sessionInfo.isRefreshing) {
+            activeRefreshCount++
+          }
+
+          if (sessionInfo.browserId === this.browserId) {
+            currentBrowserHasSession = true
+          }
+        } else {
+          console.log('🧹 Cleaning up expired session:', {
+            browserId: sessionInfo.browserId,
+            connectionId: sessionInfo.connectionId,
+            age
+          })
+          await storageAdapter.delete(key)
         }
       }
 
-      if (age < this.SESSION_TIMEOUT) {
-        activeSessions.push({
-          browserId: sessionInfo.browserId,
-          connectionId: sessionInfo.connectionId,
-          lastActivity: sessionInfo.lastActivity,
-          isRefreshing: sessionInfo.isRefreshing
-        })
+      const awareness: SessionAwareness = {
+        activeRefreshCount,
+        activeSessions,
+        currentBrowserHasSession
+      }
 
-        if (sessionInfo.isRefreshing) {
-          activeRefreshCount++
-        }
+      console.log('👀 Session awareness:', {
+        connectionId,
+        currentBrowser: this.browserId,
+        ...awareness
+      })
 
-        if (sessionInfo.browserId === this.browserId) {
-          currentBrowserHasSession = true
-        }
-      } else {
-        console.log('🧹 Cleaning up expired session:', {
-          browserId: sessionInfo.browserId,
-          connectionId: sessionInfo.connectionId,
-          age
-        })
-        await window.spark.kv.delete(key)
+      return awareness
+    } catch (error) {
+      console.error('❌ getSessionAwareness failed:', error)
+      return {
+        activeRefreshCount: 0,
+        activeSessions: [],
+        currentBrowserHasSession: false
       }
     }
-
-    const awareness: SessionAwareness = {
-      activeRefreshCount,
-      activeSessions,
-      currentBrowserHasSession
-    }
-
-    console.log('👀 Session awareness:', {
-      connectionId,
-      currentBrowser: this.browserId,
-      ...awareness
-    })
-
-    return awareness
   }
 
   async cleanupExpiredSessions(): Promise<void> {
-    const allKeys = await window.spark.kv.keys()
-    const sessionKeys = allKeys.filter(key => key.startsWith('session-'))
-    
-    const now = Date.now()
-    let cleanedCount = 0
-
-    for (const key of sessionKeys) {
-      const sessionInfo = await window.spark.kv.get<SessionInfo>(key)
-      
-      if (!sessionInfo) {
-        await window.spark.kv.delete(key)
-        cleanedCount++
-        continue
-      }
-
-      const age = now - sessionInfo.lastActivity
-      
-      if (age > this.SESSION_TIMEOUT) {
-        console.log('🧹 Cleaning expired session:', {
-          browserId: sessionInfo.browserId,
-          connectionId: sessionInfo.connectionId,
-          age,
-          key
-        })
-        await window.spark.kv.delete(key)
-        cleanedCount++
-      }
+    if (this.heartbeatDisabled) {
+      return
     }
 
-    if (cleanedCount > 0) {
-      console.log(`✨ Cleaned ${cleanedCount} expired session(s)`)
+    try {
+      const allKeys = await storageAdapter.keys()
+      const sessionKeys = allKeys.filter(key => key.startsWith('session-'))
+      
+      const now = Date.now()
+      let cleanedCount = 0
+
+      for (const key of sessionKeys) {
+        const sessionInfo = await storageAdapter.get<SessionInfo>(key)
+        
+        if (!sessionInfo) {
+          await storageAdapter.delete(key)
+          cleanedCount++
+          continue
+        }
+
+        const age = now - sessionInfo.lastActivity
+        
+        if (age > this.SESSION_TIMEOUT) {
+          console.log('🧹 Cleaning expired session:', {
+            browserId: sessionInfo.browserId,
+            connectionId: sessionInfo.connectionId,
+            age,
+            key
+          })
+          await storageAdapter.delete(key)
+          cleanedCount++
+        }
+      }
+
+      if (cleanedCount > 0) {
+        console.log(`✨ Cleaned ${cleanedCount} expired session(s)`)
+      }
+
+      this.heartbeatFailureCount = 0
+    } catch (error) {
+      this.heartbeatFailureCount++
+      
+      if (this.heartbeatFailureCount === 1) {
+        console.warn('⚠️ Session cleanup failed, will retry:', error)
+      }
+      
+      if (this.heartbeatFailureCount >= this.MAX_HEARTBEAT_FAILURES) {
+        console.warn(`⚠️ Session cleanup failed ${this.MAX_HEARTBEAT_FAILURES} times, disabling heartbeat to prevent spam`)
+        this.heartbeatDisabled = true
+        this.stopHeartbeat()
+      }
     }
   }
 
   private async updateHeartbeat(): Promise<void> {
-    const allKeys = await window.spark.kv.keys()
-    const mySessionKeys = allKeys.filter(key => 
-      key.startsWith(`session-${this.browserId}-`)
-    )
+    if (this.heartbeatDisabled) {
+      return
+    }
 
-    for (const key of mySessionKeys) {
-      const sessionInfo = await window.spark.kv.get<SessionInfo>(key)
+    try {
+      const allKeys = await storageAdapter.keys()
+      const mySessionKeys = allKeys.filter(key => 
+        key.startsWith(`session-${this.browserId}-`)
+      )
+
+      for (const key of mySessionKeys) {
+        const sessionInfo = await storageAdapter.get<SessionInfo>(key)
+        
+        if (sessionInfo) {
+          sessionInfo.lastActivity = Date.now()
+          await storageAdapter.set(key, sessionInfo)
+        }
+      }
+
+      this.heartbeatFailureCount = 0
+    } catch (error) {
+      this.heartbeatFailureCount++
       
-      if (sessionInfo) {
-        sessionInfo.lastActivity = Date.now()
-        await window.spark.kv.set(key, sessionInfo)
+      if (this.heartbeatFailureCount === 1) {
+        console.warn('⚠️ Heartbeat update failed, will retry:', error)
+      }
+      
+      if (this.heartbeatFailureCount >= this.MAX_HEARTBEAT_FAILURES) {
+        console.warn(`⚠️ Heartbeat failed ${this.MAX_HEARTBEAT_FAILURES} times, disabling to prevent spam`)
+        this.heartbeatDisabled = true
+        this.stopHeartbeat()
       }
     }
   }
@@ -300,21 +353,26 @@ class SessionManager {
   }
 
   async getAllActiveSessions(): Promise<SessionInfo[]> {
-    const allKeys = await window.spark.kv.keys()
-    const sessionKeys = allKeys.filter(key => key.startsWith('session-'))
-    
-    const sessions: SessionInfo[] = []
-    const now = Date.now()
-
-    for (const key of sessionKeys) {
-      const sessionInfo = await window.spark.kv.get<SessionInfo>(key)
+    try {
+      const allKeys = await storageAdapter.keys()
+      const sessionKeys = allKeys.filter(key => key.startsWith('session-'))
       
-      if (sessionInfo && (now - sessionInfo.lastActivity) < this.SESSION_TIMEOUT) {
-        sessions.push(sessionInfo)
-      }
-    }
+      const sessions: SessionInfo[] = []
+      const now = Date.now()
 
-    return sessions
+      for (const key of sessionKeys) {
+        const sessionInfo = await storageAdapter.get<SessionInfo>(key)
+        
+        if (sessionInfo && (now - sessionInfo.lastActivity) < this.SESSION_TIMEOUT) {
+          sessions.push(sessionInfo)
+        }
+      }
+
+      return sessions
+    } catch (error) {
+      console.error('❌ getAllActiveSessions failed:', error)
+      return []
+    }
   }
 }
 

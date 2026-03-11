@@ -1,3 +1,5 @@
+import { storageAdapter } from './storage-adapter'
+
 export type SecureCredentials = {
   clientId: string
   clientSecret: string
@@ -24,14 +26,14 @@ class SecureCredentialsAPI {
       hasPassword: !!credentials.password,
       username: credentials.username
     })
-    await window.spark.kv.set(`credentials-${connectionId}`, credentials)
+    await storageAdapter.set(`credentials-${connectionId}`, credentials)
     console.log('✅ SecureCredentialsAPI - Credentials saved successfully')
   }
 
   async getCredentials(connectionId: string): Promise<SecureCredentials | null> {
     try {
       console.log('🔍 SecureCredentialsAPI - Getting credentials for:', connectionId)
-      const credentials = await window.spark.kv.get<SecureCredentials>(`credentials-${connectionId}`)
+      const credentials = await storageAdapter.get<SecureCredentials>(`credentials-${connectionId}`)
       console.log('📦 SecureCredentialsAPI - Retrieved credentials:', {
         found: !!credentials,
         hasClientId: !!credentials?.clientId,
@@ -48,7 +50,7 @@ class SecureCredentialsAPI {
 
   async deleteCredentials(connectionId: string): Promise<void> {
     console.log('🗑️ SecureCredentialsAPI - Deleting credentials for:', connectionId)
-    await window.spark.kv.delete(`credentials-${connectionId}`)
+    await storageAdapter.delete(`credentials-${connectionId}`)
     console.log('✅ SecureCredentialsAPI - Credentials deleted')
   }
 
@@ -71,13 +73,13 @@ class SecureCredentialsAPI {
       connections.push(connection)
     }
     
-    await window.spark.kv.set('bullhorn-connections', connections)
+    await storageAdapter.set('bullhorn-connections', connections)
     console.log('✅ SecureCredentialsAPI - Connection saved. Total connections:', connections.length)
   }
 
   async getConnections(): Promise<SavedConnection[]> {
     console.log('🔍 SecureCredentialsAPI - Getting all connections')
-    const connections = await window.spark.kv.get<SavedConnection[]>('bullhorn-connections')
+    const connections = await storageAdapter.get<SavedConnection[]>('bullhorn-connections')
     console.log('📦 SecureCredentialsAPI - Retrieved connections:', {
       count: connections?.length || 0,
       connections: connections?.map(c => ({ id: c.id, name: c.name })) || []
@@ -89,7 +91,7 @@ class SecureCredentialsAPI {
     console.log('🗑️ SecureCredentialsAPI - Deleting connection:', connectionId)
     const connections = await this.getConnections()
     const filtered = connections.filter(c => c.id !== connectionId)
-    await window.spark.kv.set('bullhorn-connections', filtered)
+    await storageAdapter.set('bullhorn-connections', filtered)
     await this.deleteCredentials(connectionId)
     console.log('✅ SecureCredentialsAPI - Connection and credentials deleted')
   }
@@ -101,7 +103,7 @@ class SecureCredentialsAPI {
     
     if (index >= 0) {
       connections[index] = { ...connections[index], ...updates }
-      await window.spark.kv.set('bullhorn-connections', connections)
+      await storageAdapter.set('bullhorn-connections', connections)
       console.log('✅ SecureCredentialsAPI - Connection updated')
     } else {
       console.error('❌ SecureCredentialsAPI - Connection not found for update:', connectionId)
