@@ -1,31 +1,36 @@
 export interface KeyValueStore {
-  keys(): Promise<string[]>
-  get<T>(key: string): Promise<T | undefined>
+  get<T>(key: string): Promise<T | null>
   set<T>(key: string, value: T): Promise<void>
+  delete(key: string): Promise<void>
+  keys(prefix?: string): Promise<string[]>
 }
-c
 
+export class SparkKVStore implements KeyValueStore {
+  async keys(prefix?: string): Promise<string[]> {
+    const allKeys = await window.spark.kv.keys()
+    if (prefix) {
+      return allKeys.filter(key => key.startsWith(prefix))
+    }
+    return allKeys
+  }
 
-    return await window.spark.kv.ge
+  async get<T>(key: string): Promise<T | null> {
+    const result = await window.spark.kv.get<T>(key)
+    return result ?? null
+  }
 
-   
+  async set<T>(key: string, value: T): Promise<void> {
+    await window.spark.kv.set(key, value)
+  }
 
+  async delete(key: string): Promise<void> {
     await window.spark.kv.delete(key)
+  }
 }
-cla
 
-  constructor() {
-    this.memoryStore = new Map()
-
-
-      localStorage.setItem(testKey, 'test')
-      return true
-   
- 
-
-      const allKeys: string[] = []
-        const key = localStorage.k
-          allKeys.push(key.substring(3)
+export class FallbackStore implements KeyValueStore {
+  private useLocalStorage: boolean
+  private memoryStore: Map<string, any>
 
   constructor() {
     this.useLocalStorage = this.isLocalStorageAvailable()
@@ -43,32 +48,39 @@ cla
     }
   }
 
-  async keys(): Promise<string[]> {
+  async keys(prefix?: string): Promise<string[]> {
+    let allKeys: string[]
+    
     if (this.useLocalStorage) {
-      const allKeys: string[] = []
+      allKeys = []
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i)
         if (key && key.startsWith('kv:')) {
           allKeys.push(key.substring(3))
         }
       }
-      return allKeys
     } else {
-      return Array.from(this.memoryStore.keys())
+      allKeys = Array.from(this.memoryStore.keys())
     }
+
+    if (prefix) {
+      return allKeys.filter(key => key.startsWith(prefix))
+    }
+    return allKeys
   }
 
-  async get<T>(key: string): Promise<T | undefined> {
+  async get<T>(key: string): Promise<T | null> {
     if (this.useLocalStorage) {
       const item = localStorage.getItem(`kv:${key}`)
-      if (item === null) return undefined
+      if (item === null) return null
       try {
         return JSON.parse(item) as T
       } catch {
-        return undefined
+        return null
       }
     } else {
-      return this.memoryStore.get(key)
+      const value = this.memoryStore.get(key)
+      return value ?? null
     }
   }
 
@@ -124,52 +136,52 @@ class StorageAdapter implements KeyValueStore {
 
   private async ensureReady(): Promise<void> {
     if (this.checkPromise) {
+      await this.checkPromise
     }
-
-    a
-
-      console.error('S
+    
+    if (!this.store) {
+      this.store = new FallbackStore()
+    }
   }
-  asy
-   
 
-    }
+  async keys(prefix?: string): Promise<string[]> {
+    await this.ensureReady()
+    return this.store!.keys(prefix)
+  }
+
+  async get<T>(key: string): Promise<T | null> {
+    await this.ensureReady()
+    return this.store!.get<T>(key)
+  }
+
+  async set<T>(key: string, value: T): Promise<void> {
+    await this.ensureReady()
+    await this.store!.set(key, value)
+  }
+
+  async delete(key: string): Promise<void> {
+    await this.ensureReady()
+    await this.store!.delete(key)
+  }
 }
-export co
 
+export async function createStore(): Promise<KeyValueStore> {
+  try {
+    if (typeof window !== 'undefined' && window.spark?.kv) {
+      await window.spark.kv.keys()
+      return new SparkKVStore()
+    }
+  } catch (error) {
+    const hasLogged = (globalThis as any).__storage_fallback_logged
+    if (!hasLogged) {
+      console.warn('⚠️ Spark KV unavailable, using fallback storage');
+      (globalThis as any).__storage_fallback_logged = true
+    }
+  }
+  
+  return new FallbackStore()
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+const storageInstance = new StorageAdapter()
+export const storageAdapter = storageInstance
+export default storageInstance
