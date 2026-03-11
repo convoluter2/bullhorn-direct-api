@@ -67,8 +67,8 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [mappings, setMappings] = useState<CSVMapping[]>([])
   const [toManyConfigs, setToManyConfigs] = useState<Record<string, ToManyConfig>>({})
   const [lookupField, setLookupField] = useState<string>('')
-  const [updateExisting, setUpdateExisting] = useState(false)
-  const [createNew, setCreateNew] = useState(true)
+  const [updateExisting, setUpdateExisting] = useState(true)
+  const [createNew, setCreateNew] = useState(false)
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [results, setResults] = useState<ImportResult[]>([])
@@ -585,8 +585,6 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               const trimmedValue = transformedValue.trim()
               if (trimmedValue && /^\d+$/.test(trimmedValue)) {
                 data[mapping.bullhornField] = { id: parseInt(trimmedValue, 10) }
-              } else if (trimmedValue) {
-                data[mapping.bullhornField] = transformedValue
               } else {
                 data[mapping.bullhornField] = null
               }

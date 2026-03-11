@@ -385,8 +385,6 @@ export function QueryStack({ onLog }: QueryStackProps) {
               const trimmedValue = update.value.trim()
               if (trimmedValue && /^\d+$/.test(trimmedValue)) {
                 updateData[update.field] = { id: parseInt(trimmedValue, 10) }
-              } else if (trimmedValue) {
-                updateData[update.field] = update.value
               } else {
                 updateData[update.field] = null
               }
