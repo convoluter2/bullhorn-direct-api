@@ -1,11 +1,11 @@
 import { fieldValueCache } from './field-value-cache'
 
-export interface ValidationResult {
-  isValid: boolean
   error?: string
-  validatedValue?: any
   lookupData?: any
-  validIds?: number[]
+  invalidIds?: (
+
+  field: any,
+): Promise<Validation
   invalidIds?: (string | number)[]
 }
 
@@ -14,11 +14,11 @@ export async function validateToOneField(
   value: string
 ): Promise<ValidationResult> {
   if (!field.associatedEntity?.entity) {
-    return {
+  if (isNaN(
       isValid: false,
       error: 'Field is not a TO_ONE association'
-    }
-  }
+     
+   
 
   const numericId = parseInt(value.trim(), 10)
   
@@ -29,39 +29,39 @@ export async function validateToOneField(
     }
   }
 
+       
+  }
+
+  field: any,
+): Promise<ValidationResult> {
+    r
+
+      invalidIds: 
+    }
+
   try {
-    const result = await fieldValueCache.getFieldValueById(
-      field.associatedEntity.entity,
-      numericId,
-      ['id', 'name', 'title', 'firstName', 'lastName']
-    )
+    
+     
 
-    if (!result) {
       return {
-        isValid: false,
-        error: 'ID not found in system'
+        error: 'Invalid TO_MANY 
+        invalidIds: [],
       }
-    }
+  } catch {
 
-    const title = result.title || 
-                 result.name || 
-                 (result.firstName && result.lastName 
-                   ? `${result.firstName} ${result.lastName}` 
-                   : undefined)
+      validI
+      lookupData: []
+  }
+  const numericIds 
+  const invalidIds: (s
 
-    return {
-      isValid: true,
-      validatedValue: numericId,
-      lookupData: {
-        id: numericId,
-        title
-      }
+    con
+
+      invalidIds.pu
     }
-  } catch (error) {
-    return {
-      isValid: false,
-      error: `Failed to validate ${field.associatedEntity.entity} ID`
-    }
+    try {
+        field.associatedEntity.entity,
+     
   }
 }
 
@@ -136,25 +136,25 @@ export async function validateToManyField(
                        : undefined)
         lookupData.push({
           id: numericId,
-          title
+
         })
-      } else {
+
         invalidIds.push(id)
-      }
+
     } catch {
       invalidIds.push(id)
     }
-  }
 
-  return {
+
+
     isValid: invalidIds.length === 0,
     error: invalidIds.length > 0 
       ? `${invalidIds.length} invalid ID(s): ${invalidIds.join(', ')}`
-      : undefined,
+
     validIds,
-    invalidIds,
+
     lookupData
-  }
+
 }
 
 export async function validateScalarField(
@@ -164,5 +164,5 @@ export async function validateScalarField(
   return {
     isValid: true,
     validatedValue: value
-  }
+
 }
