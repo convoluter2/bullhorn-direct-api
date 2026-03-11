@@ -15,7 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Upload, Lightning, CheckCircle, XCircle, MagnifyingGlass, Plus, Eye, ArrowsClockwise, ArrowCounterClockwise, Pause, Play, Stop, DownloadSimple, Gauge, Trash, Clock, Warning, WarningCircle } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import { parseCSV, exportToCSV, exportToJSON } from '@/lib/csv-utils'
+import { parseCSV, exportToCSV, exportToJSON, parseExcel } from '@/lib/csv-utils'
 import { formatFieldLabel, formatFieldLabelWithType, formatFieldValue } from '@/lib/utils'
 import { validateCSVFile, validateCSVContent, validateFieldMappings, validateImportConfiguration, type ValidationRule } from '@/lib/csv-validation'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
@@ -66,9 +66,9 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [csvData, setCsvData] = useState<{ headers: string[]; rows: string[][] } | null>(null)
   const [mappings, setMappings] = useState<CSVMapping[]>([])
   const [toManyConfigs, setToManyConfigs] = useState<Record<string, ToManyConfig>>({})
-  const [lookupField, setLookupField] = useState<string>('')
+  const [lookupField, setLookupField] = useState<string>('id')
   const [updateExisting, setUpdateExisting] = useState(true)
-  const [createNew, setCreateNew] = useState(false)
+  const [createNew, setCreateNew] = useState(true)
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [results, setResults] = useState<ImportResult[]>([])
@@ -207,9 +207,11 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     toast.info('Discarded paused import')
   }
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls')
 
     const fileValidation = validateCSVFile(file, {
       maxFileSize: 50 * 1024 * 1024,
@@ -227,6 +229,66 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     if (fileValidation.warnings.length > 0) {
       setValidationWarnings(fileValidation.warnings)
       fileValidation.warnings.forEach(warn => toast.warning(warn.message))
+    }
+
+    if (isExcel) {
+      try {
+        const parsed = await parseExcel(file)
+        
+        const contentValidation = validateCSVContent(parsed.headers, parsed.rows, {
+          requireHeaders: true,
+          allowDuplicateHeaders: false,
+          minRows: 1
+        })
+
+        if (!contentValidation.isValid) {
+          setValidationErrors(contentValidation.errors)
+          setValidationWarnings(contentValidation.warnings)
+          contentValidation.errors.forEach(err => toast.error(err.message))
+          if (contentValidation.warnings.length > 0) {
+            contentValidation.warnings.forEach(warn => toast.warning(warn.message))
+          }
+          return
+        }
+
+        setValidationErrors([])
+        if (contentValidation.warnings.length > 0) {
+          setValidationWarnings(contentValidation.warnings)
+          contentValidation.warnings.forEach(warn => toast.warning(warn.message))
+        } else {
+          setValidationWarnings([])
+        }
+        
+        setCsvData(parsed)
+        
+        const initialMappings: CSVMapping[] = parsed.headers
+          .filter(header => header !== null && header !== undefined && header !== '')
+          .map(header => ({
+            csvColumn: String(header).trim(),
+            bullhornField: '__skip__'
+          }))
+          .filter(mapping => mapping.csvColumn !== '')
+        
+        setMappings(initialMappings)
+        setResults([])
+        toast.success(`Excel loaded: ${parsed.rows.length} rows, ${parsed.headers.length} columns`)
+        
+        onLog('Excel Upload', 'success', `Loaded Excel file: ${file.name}`, {
+          fileName: file.name,
+          fileSize: file.size,
+          rows: parsed.rows.length,
+          columns: parsed.headers.length,
+          warnings: contentValidation.warnings.length
+        })
+      } catch (error) {
+        console.error('Excel parse error:', error)
+        const errorMsg = `Failed to parse Excel: ${error instanceof Error ? error.message : 'Unknown error'}`
+        const validationError = { name: 'parse_error', message: errorMsg, severity: 'error' as const }
+        setValidationErrors([validationError])
+        toast.error(errorMsg)
+        onLog('Excel Upload', 'error', 'Excel parse failed', { error: String(error) })
+      }
+      return
     }
 
     const reader = new FileReader()
@@ -1257,11 +1319,12 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               <Label>CSV File</Label>
               <Input
                 type="file"
-                accept=".csv"
+                accept=".csv,.xlsx,.xls"
                 onChange={handleFileUpload}
                 disabled={!entity}
                 className="cursor-pointer"
               />
+              <p className="text-xs text-muted-foreground">Supports CSV and Excel (.xlsx, .xls) files</p>
             </div>
           </div>
 

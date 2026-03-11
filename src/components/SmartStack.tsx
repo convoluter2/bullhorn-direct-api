@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Eye, ArrowCounterClockwise, ListBullets, TreeStructure, Pause, Play, Stop, DownloadSimple, Clock } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import { parseCSV, exportToCSV, exportToJSON } from '@/lib/csv-utils'
+import { parseCSV, exportToCSV, exportToJSON, parseExcel } from '@/lib/csv-utils'
 import { formatFieldLabel, formatFieldLabelWithType, formatFieldValue } from '@/lib/utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
@@ -65,6 +65,8 @@ interface PersistedSmartStackState {
   progress: number
   conditionalAssociations: ConditionalAssociation[]
   useConditionalLogic: boolean
+  csvData: { headers: string[]; rows: string[][] } | null
+  lookupColumn: string
   timestamp: number
 }
 
@@ -72,6 +74,8 @@ export function SmartStack({ onLog }: SmartStackProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [csvIds, setCsvIds] = useState<string[]>([])
   const [csvFileName, setCsvFileName] = useState<string>('')
+  const [csvData, setCsvData] = useState<{ headers: string[]; rows: string[][] } | null>(null)
+  const [lookupColumn, setLookupColumn] = useState<string>('0')
   const [selectedEntity, setSelectedEntity] = useState<string>('')
   const [filters, setFilters] = useState<QueryFilter[]>([])
   const [filterGroups, setFilterGroups] = useState<FilterGroup[]>([])
@@ -126,6 +130,8 @@ export function SmartStack({ onLog }: SmartStackProps) {
     
     setCsvIds(persistedState.csvIds)
     setCsvFileName(persistedState.csvFileName)
+    setCsvData(persistedState.csvData || null)
+    setLookupColumn(persistedState.lookupColumn || '0')
     setSelectedEntity(persistedState.selectedEntity)
     setFilters(persistedState.filters)
     setFilterGroups(persistedState.filterGroups)
@@ -151,50 +157,63 @@ export function SmartStack({ onLog }: SmartStackProps) {
     toast.info('Discarded paused SmartStack')
   }
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
     setCsvFileName(file.name)
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls')
 
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const text = e.target?.result as string
-      const { headers, rows } = parseCSV(text)
+    try {
+      let parsed: { headers: string[]; rows: string[][] }
+      
+      if (isExcel) {
+        parsed = await parseExcel(file)
+        toast.success(`Excel loaded: ${parsed.rows.length} rows, ${parsed.headers.length} columns`)
+      } else {
+        const reader = new FileReader()
+        const text = await new Promise<string>((resolve, reject) => {
+          reader.onload = (e) => resolve(e.target?.result as string)
+          reader.onerror = () => reject(new Error('Failed to read file'))
+          reader.readAsText(file)
+        })
+        parsed = parseCSV(text)
+        toast.success(`CSV loaded: ${parsed.rows.length} rows, ${parsed.headers.length} columns`)
+      }
 
-      if (rows.length === 0) {
-        toast.error('CSV file is empty')
+      if (parsed.rows.length === 0) {
+        toast.error('File is empty')
         return
       }
 
+      setCsvData(parsed)
+      setLookupColumn('0')
+      
+      const columnIndex = 0
       const ids: string[] = []
-      rows.forEach(row => {
-        if (row[0] && row[0].trim()) {
-          ids.push(row[0].trim())
+      parsed.rows.forEach(row => {
+        if (row[columnIndex] && row[columnIndex].trim()) {
+          ids.push(row[columnIndex].trim())
         }
       })
 
       if (ids.length === 0) {
-        toast.error('No valid IDs found in CSV')
+        toast.error('No valid IDs found in first column')
         return
       }
 
       setCsvIds(ids)
-      toast.success(`Loaded ${ids.length} IDs from CSV`)
       
       onLog(
-        'SmartStack CSV Upload',
+        `SmartStack ${isExcel ? 'Excel' : 'CSV'} Upload`,
         'success',
-        `Loaded ${ids.length} IDs`,
-        { filename: file.name, count: ids.length }
+        `Loaded ${ids.length} IDs from column 1`,
+        { filename: file.name, count: ids.length, headers: parsed.headers }
       )
+    } catch (error) {
+      console.error('File upload error:', error)
+      toast.error(`Failed to load file: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
-
-    reader.onerror = () => {
-      toast.error('Failed to read CSV file')
-    }
-
-    reader.readAsText(file)
   }
 
   const addFilter = () => {
@@ -243,6 +262,29 @@ export function SmartStack({ onLog }: SmartStackProps) {
         } : 'NOT IN FIELDSMAP'
       })
     }
+  }
+
+  const handleLookupColumnChange = (column: string) => {
+    setLookupColumn(column)
+    
+    if (!csvData) return
+    
+    const columnIndex = parseInt(column)
+    const ids: string[] = []
+    csvData.rows.forEach(row => {
+      if (row[columnIndex] && row[columnIndex].trim()) {
+        ids.push(row[columnIndex].trim())
+      }
+    })
+
+    if (ids.length === 0) {
+      toast.error(`No valid IDs found in column ${columnIndex + 1}`)
+      setCsvIds([])
+      return
+    }
+
+    setCsvIds(ids)
+    toast.success(`Loaded ${ids.length} IDs from column ${columnIndex + 1}`)
   }
 
   const handlePause = () => {
@@ -355,6 +397,8 @@ export function SmartStack({ onLog }: SmartStackProps) {
           const state: PersistedSmartStackState = {
             csvIds,
             csvFileName,
+            csvData,
+            lookupColumn,
             selectedEntity,
             filters,
             filterGroups,
@@ -817,6 +861,8 @@ export function SmartStack({ onLog }: SmartStackProps) {
   const resetStack = () => {
     setCsvIds([])
     setCsvFileName('')
+    setCsvData(null)
+    setLookupColumn('0')
     setSelectedEntity('')
     setFilters([])
     setFieldUpdates([])
@@ -880,7 +926,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".csv"
+                  accept=".csv,.xlsx,.xls"
                   onChange={handleFileUpload}
                   className="hidden"
                   id="csv-upload"
@@ -892,7 +938,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
                   className="flex-1"
                 >
                   <Upload />
-                  {csvFileName || 'Choose CSV File'}
+                  {csvFileName || 'Choose CSV/Excel File'}
                 </Button>
                 {csvIds.length > 0 && (
                   <Badge variant="secondary" className="px-4 py-2 text-base">
@@ -901,8 +947,29 @@ export function SmartStack({ onLog }: SmartStackProps) {
                 )}
               </div>
               <p className="text-xs text-muted-foreground">
-                CSV should have IDs in the first column
+                Supports CSV and Excel (.xlsx, .xls) files
               </p>
+              
+              {csvData && csvData.headers.length > 0 && (
+                <div className="space-y-2 pt-2">
+                  <Label className="text-sm">Lookup Column (contains IDs)</Label>
+                  <Select value={lookupColumn} onValueChange={handleLookupColumnChange} disabled={loading}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select column with IDs" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {csvData.headers.map((header, index) => (
+                        <SelectItem key={index} value={String(index)}>
+                          Column {index + 1}{header ? `: ${header}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Select which column contains the IDs to lookup
+                  </p>
+                </div>
+              )}
             </div>
 
             <Separator />

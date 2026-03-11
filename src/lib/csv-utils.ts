@@ -1,3 +1,5 @@
+import * as XLSX from 'xlsx'
+
 export function parseCSV(csvText: string): { headers: string[]; rows: string[][] } {
   const lines = csvText.split('\n').filter(line => line.trim())
   
@@ -9,6 +11,40 @@ export function parseCSV(csvText: string): { headers: string[]; rows: string[][]
   const rows = lines.slice(1).map(line => parseCSVLine(line))
 
   return { headers, rows }
+}
+
+export function parseExcel(file: File): Promise<{ headers: string[]; rows: string[][] }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result
+        const workbook = XLSX.read(data, { type: 'binary' })
+        const firstSheetName = workbook.SheetNames[0]
+        const worksheet = workbook.Sheets[firstSheetName]
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as string[][]
+        
+        if (jsonData.length === 0) {
+          resolve({ headers: [], rows: [] })
+          return
+        }
+        
+        const headers = jsonData[0].map(h => String(h).trim())
+        const rows = jsonData.slice(1).map(row => row.map(cell => String(cell).trim()))
+        
+        resolve({ headers, rows })
+      } catch (error) {
+        reject(error)
+      }
+    }
+    
+    reader.onerror = () => {
+      reject(new Error('Failed to read Excel file'))
+    }
+    
+    reader.readAsBinaryString(file)
+  })
 }
 
 function parseCSVLine(line: string): string[] {
