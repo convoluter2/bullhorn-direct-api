@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Plus, Trash, X, MagnifyingGlass, CaretDown, Check } from '@phosphor-icons/react'
+import { Plus, Trash, X, MagnifyingGlass, CaretDown, Check, Warning, CheckCircle } from '@phosphor-icons/react'
 import { cn, formatFieldLabel } from '@/lib/utils'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { toast } from 'sonner'
@@ -16,6 +16,7 @@ import type { EntityField } from '@/hooks/use-entity-metadata'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useFieldValues } from '@/hooks/use-field-values'
 import { fieldValueCache } from '@/lib/field-value-cache'
+import { validateToManyField } from '@/lib/field-validation'
 
 interface ToManyFieldInputProps {
   field: EntityField | null
@@ -60,6 +61,17 @@ export function ToManyFieldInput({
   const [availableRecords, setAvailableRecords] = useState<LookupRecord[]>([])
   const [loadingRecords, setLoadingRecords] = useState(false)
   const [showMultiSelect, setShowMultiSelect] = useState(false)
+  const [validationStatus, setValidationStatus] = useState<{
+    isValidating: boolean
+    validIds: number[]
+    invalidIds: number[]
+    lookupData: Array<{ id: number; title?: string }>
+  }>({
+    isValidating: false,
+    validIds: [],
+    invalidIds: [],
+    lookupData: []
+  })
 
   const associatedEntity = field?.associatedEntity?.entity
   const { metadata: subEntityMetadata, loading: subEntityLoading } = useEntityMetadata(associatedEntity)
@@ -297,6 +309,53 @@ export function ToManyFieldInput({
       setShowSearchResults(false)
     }
   }, [searchQuery, subField, associatedEntity])
+
+  useEffect(() => {
+    const validateIds = async () => {
+      if (!field || subField !== 'id' || ids.length === 0) {
+        setValidationStatus({
+          isValidating: false,
+          validIds: [],
+          invalidIds: [],
+          lookupData: []
+        })
+        return
+      }
+
+      setValidationStatus(prev => ({ ...prev, isValidating: true }))
+
+      try {
+        const idsString = JSON.stringify({ operation, ids, subField })
+        const result = await validateToManyField(field, idsString)
+        
+        setValidationStatus({
+          isValidating: false,
+          validIds: result.validIds,
+          invalidIds: result.invalidIds,
+          lookupData: result.lookupData
+        })
+
+        if (result.invalidIds.length > 0) {
+          toast.warning(`${result.invalidIds.length} invalid ID(s) found`, {
+            description: `Invalid: ${result.invalidIds.join(', ')}`
+          })
+        } else if (result.validIds.length > 0) {
+          console.log(`✓ All ${result.validIds.length} IDs validated successfully`)
+        }
+      } catch (error) {
+        console.error('Validation error:', error)
+        setValidationStatus({
+          isValidating: false,
+          validIds: [],
+          invalidIds: [],
+          lookupData: []
+        })
+      }
+    }
+
+    const debounceTimer = setTimeout(validateIds, 800)
+    return () => clearTimeout(debounceTimer)
+  }, [ids, subField, field, operation])
 
   return (
     <Card className={cn("p-4 space-y-4 border-2", className)}>
@@ -611,36 +670,86 @@ export function ToManyFieldInput({
             <Label className="font-semibold">
               {ids.length} {subField === 'id' ? `${associatedEntity} Record(s)` : `Value(s)`} Selected
             </Label>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => { setIds([]); updateParent(operation, [], subField) }}
-              disabled={disabled}
-            >
-              <X />
-              Clear all
-            </Button>
+            <div className="flex items-center gap-2">
+              {validationStatus.isValidating && subField === 'id' && (
+                <Badge variant="outline" className="gap-1">
+                  <MagnifyingGlass size={12} className="animate-pulse" />
+                  Validating...
+                </Badge>
+              )}
+              {!validationStatus.isValidating && subField === 'id' && validationStatus.validIds.length > 0 && (
+                <Badge variant="outline" className="gap-1 bg-green-500/10 border-green-500/30 text-green-600">
+                  <CheckCircle size={12} weight="fill" />
+                  {validationStatus.validIds.length} Valid
+                </Badge>
+              )}
+              {!validationStatus.isValidating && subField === 'id' && validationStatus.invalidIds.length > 0 && (
+                <Badge variant="outline" className="gap-1 bg-destructive/10 border-destructive/30 text-destructive">
+                  <Warning size={12} weight="fill" />
+                  {validationStatus.invalidIds.length} Invalid
+                </Badge>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setIds([]); updateParent(operation, [], subField) }}
+                disabled={disabled}
+              >
+                <X />
+                Clear all
+              </Button>
+            </div>
           </div>
           <ScrollArea className="h-32 rounded border p-2 bg-muted/30">
             <div className="flex flex-wrap gap-2">
-              {ids.map((id) => (
-                <Badge
-                  key={id}
-                  variant="secondary"
-                  className="gap-1 pr-1 font-mono"
-                >
-                  {subField === 'id' ? `ID: ${id}` : id}
-                  <button
-                    onClick={() => handleRemoveId(id)}
-                    disabled={disabled}
-                    className="ml-1 rounded-sm hover:bg-accent hover:text-accent-foreground"
+              {ids.map((id) => {
+                const isValid = validationStatus.validIds.includes(Number(id))
+                const isInvalid = validationStatus.invalidIds.includes(Number(id))
+                const lookupInfo = validationStatus.lookupData.find(l => l.id === Number(id))
+                
+                return (
+                  <Badge
+                    key={id}
+                    variant={isInvalid ? "destructive" : "secondary"}
+                    className={cn(
+                      "gap-1 pr-1 font-mono",
+                      isValid && "bg-green-500/10 border-green-500/30 text-green-600"
+                    )}
+                    title={lookupInfo?.title || (isInvalid ? 'Invalid ID' : undefined)}
                   >
-                    <X size={12} />
-                  </button>
-                </Badge>
-              ))}
+                    {subField === 'id' ? (
+                      <>
+                        {isValid && <CheckCircle size={12} weight="fill" />}
+                        {isInvalid && <Warning size={12} weight="fill" />}
+                        ID: {id}
+                        {lookupInfo?.title && ` - ${lookupInfo.title.substring(0, 20)}${lookupInfo.title.length > 20 ? '...' : ''}`}
+                      </>
+                    ) : (
+                      id
+                    )}
+                    <button
+                      onClick={() => handleRemoveId(id)}
+                      disabled={disabled}
+                      className="ml-1 rounded-sm hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <X size={12} />
+                    </button>
+                  </Badge>
+                )
+              })}
             </div>
           </ScrollArea>
+          {validationStatus.invalidIds.length > 0 && (
+            <div className="text-xs text-destructive flex items-start gap-2 p-2 bg-destructive/10 border border-destructive/20 rounded">
+              <Warning size={14} weight="fill" className="mt-0.5 shrink-0" />
+              <div>
+                <div className="font-semibold">Invalid {associatedEntity} IDs detected:</div>
+                <div className="mt-1">
+                  {validationStatus.invalidIds.join(', ')} - These IDs do not exist in the {associatedEntity} table
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

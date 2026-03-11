@@ -564,13 +564,21 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               const values = transformedValue.split(',').map((v: string) => v.trim()).filter((v: string) => v)
               
               if (config.subField === 'id') {
-                const ids = values.map((v: string) => parseInt(v, 10)).filter((id: number) => !isNaN(id))
+                const ids = values
+                  .map((v: string) => {
+                    const trimmed = v.trim()
+                    return /^\d+$/.test(trimmed) ? parseInt(trimmed, 10) : null
+                  })
+                  .filter((id: number | null): id is number => id !== null && !isNaN(id))
+                
                 if (ids.length > 0) {
                   data[`__tomany_${mapping.bullhornField}`] = {
                     operation: config.operation,
                     ids: ids,
                     subField: 'id'
                   }
+                } else {
+                  console.warn(`⚠️ TO_MANY field ${mapping.bullhornField}: No valid integer IDs found in "${transformedValue}"`)
                 }
               } else {
                 if (values.length > 0) {
@@ -584,7 +592,16 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
             } else if (fieldMeta?.associationType === 'TO_ONE') {
               const trimmedValue = transformedValue.trim()
               if (trimmedValue && /^\d+$/.test(trimmedValue)) {
-                data[mapping.bullhornField] = { id: parseInt(trimmedValue, 10) }
+                const numericId = parseInt(trimmedValue, 10)
+                if (!isNaN(numericId)) {
+                  data[mapping.bullhornField] = { id: numericId }
+                } else {
+                  console.warn(`⚠️ TO_ONE field ${mapping.bullhornField}: Invalid integer ID "${trimmedValue}"`)
+                  data[mapping.bullhornField] = null
+                }
+              } else if (trimmedValue) {
+                console.warn(`⚠️ TO_ONE field ${mapping.bullhornField}: Requires integer ID, got "${trimmedValue}"`)
+                data[mapping.bullhornField] = null
               } else {
                 data[mapping.bullhornField] = null
               }

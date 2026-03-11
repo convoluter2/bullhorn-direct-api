@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { MagnifyingGlass, XCircle, Plus } from '@phosphor-icons/react'
+import { MagnifyingGlass, XCircle, Plus, CheckCircle } from '@phosphor-icons/react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { toast } from 'sonner'
 import type { EntityField } from '@/hooks/use-entity-metadata'
 import { fieldValueCache } from '@/lib/field-value-cache'
+import { validateToOneField } from '@/lib/field-validation'
 
 interface ToOneFieldInputProps {
   field: EntityField
@@ -30,6 +31,7 @@ export function ToOneFieldInput({
   const [lookupData, setLookupData] = useState<{ id: number; title?: string } | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isValidated, setIsValidated] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [searching, setSearching] = useState(false)
@@ -38,59 +40,43 @@ export function ToOneFieldInput({
   const associatedEntity = field?.associatedEntity?.entity || 'Entity'
 
   useEffect(() => {
-    const fetchLookupData = async () => {
+    const validateAndLookup = async () => {
       if (!value || !value.trim()) {
         setLookupData(null)
         setError(null)
-        return
-      }
-
-      const trimmed = value.trim()
-      const numericId = /^\d+$/.test(trimmed) ? parseInt(trimmed, 10) : null
-
-      if (!numericId) {
-        setLookupData(null)
-        setError(null)
+        setIsValidated(false)
         return
       }
 
       setLoading(true)
       setError(null)
+      setIsValidated(false)
 
       try {
-        const result = await fieldValueCache.getFieldValueById(
-          associatedEntity,
-          numericId,
-          ['id', 'name', 'title', 'firstName', 'lastName']
-        )
+        const validationResult = await validateToOneField(field, value)
         
-        if (result) {
-          const title = result.title || 
-                       result.name || 
-                       (result.firstName && result.lastName 
-                         ? `${result.firstName} ${result.lastName}` 
-                         : undefined)
-          
-          setLookupData({
-            id: numericId,
-            title
-          })
+        if (validationResult.isValid && validationResult.lookupData) {
+          setLookupData(validationResult.lookupData)
+          setIsValidated(true)
+          setError(null)
         } else {
-          setError(`${associatedEntity} not found`)
           setLookupData(null)
+          setIsValidated(false)
+          setError(validationResult.error || 'Validation failed')
         }
       } catch (err) {
-        console.error('Failed to lookup to-one association:', err)
-        setError('Failed to lookup')
+        console.error('Failed to validate to-one field:', err)
+        setError('Failed to validate')
         setLookupData(null)
+        setIsValidated(false)
       } finally {
         setLoading(false)
       }
     }
 
-    const debounceTimer = setTimeout(fetchLookupData, 500)
+    const debounceTimer = setTimeout(validateAndLookup, 500)
     return () => clearTimeout(debounceTimer)
-  }, [value, associatedEntity])
+  }, [value, field])
 
   const handleClear = () => {
     onChange('')
@@ -250,6 +236,11 @@ export function ToOneFieldInput({
               <MagnifyingGlass size={16} className="text-muted-foreground animate-pulse" />
             </div>
           )}
+          {!loading && isValidated && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <CheckCircle size={16} className="text-green-500" weight="fill" />
+            </div>
+          )}
         </div>
         {value && (
           <Button
@@ -265,23 +256,24 @@ export function ToOneFieldInput({
       </div>
       
       {lookupData && lookupData.title && (
-        <div className="flex items-center gap-2 p-2 bg-accent/10 border border-accent/20 rounded text-sm">
+        <div className="flex items-center gap-2 p-2 bg-green-500/10 border border-green-500/20 rounded text-sm">
+          <CheckCircle size={18} className="text-green-500" weight="fill" />
           <Badge variant="secondary" className="font-mono text-xs">
             ID: {lookupData.id}
           </Badge>
-          <span className="text-accent-foreground font-medium">{lookupData.title}</span>
+          <span className="text-foreground font-medium">{lookupData.title}</span>
         </div>
       )}
       
       {error && (
-        <div className="text-xs text-destructive flex items-center gap-1">
-          <XCircle size={12} />
+        <div className="text-xs text-destructive flex items-center gap-1 p-2 bg-destructive/10 border border-destructive/20 rounded">
+          <XCircle size={14} weight="fill" />
           {error}
         </div>
       )}
       
       <p className="text-xs text-muted-foreground">
-        Search for a {associatedEntity} record above, or enter the ID directly
+        Search for a {associatedEntity} record above, or enter the ID directly. {isValidated && '✓ ID validated successfully.'}
       </p>
     </div>
   )

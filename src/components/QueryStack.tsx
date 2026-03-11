@@ -371,12 +371,23 @@ export function QueryStack({ onLog }: QueryStackProps) {
               try {
                 const toManyValue = JSON.parse(update.value)
                 if (toManyValue.operation && toManyValue.ids) {
-                  toManyUpdates.push({
-                    field: update.field,
-                    operation: toManyValue.operation,
-                    ids: toManyValue.ids,
-                    subField: toManyValue.subField || 'id'
-                  })
+                  const numericIds = toManyValue.ids
+                    .map((id: any) => {
+                      const str = String(id).trim()
+                      return /^\d+$/.test(str) ? parseInt(str, 10) : null
+                    })
+                    .filter((id: number | null): id is number => id !== null && !isNaN(id))
+                  
+                  if (numericIds.length > 0) {
+                    toManyUpdates.push({
+                      field: update.field,
+                      operation: toManyValue.operation,
+                      ids: numericIds,
+                      subField: toManyValue.subField || 'id'
+                    })
+                  } else {
+                    console.warn(`⚠️ TO_MANY field ${update.field}: No valid integer IDs found`)
+                  }
                 }
               } catch {
                 updateData[update.field] = update.value
@@ -384,7 +395,16 @@ export function QueryStack({ onLog }: QueryStackProps) {
             } else if (fieldMeta?.associationType === 'TO_ONE') {
               const trimmedValue = update.value.trim()
               if (trimmedValue && /^\d+$/.test(trimmedValue)) {
-                updateData[update.field] = { id: parseInt(trimmedValue, 10) }
+                const numericId = parseInt(trimmedValue, 10)
+                if (!isNaN(numericId)) {
+                  updateData[update.field] = { id: numericId }
+                } else {
+                  console.warn(`⚠️ TO_ONE field ${update.field}: Invalid integer ID "${trimmedValue}"`)
+                  updateData[update.field] = null
+                }
+              } else if (trimmedValue) {
+                console.warn(`⚠️ TO_ONE field ${update.field}: Requires integer ID, got "${trimmedValue}"`)
+                updateData[update.field] = null
               } else {
                 updateData[update.field] = null
               }

@@ -28,6 +28,7 @@ import { getAssociationsForRecord, mergeAssociationActions, describeAssociation 
 import { FilterGroupBuilder } from '@/components/FilterGroupBuilder'
 import { EntityHelpAlert } from '@/components/EntityHelpAlert'
 import { AutoRefreshControl } from '@/components/AutoRefreshControl'
+import { validateToOneField, validateToManyField } from '@/lib/field-validation'
 import type { QueryFilter, UpdateSnapshot, FilterGroup, ExecutionState } from '@/lib/types'
 
 interface SmartStackProps {
@@ -507,12 +508,23 @@ export function SmartStack({ onLog }: SmartStackProps) {
               try {
                 const toManyValue = JSON.parse(update.value)
                 if (toManyValue.operation && toManyValue.ids) {
-                  toManyUpdates.push({
-                    field: update.field,
-                    operation: toManyValue.operation,
-                    ids: toManyValue.ids,
-                    subField: toManyValue.subField || 'id'
-                  })
+                  const numericIds = toManyValue.ids
+                    .map((id: any) => {
+                      const str = String(id).trim()
+                      return /^\d+$/.test(str) ? parseInt(str, 10) : null
+                    })
+                    .filter((id: number | null): id is number => id !== null)
+                  
+                  if (numericIds.length > 0) {
+                    toManyUpdates.push({
+                      field: update.field,
+                      operation: toManyValue.operation,
+                      ids: numericIds,
+                      subField: toManyValue.subField || 'id'
+                    })
+                  } else {
+                    console.warn(`⚠️ TO_MANY field ${update.field} has no valid integer IDs`)
+                  }
                 }
               } catch {
                 updateData[update.field] = update.value
@@ -521,6 +533,9 @@ export function SmartStack({ onLog }: SmartStackProps) {
               const trimmedValue = update.value.trim()
               if (trimmedValue && /^\d+$/.test(trimmedValue)) {
                 updateData[update.field] = { id: parseInt(trimmedValue, 10) }
+              } else if (trimmedValue) {
+                console.warn(`⚠️ TO_ONE field ${update.field} requires an integer ID, got: ${trimmedValue}`)
+                updateData[update.field] = null
               } else {
                 updateData[update.field] = null
               }
