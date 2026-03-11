@@ -2,30 +2,30 @@ export interface KeyValueStore {
   keys(): Promise<string[]>
   get<T>(key: string): Promise<T | undefined>
   set<T>(key: string, value: T): Promise<void>
-  delete(key: string): Promise<void>
 }
+c
 
-class SparkKVStore implements KeyValueStore {
-  async keys(): Promise<string[]> {
-    return await window.spark.kv.keys()
-  }
 
-  async get<T>(key: string): Promise<T | undefined> {
-    return await window.spark.kv.get<T>(key)
-  }
+    return await window.spark.kv.ge
 
-  async set<T>(key: string, value: T): Promise<void> {
-    await window.spark.kv.set(key, value)
-  }
+   
 
-  async delete(key: string): Promise<void> {
     await window.spark.kv.delete(key)
-  }
 }
+cla
 
-class FallbackStore implements KeyValueStore {
-  private useLocalStorage: boolean
-  private memoryStore: Map<string, any>
+  constructor() {
+    this.memoryStore = new Map()
+
+
+      localStorage.setItem(testKey, 'test')
+      return true
+   
+ 
+
+      const allKeys: string[] = []
+        const key = localStorage.k
+          allKeys.push(key.substring(3)
 
   constructor() {
     this.useLocalStorage = this.isLocalStorageAvailable()
@@ -124,52 +124,52 @@ class StorageAdapter implements KeyValueStore {
 
   private async ensureReady(): Promise<void> {
     if (this.checkPromise) {
-      await this.checkPromise
-      this.checkPromise = null
     }
 
-    if (!this.store) {
-      this.store = new FallbackStore()
-    }
-  }
+    a
 
-  async keys(): Promise<string[]> {
-    await this.ensureReady()
-    try {
-      return await this.store!.keys()
-    } catch (error) {
-      console.error('Storage adapter keys() failed:', error)
-      return []
-    }
+      console.error('S
   }
+  asy
+   
 
-  async get<T>(key: string): Promise<T | undefined> {
-    await this.ensureReady()
-    try {
-      return await this.store!.get<T>(key)
-    } catch (error) {
-      console.error('Storage adapter get() failed:', error)
-      return undefined
     }
-  }
-
-  async set<T>(key: string, value: T): Promise<void> {
-    await this.ensureReady()
-    try {
-      await this.store!.set(key, value)
-    } catch (error) {
-      console.error('Storage adapter set() failed:', error)
-    }
-  }
-
-  async delete(key: string): Promise<void> {
-    await this.ensureReady()
-    try {
-      await this.store!.delete(key)
-    } catch (error) {
-      console.error('Storage adapter delete() failed:', error)
-    }
-  }
 }
+export co
 
-export const storageAdapter = new StorageAdapter()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
