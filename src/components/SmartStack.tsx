@@ -949,8 +949,6 @@ export function SmartStack({ onLog }: SmartStackProps) {
               <p className="text-xs text-muted-foreground">
                 Supports CSV and Excel (.xlsx, .xls) files
               </p>
-              
-              {csvData && csvData.headers.length > 0 && (
                 <div className="space-y-2 pt-2">
                   <Label className="text-sm">Lookup Column (contains IDs)</Label>
                   <Select value={lookupColumn} onValueChange={handleLookupColumnChange} disabled={loading}>
@@ -970,6 +968,8 @@ export function SmartStack({ onLog }: SmartStackProps) {
                   </p>
                 </div>
               )}
+            </div>
+
             </div>
 
             <Separator />
@@ -993,8 +993,6 @@ export function SmartStack({ onLog }: SmartStackProps) {
                         toast.loading('Refreshing entity list...', { id: 'refresh-entities' })
                         refreshEntities()
                         setTimeout(() => {
-                          toast.success('Entity list refreshed', { id: 'refresh-entities' })
-                        }, 500)
                       }}
                       className="h-6 px-2"
                       title="Refresh entity list from API"
