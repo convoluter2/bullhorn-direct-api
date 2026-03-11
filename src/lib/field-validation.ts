@@ -7,97 +7,97 @@ export interface ValidationResult {
   lookupData?: any
 }
 
-  validIds: number[]
-  lookupData: any[
-  error?: string
+export interface ToManyValidationResult {
+  isValid: boolean
   validIds: number[]
   invalidIds: (string | number)[]
   lookupData: any[]
+  error?: string
 }
 
 export async function validateToOneField(
   field: any,
-      error: 'Invalid ID
-  }
-  try {
-      field.
-      ['id', 'name', 
-
-     
-   
-
-    const title = result.title || 
-                 (result.
-            
+  value: string
+): Promise<ValidationResult> {
+  if (!field.associatedEntity?.entity) {
     return {
-      validatedValue: numericId,
-     
-   
-
-    ret
-      error: `Failed to validate ${field.associatedEntity.e
+      isValid: false,
+      error: 'Field is not a TO_ONE association'
+    }
   }
+
+  const numericId = parseInt(value.trim(), 10)
+  
+  if (isNaN(numericId)) {
+    return {
+      isValid: false,
+      error: 'Invalid ID format'
+    }
+  }
+
+  try {
+    const result = await fieldValueCache.getFieldValueById(
+      field.associatedEntity.entity,
       numericId,
-  field: any,
+      ['id', 'name', 'title', 'firstName', 'lastName']
     )
 
     if (!result) {
-      invalidI
-    }
-
-      }
-    }
-
-      ids = parsed
       return {
-        error: 'Invalid TO_MANY format. Expected JSON 
-        invalidIds: [],
+        isValid: false,
+        error: 'ID not found in system'
       }
-
-    return {
-      validIds: [],
-      lookupData: []
-  }
-  const numericIds = i
-  const inval
-      }
-    c
-  } catch (error) {
-      invalidIds.push(id)
     }
-    try {
-        field.associatedEntity.entity,
-     
 
- 
+    const title = result.title || 
+                 result.name || 
+                 (result.firstName && result.lastName 
+                   ? `${result.firstName} ${result.lastName}` 
+                   : undefined)
 
-                       ? `${result.firstNa
-  field: any,
-          title
-): Promise<ToManyValidationResult> {
-      }
     return {
+      isValid: true,
+      validatedValue: numericId,
+      lookupData: {
+        id: numericId,
+        title
+      }
+    }
+  } catch (error) {
+    return {
+      isValid: false,
+      error: `Failed to validate ${field.associatedEntity.entity} ID`
+    }
   }
+}
+
+export async function validateToManyField(
+  field: any,
+  value: string
+): Promise<ToManyValidationResult> {
+  if (!field.associatedEntity?.entity) {
+    return {
+      isValid: false,
       error: 'Field is not a TO_MANY association',
-    error: invalidI
-      : undefined,
-    invalidIds,
+      validIds: [],
+      invalidIds: [],
+      lookupData: []
+    }
   }
 
-
-): Promise<ValidationResult> {
-  
-  }
-
-
+  let ids: any[]
+  try {
+    const parsed = JSON.parse(value)
+    
+    if (Array.isArray(parsed)) {
+      ids = parsed
+    } else if (parsed && Array.isArray(parsed.ids)) {
       ids = parsed.ids
-
-
-
-
-
-
-
+    } else {
+      return {
+        isValid: false,
+        error: 'Invalid TO_MANY format. Expected JSON array or {ids: [...]}',
+        validIds: [],
         invalidIds: [],
         lookupData: []
       }
@@ -152,7 +152,7 @@ export async function validateToOneField(
     }
   }
 
-
+  return {
     isValid: invalidIds.length === 0,
     error: invalidIds.length > 0 
       ? `${invalidIds.length} invalid ID(s): ${invalidIds.join(', ')}`
@@ -168,7 +168,7 @@ export async function validateScalarField(
   value: string
 ): Promise<ValidationResult> {
   return {
-
-
-
-
+    isValid: true,
+    validatedValue: value
+  }
+}
