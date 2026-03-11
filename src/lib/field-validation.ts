@@ -1,15 +1,11 @@
 import { fieldValueCache } from './field-value-cache'
+import type { EntityFieldMetadata } from './entity-metadata'
 
-
+export interface ValidationResult {
+  isValid: boolean
+  error?: string
   validatedValue?: any
-    id: number
-  }
-
-  isValid: boole
-  validIds: nu
-  lookupData: Arra
-
- 
+}
 
 export interface ToManyValidationResult {
   isValid: boolean
@@ -20,88 +16,79 @@ export interface ToManyValidationResult {
 }
 
 export async function validateToOneField(
-  field: EntityField,
+  field: EntityFieldMetadata,
   value: string | number
 ): Promise<ValidationResult> {
   if (!field.associatedEntity?.entity) {
-  }
-  const numericId = /
-  if (!numericId) {
-     
-   
-
-    const result = await fieldValueCache.getFieldValueById(
-  
-    )
-    if (!res
-        isValid: fal
-      }
-
-   
-
-
-
-      lookupData: {
-        titl
+    return {
+      isValid: false,
+      error: 'Field is not a TO_ONE association'
     }
-    console.error('TO_ONE validation error:', error)
-     
-   
-
-export 
-  value: string
-  if (!field.associatedEntity?.entit
-      isValid: f
-      validIds: [],
-     
-
-  let ids: (string
-    const pars
-      ids = parsed.ids
-      ids = parsed
-      r
-     
-
-      }
-  } catch {
   }
-  const numericIds = ids
-      const str = String(id).tr
 
+  const numericId = typeof value === 'number' ? value : parseInt(String(value).trim(), 10)
+  if (isNaN(numericId)) {
+    return {
+      isValid: false,
+      error: 'Invalid ID format. Must be a valid integer.'
+    }
+  }
+
+  try {
+    const result = await fieldValueCache.getFieldValueById(
+      field.associatedEntity.entity,
+      numericId,
+      ['id', 'name', 'title', 'firstName', 'lastName']
+    )
+
+    if (!result) {
+      return {
+        isValid: false,
+        error: `${field.associatedEntity.entity} with ID ${numericId} not found`
+      }
+    }
+
+    const title = result.title || 
+                 result.name || 
+                 (result.firstName && result.lastName 
+                   ? `${result.firstName} ${result.lastName}` 
+                   : undefined)
 
     return {
-      error: 'No valid integer IDs found
-      invalidIds: [
+      isValid: true,
+      validatedValue: numericId,
+      lookupData: {
+        id: numericId,
+        title
+      }
+    } as any
+  } catch (error) {
+    console.error('TO_ONE validation error:', error)
+    return {
+      isValid: false,
+      error: `Failed to validate ${field.associatedEntity.entity} ID: ${error instanceof Error ? error.message : String(error)}`
     }
-
-  const
-
-    try {
-        field.associatedEntity.entity,
-        ['id
-
-        validIds.push(id)
-     
-   
- 
-
-    } catch (error) {
-      invalidIds.push
   }
-  return {
-    error: invalidIds.length > 0 
-      : unde
-    invalidIds,
+}
+
+export async function validateToManyField(
+  field: EntityFieldMetadata,
+  value: string
+): Promise<ToManyValidationResult> {
+  if (!field.associatedEntity?.entity) {
+    return {
+      isValid: false,
+      error: 'Field is not a TO_MANY association',
+      validIds: [],
+      invalidIds: [],
+      lookupData: []
+    }
   }
 
-  field: EntityField,
-): Promise<Validatio
-    r
-   
-
-  if (field.associationType ==
-  }
-  if (field.associationType === 'TO_
+  let ids: (string | number)[] = []
+  
+  try {
+    const parsed = JSON.parse(value)
     if (parsed.ids && Array.isArray(parsed.ids)) {
       ids = parsed.ids
     } else if (Array.isArray(parsed)) {
@@ -177,7 +164,7 @@ export
 }
 
 export async function validateFieldValue(
-  field: EntityField,
+  field: EntityFieldMetadata,
   value: string | number
 ): Promise<ValidationResult> {
   if (!field) {
@@ -187,24 +174,11 @@ export async function validateFieldValue(
     }
   }
 
-  if (field.associationType === 'TO_ONE') {
+  if (field.type === 'TO_ONE') {
     return validateToOneField(field, value)
   }
 
-  if (field.associationType === 'TO_MANY') {
-    const toManyResult = await validateToManyField(field, String(value))
-    return {
-      isValid: toManyResult.isValid,
-      error: toManyResult.error,
-      validatedValue: toManyResult.validIds
-    }
-  }
-
-  return {
-    isValid: true,
-    validatedValue: value
-  }
-}
+  if (field.type === 'TO_MANY') {
     const toManyResult = await validateToManyField(field, String(value))
     return {
       isValid: toManyResult.isValid,
