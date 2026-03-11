@@ -68,7 +68,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [toManyConfigs, setToManyConfigs] = useState<Record<string, ToManyConfig>>({})
   const [lookupField, setLookupField] = useState<string>('id')
   const [updateExisting, setUpdateExisting] = useState(true)
-  const [createNew, setCreateNew] = useState(true)
+  const [createNew, setCreateNew] = useState(false)
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [results, setResults] = useState<ImportResult[]>([])
