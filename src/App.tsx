@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen, FileZip, TestTube } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen, FileZip, TestTube, ArrowsLeftRight } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -20,6 +20,7 @@ import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { EntityDocumentation } from '@/components/documentation/EntityDocumentation'
 import { ToManyFieldTest } from '@/components/ToManyFieldTest'
 import { SessionAwarenessDisplay } from '@/components/SessionAwarenessDisplay'
+import { ConnectionSwitchTest } from '@/components/ConnectionSwitchTest'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { sessionManager } from '@/lib/session-manager'
@@ -709,7 +710,7 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-10 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-11 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -745,6 +746,10 @@ function App() {
               <TabsTrigger value="to-many-test" className="gap-2">
                 <TestTube size={18} />
                 <span className="hidden sm:inline">To-Many Test</span>
+              </TabsTrigger>
+              <TabsTrigger value="switch-test" className="gap-2">
+                <ArrowsLeftRight size={18} />
+                <span className="hidden sm:inline">Switch Test</span>
               </TabsTrigger>
               <TabsTrigger value="logs" className="gap-2">
                 <ClockCounterClockwise size={18} />
@@ -791,6 +796,10 @@ function App() {
 
             <TabsContent value="to-many-test" className="space-y-6">
               <ToManyFieldTest />
+            </TabsContent>
+
+            <TabsContent value="switch-test" className="space-y-6">
+              <ConnectionSwitchTest />
             </TabsContent>
 
             <TabsContent value="logs" className="space-y-6">
