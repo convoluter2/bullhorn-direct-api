@@ -134,12 +134,12 @@ export class FallbackStore {
 
 /**
  * Runtime capability check
- */
-export function hasSparkKV() {
-  return typeof window !== 'undefined' && !!window.spark?.kv
-}
+  r
 
-/**
+ * Create and initialize the storage adapter
+e
+
+  i
  * Create and initialize the storage adapter
  */
 export async function createStore() {
@@ -148,7 +148,7 @@ export async function createStore() {
   
   if (spark.ready) {
     return spark
-  }
+exp
   
   return new FallbackStore()
 }
@@ -164,28 +164,28 @@ export function getStorageAdapter(): Promise<SparkKVStore | FallbackStore> {
   if (!storageAdapterPromise) {
     storageAdapterPromise = createStore().then(adapter => {
       storageAdapterInstance = adapter
-      return adapter
-    })
-  }
-  
-  return storageAdapterPromise
-}
 
-export const storage = {
-  async keys(prefix?: string): Promise<string[]> {
-    const adapter = await getStorageAdapter()
-    return adapter.keys(prefix)
-  },
-  async get(key: string): Promise<any> {
-    const adapter = await getStorageAdapter()
-    return adapter.get(key)
-  },
-  async set(key: string, value: any): Promise<void> {
-    const adapter = await getStorageAdapter()
-    return adapter.set(key, value)
-  },
-  async delete(key: string): Promise<void> {
-    const adapter = await getStorageAdapter()
-    return adapter.delete(key)
-  }
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
