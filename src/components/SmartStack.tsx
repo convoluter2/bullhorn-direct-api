@@ -1208,8 +1208,8 @@ export function SmartStack({ onLog }: SmartStackProps) {
               ) : (
                 <div className="space-y-2">
                   {fieldUpdates.map((update) => {
-                    const fieldMeta = update.field ? fieldsMap[update.field] : undefined
-                    const isToMany = fieldMeta?.associationType === 'TO_MANY' || fieldMeta?.type === 'TO_MANY' ||
+                    const isToMany = fieldMeta?.associationType === 'TO_MANY' || fieldMeta?.type === 'TO_MANY'
+                    const isToOne = fieldMeta?.associationType === 'TO_ONE' || fieldMeta?.type === 'TO_ONE'
                       (fieldMeta?.dataType === 'TO_MANY') ||
                       (fieldMeta?.associatedEntity && fieldMeta?.associationType?.includes('MANY'))
                     const isToOne = fieldMeta?.associationType === 'TO_ONE' || fieldMeta?.type === 'TO_ONE' ||
@@ -1225,10 +1225,10 @@ export function SmartStack({ onLog }: SmartStackProps) {
                       fieldMeta: fieldMeta ? {
                         name: fieldMeta.name,
                         type: fieldMeta.type,
-                        dataType: fieldMeta.dataType,
+                      isToOne,
                         associationType: fieldMeta.associationType,
                         associatedEntity: fieldMeta.associatedEntity
-                      } : 'NOT FOUND IN FIELDSMAP',
+                      willShowToOneInput: isToOne && fieldMeta,
                       isToMany,
                       isToOne,
                       metadataLoading,
