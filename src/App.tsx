@@ -23,6 +23,8 @@ import { EntityDocumentation } from '@/components/documentation/EntityDocumentat
 import { ToManyFieldTest } from '@/components/ToManyFieldTest'
 import { SessionAwarenessDisplay } from '@/components/SessionAwarenessDisplay'
 import { ConnectionSwitchTest } from '@/components/ConnectionSwitchTest'
+import { FieldInputIntegrationTests } from '@/components/FieldInputIntegrationTests'
+import { TestingSummary } from '@/components/TestingSummary'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { sessionManager } from '@/lib/session-manager'
@@ -856,7 +858,7 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-11 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-12 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -888,6 +890,10 @@ function App() {
               <TabsTrigger value="documentation" className="gap-2">
                 <BookOpen size={18} />
                 <span className="hidden sm:inline">Documentation</span>
+              </TabsTrigger>
+              <TabsTrigger value="field-tests" className="gap-2">
+                <TestTube size={18} />
+                <span className="hidden sm:inline">Field Tests</span>
               </TabsTrigger>
               <TabsTrigger value="to-many-test" className="gap-2">
                 <TestTube size={18} />
@@ -938,6 +944,11 @@ function App() {
 
             <TabsContent value="documentation" className="space-y-6">
               <EntityDocumentation session={session} />
+            </TabsContent>
+
+            <TabsContent value="field-tests" className="space-y-6">
+              <TestingSummary />
+              <FieldInputIntegrationTests />
             </TabsContent>
 
             <TabsContent value="to-many-test" className="space-y-6">
