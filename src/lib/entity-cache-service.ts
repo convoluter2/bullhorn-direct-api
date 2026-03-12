@@ -145,10 +145,18 @@ export class EntityCacheService {
 
   async clearMetadataCache(entityName: string): Promise<void> {
     try {
+      console.log(`🗑️ Clearing metadata cache for: ${entityName}`)
+      
       kvRequestManager.invalidateMemoryCache(`metadata-cache-${entityName}`)
       
-      await window.spark.kv.delete(`metadata-cache-${entityName}`)
-      console.log(`🗑️ Cleared metadata cache for: ${entityName}`)
+      try {
+        await window.spark.kv.delete(`metadata-cache-${entityName}`)
+        console.log(`✅ Deleted KV cache for: ${entityName}`)
+      } catch (kvError) {
+        console.warn(`⚠️ Could not delete KV cache for ${entityName}, but memory cache was cleared:`, kvError)
+      }
+      
+      console.log(`✅ Metadata cache cleared for: ${entityName}`)
     } catch (error) {
       console.error(`Failed to clear metadata cache for ${entityName}:`, error)
     }

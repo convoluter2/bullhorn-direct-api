@@ -91,6 +91,21 @@ export function useEntityMetadata(entity: string | undefined) {
           throw new Error('No metadata response received')
         }
 
+        console.log(`📊 Raw metadata response for ${entity}:`, {
+          hasResponse: !!response,
+          hasFields: !!response.fields,
+          isArray: Array.isArray(response.fields),
+          fieldCount: response.fields?.length || 0,
+          fields: response.fields,
+          label: response.label,
+          entity: response.entity
+        })
+
+        if (!response.fields || !Array.isArray(response.fields) || response.fields.length === 0) {
+          console.error(`❌ No fields in metadata response for ${entity}. Full response:`, response)
+          throw new Error(`No fields found in metadata for ${entity}. The API returned no fields for this entity.`)
+        }
+
         const fields: EntityField[] = []
         const fieldsMap: Record<string, EntityField> = {}
 

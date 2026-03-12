@@ -56,9 +56,12 @@ export class EntityMetadataService {
           console.warn('⚠️ Cached metadata exists but has no fields, fetching fresh data')
         }
       }
+    } else {
+      console.log('🔄 Force refresh requested for:', entityName, '- clearing cache')
+      await entityCacheService.clearMetadataCache(entityName)
     }
 
-    console.log('📚 Fetching fresh metadata for:', entityName)
+    console.log(`📚 Fetching fresh metadata for: ${entityName}${forceRefresh ? ' (forced)' : ''}`)
     
     const data = await bullhornAPI.getMetadata(entityName)
     
@@ -67,11 +70,12 @@ export class EntityMetadataService {
       label: data.label,
       fieldCount: data.fields?.length || 0,
       hasFields: !!data.fields,
-      firstFewFields: data.fields?.slice(0, 5).map((f: any) => f.name) || []
+      firstFewFields: data.fields?.slice(0, 5).map((f: any) => f.name) || [],
+      allFieldNames: data.fields?.map((f: any) => f.name) || []
     })
     
     if (!data.fields || data.fields.length === 0) {
-      console.warn(`⚠️ No fields returned for ${entityName}`)
+      console.error(`❌ No fields returned for ${entityName}. Full response:`, data)
       throw new Error(`No fields found for entity ${entityName}. This entity may not be accessible or may not exist.`)
     }
     
@@ -112,7 +116,8 @@ export class EntityMetadataService {
 
     console.log('✅ Processed metadata for', entityName, ':', {
       totalFields: metadata.fields.length,
-      label: metadata.label
+      label: metadata.label,
+      fieldNames: metadata.fields.map(f => f.name)
     })
 
     await entityCacheService.saveMetadataCache(entityName, metadata)
