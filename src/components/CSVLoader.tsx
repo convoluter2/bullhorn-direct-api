@@ -1450,7 +1450,26 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               </div>
 
               <div className="space-y-2">
-                <Label>Field Mapping</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Field Mapping</Label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      toast.loading('Refreshing all field mappings...', { id: 'refresh-all-fields' })
+                      refreshMetadata()
+                      setTimeout(() => {
+                        toast.success('All field mappings refreshed', { id: 'refresh-all-fields' })
+                      }, 500)
+                    }}
+                    disabled={loading || metadataLoading || !entity || mappings.filter(m => m.bullhornField && m.bullhornField !== '__skip__').length === 0}
+                    className="gap-2"
+                    title="Refresh metadata for all field mappings at once"
+                  >
+                    <ArrowsClockwise size={16} className={metadataLoading ? 'animate-spin' : ''} />
+                    Refresh All Fields
+                  </Button>
+                </div>
                 <div className="space-y-2">
                   {(mappings || [])
                     .filter(m => m && m.csvColumn && m.csvColumn.trim() !== '')
