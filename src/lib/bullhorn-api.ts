@@ -1007,11 +1007,11 @@ export class BullhornAPI {
       const nameField = fieldsArray.find(f => f === 'name' || f === 'firstName' || f === 'lastName' || f === 'title')
       if (!nameField) {
         console.warn(`⚠️ No name field found in fields for query lookup on ${entity}`)
-        return this.query(entity, fieldsStr, `id>0`, params, expectedCorporationId)
+        return this.query(entity, 'id,name', `id>0`, params, expectedCorporationId)
       }
 
       const whereClause = `${nameField} LIKE '%${searchTerm}%'`
-      return this.query(entity, fieldsStr, whereClause, params, expectedCorporationId)
+      return this.query(entity, 'id,name', whereClause, params, expectedCorporationId)
     }
 
     if (!this.session) {

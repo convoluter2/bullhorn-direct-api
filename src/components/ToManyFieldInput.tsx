@@ -76,13 +76,15 @@ export function ToManyFieldInput({
   const associatedEntity = field?.associatedEntity?.entity
   const { metadata: subEntityMetadata, loading: subEntityLoading } = useEntityMetadata(associatedEntity)
   
+  const safeFields = associatedEntity ? fieldValueCache.getSafeFieldsForEntity(associatedEntity) : ['id', 'name']
+  
   const { 
     values: cachedValues, 
     isLoading: cacheLoading, 
     refresh: refreshCache 
   } = useFieldValues({
     entityType: associatedEntity || '',
-    fields: ['id', 'name', 'title', 'firstName', 'lastName', 'email'],
+    fields: safeFields,
     enabled: !!associatedEntity && subField === 'id',
     autoLoad: false
   })
@@ -196,12 +198,13 @@ export function ToManyFieldInput({
     try {
       console.log('🔍 ToManyFieldInput - Searching with cache:', {
         associatedEntity,
-        searchQuery: searchQuery.trim()
+        searchQuery: searchQuery.trim(),
+        safeFields
       })
       
       const results = await fieldValueCache.getFieldValues(
         associatedEntity,
-        ['id', 'name', 'title', 'firstName', 'lastName', 'email'],
+        safeFields,
         searchQuery.trim()
       )
       
@@ -254,12 +257,13 @@ export function ToManyFieldInput({
     try {
       console.log('📋 ToManyFieldInput - Loading records from cache:', {
         associatedEntity,
+        safeFields,
         limit: 500
       })
       
       const records = await fieldValueCache.getFieldValues(
         associatedEntity,
-        ['id', 'name', 'title', 'firstName', 'lastName', 'email']
+        safeFields
       )
       
       console.log('📋 ToManyFieldInput - Load response from cache:', {

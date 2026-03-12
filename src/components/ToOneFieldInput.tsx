@@ -38,6 +38,7 @@ export function ToOneFieldInput({
   const [showSearchResults, setShowSearchResults] = useState(false)
 
   const associatedEntity = field?.associatedEntity?.entity || 'Entity'
+  const safeFields = fieldValueCache.getSafeFieldsForEntity(associatedEntity)
 
   useEffect(() => {
     const validateAndLookup = async () => {
@@ -95,12 +96,13 @@ export function ToOneFieldInput({
     try {
       console.log('🔍 ToOneFieldInput - Searching with cache:', {
         associatedEntity,
-        searchQuery: searchQuery.trim()
+        searchQuery: searchQuery.trim(),
+        safeFields
       })
       
       const results = await fieldValueCache.getFieldValues(
         associatedEntity,
-        ['id', 'name', 'title', 'firstName', 'lastName', 'email'],
+        safeFields,
         searchQuery.trim()
       )
       

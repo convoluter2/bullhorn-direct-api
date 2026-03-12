@@ -1,4 +1,5 @@
 import { bullhornAPI } from './bullhorn-api'
+import { supportsSearch, supportsQuery } from './entity-query-support'
 
 const CACHE_DURATION = 5 * 60 * 1000
 const MAX_CACHE_SIZE = 100
@@ -52,14 +53,24 @@ export class FieldValueCache {
     }
   }
 
+  private getOptimalFields(entityType: string, requestedFields: string[]): string[] {
+    if (supportsQuery(entityType) && !supportsSearch(entityType)) {
+      console.log(`📋 ${entityType} is query-only, using safe fields: id, name`)
+      return ['id', 'name']
+    }
+    
+    return requestedFields
+  }
+
   async getFieldValues(
     entityType: string,
     fields: string[] = ['id', 'name'],
     searchTerm?: string,
     forceRefresh: boolean = false
   ): Promise<CachedFieldValue[]> {
+    const optimalFields = this.getOptimalFields(entityType, fields)
     const cacheKey = this.getCacheKey(entityType, searchTerm)
-    const fieldsStr = fields.join(',')
+    const fieldsStr = optimalFields.join(',')
 
     if (!forceRefresh) {
       const cached = this.memoryCache.get(cacheKey)
@@ -70,7 +81,7 @@ export class FieldValueCache {
       }
     }
 
-    console.log(`🔍 Fetching fresh data for ${entityType}${searchTerm ? ` (search: ${searchTerm})` : ''}`)
+    console.log(`🔍 Fetching fresh data for ${entityType}${searchTerm ? ` (search: ${searchTerm})` : ''}, fields: ${fieldsStr}`)
 
     try {
       let values: CachedFieldValue[]
@@ -129,6 +140,7 @@ export class FieldValueCache {
     id: number,
     fields: string[] = ['id', 'name']
   ): Promise<CachedFieldValue | null> {
+    const optimalFields = this.getOptimalFields(entityType, fields)
     const cacheKey = this.getCacheKey(entityType)
     const cached = this.memoryCache.get(cacheKey)
 
@@ -143,12 +155,16 @@ export class FieldValueCache {
     console.log(`🔍 Fetching single record for ${entityType} id=${id}`)
 
     try {
-      const result = await bullhornAPI.getEntity(entityType, id, fields)
+      const result = await bullhornAPI.getEntity(entityType, id, optimalFields)
       return result as CachedFieldValue
     } catch (error) {
       console.error(`❌ Failed to fetch ${entityType} id=${id}:`, error)
       return null
     }
+  }
+
+  getSafeFieldsForEntity(entityType: string): string[] {
+    return this.getOptimalFields(entityType, ['id', 'name', 'title', 'firstName', 'lastName', 'email'])
   }
 
   async prefetchCommonEntities(): Promise<void> {
