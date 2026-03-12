@@ -25,6 +25,12 @@ class SparkKVAdapter implements StorageAdapter {
 
 let adapter: StorageAdapter | null = null
 
+export function hasSparkKV(): boolean {
+  return typeof window !== 'undefined' && 
+         typeof window.spark !== 'undefined' && 
+         typeof window.spark.kv !== 'undefined'
+}
+
 export async function getStorageAdapter(): Promise<StorageAdapter> {
   if (!adapter) {
     adapter = new SparkKVAdapter()
