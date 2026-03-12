@@ -139,24 +139,27 @@ class SecureCredentialsAPI {
       return this.inFlightConnectionsRequest
     }
 
-    this.inFlightConnectionsRequest = (async () => {
-      try {
-        const storage = await this.kv()
-        const raw = await storage.get('bullhorn-connections')
-        const connections = Array.isArray(raw) ? raw : []
+   this.inFlightConnectionsRequest = null
 
-        this.cachedConnections = connections
-        this.connectionsCacheTimestamp = Date.now()
+this.inFlightConnectionsRequest = (async () => {
+  try {
+    const storage = await this.kv()
+    const raw = await storage.get('bullhorn-connections')
+    const connections = Array.isArray(raw) ? raw : []
 
-        return connections
-      } catch (e) {
-        console.warn('🛑 getConnections failed — disabling KV')
-        disableKV()
-        return []
-      } finally {
-        this.inFlightConnectionsRequest = null
-      }
-    })()
+    this.cachedConnections = connections
+    this.connectionsCacheTimestamp = Date.now()
+
+    return connections
+  } catch (e) {
+    console.warn('🛑 getConnections failed — disabling KV')
+    disableKV()
+    return []
+  } finally {
+    this.inFlightConnectionsRequest = null
+  }
+})()
+
 
     return this.inFlightConnectionsRequest
   }
