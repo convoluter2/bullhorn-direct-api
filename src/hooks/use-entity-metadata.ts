@@ -68,16 +68,23 @@ export function useEntityMetadata(entity: string | undefined) {
       setError(null)
 
       try {
-        const cached = await entityCacheService.loadMetadataCache(entity)
-        if (cached && refreshTrigger === 0) {
-          console.log('📦 Using cached metadata for:', entity)
-          setMetadata(cached.metadata)
-          setLoading(false)
-          loadingRef.current = false
-          return
+        const isManualRefresh = refreshTrigger > 0
+        
+        if (isManualRefresh) {
+          console.log('🔄 Manual refresh triggered - clearing cache for:', entity)
+          await entityCacheService.clearMetadataCache(entity)
+        } else {
+          const cached = await entityCacheService.loadMetadataCache(entity)
+          if (cached) {
+            console.log('📦 Using cached metadata for:', entity)
+            setMetadata(cached.metadata)
+            setLoading(false)
+            loadingRef.current = false
+            return
+          }
         }
 
-        console.log('📚 Fetching fresh metadata for:', entity)
+        console.log(isManualRefresh ? '🔄 Fetching fresh metadata (manual refresh) for:' : '📚 Fetching fresh metadata for:', entity)
         const response = await bullhornAPI.getMetadata(entity)
 
         if (!response) {

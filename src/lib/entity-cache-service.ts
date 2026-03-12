@@ -131,6 +131,17 @@ export class EntityCacheService {
     }
   }
 
+  async clearMetadataCache(entityName: string): Promise<void> {
+    try {
+      kvRequestManager.invalidateMemoryCache(`metadata-cache-${entityName}`)
+      
+      await window.spark.kv.delete(`metadata-cache-${entityName}`)
+      console.log(`🗑️ Cleared metadata cache for: ${entityName}`)
+    } catch (error) {
+      console.error(`Failed to clear metadata cache for ${entityName}:`, error)
+    }
+  }
+
   async addManualEntity(entityName: string): Promise<boolean> {
     try {
       const cache = await kvRequestManager.enqueueKVGet<EntityCacheData>(
