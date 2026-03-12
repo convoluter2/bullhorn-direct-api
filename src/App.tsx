@@ -4,7 +4,9 @@ import { Toaster } from '@/components/ui/sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen, FileZip, TestTube, ArrowsLeftRight } from '@phosphor-icons/react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Separator } from '@/components/ui/separator'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen, FileZip, TestTube, ArrowsLeftRight, Info } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -47,6 +49,17 @@ function App() {
     oauthUrl: string | null
     restUrl: string | null
   } | null>(null)
+  const [userInfo, setUserInfo] = useState<{
+    id: number
+    firstName: string
+    lastName: string
+    email: string
+    username: string
+    corporation: {
+      id: number
+      name: string
+    }
+  } | null>(null)
 
   useEffect(() => {
     const loadConnections = async () => {
@@ -78,6 +91,20 @@ function App() {
           
           const dcInfo = bullhornAPI.getDatacenterInfo()
           setDatacenterInfo(dcInfo)
+          
+          bullhornAPI.getUserInfo().then(info => {
+            if (info) {
+              setUserInfo(info)
+              console.log('✅ User info loaded:', {
+                username: info.username,
+                corporationName: info.corporation.name,
+                corporationId: info.corporation.id
+              })
+            }
+          }).catch(err => {
+            console.warn('⚠️ Failed to load user info:', err)
+            setUserInfo(null)
+          })
           
           foundSession = true
           break
@@ -332,6 +359,20 @@ function App() {
       const dcInfo = bullhornAPI.getDatacenterInfo()
       setDatacenterInfo(dcInfo)
       
+      bullhornAPI.getUserInfo().then(info => {
+        if (info) {
+          setUserInfo(info)
+          console.log('✅ User info loaded:', {
+            username: info.username,
+            corporationName: info.corporation.name,
+            corporationId: info.corporation.id
+          })
+        }
+      }).catch(err => {
+        console.warn('⚠️ Failed to load user info:', err)
+        setUserInfo(null)
+      })
+      
       setIsOAuthCallback(false)
       
       if (connectionId) {
@@ -393,6 +434,7 @@ function App() {
       setSession(null)
       setCurrentConnectionId(null)
       setDatacenterInfo(null)
+      setUserInfo(null)
       
       if (currentConnectionId) {
         await sessionManager.clearSession(currentConnectionId)
@@ -494,6 +536,7 @@ function App() {
       setSession(null)
       setCurrentConnectionId(null)
       setDatacenterInfo(null)
+      setUserInfo(null)
       
       await new Promise(resolve => setTimeout(resolve, 100))
 
@@ -527,6 +570,20 @@ function App() {
       setSession(newSession)
       bullhornAPI.setSession(newSession)
       
+      bullhornAPI.getUserInfo().then(info => {
+        if (info) {
+          setUserInfo(info)
+          console.log('✅ User info loaded:', {
+            username: info.username,
+            corporationName: info.corporation.name,
+            corporationId: info.corporation.id
+          })
+        }
+      }).catch(err => {
+        console.warn('⚠️ Failed to load user info:', err)
+        setUserInfo(null)
+      })
+      
       setCurrentConnectionId(connection.id)
       await sessionManager.saveSession(connection.id, newSession)
       await secureCredentialsAPI.updateConnection(connection.id, { lastUsed: Date.now() })
@@ -556,6 +613,7 @@ function App() {
       setSession(null)
       setCurrentConnectionId(null)
       setDatacenterInfo(null)
+      setUserInfo(null)
       toast.error('Failed to switch connection. Please try again.', { id: 'switch-connection' })
       addLog('Connection Switch', 'error', `Failed to switch to ${connection.name}`, { 
         error: String(error),
@@ -619,31 +677,109 @@ function App() {
                   <>
                     <div className="h-12 w-px bg-border" />
                     <div>
-                      <h2 className="text-2xl font-bold tracking-tight text-accent">
-                        {savedConnections.find(conn => conn.id === currentConnectionId)?.name}
-                      </h2>
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-2xl font-bold tracking-tight text-accent">
+                          {savedConnections.find(conn => conn.id === currentConnectionId)?.name}
+                        </h2>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                                <Info size={16} className="text-muted-foreground" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-md p-4">
+                              <div className="space-y-3">
+                                <div>
+                                  <div className="text-xs font-semibold text-muted-foreground mb-1">CONNECTION</div>
+                                  <div className="text-sm font-mono">{savedConnections.find(conn => conn.id === currentConnectionId)?.name}</div>
+                                </div>
+                                <Separator />
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <div className="text-xs font-semibold text-muted-foreground mb-1">ENVIRONMENT</div>
+                                    <Badge variant={savedConnections.find(conn => conn.id === currentConnectionId)?.environment === 'PROD' ? 'default' : 'secondary'}>
+                                      {savedConnections.find(conn => conn.id === currentConnectionId)?.environment}
+                                    </Badge>
+                                  </div>
+                                  <div>
+                                    <div className="text-xs font-semibold text-muted-foreground mb-1">TENANT</div>
+                                    <div className="text-sm font-mono">{savedConnections.find(conn => conn.id === currentConnectionId)?.tenant}</div>
+                                  </div>
+                                </div>
+                                <Separator />
+                                {userInfo && (
+                                  <>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <div className="text-xs font-semibold text-muted-foreground mb-1">CORPORATION</div>
+                                        <div className="text-sm">{userInfo.corporation.name}</div>
+                                        <div className="text-xs text-muted-foreground font-mono">ID: {userInfo.corporation.id}</div>
+                                      </div>
+                                      <div>
+                                        <div className="text-xs font-semibold text-muted-foreground mb-1">USER</div>
+                                        <div className="text-sm">{userInfo.firstName} {userInfo.lastName}</div>
+                                        <div className="text-xs text-muted-foreground">{userInfo.username}</div>
+                                      </div>
+                                    </div>
+                                    <Separator />
+                                  </>
+                                )}
+                                {datacenterInfo && (
+                                  <>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <div className="text-xs font-semibold text-muted-foreground mb-1">DATACENTER ID</div>
+                                        <div className="text-sm font-mono">{datacenterInfo.dataCenterId || 'N/A'}</div>
+                                      </div>
+                                      <div>
+                                        <div className="text-xs font-semibold text-muted-foreground mb-1">SUPER CLUSTER ID</div>
+                                        <div className="text-sm font-mono">{datacenterInfo.superClusterId || 'N/A'}</div>
+                                      </div>
+                                    </div>
+                                    <Separator />
+                                    <div>
+                                      <div className="text-xs font-semibold text-muted-foreground mb-1">OAUTH URL</div>
+                                      <div className="text-xs font-mono break-all">{datacenterInfo.oauthUrl || 'N/A'}</div>
+                                    </div>
+                                    <div>
+                                      <div className="text-xs font-semibold text-muted-foreground mb-1">REST URL</div>
+                                      <div className="text-xs font-mono break-all">{datacenterInfo.restUrl || session.restUrl}</div>
+                                    </div>
+                                  </>
+                                )}
+                                <Separator />
+                                <div>
+                                  <div className="text-xs font-semibold text-muted-foreground mb-1">BROWSER ID</div>
+                                  <div className="text-xs font-mono break-all">{sessionManager.getBrowserId()}</div>
+                                </div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap mt-1">
                         <Badge 
                           variant={savedConnections.find(conn => conn.id === currentConnectionId)?.environment === 'PROD' ? 'default' : 'secondary'}
-                          className="text-sm font-semibold"
+                          className="text-xs font-semibold"
                         >
                           {savedConnections.find(conn => conn.id === currentConnectionId)?.environment}
                         </Badge>
-                        <span className="text-sm text-muted-foreground font-mono">
+                        <span className="text-xs text-muted-foreground font-mono">
                           {savedConnections.find(conn => conn.id === currentConnectionId)?.tenant}
                         </span>
-                        {session.corporationId && (
-                          <span className="text-sm text-muted-foreground">
-                            Corp: {session.corporationId}
+                        {userInfo && (
+                          <span className="text-xs text-muted-foreground">
+                            {userInfo.corporation.name} (ID: {userInfo.corporation.id})
                           </span>
                         )}
                         {datacenterInfo?.dataCenterId && (
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">
                             DC: {datacenterInfo.dataCenterId}
                           </span>
                         )}
                         {datacenterInfo?.superClusterId && (
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">
                             SC: {datacenterInfo.superClusterId}
                           </span>
                         )}
@@ -664,12 +800,14 @@ function App() {
                     onNewConnection={() => setAuthDialogOpen(true)}
                   />
                   <div className="flex flex-col items-end gap-1">
-                    <Badge variant="outline" className="font-mono">
+                    <Badge variant="outline" className="font-mono text-xs">
                       Connected
                     </Badge>
-                    <span className="text-xs text-muted-foreground font-mono">
-                      {sessionManager.getBrowserId().substring(0, 15)}...
-                    </span>
+                    {userInfo && (
+                      <span className="text-xs text-muted-foreground">
+                        {userInfo.username}
+                      </span>
+                    )}
                   </div>
                   <Button variant="outline" size="sm" onClick={handleDisconnect}>
                     <SignOut />
