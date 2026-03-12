@@ -41,7 +41,7 @@ class SecureCredentialsAPI {
     if (isKVDisabled()) {
       throw new Error('KV disabled')
     }
-    return await getStorageAdapter()
+    return getStorageAdapter()
   }
 
   private credKey(connectionId: string) {
@@ -55,15 +55,16 @@ class SecureCredentialsAPI {
 
   /* ---------------- CREDENTIALS ---------------- */
 
-  async saveCredentials(connectionId: string, credentials: SecureCredentials): Promise<void> {
+  async saveCredentials(
+    connectionId: string,
+    credentials: SecureCredentials
+  ): Promise<void> {
     if (isKVDisabled()) return
 
     try {
       const storage = await this.kv()
       await storage.set(this.credKey(connectionId), credentials)
-
-      console.log('💾 Credentials saved:', { connectionId })
-    } catch (e) {
+    } catch {
       console.warn('🛑 saveCredentials failed — disabling KV')
       disableKV()
     }
@@ -76,7 +77,7 @@ class SecureCredentialsAPI {
       const storage = await this.kv()
       const credentials = await storage.get(this.credKey(connectionId))
       return (credentials as SecureCredentials) || null
-    } catch (e) {
+    } catch {
       console.warn('🛑 getCredentials failed — disabling KV')
       disableKV()
       return null
@@ -89,7 +90,7 @@ class SecureCredentialsAPI {
     try {
       const storage = await this.kv()
       await storage.delete(this.credKey(connectionId))
-    } catch (e) {
+    } catch {
       console.warn('🛑 deleteCredentials failed — disabling KV')
       disableKV()
     }
@@ -114,19 +115,20 @@ class SecureCredentialsAPI {
       await storage.set('bullhorn-connections', connections)
 
       this.invalidateConnectionsCache()
-      console.log('✅ Connection saved:', connection.id)
-    } catch (e) {
+    } catch {
       console.warn('🛑 saveConnection failed — disabling KV')
       disableKV()
     }
   }
 
   async getConnections(): Promise<SavedConnection[]> {
-    if (isKVDisabled()) return this.cachedConnections ?? []
+    if (isKVDisabled()) {
+      return this.cachedConnections ?? []
+    }
 
     const now = Date.now()
 
-    // ✅ Memory cache
+    // ✅ memory cache
     if (
       this.cachedConnections &&
       now - this.connectionsCacheTimestamp < this.CONNECTIONS_CACHE_DURATION
@@ -134,32 +136,27 @@ class SecureCredentialsAPI {
       return this.cachedConnections
     }
 
-    // ✅ Single‑flight
-    if (this.inFlightConnectionsRequest) {
-      return this.inFlightConnectionsRequest
+    // ✅ single‑flight
+    if (!this.inFlightConnectionsRequest) {
+      this.inFlightConnectionsRequest = (async () => {
+        try {
+          const storage = await this.kv()
+          const raw = await storage.get('bullhorn-connections')
+          const connections = Array.isArray(raw) ? raw : []
+
+          this.cachedConnections = connections
+          this.connectionsCacheTimestamp = Date.now()
+
+          return connections
+        } catch {
+          console.warn('🛑 getConnections failed — disabling KV')
+          disableKV()
+          return []
+        } finally {
+          this.inFlightConnectionsRequest = null
+        }
+      })()
     }
-
-   this.inFlightConnectionsRequest = null
-
-;this.inFlightConnectionsRequest = (async () => {
-  try {
-    const storage = await this.kv()
-    const raw = await storage.get('bullhorn-connections')
-    const connections = Array.isArray(raw) ? raw : []
-
-    this.cachedConnections = connections
-    this.connectionsCacheTimestamp = Date.now()
-
-    return connections
-  } catch (e) {
-    console.warn('🛑 getConnections failed — disabling KV')
-    disableKV()
-    return []
-  } finally {
-    this.inFlightConnectionsRequest = null
-  }
-})()
-
 
     return this.inFlightConnectionsRequest
   }
@@ -176,7 +173,7 @@ class SecureCredentialsAPI {
 
       await this.deleteCredentials(connectionId)
       this.invalidateConnectionsCache()
-    } catch (e) {
+    } catch {
       console.warn('🛑 deleteConnection failed — disabling KV')
       disableKV()
     }
@@ -200,7 +197,7 @@ class SecureCredentialsAPI {
       await storage.set('bullhorn-connections', connections)
 
       this.invalidateConnectionsCache()
-    } catch (e) {
+    } catch {
       console.warn('🛑 updateConnection failed — disabling KV')
       disableKV()
     }
@@ -208,4 +205,3 @@ class SecureCredentialsAPI {
 }
 
 export const secureCredentialsAPI = new SecureCredentialsAPI()
-``
