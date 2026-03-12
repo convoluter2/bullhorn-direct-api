@@ -122,6 +122,22 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     
     return expandedFields
   })()
+
+  const findMatchingField = (csvColumnName: string): string | null => {
+    if (!metadata?.fields) return null
+    
+    const normalizedCsvColumn = csvColumnName.trim().toLowerCase()
+    
+    const exactMatch = availableFields.find(field => 
+      field.name.toLowerCase() === normalizedCsvColumn
+    )
+    
+    if (exactMatch) {
+      return exactMatch.name
+    }
+    
+    return null
+  }
   
   useEffect(() => {
     if (metadata && entity) {
@@ -296,21 +312,33 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         
         const initialMappings: CSVMapping[] = parsed.headers
           .filter(header => header !== null && header !== undefined && header !== '')
-          .map(header => ({
-            csvColumn: String(header).trim(),
-            bullhornField: '__skip__'
-          }))
+          .map(header => {
+            const csvColumn = String(header).trim()
+            const matchedField = findMatchingField(csvColumn)
+            return {
+              csvColumn,
+              bullhornField: matchedField || '__skip__'
+            }
+          })
           .filter(mapping => mapping.csvColumn !== '')
+        
+        const matchedCount = initialMappings.filter(m => m.bullhornField !== '__skip__').length
         
         setMappings(initialMappings)
         setResults([])
-        toast.success(`Excel loaded: ${parsed.rows.length} rows, ${parsed.headers.length} columns`)
+        
+        if (matchedCount > 0) {
+          toast.success(`Excel loaded: ${parsed.rows.length} rows, ${parsed.headers.length} columns - ${matchedCount} field${matchedCount !== 1 ? 's' : ''} auto-matched`)
+        } else {
+          toast.success(`Excel loaded: ${parsed.rows.length} rows, ${parsed.headers.length} columns`)
+        }
         
         onLog('Excel Upload', 'success', `Loaded Excel file: ${file.name}`, {
           fileName: file.name,
           fileSize: file.size,
           rows: parsed.rows.length,
           columns: parsed.headers.length,
+          autoMatched: matchedCount,
           warnings: contentValidation.warnings.length
         })
       } catch (error) {
@@ -365,21 +393,33 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         
         const initialMappings: CSVMapping[] = parsed.headers
           .filter(header => header !== null && header !== undefined && header !== '')
-          .map(header => ({
-            csvColumn: String(header).trim(),
-            bullhornField: '__skip__'
-          }))
+          .map(header => {
+            const csvColumn = String(header).trim()
+            const matchedField = findMatchingField(csvColumn)
+            return {
+              csvColumn,
+              bullhornField: matchedField || '__skip__'
+            }
+          })
           .filter(mapping => mapping.csvColumn !== '')
+        
+        const matchedCount = initialMappings.filter(m => m.bullhornField !== '__skip__').length
         
         setMappings(initialMappings)
         setResults([])
-        toast.success(`CSV loaded: ${parsed.rows.length} rows, ${parsed.headers.length} columns`)
+        
+        if (matchedCount > 0) {
+          toast.success(`CSV loaded: ${parsed.rows.length} rows, ${parsed.headers.length} columns - ${matchedCount} field${matchedCount !== 1 ? 's' : ''} auto-matched`)
+        } else {
+          toast.success(`CSV loaded: ${parsed.rows.length} rows, ${parsed.headers.length} columns`)
+        }
         
         onLog('CSV Upload', 'success', `Loaded CSV file: ${file.name}`, {
           fileName: file.name,
           fileSize: file.size,
           rows: parsed.rows.length,
           columns: parsed.headers.length,
+          autoMatched: matchedCount,
           warnings: contentValidation.warnings.length
         })
       } catch (error) {
