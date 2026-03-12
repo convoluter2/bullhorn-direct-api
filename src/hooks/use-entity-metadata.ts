@@ -29,8 +29,6 @@ export type EntityMetadata = {
   lastUpdated: number
 }
 
-const sessionLoadedEntities = new Set<string>()
-
 export function useEntityMetadata(entity: string | undefined) {
   const [metadata, setMetadata] = useState<EntityMetadata | null>(null)
   const [loading, setLoading] = useState(false)
@@ -40,7 +38,6 @@ export function useEntityMetadata(entity: string | undefined) {
 
   const refresh = useCallback(() => {
     if (entity) {
-      sessionLoadedEntities.delete(entity)
       setRefreshTrigger(prev => prev + 1)
     }
   }, [entity])
@@ -53,13 +50,13 @@ export function useEntityMetadata(entity: string | undefined) {
       return
     }
 
-    if (loadingRef.current) {
-      console.log(`⏸️ Already loading metadata for ${entity}, skipping duplicate request`)
+    if (metadata?.entity === entity && refreshTrigger === 0) {
+      console.log(`📦 Metadata already loaded for ${entity}, skipping`)
       return
     }
 
-    if (refreshTrigger === 0 && sessionLoadedEntities.has(entity) && metadata?.entity === entity) {
-      console.log(`📦 Metadata already loaded for ${entity} this session, using existing`)
+    if (loadingRef.current) {
+      console.log(`⏸️ Already loading metadata for ${entity}, skipping duplicate request`)
       return
     }
 
@@ -75,7 +72,6 @@ export function useEntityMetadata(entity: string | undefined) {
         if (cached && refreshTrigger === 0) {
           console.log('📦 Using cached metadata for:', entity)
           setMetadata(cached.metadata)
-          sessionLoadedEntities.add(entity)
           setLoading(false)
           loadingRef.current = false
           return
@@ -169,7 +165,6 @@ export function useEntityMetadata(entity: string | undefined) {
         }
 
         setMetadata(newMetadata)
-        sessionLoadedEntities.add(entity)
         
         await entityCacheService.saveMetadataCache(entity, newMetadata)
         
@@ -213,7 +208,7 @@ export function useEntityMetadata(entity: string | undefined) {
       loadingRef.current = false
       setError(err instanceof Error ? err.message : 'Unexpected error')
     })
-  }, [entity, refreshTrigger, metadata?.entity])
+  }, [entity, refreshTrigger])
 
   return { metadata, loading, error, refresh }
 }
