@@ -1,8 +1,12 @@
 import { useState } from 'react'
-import { Button } from '@/components/ui/butto
-import { Alert, AlertDescription } from '@/comp
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '
+import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
+import { Info } from '@phosphor-icons/react'
 import type { CSVMapping } from '@/lib/types'
 
 interface CompositeFieldMapperProps {
