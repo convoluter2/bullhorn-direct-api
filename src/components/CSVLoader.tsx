@@ -1536,10 +1536,10 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                                         {lookupField === field.name && (
                                           <span className="ml-2 text-xs text-accent">
                                             (Lookup)
-                                    {[...(availableFields || [])].filter(field => field && field.name).sort((a, b) => {
-                                      const labelA = (a.label || a.name).toLowerCase()
-                                      const labelB = (b.label || b.name).toLowerCase()
-                                      return labelA.localeCompare(labelB)
+                                          </span>
+                                        )}
+                                      </SelectItem>
+                                    ))}
                                   </SelectContent>
                                 </Select>
                               )}
