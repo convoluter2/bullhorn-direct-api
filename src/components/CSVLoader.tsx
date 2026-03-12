@@ -1544,6 +1544,24 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                                 </Select>
                               )}
                             </div>
+                            {mapping.bullhornField && mapping.bullhornField !== '__skip__' && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => {
+                                  toast.loading(`Refreshing metadata for ${mapping.bullhornField}...`, { id: `refresh-field-${mapping.csvColumn}` })
+                                  refreshMetadata()
+                                  setTimeout(() => {
+                                    toast.success('Field metadata refreshed', { id: `refresh-field-${mapping.csvColumn}` })
+                                  }, 500)
+                                }}
+                                disabled={loading || metadataLoading}
+                                title={`Refresh metadata for ${mapping.bullhornField}`}
+                                className="shrink-0"
+                              >
+                                <ArrowsClockwise size={18} className={metadataLoading ? 'animate-spin' : ''} />
+                              </Button>
+                            )}
                             <div className="w-32">
                               <Select
                                 value={mapping.transform || 'none'}
