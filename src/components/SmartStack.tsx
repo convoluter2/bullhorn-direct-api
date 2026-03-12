@@ -1225,16 +1225,14 @@ export function SmartStack({ onLog }: SmartStackProps) {
                       fieldMeta: fieldMeta ? {
                         name: fieldMeta.name,
                         type: fieldMeta.type,
-                        associationType: fieldMeta.associationType,
                         associatedEntity: fieldMeta.associatedEntity
                       } : undefined,
-                      willShowToOneInput: isToOne && fieldMeta,
+                      } : undefined,
                       isToMany,
                       isToOne,
                       metadataLoading,
                       willShowToManyInput: isToMany && fieldMeta,
                       fieldsMapSample: Object.keys(fieldsMap).slice(0, 10)
-                    })
                     
                     if (update.field && !fieldMeta) {
                       console.error('❌ SmartStack Field Update - Field not found in metadata:', {
