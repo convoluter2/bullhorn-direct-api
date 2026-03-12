@@ -1,131 +1,116 @@
 import { useState } from 'react'
 import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/butto
-import { Alert, AlertDescription } from '@/co
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Info, Warning, Plus, Trash } from '@phosphor-icons/react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { Info, Warning } from '@phosphor-icons/react'
 import type { CSVMapping } from '@/lib/types'
 
 interface CompositeFieldMapperProps {
-      label: string
   compositeField: {
-    }>
+    name: string
     label: string
-  onMappingsChange: (fieldNam
+    dataType: string
+    required?: boolean
+    fields?: Array<{
       name: string
-export function Com
+      label: string
       dataType: string
       required?: boolean
     }>
-  c
+  }
+  csvHeaders: string[]
   currentMappings: CSVMapping[]
   onMappingsChange: (fieldName: string, subFieldMappings: Array<{ subField: string; csvColumn: string }>) => void
- 
+}
 
 export function CompositeFieldMapper({
   compositeField,
   csvHeaders,
   currentMappings,
   onMappingsChange
+}: CompositeFieldMapperProps) {
+  const subFields = compositeField.fields || []
+  
+  const getCurrentMapping = (subFieldName: string): string => {
+    const mapping = currentMappings.find(m => 
+      m.bullhornField === compositeField.name && 
+      m.subField === subFieldName
     )
+    return mapping?.csvColumn || ''
+  }
 
-    <Card className="border-accent/20">
-        <div className="flex items
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Badge variant="secondary" className
-       
-      
-        </div>
+  const handleSubFieldChange = (subFieldName: string, csvColumn: string) => {
+    const existingMappings = currentMappings
+      .filter(m => m.bullhornField === compositeField.name && m.subField)
+      .map(m => ({ subField: m.subField!, csvColumn: m.csvColumn }))
     
+    const updatedMappings = existingMappings.filter(m => m.subField !== subFieldName)
+    
+    if (csvColumn) {
+      updatedMappings.push({ subField: subFieldName, csvColumn })
+    }
+    
+    onMappingsChange(compositeField.name, updatedMappings)
+  }
 
-            <div>Map your CSV columns to the sub-fields of this composite fie
-              Example: {`{ address: { address1: "123 Main St", city
+  return (
+    <Card className="border-accent/20">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Badge variant="secondary" className="font-mono text-xs">
+              COMPOSITE
+            </Badge>
+            {compositeField.label}
+            {compositeField.required && (
+              <Badge variant="destructive" className="text-xs">Required</Badge>
+            )}
+          </CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Alert>
+          <Info className="h-4 w-4 text-blue-500" />
+          <AlertDescription className="text-xs">
+            <div className="font-semibold mb-1">Composite Field</div>
+            <div>Map your CSV columns to the sub-fields of this composite field.</div>
           </AlertDescription>
+        </Alert>
 
+        <Table>
           <TableHeader>
+            <TableRow>
               <TableHead>Sub-Field</TableHead>
               <TableHead>CSV Column</TableHead>
-    
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {subFields.map((subField) => (
-   
-
-                    {subField.required && (
-
-                </TableCell>
-            
-             
+              <TableRow key={subField.name}>
                 <TableCell>
-                    value=
+                  <div className="flex items-center gap-2">
+                    <Label className="font-mono text-xs">{subField.name}</Label>
+                    {subField.required && (
+                      <Badge variant="outline" className="text-xs">Required</Badge>
+                    )}
+                  </div>
+                  {subField.label && subField.label !== subField.name && (
+                    <div className="text-xs text-muted-foreground mt-1">{subField.label}</div>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Select
+                    value={getCurrentMapping(subField.name)}
+                    onValueChange={(value) => handleSubFieldChange(subField.name, value)}
                   >
-                      <Sele
-              
-     
-   
-
-          
-              </TableRow>
-          </TableBody>
-
-          <Aler
-            <AlertDescription className="text-xs">
-              <div>
-              </div>
-                Make sur
-            </AlertDescription>
-        )}
-    </Card>
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select CSV column..." />
+                    </SelectTrigger>
+                    <SelectContent>
                       {csvHeaders.map((header) => (
                         <SelectItem key={header} value={header}>
                           {header}
