@@ -1,75 +1,75 @@
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { MapPin, Info } from '@phosphor-icons
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { MapPin, Info } from '@phosphor-icons/react'
 import type { EntityField } from '@/hooks/use-entity-metadata'
 
 interface CompositeAddressInputProps {
-  field: EntityField
+
   value: string
-  onChange: (value: string) => void
+  value,
   disabled?: boolean
 }
 
 export function CompositeAddressInput({
   field,
-  value,
-  onChange,
-  disabled = false
-}: CompositeAddressInputProps) {
-  const [subFieldValues, setSubFieldValues] = useState<Record<string, string>>({})
-
-  useEffect(() => {
-    if (value) {
-      try {
-        const parsed = JSON.parse(value)
-        setSubFieldValues(parsed)
-      } catch {
-        setSubFieldValues({})
-      }
-    }
-  }, [value])
-
-  const handleSubFieldChange = (subFieldName: string, subFieldValue: string) => {
-    const updated = {
-      ...subFieldValues,
-      [subFieldName]: subFieldValue
-    }
+    cons
+      [subF
     
-    if (subFieldValue === '') {
-      delete updated[subFieldName]
-    }
+      delete updated[subFieldNam
     
-    setSubFieldValues(updated)
-    onChange(JSON.stringify(updated))
-  }
 
-  const subFields = field.fields || []
 
-  return (
-    <Card className="border-accent/30 bg-accent/5">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <MapPin size={16} className="text-accent" />
-          {field.label || field.name}
-          <Badge variant="secondary" className="text-xs font-mono">
-            COMPOSITE
-          </Badge>
+
+    <Card c
+        <CardTitle className="text-sm fl
+          {field.label || field.n
+            COM
         </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertDescription className="text-xs">
-            This is a composite address field. Fill in the sub-fields below to update the address.
-            Leave empty to clear that sub-field.
-          </AlertDescription>
-        </Alert>
+      <
+     
+            T
 
-        <div className="grid grid-cols-2 gap-3">
+
+          {subFields.
+              <Label cla
+                {subField.required 
+     
+    
+              <Input
+                onChange={(e) => h
+     
+    
+                {subField.name
+            </div>
+   
+
+            <Label className="text-xs 
+
+          
+      </CardContent>
+  )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
           {subFields.map((subField) => (
             <div key={subField.name} className="space-y-1.5">
               <Label className="text-xs font-medium flex items-center gap-1.5">
