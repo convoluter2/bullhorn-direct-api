@@ -153,7 +153,8 @@ export async function createStore() {
   return new FallbackStore()
 }
 
-export const storage = await createStore()
+export const storageAdapter = await createStore()
+export const storage = storageAdapter
 
 
 
