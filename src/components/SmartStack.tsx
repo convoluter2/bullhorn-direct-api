@@ -1227,12 +1227,12 @@ export function SmartStack({ onLog }: SmartStackProps) {
                         type: fieldMeta.type,
                         associatedEntity: fieldMeta.associatedEntity
                       } : undefined,
-                      } : undefined,
                       isToMany,
                       isToOne,
                       metadataLoading,
                       willShowToManyInput: isToMany && fieldMeta,
                       fieldsMapSample: Object.keys(fieldsMap).slice(0, 10)
+                    })
                     
                     if (update.field && !fieldMeta) {
                       console.error('❌ SmartStack Field Update - Field not found in metadata:', {
