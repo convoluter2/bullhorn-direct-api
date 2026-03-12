@@ -13,7 +13,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Eye, ArrowCounterClockwise, ListBullets, TreeStructure, Pause, Play, Stop, DownloadSimple, Clock } from '@phosphor-icons/react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Eye, ArrowCounterClockwise, ListBullets, TreeStructure, Pause, Play, Stop, DownloadSimple, Clock, MapPin } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV, exportToCSV, exportToJSON, parseExcel } from '@/lib/csv-utils'
@@ -30,6 +31,7 @@ import { FilterGroupBuilder } from '@/components/FilterGroupBuilder'
 import { EntityHelpAlert } from '@/components/EntityHelpAlert'
 import { AutoRefreshControl } from '@/components/AutoRefreshControl'
 import { CompositeFieldMapper } from '@/components/CompositeFieldMapper'
+import { CompositeAddressInput } from '@/components/CompositeAddressInput'
 import { validateToOneField, validateToManyField } from '@/lib/field-validation'
 import type { QueryFilter, UpdateSnapshot, FilterGroup, ExecutionState } from '@/lib/types'
 
@@ -1212,6 +1214,19 @@ export function SmartStack({ onLog }: SmartStackProps) {
                   Add Field
                 </Button>
               </div>
+              {selectedEntity && !metadataLoading && availableFields.some(f => f.composite) && (
+                <Alert className="border-accent/30 bg-accent/5">
+                  <MapPin className="h-4 w-4 text-accent" />
+                  <AlertDescription className="text-xs">
+                    <div className="font-semibold mb-1">Composite Address Fields Available</div>
+                    <div>
+                      This entity includes composite address fields (
+                      {availableFields.filter(f => f.composite).map(f => f.name).join(', ')}
+                      ). When you select these fields, you'll get a specialized interface to update individual address components like street1, city, state, zip, etc.
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              )}
               {metadataLoading && selectedEntity ? (
                 <Skeleton className="h-20 w-full" />
               ) : fieldUpdates.length === 0 ? (
@@ -1222,6 +1237,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
                 <div className="space-y-2">
                   {fieldUpdates.map((update) => {
                     const fieldMeta = update.field ? fieldsMap[update.field] : undefined
+                    const isComposite = fieldMeta?.composite || fieldMeta?.type === 'COMPOSITE'
                     const isToMany = fieldMeta?.associationType === 'TO_MANY' || fieldMeta?.type === 'TO_MANY' ||
                       (fieldMeta?.dataType === 'TO_MANY') ||
                       (fieldMeta?.associatedEntity && fieldMeta?.associationType?.includes('MANY'))
@@ -1238,11 +1254,14 @@ export function SmartStack({ onLog }: SmartStackProps) {
                       fieldMeta: fieldMeta ? {
                         name: fieldMeta.name,
                         type: fieldMeta.type,
+                        composite: fieldMeta.composite,
                         associatedEntity: fieldMeta.associatedEntity
                       } : undefined,
+                      isComposite,
                       isToMany,
                       isToOne,
                       metadataLoading,
+                      willShowCompositeInput: isComposite && fieldMeta,
                       willShowToManyInput: isToMany && fieldMeta,
                       fieldsMapSample: Object.keys(fieldsMap).slice(0, 10)
                     })
@@ -1293,7 +1312,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
                                   return labelA.localeCompare(labelB)
                                 }).map((field) => (
                                   <SelectItem key={field.name} value={field.name}>
-                                    {formatFieldLabelWithType(field.label, field.name, field.type, field.dataType)}
+                                    {formatFieldLabelWithType(field.label, field.name, field.type, field.dataType, field.composite)}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -1328,6 +1347,24 @@ export function SmartStack({ onLog }: SmartStackProps) {
                           </div>
                           {metadataLoading && update.field ? (
                             <Skeleton className="h-10 w-full" />
+                          ) : isComposite && fieldMeta ? (
+                            <>
+                              {console.log('✅ Rendering CompositeAddressInput for:', {
+                                field: update.field,
+                                fieldMeta: {
+                                  name: fieldMeta.name,
+                                  type: fieldMeta.type,
+                                  composite: fieldMeta.composite,
+                                  subFieldCount: fieldMeta.fields?.length || 0
+                                }
+                              })}
+                              <CompositeAddressInput
+                                field={fieldMeta}
+                                value={update.value}
+                                onChange={(v) => updateFieldUpdate(update.id, { value: v })}
+                                disabled={loading}
+                              />
+                            </>
                           ) : isToMany && fieldMeta ? (
                             <>
                               {console.log('✅ Rendering ToManyFieldInput for:', {
@@ -1367,10 +1404,11 @@ export function SmartStack({ onLog }: SmartStackProps) {
                             <>
                               {console.log('❌ Rendering standard ValidatedFieldInput for:', {
                                 field: update.field,
+                                isComposite,
                                 isToMany,
                                 isToOne,
                                 hasFieldMeta: !!fieldMeta,
-                                reason: !fieldMeta ? 'no fieldMeta' : !isToMany && !isToOne ? 'scalar field' : 'unknown'
+                                reason: !fieldMeta ? 'no fieldMeta' : isComposite ? 'composite but failed check' : !isToMany && !isToOne ? 'scalar field' : 'unknown'
                               })}
                               <ValidatedFieldInput
                                 field={fieldMeta || null}

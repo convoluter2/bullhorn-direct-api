@@ -12,9 +12,13 @@ export function formatFieldLabel(label: string, fieldName: string): string {
   return `${label} (${fieldName})`
 }
 
-export function formatFieldLabelWithType(label: string, fieldName: string, type?: string, dataType?: string): string {
+export function formatFieldLabelWithType(label: string, fieldName: string, type?: string, dataType?: string, composite?: boolean): string {
   const baseLabel = formatFieldLabel(label, fieldName)
   const typeInfo: string[] = []
+  
+  if (composite || type === 'COMPOSITE') {
+    typeInfo.push('COMPOSITE')
+  }
   
   if (type) {
     if (type === 'TO_ONE') {
@@ -23,7 +27,7 @@ export function formatFieldLabelWithType(label: string, fieldName: string, type?
       typeInfo.push('TO_MANY')
     } else if (type === 'SCALAR') {
       typeInfo.push('SCALAR')
-    } else if (type !== 'String' && type !== dataType) {
+    } else if (type !== 'String' && type !== dataType && type !== 'COMPOSITE') {
       typeInfo.push(type)
     }
   }
