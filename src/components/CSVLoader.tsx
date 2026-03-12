@@ -1205,7 +1205,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Upload className="text-accent" size={24} />
-            CSV Data Loader
+            CSV & Excel Data Loader
             {csvData && (
               <div className="flex items-center gap-2 ml-auto">
                 {validationErrors.length > 0 && (
@@ -1229,7 +1229,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               </div>
             )}
           </CardTitle>
-          <CardDescription>Import and update bulk data from CSV files into Bullhorn entities</CardDescription>
+          <CardDescription>Import and update bulk data from CSV and Excel files into Bullhorn entities</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1329,7 +1329,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
             </div>
 
             <div className="space-y-2">
-              <Label>CSV File</Label>
+              <Label>CSV or Excel File</Label>
               <Input
                 type="file"
                 accept=".csv,.xlsx,.xls"
@@ -1337,7 +1337,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                 disabled={!entity}
                 className="cursor-pointer"
               />
-              <p className="text-xs text-muted-foreground">Supports CSV and Excel (.xlsx, .xls) files</p>
+              <p className="text-xs text-muted-foreground">Supports CSV (.csv) and Excel (.xlsx, .xls) files</p>
             </div>
           </div>
 
