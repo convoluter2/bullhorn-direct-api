@@ -25,7 +25,6 @@ import { LookupFieldSelector } from '@/components/LookupFieldSelector'
 import { SpeedControl } from '@/components/SpeedControl'
 import { ToManyConfigSelector } from '@/components/ToManyConfigSelector'
 import { AutoRefreshControl } from '@/components/AutoRefreshControl'
-import { CompositeFieldMapper } from '@/components/CompositeFieldMapper'
 import type { CSVMapping, UpdateSnapshot, ExecutionState } from '@/lib/types'
 
 interface CSVLoaderProps {
@@ -67,7 +66,6 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [csvData, setCsvData] = useState<{ headers: string[]; rows: string[][] } | null>(null)
   const [mappings, setMappings] = useState<CSVMapping[]>([])
   const [toManyConfigs, setToManyConfigs] = useState<Record<string, ToManyConfig>>({})
-  const [compositeFieldMappings, setCompositeFieldMappings] = useState<Record<string, Array<{ subField: string; csvColumn: string }>>>({})
   const [lookupField, setLookupField] = useState<string>('id')
   const [updateExisting, setUpdateExisting] = useState(true)
   const [createNew, setCreateNew] = useState(false)
@@ -100,17 +98,40 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const { entities, loading: entitiesLoading, refresh: refreshEntities, refreshInBackground, addEntity, lastRefresh } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError, refresh: refreshMetadata } = useEntityMetadata(entity || undefined)
   
-  const availableFields = metadata?.fields || []
+  const availableFields = (() => {
+    if (!metadata?.fields) return []
+    
+    const expandedFields: typeof metadata.fields = []
+    
+    metadata.fields.forEach(field => {
+      if (field.composite && field.fields && field.fields.length > 0) {
+        field.fields.forEach(subField => {
+          expandedFields.push({
+            name: `${field.name}.${subField.name}`,
+            label: `${field.label} - ${subField.label || subField.name}`,
+            type: subField.dataType,
+            dataType: subField.dataType,
+            composite: false,
+            optional: !subField.required,
+          })
+        })
+      } else {
+        expandedFields.push(field)
+      }
+    })
+    
+    return expandedFields
+  })()
   
   useEffect(() => {
     if (metadata && entity) {
-      const compositeFields = availableFields.filter(f => f.composite && f.fields && f.fields.length > 0)
-      console.log(`🔍 CSV Loader - Composite fields available for ${entity}:`, compositeFields.length)
+      const compositeFields = metadata.fields.filter(f => f.composite && f.fields && f.fields.length > 0)
+      console.log(`🔍 CSV Loader - Composite fields expanded for ${entity}:`, compositeFields.length)
       compositeFields.forEach(field => {
-        console.log(`  - ${field.name} (${field.label}): ${field.fields?.length || 0} sub-fields`, field.fields)
+        console.log(`  - ${field.name} (${field.label}): ${field.fields?.length || 0} sub-fields expanded into individual fields`)
       })
     }
-  }, [metadata, entity, availableFields])
+  }, [metadata, entity])
   
   useEffect(() => {
     if (lookupField && lookupField !== '__none__') {
@@ -414,27 +435,6 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     })
   }
 
-  const handleCompositeFieldMappingsChange = (fieldName: string, subFieldMappings: Array<{ subField: string; csvColumn: string }>) => {
-    setCompositeFieldMappings(prev => ({
-      ...prev,
-      [fieldName]: subFieldMappings
-    }))
-    
-    setMappings((currentMappings) => {
-      const existingNonComposite = currentMappings.filter(m => 
-        !m.compositeSubField || m.bullhornField !== fieldName
-      )
-      
-      const compositeMappings: CSVMapping[] = subFieldMappings.map(({ subField, csvColumn }) => ({
-        csvColumn,
-        bullhornField: fieldName,
-        compositeSubField: subField
-      }))
-      
-      return [...existingNonComposite, ...compositeMappings]
-    })
-  }
-
   const transformValue = (value: string, transform?: string): any => {
     if (!value || value === null || value === undefined) return value
 
@@ -648,19 +648,24 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           const transformedValue = transformValue(rawValue, mapping.transform)
           
           if (transformedValue === '' || transformedValue === null || transformedValue === undefined) {
-            if (!mapping.compositeSubField) {
+            if (!mapping.bullhornField.includes('.')) {
               data[mapping.bullhornField] = null
             }
           } else if (typeof transformedValue === 'string' && transformedValue.toLowerCase() === 'null') {
-            if (!mapping.compositeSubField) {
+            if (!mapping.bullhornField.includes('.')) {
               data[mapping.bullhornField] = null
             }
           } else {
-            if (mapping.compositeSubField) {
-              if (!data[mapping.bullhornField]) {
-                data[mapping.bullhornField] = {}
+            if (mapping.bullhornField.includes('.')) {
+              const [compositeFieldName, subFieldName] = mapping.bullhornField.split('.')
+              if (!data[compositeFieldName]) {
+                data[compositeFieldName] = {}
               }
-              data[mapping.bullhornField][mapping.compositeSubField] = transformedValue
+              data[compositeFieldName][subFieldName] = transformedValue
+              
+              if (compositeFieldName === 'address' && !data[compositeFieldName].countryID) {
+                data[compositeFieldName].countryID = 1
+              }
             } else {
               const fieldMeta = metadata?.fieldsMap ? metadata.fieldsMap[mapping.bullhornField] : undefined
               if (fieldMeta?.associationType === 'TO_MANY') {
@@ -1685,16 +1690,6 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                       </Card>
                     )
                   })}
-                  
-                  {csvData && availableFields.filter(f => f.composite && f.fields && f.fields.length > 0).map(compositeField => (
-                    <CompositeFieldMapper
-                      key={compositeField.name}
-                      compositeField={compositeField}
-                      csvHeaders={csvData.headers}
-                      currentMappings={mappings}
-                      onMappingsChange={handleCompositeFieldMappingsChange}
-                    />
-                  ))}
                 </div>
               </div>
 

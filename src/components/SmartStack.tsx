@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Eye, ArrowCounterClockwise, ListBullets, TreeStructure, Pause, Play, Stop, DownloadSimple, Clock, MapPin } from '@phosphor-icons/react'
+import { Stack, Upload, Plus, Trash, Lightning, FileArrowUp, ArrowsClockwise, Eye, ArrowCounterClockwise, ListBullets, TreeStructure, Pause, Play, Stop, DownloadSimple, Clock } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { parseCSV, exportToCSV, exportToJSON, parseExcel } from '@/lib/csv-utils'
@@ -30,8 +30,6 @@ import { getAssociationsForRecord, mergeAssociationActions, describeAssociation 
 import { FilterGroupBuilder } from '@/components/FilterGroupBuilder'
 import { EntityHelpAlert } from '@/components/EntityHelpAlert'
 import { AutoRefreshControl } from '@/components/AutoRefreshControl'
-import { CompositeFieldMapper } from '@/components/CompositeFieldMapper'
-import { CompositeAddressInput } from '@/components/CompositeAddressInput'
 import { validateToOneField, validateToManyField } from '@/lib/field-validation'
 import type { QueryFilter, UpdateSnapshot, FilterGroup, ExecutionState } from '@/lib/types'
 
@@ -101,7 +99,6 @@ export function SmartStack({ onLog }: SmartStackProps) {
   const [lastSnapshotId, setLastSnapshotId] = useState<string | null>(null)
   const [conditionalAssociations, setConditionalAssociations] = useState<ConditionalAssociation[]>([])
   const [useConditionalLogic, setUseConditionalLogic] = useState(false)
-  const [compositeFieldMappings, setCompositeFieldMappings] = useState<Record<string, Record<string, string>>>({})
   
   const [executionState, setExecutionState] = useState<ExecutionState>('idle')
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -116,7 +113,30 @@ export function SmartStack({ onLog }: SmartStackProps) {
   const { entities, loading: entitiesLoading, refresh: refreshEntities, refreshInBackground, addEntity, lastRefresh } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError, refresh: refreshMetadata } = useEntityMetadata(selectedEntity || undefined)
   
-  const availableFields = metadata?.fields || []
+  const availableFields = (() => {
+    if (!metadata?.fields) return []
+    
+    const expandedFields: typeof metadata.fields = []
+    
+    metadata.fields.forEach(field => {
+      if (field.composite && field.fields && field.fields.length > 0) {
+        field.fields.forEach(subField => {
+          expandedFields.push({
+            name: `${field.name}.${subField.name}`,
+            label: `${field.label} - ${subField.label || subField.name}`,
+            type: subField.dataType,
+            dataType: subField.dataType,
+            composite: false,
+            optional: !subField.required,
+          })
+        })
+      } else {
+        expandedFields.push(field)
+      }
+    })
+    
+    return expandedFields
+  })()
   const fieldsMap = metadata?.fieldsMap || {}
   
   useEffect(() => {
@@ -549,21 +569,25 @@ export function SmartStack({ onLog }: SmartStackProps) {
           }
           
           fieldUpdates.forEach(update => {
-            const fieldMeta = update.field ? fieldsMap[update.field] : undefined
+            const baseFieldName = update.field.includes('.') ? update.field.split('.')[0] : update.field
+            const fieldMeta = update.field ? fieldsMap[baseFieldName] : undefined
             
-            if (update.value === '' || update.value.toLowerCase() === 'null') {
-              updateData[update.field] = null
-            } else if (fieldMeta?.composite) {
-              const compositeValue = compositeFieldMappings[update.field]
-              if (compositeValue) {
-                updateData[update.field] = compositeValue
-              } else {
-                try {
-                  updateData[update.field] = JSON.parse(update.value)
-                } catch {
-                  updateData[update.field] = update.value
-                }
+            if (update.field.includes('.')) {
+              const [compositeFieldName, subFieldName] = update.field.split('.')
+              if (!updateData[compositeFieldName]) {
+                updateData[compositeFieldName] = {}
               }
+              if (update.value === '' || update.value.toLowerCase() === 'null') {
+                updateData[compositeFieldName][subFieldName] = null
+              } else {
+                updateData[compositeFieldName][subFieldName] = update.value
+              }
+              
+              if (compositeFieldName === 'address' && !updateData[compositeFieldName].countryID) {
+                updateData[compositeFieldName].countryID = 1
+              }
+            } else if (update.value === '' || update.value.toLowerCase() === 'null') {
+              updateData[update.field] = null
             } else if (fieldMeta?.associationType === 'TO_MANY') {
               try {
                 const toManyValue = JSON.parse(update.value)
@@ -1214,19 +1238,6 @@ export function SmartStack({ onLog }: SmartStackProps) {
                   Add Field
                 </Button>
               </div>
-              {selectedEntity && !metadataLoading && availableFields.some(f => f.composite) && (
-                <Alert className="border-accent/30 bg-accent/5">
-                  <MapPin className="h-4 w-4 text-accent" />
-                  <AlertDescription className="text-xs">
-                    <div className="font-semibold mb-1">Composite Address Fields Available</div>
-                    <div>
-                      This entity includes composite address fields (
-                      {availableFields.filter(f => f.composite).map(f => f.name).join(', ')}
-                      ). When you select these fields, you'll get a specialized interface to update individual address components like street1, city, state, zip, etc.
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              )}
               {metadataLoading && selectedEntity ? (
                 <Skeleton className="h-20 w-full" />
               ) : fieldUpdates.length === 0 ? (
@@ -1236,8 +1247,8 @@ export function SmartStack({ onLog }: SmartStackProps) {
               ) : (
                 <div className="space-y-2">
                   {fieldUpdates.map((update) => {
-                    const fieldMeta = update.field ? fieldsMap[update.field] : undefined
-                    const isComposite = fieldMeta?.composite || fieldMeta?.type === 'COMPOSITE'
+                    const baseFieldName = update.field?.includes('.') ? update.field.split('.')[0] : update.field
+                    const fieldMeta = baseFieldName ? fieldsMap[baseFieldName] : undefined
                     const isToMany = fieldMeta?.associationType === 'TO_MANY' || fieldMeta?.type === 'TO_MANY' ||
                       (fieldMeta?.dataType === 'TO_MANY') ||
                       (fieldMeta?.associatedEntity && fieldMeta?.associationType?.includes('MANY'))
@@ -1248,6 +1259,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
                     console.log('🔍 SmartStack Field Update Render:', {
                       updateId: update.id,
                       field: update.field,
+                      baseFieldName,
                       selectedEntity,
                       hasMetadata: !!metadata,
                       fieldsMapKeys: Object.keys(fieldsMap).length,
@@ -1257,18 +1269,16 @@ export function SmartStack({ onLog }: SmartStackProps) {
                         composite: fieldMeta.composite,
                         associatedEntity: fieldMeta.associatedEntity
                       } : undefined,
-                      isComposite,
                       isToMany,
                       isToOne,
                       metadataLoading,
-                      willShowCompositeInput: isComposite && fieldMeta,
                       willShowToManyInput: isToMany && fieldMeta,
                       fieldsMapSample: Object.keys(fieldsMap).slice(0, 10)
                     })
                     
-                    if (update.field && !fieldMeta) {
+                    if (baseFieldName && !fieldMeta) {
                       console.error('❌ SmartStack Field Update - Field not found in metadata:', {
-                        field: update.field,
+                        field: baseFieldName,
                         availableFields: Object.keys(fieldsMap).sort(),
                         totalFields: Object.keys(fieldsMap).length
                       })
@@ -1347,24 +1357,6 @@ export function SmartStack({ onLog }: SmartStackProps) {
                           </div>
                           {metadataLoading && update.field ? (
                             <Skeleton className="h-10 w-full" />
-                          ) : isComposite && fieldMeta ? (
-                            <>
-                              {console.log('✅ Rendering CompositeAddressInput for:', {
-                                field: update.field,
-                                fieldMeta: {
-                                  name: fieldMeta.name,
-                                  type: fieldMeta.type,
-                                  composite: fieldMeta.composite,
-                                  subFieldCount: fieldMeta.fields?.length || 0
-                                }
-                              })}
-                              <CompositeAddressInput
-                                field={fieldMeta}
-                                value={update.value}
-                                onChange={(v) => updateFieldUpdate(update.id, { value: v })}
-                                disabled={loading}
-                              />
-                            </>
                           ) : isToMany && fieldMeta ? (
                             <>
                               {console.log('✅ Rendering ToManyFieldInput for:', {
