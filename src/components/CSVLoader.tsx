@@ -760,10 +760,6 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                 data[compositeFieldName] = {}
               }
               data[compositeFieldName][subFieldName] = transformedValue
-              
-              if (compositeFieldName === 'address' && !data[compositeFieldName].countryID) {
-                data[compositeFieldName].countryID = 1
-              }
             } else {
               const fieldMeta = metadata?.fieldsMap ? metadata.fieldsMap[mapping.bullhornField] : undefined
               if (fieldMeta?.associationType === 'TO_MANY') {
@@ -824,6 +820,24 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           }
         }
       })
+
+      if (data.address && typeof data.address === 'object') {
+        if (!data.address.countryID) {
+          data.address.countryID = 1
+        }
+        if (data.address.address2 === undefined) {
+          data.address.address2 = ''
+        }
+      }
+      
+      if (data.secondaryAddress && typeof data.secondaryAddress === 'object') {
+        if (!data.secondaryAddress.countryID) {
+          data.secondaryAddress.countryID = 1
+        }
+        if (data.secondaryAddress.address2 === undefined) {
+          data.secondaryAddress.address2 = ''
+        }
+      }
 
       if (updateExisting && lookupField && lookupField !== '__none__' && lookupValue) {
         const fieldsToFetch = ['id', ...validMappings.map(m => m.bullhornField).filter(f => f && f !== '__skip__' && f !== 'id')]
