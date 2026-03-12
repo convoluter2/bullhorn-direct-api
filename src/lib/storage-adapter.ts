@@ -134,13 +134,13 @@ export class FallbackStore {
 
 /**
  * Runtime capability check
-exp
+ */
 export function hasSparkKV() {
   return typeof window !== 'undefined' && !!window.spark?.kv
 }
 
 /**
-  await sp
+ * Create and initialize the storage adapter
  */
 export async function createStore() {
   const spark = new SparkKVStore()
@@ -148,10 +148,44 @@ export async function createStore() {
   
   if (spark.ready) {
     return spark
-
+  }
   
   return new FallbackStore()
 }
 
-export const storageAdapter = await createStore()
-export const storage = storageAdapter
+let storageAdapterInstance: SparkKVStore | FallbackStore | null = null
+let storageAdapterPromise: Promise<SparkKVStore | FallbackStore> | null = null
+
+export function getStorageAdapter(): Promise<SparkKVStore | FallbackStore> {
+  if (storageAdapterInstance) {
+    return Promise.resolve(storageAdapterInstance)
+  }
+  
+  if (!storageAdapterPromise) {
+    storageAdapterPromise = createStore().then(adapter => {
+      storageAdapterInstance = adapter
+      return adapter
+    })
+  }
+  
+  return storageAdapterPromise
+}
+
+export const storage = {
+  async keys(prefix?: string): Promise<string[]> {
+    const adapter = await getStorageAdapter()
+    return adapter.keys(prefix)
+  },
+  async get(key: string): Promise<any> {
+    const adapter = await getStorageAdapter()
+    return adapter.get(key)
+  },
+  async set(key: string, value: any): Promise<void> {
+    const adapter = await getStorageAdapter()
+    return adapter.set(key, value)
+  },
+  async delete(key: string): Promise<void> {
+    const adapter = await getStorageAdapter()
+    return adapter.delete(key)
+  }
+}

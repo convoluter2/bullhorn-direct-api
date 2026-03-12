@@ -1,5 +1,5 @@
 import type { BullhornSession } from './types'
-import { storageAdapter, hasSparkKV } from './storage-adapter'
+import { getStorageAdapter, hasSparkKV } from './storage-adapter'
 
 export type SessionInfo = {
   browserId: string
@@ -72,7 +72,8 @@ class SessionManager {
     }
 
     const key = `session-${this.browserId}-${connectionId}`
-    await storageAdapter.set(key, sessionInfo)
+    const adapter = await getStorageAdapter()
+    await adapter.set(key, sessionInfo)
     
     console.log('💾 Session saved:', {
       browserId: this.browserId,
@@ -84,7 +85,8 @@ class SessionManager {
 
   async getSession(connectionId: string): Promise<BullhornSession | null> {
     const key = `session-${this.browserId}-${connectionId}`
-    const sessionInfo = await storageAdapter.get<SessionInfo>(key)
+    const adapter = await getStorageAdapter()
+    const sessionInfo = await adapter.get<SessionInfo>(key)
     
     if (!sessionInfo) {
       console.log('📭 No session found for this browser:', { browserId: this.browserId, connectionId })
@@ -106,7 +108,7 @@ class SessionManager {
     }
 
     sessionInfo.lastActivity = now
-    await storageAdapter.set(key, sessionInfo)
+    await adapter.set(key, sessionInfo)
     
     console.log('📬 Session retrieved and heartbeat updated:', {
       browserId: this.browserId,
@@ -119,19 +121,21 @@ class SessionManager {
 
   async clearSession(connectionId: string): Promise<void> {
     const key = `session-${this.browserId}-${connectionId}`
-    await storageAdapter.delete(key)
+    const adapter = await getStorageAdapter()
+    await adapter.delete(key)
     console.log('🗑️ Session cleared:', { browserId: this.browserId, connectionId })
   }
 
   async markRefreshStarted(connectionId: string): Promise<void> {
     const key = `session-${this.browserId}-${connectionId}`
-    const sessionInfo = await storageAdapter.get<SessionInfo>(key)
+    const adapter = await getStorageAdapter()
+    const sessionInfo = await adapter.get<SessionInfo>(key)
     
     if (sessionInfo) {
       sessionInfo.isRefreshing = true
       sessionInfo.refreshStartedAt = Date.now()
       sessionInfo.lastActivity = Date.now()
-      await storageAdapter.set(key, sessionInfo)
+      await adapter.set(key, sessionInfo)
       
       console.log('🔄 Marked session as refreshing:', {
         browserId: this.browserId,
@@ -151,7 +155,8 @@ class SessionManager {
     }
 
     const key = `session-${this.browserId}-${connectionId}`
-    await storageAdapter.set(key, sessionInfo)
+    const adapter = await getStorageAdapter()
+    await adapter.set(key, sessionInfo)
     
     console.log('✅ Marked session refresh complete:', {
       browserId: this.browserId,
@@ -162,7 +167,8 @@ class SessionManager {
 
   async getSessionAwareness(connectionId: string): Promise<SessionAwareness> {
     try {
-      const allKeys = await storageAdapter.keys()
+      const adapter = await getStorageAdapter()
+      const allKeys = await adapter.keys()
       const sessionKeys = allKeys.filter(key => 
         key.startsWith('session-') && key.endsWith(`-${connectionId}`)
       )
@@ -173,7 +179,7 @@ class SessionManager {
       let currentBrowserHasSession = false
 
       for (const key of sessionKeys) {
-        const sessionInfo = await storageAdapter.get<SessionInfo>(key)
+        const sessionInfo = await adapter.get<SessionInfo>(key)
         
         if (!sessionInfo) continue
 
@@ -189,7 +195,7 @@ class SessionManager {
             })
             sessionInfo.isRefreshing = false
             sessionInfo.refreshStartedAt = undefined
-            await storageAdapter.set(key, sessionInfo)
+            await adapter.set(key, sessionInfo)
           }
         }
 
@@ -214,7 +220,7 @@ class SessionManager {
             connectionId: sessionInfo.connectionId,
             age
           })
-          await storageAdapter.delete(key)
+          await adapter.delete(key)
         }
       }
 
@@ -247,17 +253,18 @@ class SessionManager {
     }
 
     try {
-      const allKeys = await storageAdapter.keys()
+      const adapter = await getStorageAdapter()
+      const allKeys = await adapter.keys()
       const sessionKeys = allKeys.filter(key => key.startsWith('session-'))
       
       const now = Date.now()
       let cleanedCount = 0
 
       for (const key of sessionKeys) {
-        const sessionInfo = await storageAdapter.get<SessionInfo>(key)
+        const sessionInfo = await adapter.get<SessionInfo>(key)
         
         if (!sessionInfo) {
-          await storageAdapter.delete(key)
+          await adapter.delete(key)
           cleanedCount++
           continue
         }
@@ -271,7 +278,7 @@ class SessionManager {
             age,
             key
           })
-          await storageAdapter.delete(key)
+          await adapter.delete(key)
           cleanedCount++
         }
       }
@@ -302,17 +309,18 @@ class SessionManager {
     }
 
     try {
-      const allKeys = await storageAdapter.keys()
+      const adapter = await getStorageAdapter()
+      const allKeys = await adapter.keys()
       const mySessionKeys = allKeys.filter(key => 
         key.startsWith(`session-${this.browserId}-`)
       )
 
       for (const key of mySessionKeys) {
-        const sessionInfo = await storageAdapter.get<SessionInfo>(key)
+        const sessionInfo = await adapter.get<SessionInfo>(key)
         
         if (sessionInfo) {
           sessionInfo.lastActivity = Date.now()
-          await storageAdapter.set(key, sessionInfo)
+          await adapter.set(key, sessionInfo)
         }
       }
 
@@ -366,14 +374,15 @@ class SessionManager {
 
   async getAllActiveSessions(): Promise<SessionInfo[]> {
     try {
-      const allKeys = await storageAdapter.keys()
+      const adapter = await getStorageAdapter()
+      const allKeys = await adapter.keys()
       const sessionKeys = allKeys.filter(key => key.startsWith('session-'))
       
       const sessions: SessionInfo[] = []
       const now = Date.now()
 
       for (const key of sessionKeys) {
-        const sessionInfo = await storageAdapter.get<SessionInfo>(key)
+        const sessionInfo = await adapter.get<SessionInfo>(key)
         
         if (sessionInfo && (now - sessionInfo.lastActivity) < this.SESSION_TIMEOUT) {
           sessions.push(sessionInfo)
