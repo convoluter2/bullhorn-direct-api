@@ -129,22 +129,16 @@ export function useEntityMetadata(entity: string | undefined) {
             optionsUrl: field.optionsUrl
           }
 
+          if (field.type === 'TO_MANY' || field.dataType === 'TO_MANY') {
+            fieldInfo.associationType = 'TO_MANY'
+          } else if (field.type === 'TO_ONE' || field.dataType === 'TO_ONE') {
+            fieldInfo.associationType = 'TO_ONE'
+          }
+          
           if (field.associatedEntity) {
             fieldInfo.associatedEntity = {
               entity: field.associatedEntity.entity,
               entityMetaUrl: field.associatedEntity.entityMetaUrl
-            }
-            
-            if (field.dataType === 'TO_MANY' || field.type === 'TO_MANY') {
-              fieldInfo.associationType = 'TO_MANY'
-            } else if (field.dataType === 'TO_ONE' || field.type === 'TO_ONE') {
-              fieldInfo.associationType = 'TO_ONE'
-            }
-          } else {
-            if (field.type === 'TO_MANY' || field.dataType === 'TO_MANY') {
-              fieldInfo.associationType = 'TO_MANY'
-            } else if (field.type === 'TO_ONE' || field.dataType === 'TO_ONE') {
-              fieldInfo.associationType = 'TO_ONE'
             }
           }
 

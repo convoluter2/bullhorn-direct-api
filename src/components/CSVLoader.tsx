@@ -1458,12 +1458,16 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                     const fieldMeta = mapping?.bullhornField && mapping.bullhornField !== '__skip__' && metadata?.fieldsMap?.[mapping.bullhornField]
                       ? metadata.fieldsMap[mapping.bullhornField] 
                       : undefined
-                    const isToMany = fieldMeta?.associationType === 'TO_MANY' || fieldMeta?.type === 'TO_MANY' || 
-                      (fieldMeta?.dataType === 'TO_MANY') || 
-                      (fieldMeta?.associatedEntity && fieldMeta?.associationType?.includes('MANY'))
-                    const isToOne = fieldMeta?.associationType === 'TO_ONE' || fieldMeta?.type === 'TO_ONE' ||
-                      (fieldMeta?.dataType === 'TO_ONE') ||
-                      (fieldMeta?.associatedEntity && fieldMeta?.associationType?.includes('ONE'))
+                    const isToMany = fieldMeta ? (
+                      fieldMeta.associationType === 'TO_MANY' || 
+                      fieldMeta.type === 'TO_MANY' || 
+                      fieldMeta.dataType === 'TO_MANY'
+                    ) : false
+                    const isToOne = fieldMeta ? (
+                      fieldMeta.associationType === 'TO_ONE' || 
+                      fieldMeta.type === 'TO_ONE' ||
+                      fieldMeta.dataType === 'TO_ONE'
+                    ) : false
                     
                     if (mapping.bullhornField && mapping.bullhornField !== '__skip__') {
                       console.log('CSV Loader Field Mapping Debug:', {
@@ -1476,19 +1480,9 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                           associationType: fieldMeta.associationType,
                           associatedEntity: fieldMeta.associatedEntity
                         } : 'undefined',
-                        isToMany,
-                        isToOne
+                        isToMany: isToMany,
+                        isToOne: isToOne
                       })
-                      
-                      if (mapping.bullhornField === 'primarySkills') {
-                        console.log('🎯 CANDIDATE.PRIMARYSKILLS FIELD DETECTED 🎯')
-                        console.log('Field Metadata Full Details:', fieldMeta)
-                        console.log('Is TO_MANY?', isToMany ? '✅ YES - Will show To-Many config selector' : '❌ NO - Plain field')
-                        console.log('Is TO_ONE?', isToOne ? '✅ YES - Expects single entity ID' : '❌ NO')
-                        console.log('Current To-Many Config:', toManyConfigs[mapping.bullhornField] || 'Not configured')
-                        console.log('All available fields in metadata:', metadata?.fields?.length || 0)
-                        console.log('=========================================')
-                      }
                     }
                     
                     return (
