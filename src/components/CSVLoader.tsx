@@ -128,12 +128,20 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     
     const normalizedCsvColumn = csvColumnName.trim().toLowerCase()
     
-    const exactMatch = availableFields.find(field => 
+    const exactFieldNameMatch = availableFields.find(field => 
       field.name.toLowerCase() === normalizedCsvColumn
     )
     
-    if (exactMatch) {
-      return exactMatch.name
+    if (exactFieldNameMatch) {
+      return exactFieldNameMatch.name
+    }
+    
+    const exactLabelMatch = availableFields.find(field => 
+      field.label && field.label.trim().toLowerCase() === normalizedCsvColumn
+    )
+    
+    if (exactLabelMatch) {
+      return exactLabelMatch.name
     }
     
     return null
