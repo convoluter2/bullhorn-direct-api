@@ -19,6 +19,13 @@ export type EntityField = {
     entityMetaUrl: string
   }
   associationType?: 'TO_ONE' | 'TO_MANY'
+  composite?: boolean
+  fields?: Array<{
+    name: string
+    label?: string
+    dataType: string
+    required?: boolean
+  }>
 }
 
 export type EntityMetadata = {
@@ -129,6 +136,17 @@ export function useEntityMetadata(entity: string | undefined) {
             optionsUrl: field.optionsUrl
           }
 
+          if (field.type === 'COMPOSITE' || (field.fields && Array.isArray(field.fields))) {
+            fieldInfo.composite = true
+            fieldInfo.fields = field.fields?.map((subField: any) => ({
+              name: subField.name,
+              label: subField.label || subField.name,
+              dataType: subField.dataType || subField.type || 'String',
+              required: !subField.optional
+            })) || []
+            console.log(`📦 Composite field detected: ${entity}.${field.name} with ${fieldInfo.fields.length} sub-fields`)
+          }
+
           if (field.type === 'TO_MANY' || field.dataType === 'TO_MANY') {
             fieldInfo.associationType = 'TO_MANY'
           } else if (field.type === 'TO_ONE' || field.dataType === 'TO_ONE') {
@@ -180,6 +198,18 @@ export function useEntityMetadata(entity: string | undefined) {
         await entityCacheService.saveMetadataCache(entity, newMetadata)
         
         console.log('✅ Metadata loaded and cached for:', entity, '- Fields:', fields.length)
+        
+        const compositeFields = Object.entries(fieldsMap).filter(([_, field]) => field.composite)
+        if (compositeFields.length > 0) {
+          console.log(`📦 COMPOSITE FIELDS DETECTED IN ${entity.toUpperCase()} 📦`)
+          compositeFields.forEach(([name, field]) => {
+            console.log(`  - ${name}: ${field.fields?.length || 0} sub-fields`)
+            field.fields?.forEach(subField => {
+              console.log(`    • ${subField.name} (${subField.dataType})${subField.required ? ' *required' : ''}`)
+            })
+          })
+          console.log('=========================================')
+        }
         
         if (entity === 'Candidate') {
           console.log('🎯 CANDIDATE METADATA LOADED 🎯')

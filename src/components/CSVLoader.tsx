@@ -103,6 +103,16 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const availableFields = metadata?.fields || []
   
   useEffect(() => {
+    if (metadata && entity) {
+      const compositeFields = availableFields.filter(f => f.composite && f.fields && f.fields.length > 0)
+      console.log(`🔍 CSV Loader - Composite fields available for ${entity}:`, compositeFields.length)
+      compositeFields.forEach(field => {
+        console.log(`  - ${field.name} (${field.label}): ${field.fields?.length || 0} sub-fields`, field.fields)
+      })
+    }
+  }, [metadata, entity, availableFields])
+  
+  useEffect(() => {
     if (lookupField && lookupField !== '__none__') {
       if (!updateExisting && !createNew) {
         setCreateNew(true)
@@ -1676,7 +1686,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                     )
                   })}
                   
-                  {csvData && availableFields.filter(f => f.composite && f.compositeFields && f.compositeFields.length > 0).map(compositeField => (
+                  {csvData && availableFields.filter(f => f.composite && f.fields && f.fields.length > 0).map(compositeField => (
                     <CompositeFieldMapper
                       key={compositeField.name}
                       compositeField={compositeField}
