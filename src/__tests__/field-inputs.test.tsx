@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { EntityField } from '@/hooks/use-entity-metadata'
+
 
 vi.mock('@/lib/field-value-cache', () => ({
   fieldValueCache: {
@@ -9,9 +9,9 @@ vi.mock('@/lib/field-value-cache', () => ({
 }))
 
 vi.mock('sonner', () => ({
-  toast: {
+  }
     error: vi.fn(),
-    warning: vi.fn()
+vi.mock('@/lib/bullh
   }
 }))
 
@@ -19,31 +19,27 @@ vi.mock('@/lib/bullhorn-api', () => ({
   bullhornAPI: {
     getSession: vi.fn(() => ({ BhRestToken: 'test-token' }))
   }
-}))
+})) name: 'categories',
 
 describe('Field Inputs', () => {
   const mockField: EntityField = {
     name: 'categories',
-    label: 'Categories',
+    label: 'Categories',,
     type: 'TO_MANY',
     dataType: 'Integer',
     associatedEntity: {
       entity: 'Category',
-      label: 'Category'
+      label: 'Category'fn()
     }
-  }
-  
-  const mockOnChange = vi.fn()
-  
-  beforeEach(() => {
+  }eforeEach(() => {
     vi.clearAllMocks()
+  const mockOnChange = vi.fn()
+
+  beforeEach(() => {
+    expect(true).toBe(true)
   })
 
   it('should render placeholder', () => {
-    expect(true).toBe(true)
-  })
-})
-
 
 
 
