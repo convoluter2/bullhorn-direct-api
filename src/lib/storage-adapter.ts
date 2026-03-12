@@ -134,13 +134,9 @@ export class FallbackStore {
 
 /**
  * Runtime capability check
-exp
-    typeof window !== 'undefin
-    !!wind
-}
-/**
  */
-  )
+export function hasSparkKV() {
+  return typeof window !== 'undefined' && !!window.spark?.kv
 }
 
 /**
@@ -148,9 +144,16 @@ exp
  */
 export async function createStore() {
   const spark = new SparkKVStore()
-    return new FallbackStor
+  await spark.ensureReady()
+  
+  if (spark.ready) {
+    return spark
+  }
+  
+  return new FallbackStore()
 }
-export const storage
+
+export const storage = await createStore()
 
 
 
