@@ -1,14 +1,21 @@
 import { useState } from 'react'
-import { Alert, AlertDescription } from '@/comp
-import { Card, CardContent, CardHeader, CardTitle } from '@/com
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Info } from '@phosphor-icons/react'
-
-  compositeField: {
-    label: string
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import { Info } from '@phosphor-icons/react'
 import type { CSVMapping } from '@/lib/types'
 
+interface CompositeFieldMapperProps {
+  compositeField: {
+    label: string
+    name: string
+    required?: boolean
+    fields?: Array<{
+      name: string
+      label?: string
       dataType: string
       required?: boolean
     }>
@@ -77,71 +84,6 @@ export function CompositeFieldMapper({
             <TableRow>
               <TableHead>Sub-Field</TableHead>
               <TableHead>CSV Column</TableHead>
-            <div>Map your CSV columns to the sub-fields of this composite field.</div>
-          </AlertDescription>
-        </Alert>
-
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Sub-Field</TableHead>
-              <TableHead>CSV Column</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {subFields.map((subField) => (
-              <TableRow key={subField.name}>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Label className="font-mono text-xs">{subField.name}</Label>
-                    {subField.required && (
-                      <Badge variant="outline" className="text-xs">Required</Badge>
-                    )}
-                  </div>
-                  {subField.label && subField.label !== subField.name && (
-                    <div className="text-xs text-muted-foreground mt-1">{subField.label}</div>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Select
-                    value={getCurrentMapping(subField.name)}
-                    onValueChange={(value) => handleSubFieldChange(subField.name, value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select CSV column..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {csvHeaders.map((header) => (
-                        <SelectItem key={header} value={header}>
-                          {header}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-
-        {subFields.some(f => f.name === 'address1') && (
-          <Alert>
-            <Info className="h-4 w-4 text-blue-500" />
-            <AlertDescription className="text-xs">
-              <div className="font-semibold mb-1">Address Field Tips</div>
-              <div>
-                The <code className="font-mono bg-muted px-1 py-0.5 rounded">address</code> composite field typically includes: address1, address2, city, state, zip, countryID
-              </div>
-              <div className="mt-1 text-muted-foreground">
-                Make sure your CSV has corresponding columns for each address component you want to populate.
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
             </TableRow>
           </TableHeader>
           <TableBody>
