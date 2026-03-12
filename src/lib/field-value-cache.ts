@@ -88,8 +88,8 @@ export class FieldValueCache {
       } else {
         const queryResult = await bullhornAPI.query(
           entityType,
-          `id>0`,
           fieldsStr,
+          'id>0',
           { count: 500, orderBy: 'id' }
         )
         values = queryResult.data || []
@@ -143,7 +143,7 @@ export class FieldValueCache {
     console.log(`🔍 Fetching single record for ${entityType} id=${id}`)
 
     try {
-      const result = await bullhornAPI.getEntity(entityType, id, fields.join(','))
+      const result = await bullhornAPI.getEntity(entityType, id, fields)
       return result as CachedFieldValue
     } catch (error) {
       console.error(`❌ Failed to fetch ${entityType} id=${id}:`, error)

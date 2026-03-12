@@ -914,7 +914,7 @@ export class BullhornAPI {
     return operatorMap[operator] || ':'
   }
 
-  async query(entity: string, fields: string[], where?: string, params?: Record<string, any>, expectedCorporationId?: number): Promise<QueryResult> {
+  async query(entity: string, fields: string[] | string, where?: string, params?: Record<string, any>, expectedCorporationId?: number): Promise<QueryResult> {
     if (!this.session) {
       throw new Error('Not authenticated')
     }
@@ -929,6 +929,7 @@ export class BullhornAPI {
     window.dispatchEvent(event)
 
     const normalizedWhere = where && where.trim() !== '' ? where : 'id>0'
+    const fieldsStr = Array.isArray(fields) ? fields.join(',') : fields
 
     console.log('🔍 Executing query:', {
       entity,
@@ -937,11 +938,11 @@ export class BullhornAPI {
       restUrl: this.session.restUrl,
       where: normalizedWhere,
       originalWhere: where || 'none',
-      fields: fields.length
+      fields: fieldsStr
     })
 
     const queryParams = new URLSearchParams({
-      fields: fields.join(','),
+      fields: fieldsStr,
       where: normalizedWhere,
       BhRestToken: this.session.BhRestToken
     })
@@ -990,7 +991,112 @@ export class BullhornAPI {
     }
   }
 
-  async getEntity(entity: string, id: number, fields: string[]): Promise<any> {
+  async searchEntity(
+    entity: string,
+    searchTerm: string,
+    fields: string | string[],
+    params?: { count?: number; start?: number; orderBy?: string },
+    expectedCorporationId?: number
+  ): Promise<QueryResult> {
+    const fieldsArray = Array.isArray(fields) ? fields : fields.split(',').map(f => f.trim())
+    const fieldsStr = fieldsArray.join(',')
+
+    if (!supportsSearch(entity)) {
+      console.log(`📋 ${entity} doesn't support search, using query instead with name filter`)
+      
+      const nameField = fieldsArray.find(f => f === 'name' || f === 'firstName' || f === 'lastName' || f === 'title')
+      if (!nameField) {
+        console.warn(`⚠️ No name field found in fields for query lookup on ${entity}`)
+        return this.query(entity, fieldsStr, `id>0`, params, expectedCorporationId)
+      }
+
+      const whereClause = `${nameField} LIKE '%${searchTerm}%'`
+      return this.query(entity, fieldsStr, whereClause, params, expectedCorporationId)
+    }
+
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    if (expectedCorporationId) {
+      this.ensureCorrectConnection(expectedCorporationId)
+    }
+
+    const encodedEntity = encodeURIComponent(entity)
+
+    const event = new CustomEvent('entity-usage', { detail: { entityName: entity } })
+    window.dispatchEvent(event)
+
+    const query = `*${searchTerm}*`
+    console.log('🔍 Executing searchEntity:', {
+      entity,
+      searchTerm,
+      query,
+      corporationId: this.session.corporationId,
+      fields: fieldsStr
+    })
+
+    const count = params?.count || 100
+    const start = params?.start || 0
+
+    const searchParams = new URLSearchParams({
+      query: query,
+      fields: fieldsStr,
+      count: count.toString(),
+      start: start.toString(),
+      BhRestToken: this.session.BhRestToken
+    })
+
+    if (params?.orderBy) {
+      searchParams.append('orderBy', params.orderBy)
+    }
+
+    const fullUrl = `${this.session.restUrl}search/${encodedEntity}?${searchParams.toString()}`
+    console.log(`📡 Full SEARCH URL:`, fullUrl)
+
+    const response = await this.throttledFetch(
+      fullUrl,
+      undefined,
+      1
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error(`❌ Search failed for ${entity}:`, {
+        status: response.status,
+        error,
+        searchTerm,
+        url: fullUrl
+      })
+      
+      console.log(`🔄 Search failed, falling back to query for ${entity}`)
+      const nameField = fieldsArray.find(f => f === 'name' || f === 'firstName' || f === 'lastName' || f === 'title')
+      if (nameField) {
+        const whereClause = `${nameField} LIKE '%${searchTerm}%'`
+        return this.query(entity, fieldsStr, whereClause, params, expectedCorporationId)
+      }
+      
+      throw new Error(`Search failed: ${error}`)
+    }
+
+    const result = await response.json()
+    
+    console.log('✅ Search complete:', {
+      entity,
+      total: result.total,
+      count: result.count,
+      corporationId: this.session.corporationId
+    })
+    
+    return {
+      data: result.data || [],
+      total: result.total || 0,
+      count: result.count || 0,
+      start: result.start || 0
+    }
+  }
+
+  async getEntity(entity: string, id: number, fields: string[] | string): Promise<any> {
     if (!this.session) {
       throw new Error('Not authenticated')
     }
@@ -1000,9 +1106,11 @@ export class BullhornAPI {
     const event = new CustomEvent('entity-usage', { detail: { entityName: entity } })
     window.dispatchEvent(event)
 
+    const fieldsStr = Array.isArray(fields) ? fields.join(',') : fields
+
     console.log(`🔍 Fetching ${entity} entity by ID:`, {
       id,
-      fields: fields.join(','),
+      fields: fieldsStr,
       restUrl: this.session.restUrl,
       corporationId: this.session.corporationId,
       entity,
@@ -1011,7 +1119,7 @@ export class BullhornAPI {
     })
 
     const params = new URLSearchParams({
-      fields: fields.join(','),
+      fields: fieldsStr,
       BhRestToken: this.session.BhRestToken
     })
 
