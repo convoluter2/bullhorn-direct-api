@@ -695,19 +695,32 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           }
         } else {
           try {
-            const searchResult = await bullhornAPI.search({
-              entity,
-              fields: fieldsToFetch,
-              filters: [{ field: lookupField, operator: 'equals', value: lookupValue }],
-              count: 1,
-              start: 0
-            })
+            let searchResult
+            try {
+              searchResult = await bullhornAPI.search({
+                entity,
+                fields: fieldsToFetch,
+                filters: [{ field: lookupField, operator: 'equals', value: lookupValue }],
+                count: 1,
+                start: 0
+              })
+            } catch (searchError) {
+              console.warn(`Search failed for lookup, trying query method: ${searchError}`)
+              
+              const whereClause = `${lookupField}=${lookupValue}`
+              searchResult = await bullhornAPI.query(
+                entity,
+                fieldsToFetch,
+                whereClause,
+                { count: '1', start: '0' }
+              )
+            }
             
             if (searchResult.data && searchResult.data.length > 0) {
               existingRecord = searchResult.data[0]
             }
           } catch (searchError) {
-            console.error(`Search failed for ${entity} ${lookupField}=${lookupValue}:`, searchError)
+            console.error(`Lookup failed for ${entity} ${lookupField}=${lookupValue}:`, searchError)
           }
         }
       }

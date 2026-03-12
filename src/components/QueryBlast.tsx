@@ -136,6 +136,36 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
     }
   }
 
+  const buildSQLWhereClause = (filters: QueryFilter[]): string => {
+    if (filters.length === 0) return 'id>0'
+    
+    const conditions = filters.map(filter => {
+      const operator = filter.operator
+      const field = filter.field
+      const value = filter.value
+      
+      if (operator === 'is_null') return `${field} IS NULL`
+      if (operator === 'is_not_null') return `${field} IS NOT NULL`
+      if (operator === 'equals') return `${field}=${value}`
+      if (operator === 'not_equals') return `${field}<>${value}`
+      if (operator === 'greater_than') return `${field}>${value}`
+      if (operator === 'less_than') return `${field}<${value}`
+      if (operator === 'greater_equal') return `${field}>=${value}`
+      if (operator === 'less_equal') return `${field}<=${value}`
+      if (operator === 'contains') return `${field} LIKE '%${value}%'`
+      if (operator === 'starts_with') return `${field} LIKE '${value}%'`
+      if (operator === 'ends_with') return `${field} LIKE '%${value}'`
+      if (operator === 'in_list' || operator === 'in_list_parens') {
+        const values = value.split(',').map((v: string) => v.trim()).join(',')
+        return `${field} IN (${values})`
+      }
+      
+      return `${field}=${value}`
+    })
+    
+    return conditions.join(' AND ')
+  }
+
   const executeQuery = async (start = 0) => {
     if (!entity) {
       toast.error('Please select an entity')
@@ -164,7 +194,38 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
         orderBy: orderBy && orderBy !== '__none__' ? orderBy : undefined
       }
 
-      const result = await bullhornAPI.search(config, undefined, currentCorporationId)
+      let result
+      try {
+        result = await bullhornAPI.search(config, undefined, currentCorporationId)
+      } catch (searchError) {
+        console.warn('Search failed, attempting query method fallback:', searchError)
+        
+        const activeFilters = filterMode === 'simple' 
+          ? filters.filter(f => f.field && f.value)
+          : []
+        
+        const whereClause = buildSQLWhereClause(activeFilters)
+        
+        const queryParams: Record<string, any> = {
+          count: count.toString(),
+          start: start.toString()
+        }
+        
+        if (config.orderBy) {
+          queryParams.orderBy = config.orderBy
+        }
+        
+        result = await bullhornAPI.query(
+          entity,
+          selectedFields,
+          whereClause,
+          queryParams,
+          currentCorporationId
+        )
+        
+        toast.info('Used Query method (SQL WHERE syntax) instead of Search')
+      }
+      
       setResults(result.data)
       setTotalCount(result.total)
       setCurrentStart(start)
@@ -205,6 +266,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
     const startTime = Date.now()
     const batchSize = 500
     const allData: any[] = []
+    let useQueryMethod = false
 
     try {
       const currentCorporationId = bullhornAPI.getCurrentCorporationId()
@@ -223,7 +285,39 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
           orderBy: orderBy && orderBy !== '__none__' ? orderBy : undefined
         }
 
-        const result = await bullhornAPI.search(config, undefined, currentCorporationId)
+        let result
+        try {
+          result = await bullhornAPI.search(config, undefined, currentCorporationId)
+        } catch (searchError) {
+          if (!useQueryMethod) {
+            console.warn('Search failed, switching to query method for all batches:', searchError)
+            useQueryMethod = true
+          }
+          
+          const activeFilters = filterMode === 'simple' 
+            ? filters.filter(f => f.field && f.value)
+            : []
+          
+          const whereClause = buildSQLWhereClause(activeFilters)
+          
+          const queryParams: Record<string, any> = {
+            count: batchSize.toString(),
+            start: start.toString()
+          }
+          
+          if (config.orderBy) {
+            queryParams.orderBy = config.orderBy
+          }
+          
+          result = await bullhornAPI.query(
+            entity,
+            selectedFields,
+            whereClause,
+            queryParams,
+            currentCorporationId
+          )
+        }
+        
         allData.push(...result.data)
         
         toast.loading(`Loading batch ${i + 1} of ${totalBatches}...`, { id: 'batch-load' })
@@ -237,7 +331,7 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
         'QueryBlast - Load All',
         'success',
         `Loaded all ${allData.length} records`,
-        { entity, total: allData.length }
+        { entity, total: allData.length, method: useQueryMethod ? 'query' : 'search' }
       )
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load all results'

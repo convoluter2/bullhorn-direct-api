@@ -116,6 +116,36 @@ export function QueryStack({ onLog }: QueryStackProps) {
     }
   }
 
+  const buildSQLWhereClause = (filters: QueryFilter[]): string => {
+    if (filters.length === 0) return 'id>0'
+    
+    const conditions = filters.map(filter => {
+      const operator = filter.operator
+      const field = filter.field
+      const value = filter.value
+      
+      if (operator === 'is_null') return `${field} IS NULL`
+      if (operator === 'is_not_null') return `${field} IS NOT NULL`
+      if (operator === 'equals') return `${field}=${value}`
+      if (operator === 'not_equals') return `${field}<>${value}`
+      if (operator === 'greater_than') return `${field}>${value}`
+      if (operator === 'less_than') return `${field}<${value}`
+      if (operator === 'greater_equal') return `${field}>=${value}`
+      if (operator === 'less_equal') return `${field}<=${value}`
+      if (operator === 'contains') return `${field} LIKE '%${value}%'`
+      if (operator === 'starts_with') return `${field} LIKE '${value}%'`
+      if (operator === 'ends_with') return `${field} LIKE '%${value}'`
+      if (operator === 'in_list' || operator === 'in_list_parens') {
+        const values = value.split(',').map((v: string) => v.trim()).join(',')
+        return `${field} IN (${values})`
+      }
+      
+      return `${field}=${value}`
+    })
+    
+    return conditions.join(' AND ')
+  }
+
   const executeQuery = async () => {
     if (!entity) {
       toast.error('Please select an entity')
@@ -146,12 +176,45 @@ export function QueryStack({ onLog }: QueryStackProps) {
       let start = 0
       const batchSize = 500
       let hasMore = true
+      let useQueryMethod = false
 
       while (hasMore && allData.length < 5000) {
         config.start = start
         config.count = batchSize
         
-        const result = await bullhornAPI.search(config)
+        let result
+        try {
+          result = await bullhornAPI.search(config)
+        } catch (searchError) {
+          if (!useQueryMethod) {
+            console.warn('Search failed, switching to query method for all batches:', searchError)
+            useQueryMethod = true
+            toast.info('Using Query method (SQL WHERE syntax) instead of Search')
+          }
+          
+          const activeFilters = filterMode === 'simple' 
+            ? queryFilters.filter(f => f.field && f.value)
+            : []
+          
+          const whereClause = buildSQLWhereClause(activeFilters)
+          
+          const queryParams: Record<string, any> = {
+            count: batchSize.toString(),
+            start: start.toString()
+          }
+          
+          if (config.orderBy) {
+            queryParams.orderBy = config.orderBy
+          }
+          
+          result = await bullhornAPI.query(
+            entity,
+            [...selectedFields, 'id'],
+            whereClause,
+            queryParams
+          )
+        }
+        
         allData.push(...result.data)
         
         if (result.data.length < batchSize || allData.length >= result.total) {
@@ -175,7 +238,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
         'QueryStack - Query',
         'success',
         `Queried ${entity}: ${allData.length} records`,
-        { entity, fields: selectedFields, filterMode, filters: filterMode === 'simple' ? queryFilters : queryFilterGroups, count: allData.length }
+        { entity, fields: selectedFields, filterMode, filters: filterMode === 'simple' ? queryFilters : queryFilterGroups, count: allData.length, method: useQueryMethod ? 'query' : 'search' }
       )
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Query failed'
