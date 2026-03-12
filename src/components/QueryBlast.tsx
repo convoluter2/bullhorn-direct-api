@@ -27,7 +27,8 @@ import { usePausableOperation } from '@/hooks/use-pausable-operation'
 import { getProductionOperators } from '@/lib/validated-operators'
 import { EntityHelpAlert } from '@/components/EntityHelpAlert'
 import { AutoRefreshControl } from '@/components/AutoRefreshControl'
-import type { QueryFilter, QueryConfig, FilterGroup, ExecutionState } from '@/lib/types'
+import { SavedQueryManager } from '@/components/SavedQueryManager'
+import type { QueryFilter, QueryConfig, FilterGroup, ExecutionState, SavedQuery } from '@/lib/types'
 
 interface QueryBlastProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -134,6 +135,22 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
     } else {
       setSelectedFields([...selectedFields, field])
     }
+  }
+
+  const handleLoadSavedQuery = (query: SavedQuery) => {
+    setEntity(query.entity)
+    setSelectedFields(query.fields)
+    setFilters(query.filters)
+    setFilterGroups(query.filterGroups || [])
+    setGroupLogic(query.groupLogic || 'AND')
+    setFilterMode(query.filterMode)
+    setOrderBy(query.orderBy || '')
+    setCount(query.count || 500)
+    
+    setResults([])
+    setTotalCount(0)
+    setCurrentStart(0)
+    setAllResults([])
   }
 
   const buildSQLWhereClause = (filters: QueryFilter[]): string => {
@@ -966,6 +983,17 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
                       <Lightning />
                       {loading ? 'Executing...' : 'Execute Query'}
                     </Button>
+                    <SavedQueryManager
+                      entity={entity}
+                      fields={selectedFields}
+                      filters={filters}
+                      filterGroups={filterGroups}
+                      groupLogic={groupLogic}
+                      orderBy={orderBy}
+                      count={count}
+                      filterMode={filterMode}
+                      onLoadQuery={handleLoadSavedQuery}
+                    />
                   </div>
                 </>
               )}

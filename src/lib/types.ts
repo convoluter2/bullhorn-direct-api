@@ -46,6 +46,23 @@ export type QueryConfig = {
   start?: number
 }
 
+export type SavedQuery = {
+  id: string
+  name: string
+  description?: string
+  entity: string
+  fields: string[]
+  filters: QueryFilter[]
+  filterGroups?: FilterGroup[]
+  groupLogic?: 'AND' | 'OR'
+  orderBy?: string
+  count?: number
+  filterMode: 'simple' | 'grouped'
+  createdAt: number
+  updatedAt: number
+  tags?: string[]
+}
+
 export type QueryResult = {
   data: any[]
   total: number
