@@ -152,9 +152,18 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
       if (operator === 'less_than') return `${field}<${value}`
       if (operator === 'greater_equal') return `${field}>=${value}`
       if (operator === 'less_equal') return `${field}<=${value}`
-      if (operator === 'contains') return `${field} LIKE '%${value}%'`
-      if (operator === 'starts_with') return `${field} LIKE '${value}%'`
-      if (operator === 'ends_with') return `${field} LIKE '%${value}'`
+      if (operator === 'contains') {
+        const escapedValue = value.replace(/'/g, "''")
+        return `${field} LIKE '%${escapedValue}%'`
+      }
+      if (operator === 'starts_with') {
+        const escapedValue = value.replace(/'/g, "''")
+        return `${field} LIKE '${escapedValue}%'`
+      }
+      if (operator === 'ends_with') {
+        const escapedValue = value.replace(/'/g, "''")
+        return `${field} LIKE '%${escapedValue}'`
+      }
       if (operator === 'in_list' || operator === 'in_list_parens') {
         const values = value.split(',').map((v: string) => v.trim()).join(',')
         return `${field} IN (${values})`
@@ -183,15 +192,32 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
     try {
       const currentCorporationId = bullhornAPI.getCurrentCorporationId()
       
+      const activeFilters = filterMode === 'simple' 
+        ? filters.filter(f => f.field && f.value)
+        : []
+      
+      const hasFilters = filterMode === 'simple' 
+        ? activeFilters.length > 0
+        : filterGroups && filterGroups.length > 0 && filterGroups.some(g => g.filters.length > 0)
+      
+      let effectiveOrderBy = orderBy && orderBy !== '__none__' ? orderBy : undefined
+      let effectiveCount = count
+      
+      if (!hasFilters && !effectiveOrderBy) {
+        effectiveOrderBy = '-id'
+        effectiveCount = Math.min(count, 100)
+        toast.info(`No filters specified - fetching last ${effectiveCount} records (ordered by ID descending)`, { duration: 3000 })
+      }
+      
       const config: QueryConfig = {
         entity,
         fields: selectedFields,
-        filters: filterMode === 'simple' ? filters.filter(f => f.field && f.value) : [],
+        filters: activeFilters,
         filterGroups: filterMode === 'grouped' ? filterGroups : undefined,
         groupLogic: filterMode === 'grouped' ? groupLogic : undefined,
-        count,
+        count: effectiveCount,
         start,
-        orderBy: orderBy && orderBy !== '__none__' ? orderBy : undefined
+        orderBy: effectiveOrderBy
       }
 
       let result
@@ -200,19 +226,15 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
       } catch (searchError) {
         console.warn('Search failed, attempting query method fallback:', searchError)
         
-        const activeFilters = filterMode === 'simple' 
-          ? filters.filter(f => f.field && f.value)
-          : []
-        
         const whereClause = buildSQLWhereClause(activeFilters)
         
         const queryParams: Record<string, any> = {
-          count: count.toString(),
+          count: effectiveCount.toString(),
           start: start.toString()
         }
         
-        if (config.orderBy) {
-          queryParams.orderBy = config.orderBy
+        if (effectiveOrderBy) {
+          queryParams.orderBy = effectiveOrderBy
         }
         
         result = await bullhornAPI.query(
@@ -272,17 +294,31 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
       const currentCorporationId = bullhornAPI.getCurrentCorporationId()
       const totalBatches = Math.ceil(totalCount / batchSize)
       
+      const activeFilters = filterMode === 'simple' 
+        ? filters.filter(f => f.field && f.value)
+        : []
+      
+      const hasFilters = filterMode === 'simple' 
+        ? activeFilters.length > 0
+        : filterGroups && filterGroups.length > 0 && filterGroups.some(g => g.filters.length > 0)
+      
+      let effectiveOrderBy = orderBy && orderBy !== '__none__' ? orderBy : undefined
+      
+      if (!hasFilters && !effectiveOrderBy) {
+        effectiveOrderBy = '-id'
+      }
+      
       for (let i = 0; i < totalBatches; i++) {
         const start = i * batchSize
         const config: QueryConfig = {
           entity,
           fields: selectedFields,
-          filters: filterMode === 'simple' ? filters.filter(f => f.field && f.value) : [],
+          filters: activeFilters,
           filterGroups: filterMode === 'grouped' ? filterGroups : undefined,
           groupLogic: filterMode === 'grouped' ? groupLogic : undefined,
           count: batchSize,
           start,
-          orderBy: orderBy && orderBy !== '__none__' ? orderBy : undefined
+          orderBy: effectiveOrderBy
         }
 
         let result
@@ -294,10 +330,6 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
             useQueryMethod = true
           }
           
-          const activeFilters = filterMode === 'simple' 
-            ? filters.filter(f => f.field && f.value)
-            : []
-          
           const whereClause = buildSQLWhereClause(activeFilters)
           
           const queryParams: Record<string, any> = {
@@ -305,8 +337,8 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
             start: start.toString()
           }
           
-          if (config.orderBy) {
-            queryParams.orderBy = config.orderBy
+          if (effectiveOrderBy) {
+            queryParams.orderBy = effectiveOrderBy
           }
           
           result = await bullhornAPI.query(
