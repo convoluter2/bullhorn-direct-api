@@ -133,22 +133,15 @@ export class FallbackStore {
 }
 
 /**
- * Runtime capability check
-  r
-
- * Create and initialize the storage adapter
-e
-
-  i
- * Create and initialize the storage adapter
+ */
  */
 export async function createStore() {
-  const spark = new SparkKVStore()
-  await spark.ensureReady()
-  
-  if (spark.ready) {
     return spark
-exp
+  
+}
+let storageAdapterIn
+    return spark
+  }
   
   return new FallbackStore()
 }
@@ -164,16 +157,12 @@ export function getStorageAdapter(): Promise<SparkKVStore | FallbackStore> {
   if (!storageAdapterPromise) {
     storageAdapterPromise = createStore().then(adapter => {
       storageAdapterInstance = adapter
-
-
-
-
-
-
-
-
-
-
+      return adapter
+    })
+  }
+  
+  return storageAdapterPromise
+}
 
 
 
