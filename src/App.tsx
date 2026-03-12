@@ -1,10 +1,3 @@
-
-useEffect(() => {
-  getConnectionsOnce().then(setConnections)
-}, []) // MUST be empty deps
-``
-
-
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Toaster } from '@/components/ui/sonner'
