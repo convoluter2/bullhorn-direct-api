@@ -11,9 +11,7 @@ import "./styles/theme.css"
 import "./index.css"
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <App />
-    </ErrorBoundary>
-  </StrictMode>
+  <ErrorBoundary FallbackComponent={ErrorFallback}>
+    <App />
+  </ErrorBoundary>
 )

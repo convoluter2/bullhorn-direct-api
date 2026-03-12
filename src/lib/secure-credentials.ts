@@ -17,13 +17,22 @@ export type SavedConnection = {
 }
 
 class SecureCredentialsAPI {
-  // --- small helpers to centralize adapter access ---
+  private cachedConnections: SavedConnection[] | null = null
+  private inFlightConnectionsRequest: Promise<SavedConnection[]> | null = null
+  private connectionsCacheTimestamp = 0
+  private readonly CONNECTIONS_CACHE_DURATION = 60000
+
   private async kv() {
     return await getStorageAdapter()
   }
 
   private credKey(connectionId: string) {
     return `credentials-${connectionId}`
+  }
+
+  private invalidateConnectionsCache(): void {
+    this.cachedConnections = null
+    this.connectionsCacheTimestamp = 0
   }
 
   async saveCredentials(connectionId: string, credentials: SecureCredentials): Promise<void> {
@@ -94,25 +103,49 @@ class SecureCredentialsAPI {
 
     const storage = await this.kv()
     await storage.set('bullhorn-connections', connections)
+    
+    this.invalidateConnectionsCache()
 
     console.log('✅ SecureCredentialsAPI - Connection saved. Total connections:', connections.length)
   }
 
   async getConnections(): Promise<SavedConnection[]> {
-    console.log('🔍 SecureCredentialsAPI - Getting all connections')
+    const now = Date.now()
+    
+    if (this.cachedConnections && (now - this.connectionsCacheTimestamp) < this.CONNECTIONS_CACHE_DURATION) {
+      console.log('📦 Using cached connections (no KV call needed)')
+      return this.cachedConnections
+    }
 
-    const storage = await this.kv()
-    const raw = await storage.get('bullhorn-connections')
+    if (this.inFlightConnectionsRequest) {
+      console.log('⏳ Waiting for in-flight connections request')
+      return this.inFlightConnectionsRequest
+    }
 
-    // Normalize to array (protects you from null/undefined/non-array)
-    const connections: SavedConnection[] = Array.isArray(raw) ? (raw as SavedConnection[]) : []
+    console.log('🔍 SecureCredentialsAPI - Fetching connections from KV')
 
-    console.log('📦 SecureCredentialsAPI - Retrieved connections:', {
-      count: connections.length,
-      connections: connections.map(c => ({ id: c.id, name: c.name }))
-    })
+    this.inFlightConnectionsRequest = (async () => {
+      try {
+        const storage = await this.kv()
+        const raw = await storage.get('bullhorn-connections')
 
-    return connections
+        const connections: SavedConnection[] = Array.isArray(raw) ? (raw as SavedConnection[]) : []
+
+        console.log('📦 SecureCredentialsAPI - Retrieved connections:', {
+          count: connections.length,
+          connections: connections.map(c => ({ id: c.id, name: c.name }))
+        })
+
+        this.cachedConnections = connections
+        this.connectionsCacheTimestamp = Date.now()
+
+        return connections
+      } finally {
+        this.inFlightConnectionsRequest = null
+      }
+    })()
+
+    return this.inFlightConnectionsRequest
   }
 
   async deleteConnection(connectionId: string): Promise<void> {
@@ -125,6 +158,8 @@ class SecureCredentialsAPI {
     await storage.set('bullhorn-connections', filtered)
 
     await this.deleteCredentials(connectionId)
+    
+    this.invalidateConnectionsCache()
 
     console.log('✅ SecureCredentialsAPI - Connection and credentials deleted')
   }
@@ -140,6 +175,8 @@ class SecureCredentialsAPI {
 
       const storage = await this.kv()
       await storage.set('bullhorn-connections', connections)
+      
+      this.invalidateConnectionsCache()
 
       console.log('✅ SecureCredentialsAPI - Connection updated')
     } else {
