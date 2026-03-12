@@ -22,6 +22,7 @@ import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { ValidatedFieldInput } from '@/components/ValidatedFieldInput'
 import { ToManyFieldInput } from '@/components/ToManyFieldInput'
+import { ToOneFieldInput } from '@/components/ToOneFieldInput'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
 import { ConditionalAssociationBuilder, type ConditionalAssociation } from '@/components/ConditionalAssociationBuilder'
 import { getAssociationsForRecord, mergeAssociationActions, describeAssociation } from '@/lib/conditional-logic'
@@ -1208,7 +1209,12 @@ export function SmartStack({ onLog }: SmartStackProps) {
                 <div className="space-y-2">
                   {fieldUpdates.map((update) => {
                     const fieldMeta = update.field ? fieldsMap[update.field] : undefined
-                    const isToMany = fieldMeta?.associationType === 'TO_MANY'
+                    const isToMany = fieldMeta?.associationType === 'TO_MANY' || fieldMeta?.type === 'TO_MANY' ||
+                      (fieldMeta?.dataType === 'TO_MANY') ||
+                      (fieldMeta?.associatedEntity && fieldMeta?.associationType?.includes('MANY'))
+                    const isToOne = fieldMeta?.associationType === 'TO_ONE' || fieldMeta?.type === 'TO_ONE' ||
+                      (fieldMeta?.dataType === 'TO_ONE') ||
+                      (fieldMeta?.associatedEntity && fieldMeta?.associationType?.includes('ONE'))
                     
                     console.log('🔍 SmartStack Field Update Render:', {
                       updateId: update.id,
@@ -1224,8 +1230,10 @@ export function SmartStack({ onLog }: SmartStackProps) {
                         associatedEntity: fieldMeta.associatedEntity
                       } : 'NOT FOUND IN FIELDSMAP',
                       isToMany,
+                      isToOne,
                       metadataLoading,
                       willShowToManyInput: isToMany && fieldMeta,
+                      willShowToOneInput: isToOne && fieldMeta,
                       fieldsMapSample: Object.keys(fieldsMap).slice(0, 10)
                     })
                     
@@ -1327,13 +1335,32 @@ export function SmartStack({ onLog }: SmartStackProps) {
                                 disabled={loading}
                               />
                             </>
+                          ) : isToOne && fieldMeta ? (
+                            <>
+                              {console.log('✅ Rendering ToOneFieldInput for:', {
+                                field: update.field,
+                                fieldMeta: {
+                                  name: fieldMeta.name,
+                                  associationType: fieldMeta.associationType,
+                                  associatedEntity: fieldMeta.associatedEntity
+                                }
+                              })}
+                              <ToOneFieldInput
+                                field={fieldMeta}
+                                value={update.value}
+                                onChange={(v) => updateFieldUpdate(update.id, { value: v })}
+                                disabled={loading}
+                                placeholder="Enter ID or search"
+                              />
+                            </>
                           ) : (
                             <>
-                              {console.log('❌ NOT rendering ToManyFieldInput for:', {
+                              {console.log('❌ Rendering standard ValidatedFieldInput for:', {
                                 field: update.field,
                                 isToMany,
+                                isToOne,
                                 hasFieldMeta: !!fieldMeta,
-                                reason: !isToMany ? 'not TO_MANY' : !fieldMeta ? 'no fieldMeta' : 'unknown'
+                                reason: !fieldMeta ? 'no fieldMeta' : !isToMany && !isToOne ? 'scalar field' : 'unknown'
                               })}
                               <ValidatedFieldInput
                                 field={fieldMeta || null}

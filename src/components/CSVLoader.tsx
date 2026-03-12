@@ -1458,8 +1458,12 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                     const fieldMeta = mapping?.bullhornField && mapping.bullhornField !== '__skip__' && metadata?.fieldsMap?.[mapping.bullhornField]
                       ? metadata.fieldsMap[mapping.bullhornField] 
                       : undefined
-                    const isToMany = fieldMeta?.associationType === 'TO_MANY' || fieldMeta?.type === 'TO_MANY'
-                    const isToOne = fieldMeta?.associationType === 'TO_ONE' || fieldMeta?.type === 'TO_ONE'
+                    const isToMany = fieldMeta?.associationType === 'TO_MANY' || fieldMeta?.type === 'TO_MANY' || 
+                      (fieldMeta?.dataType === 'TO_MANY') || 
+                      (fieldMeta?.associatedEntity && fieldMeta?.associationType?.includes('MANY'))
+                    const isToOne = fieldMeta?.associationType === 'TO_ONE' || fieldMeta?.type === 'TO_ONE' ||
+                      (fieldMeta?.dataType === 'TO_ONE') ||
+                      (fieldMeta?.associatedEntity && fieldMeta?.associationType?.includes('ONE'))
                     
                     if (mapping.bullhornField && mapping.bullhornField !== '__skip__') {
                       console.log('CSV Loader Field Mapping Debug:', {
