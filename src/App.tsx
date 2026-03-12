@@ -60,6 +60,7 @@ function App() {
       console.log('🔄 Initializing session for browser:', browserId)
       
       const connections = await secureCredentialsAPI.getConnections()
+      let foundSession = false
       
       for (const connection of connections) {
         const storedSession = await sessionManager.getSession(connection.id)
@@ -78,11 +79,12 @@ function App() {
           const dcInfo = bullhornAPI.getDatacenterInfo()
           setDatacenterInfo(dcInfo)
           
+          foundSession = true
           break
         }
       }
       
-      if (!session) {
+      if (!foundSession) {
         console.log('📭 No existing session found for this browser')
       }
     }
