@@ -3,6 +3,7 @@ import { EntitySidebar } from './EntitySidebar'
 import { EntityDocViewer } from './EntityDocViewer'
 import { entityMetadataService, type EntityMetadata } from '@/lib/entity-metadata'
 import { entityCacheService } from '@/lib/entity-cache-service'
+import { kvRequestManager } from '@/lib/kv-request-manager'
 import type { BullhornSession } from '@/lib/types'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -415,6 +416,8 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
 
   const handleRefresh = () => {
     if (selectedEntity) {
+      console.log(`🔄 Force refreshing metadata for: ${selectedEntity}`)
+      kvRequestManager.invalidateMemoryCache(`metadata-cache-${selectedEntity}`)
       loadMetadata(selectedEntity, true)
     }
   }

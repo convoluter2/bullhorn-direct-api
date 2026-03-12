@@ -107,11 +107,23 @@ export class EntityCacheService {
         () => window.spark.kv.get<{ metadata: any; cachedAt: number }>(`metadata-cache-${entityName}`)
       )
       if (!cached) {
+        console.log(`📭 No metadata cache found for: ${entityName}`)
         return null
       }
+      
+      console.log(`📦 Loaded metadata cache for ${entityName}:`, {
+        hasCached: !!cached,
+        hasMetadata: !!cached.metadata,
+        hasFields: !!cached.metadata?.fields,
+        fieldCount: cached.metadata?.fields?.length || 0,
+        cachedAt: new Date(cached.cachedAt).toISOString(),
+        age: Math.round((Date.now() - cached.cachedAt) / 1000) + 's',
+        firstField: cached.metadata?.fields?.[0]?.name || 'none'
+      })
+      
       return cached
     } catch (error) {
-      console.error('Failed to load metadata cache:', error)
+      console.error(`Failed to load metadata cache for ${entityName}:`, error)
       return null
     }
   }
@@ -281,9 +293,23 @@ export class EntityCacheService {
       const entityList = await this.getEntityList()
       const allEntityNames = entityList.map(e => e.entity)
       
-      const uncached = allEntityNames.filter(name => !cachedMetadataKeys.includes(name))
+      const uncached: string[] = []
+      const corrupted: string[] = []
       
-      console.log(`📊 Cache status: ${cachedMetadataKeys.length} cached, ${uncached.length} uncached out of ${allEntityNames.length} total`)
+      for (const entityName of allEntityNames) {
+        if (!cachedMetadataKeys.includes(entityName)) {
+          uncached.push(entityName)
+        } else {
+          const cached = await this.loadMetadataCache(entityName)
+          if (!cached || !cached.metadata || !cached.metadata.fields || cached.metadata.fields.length === 0) {
+            console.warn(`⚠️ Entity ${entityName} has corrupted/empty cache, marking for refresh`)
+            corrupted.push(entityName)
+            uncached.push(entityName)
+          }
+        }
+      }
+      
+      console.log(`📊 Cache status: ${cachedMetadataKeys.length - corrupted.length} valid cached, ${corrupted.length} corrupted, ${uncached.length - corrupted.length} never cached, ${uncached.length} total to refresh`)
       
       return uncached
     } catch (error) {

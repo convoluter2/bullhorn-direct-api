@@ -42,8 +42,19 @@ export class EntityMetadataService {
     if (!forceRefresh) {
       const cached = await entityCacheService.loadMetadataCache(entityName)
       if (cached) {
-        console.log('📦 Using persistent cached metadata for:', entityName)
-        return cached.metadata as EntityMetadata
+        console.log('📦 Using persistent cached metadata for:', entityName, {
+          hasMetadata: !!cached.metadata,
+          hasFields: !!cached.metadata?.fields,
+          fieldCount: cached.metadata?.fields?.length || 0,
+          cachedAt: cached.cachedAt,
+          firstFewFields: cached.metadata?.fields?.slice(0, 3).map((f: any) => f.name) || []
+        })
+        
+        if (cached.metadata && cached.metadata.fields && cached.metadata.fields.length > 0) {
+          return cached.metadata as EntityMetadata
+        } else {
+          console.warn('⚠️ Cached metadata exists but has no fields, fetching fresh data')
+        }
       }
     }
 
