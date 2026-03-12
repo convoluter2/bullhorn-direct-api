@@ -141,7 +141,7 @@ class SecureCredentialsAPI {
 
    this.inFlightConnectionsRequest = null
 
-this.inFlightConnectionsRequest = (async () => {
+;this.inFlightConnectionsRequest = (async () => {
   try {
     const storage = await this.kv()
     const raw = await storage.get('bullhorn-connections')
