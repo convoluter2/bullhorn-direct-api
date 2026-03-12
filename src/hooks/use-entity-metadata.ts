@@ -108,74 +108,69 @@ export function useEntityMetadata(entity: string | undefined) {
 
         const fields: EntityField[] = []
         const fieldsMap: Record<string, EntityField> = {}
-
-        if (response.fields && Array.isArray(response.fields)) {
-          const fields: EntityField[] = []
-          const fieldsMap: Record<string, EntityField> = {}
-          
-          for (const field of response.fields) {
-            if (!field || !field.name) {
-              continue
-            }
-            
-            const defaultLabel = field.label || field.name
-            const customLabel = getCustomFieldLabel(entity, field.name, defaultLabel)
-            
-            const fieldInfo: EntityField = {
-              name: field.name,
-              label: customLabel,
-              type: field.type || 'String',
-              dataType: field.dataType || 'String',
-              dataSpecialization: field.dataSpecialization,
-              confidential: field.confidential,
-              optional: field.optional,
-              optionsType: field.optionsType,
-              optionsUrl: field.optionsUrl
-            }
-
-            if (field.associatedEntity) {
-              fieldInfo.associatedEntity = {
-                entity: field.associatedEntity.entity,
-                entityMetaUrl: field.associatedEntity.entityMetaUrl
-              }
-              
-              if (field.dataType === 'TO_MANY' || field.type === 'TO_MANY') {
-                fieldInfo.associationType = 'TO_MANY'
-              } else if (field.dataType === 'TO_ONE' || field.type === 'TO_ONE') {
-                fieldInfo.associationType = 'TO_ONE'
-              }
-            } else {
-              if (field.type === 'TO_MANY' || field.dataType === 'TO_MANY') {
-                fieldInfo.associationType = 'TO_MANY'
-              } else if (field.type === 'TO_ONE' || field.dataType === 'TO_ONE') {
-                fieldInfo.associationType = 'TO_ONE'
-              }
-            }
-
-            if (field.options && Array.isArray(field.options)) {
-              fieldInfo.options = field.options.map((opt: any) => ({
-                value: opt.value,
-                label: opt.label || String(opt.value)
-              }))
-            } else if (field.optionsUrl && (field.optionsType === 'SpecializedOptionsLookup' || field.optionsType === 'OptionsLookup')) {
-              try {
-                console.log(`📋 Fetching options for ${entity}.${field.name} from API...`)
-                const fetchedOptions = await bullhornAPI.getFieldOptions(entity, field.name)
-                if (fetchedOptions && fetchedOptions.length > 0) {
-                  fieldInfo.options = fetchedOptions.map((opt: any) => ({
-                    value: opt.value,
-                    label: opt.label || String(opt.value)
-                  }))
-                  console.log(`✅ Loaded ${fieldInfo.options.length} options for ${entity}.${field.name}`)
-                }
-              } catch (error) {
-                console.warn(`⚠️ Failed to load options for ${entity}.${field.name}:`, error)
-              }
-            }
-
-            fields.push(fieldInfo)
-            fieldsMap[fieldInfo.name] = fieldInfo
+        
+        for (const field of response.fields) {
+          if (!field || !field.name) {
+            continue
           }
+          
+          const defaultLabel = field.label || field.name
+          const customLabel = getCustomFieldLabel(entity, field.name, defaultLabel)
+          
+          const fieldInfo: EntityField = {
+            name: field.name,
+            label: customLabel,
+            type: field.type || 'String',
+            dataType: field.dataType || 'String',
+            dataSpecialization: field.dataSpecialization,
+            confidential: field.confidential,
+            optional: field.optional,
+            optionsType: field.optionsType,
+            optionsUrl: field.optionsUrl
+          }
+
+          if (field.associatedEntity) {
+            fieldInfo.associatedEntity = {
+              entity: field.associatedEntity.entity,
+              entityMetaUrl: field.associatedEntity.entityMetaUrl
+            }
+            
+            if (field.dataType === 'TO_MANY' || field.type === 'TO_MANY') {
+              fieldInfo.associationType = 'TO_MANY'
+            } else if (field.dataType === 'TO_ONE' || field.type === 'TO_ONE') {
+              fieldInfo.associationType = 'TO_ONE'
+            }
+          } else {
+            if (field.type === 'TO_MANY' || field.dataType === 'TO_MANY') {
+              fieldInfo.associationType = 'TO_MANY'
+            } else if (field.type === 'TO_ONE' || field.dataType === 'TO_ONE') {
+              fieldInfo.associationType = 'TO_ONE'
+            }
+          }
+
+          if (field.options && Array.isArray(field.options)) {
+            fieldInfo.options = field.options.map((opt: any) => ({
+              value: opt.value,
+              label: opt.label || String(opt.value)
+            }))
+          } else if (field.optionsUrl && (field.optionsType === 'SpecializedOptionsLookup' || field.optionsType === 'OptionsLookup')) {
+            try {
+              console.log(`📋 Fetching options for ${entity}.${field.name} from API...`)
+              const fetchedOptions = await bullhornAPI.getFieldOptions(entity, field.name)
+              if (fetchedOptions && fetchedOptions.length > 0) {
+                fieldInfo.options = fetchedOptions.map((opt: any) => ({
+                  value: opt.value,
+                  label: opt.label || String(opt.value)
+                }))
+                console.log(`✅ Loaded ${fieldInfo.options.length} options for ${entity}.${field.name}`)
+              }
+            } catch (error) {
+              console.warn(`⚠️ Failed to load options for ${entity}.${field.name}:`, error)
+            }
+          }
+
+          fields.push(fieldInfo)
+          fieldsMap[fieldInfo.name] = fieldInfo
         }
 
         const newMetadata: EntityMetadata = {
