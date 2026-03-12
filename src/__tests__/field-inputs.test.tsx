@@ -1,25 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import type { EntityField } from '@/hooks/use-entity-metadata'
-
+import type { EntityField } from '@/hooks/use-entity-me
 vi.mock('@/lib/field-value-cache', () => ({
-  fieldValueCache: {
+
+  }
+
     getFieldValues: vi.fn(),
     invalidateAll: vi.fn()
-  }
+   
 }))
 
 vi.mock('sonner', () => ({
   toast: {
     error: vi.fn(),
     warning: vi.fn()
-  }
+}))
 }))
 
 vi.mock('@/lib/bullhorn-api', () => ({
   bullhornAPI: {
     getSession: vi.fn(() => ({ BhRestToken: 'test-token' }))
-  }
+   
 }))
 
 describe('Field Inputs', () => {
@@ -44,9 +44,6 @@ describe('Field Inputs', () => {
     expect(true).toBe(true)
   })
 })
-
-
-
 
 
 
