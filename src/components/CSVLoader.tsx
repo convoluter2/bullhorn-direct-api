@@ -25,6 +25,7 @@ import { LookupFieldSelector } from '@/components/LookupFieldSelector'
 import { SpeedControl } from '@/components/SpeedControl'
 import { ToManyConfigSelector } from '@/components/ToManyConfigSelector'
 import { AutoRefreshControl } from '@/components/AutoRefreshControl'
+import { FieldMappingTemplates, type FieldMappingTemplate } from '@/components/FieldMappingTemplates'
 import type { CSVMapping, UpdateSnapshot, ExecutionState } from '@/lib/types'
 
 interface CSVLoaderProps {
@@ -480,6 +481,55 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       return currentMappings
         .filter(m => m && m.csvColumn && m.csvColumn.trim() !== '')
         .map(m => m.csvColumn === csvColumn ? { ...m, transform } : m)
+    })
+  }
+
+  const handleApplyTemplate = (template: FieldMappingTemplate) => {
+    if (!csvData) {
+      toast.error('Please upload a CSV file first')
+      return
+    }
+
+    if (template.entity !== entity) {
+      toast.error(`Template is for ${template.entity}, but ${entity} is selected`)
+      return
+    }
+
+    const updatedMappings = csvData.headers.map(header => {
+      const csvColumn = String(header).trim()
+      const templateMapping = template.mappings.find(m => 
+        m.csvColumn.toLowerCase() === csvColumn.toLowerCase()
+      )
+
+      if (templateMapping) {
+        return {
+          csvColumn,
+          bullhornField: templateMapping.bullhornField,
+          transform: templateMapping.transform
+        }
+      }
+
+      const matchedField = findMatchingField(csvColumn)
+      return {
+        csvColumn,
+        bullhornField: matchedField || '__skip__'
+      }
+    }).filter(m => m.csvColumn !== '')
+
+    setMappings(updatedMappings)
+
+    const appliedCount = updatedMappings.filter(m => 
+      template.mappings.some(tm => tm.csvColumn.toLowerCase() === m.csvColumn.toLowerCase())
+    ).length
+
+    toast.success(`Applied ${appliedCount} mapping${appliedCount !== 1 ? 's' : ''} from template`)
+    
+    onLog('Template Applied', 'success', `Applied field mapping template: ${template.name}`, {
+      templateId: template.id,
+      templateName: template.name,
+      entity: template.entity,
+      appliedMappings: appliedCount,
+      totalMappings: template.mappings.length
     })
   }
 
@@ -1549,23 +1599,30 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label>Field Mapping</Label>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      toast.loading('Refreshing all field mappings...', { id: 'refresh-all-fields' })
-                      refreshMetadata()
-                      setTimeout(() => {
-                        toast.success('All field mappings refreshed', { id: 'refresh-all-fields' })
-                      }, 500)
-                    }}
-                    disabled={loading || metadataLoading || !entity || mappings.filter(m => m.bullhornField && m.bullhornField !== '__skip__').length === 0}
-                    className="gap-2"
-                    title="Refresh metadata for all field mappings at once"
-                  >
-                    <ArrowsClockwise size={16} className={metadataLoading ? 'animate-spin' : ''} />
-                    Refresh All Fields
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <FieldMappingTemplates
+                      currentEntity={entity}
+                      currentMappings={mappings}
+                      onApplyTemplate={handleApplyTemplate}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        toast.loading('Refreshing all field mappings...', { id: 'refresh-all-fields' })
+                        refreshMetadata()
+                        setTimeout(() => {
+                          toast.success('All field mappings refreshed', { id: 'refresh-all-fields' })
+                        }, 500)
+                      }}
+                      disabled={loading || metadataLoading || !entity || mappings.filter(m => m.bullhornField && m.bullhornField !== '__skip__').length === 0}
+                      className="gap-2"
+                      title="Refresh metadata for all field mappings at once"
+                    >
+                      <ArrowsClockwise size={16} className={metadataLoading ? 'animate-spin' : ''} />
+                      Refresh All Fields
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {(mappings || [])
