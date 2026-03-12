@@ -1,3 +1,9 @@
+
+function kvAvailable() {
+  return !!window.spark?.kv && !(window as any).__KV_DISABLED__
+}
+``
+
 import type { BullhornSession } from './types'
 import { getStorageAdapter, hasSparkKV } from './storage-adapter'
 
@@ -31,94 +37,149 @@ class SessionManager {
   private readonly MAX_HEARTBEAT_FAILURES = 3
   private heartbeatDisabled = false
 
-  constructor() {
-    this.browserId = this.getOrCreateBrowserId()
-    
-    if (hasSparkKV()) {
+ constructor() {
+  this.browserId = this.getOrCreateBrowserId()
+
+  if (hasSparkKV() && !SessionManager.isKVDisabled()) {
+    try {
       this.startHeartbeat()
       console.log('🆔 SessionManager initialized with browserId:', this.browserId)
-    } else {
-      console.warn('🛑 Spark KV unavailable – disabling heartbeat/session manager')
+    } catch (e) {
+      console.warn('🛑 Failed to start heartbeat, disabling session manager')
+      SessionManager.disableKV()
       this.heartbeatDisabled = true
     }
+  } else {
+    console.warn('🛑 Spark KV unavailable or disabled – heartbeat/session manager off')
+    this.heartbeatDisabled = true
+  }
+}
+
+/* ---------------- KV SAFETY ---------------- */
+
+private static KV_DISABLED_KEY = '__KV_DISABLED__'
+
+private static isKVDisabled(): boolean {
+  return Boolean((window as any)[SessionManager.KV_DISABLED_KEY])
+}
+
+private static disableKV() {
+  ;(window as any)[SessionManager.KV_DISABLED_KEY] = true
+}
+
+/* ---------------- BROWSER ID ---------------- */
+
+private getOrCreateBrowserId(): string {
+  const storageKey = 'browser-session-id'
+  let browserId = sessionStorage.getItem(storageKey)
+
+  if (!browserId) {
+    browserId = `browser-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    sessionStorage.setItem(storageKey, browserId)
+    console.log('🆕 Created new browser session ID:', browserId)
+  } else {
+    console.log('♻️ Using existing browser session ID:', browserId)
   }
 
-  private getOrCreateBrowserId(): string {
-    const storageKey = 'browser-session-id'
-    let browserId = sessionStorage.getItem(storageKey)
-    
-    if (!browserId) {
-      browserId = `browser-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`
-      sessionStorage.setItem(storageKey, browserId)
-      console.log('🆕 Created new browser session ID:', browserId)
-    } else {
-      console.log('♻️ Using existing browser session ID:', browserId)
-    }
-    
-    return browserId
+  return browserId
+}
+
+getBrowserId(): string {
+  return this.browserId
+}
+
+/* ---------------- SESSION WRITE ---------------- */
+
+async saveSession(connectionId: string, session: BullhornSession): Promise<void> {
+  if (this.heartbeatDisabled || SessionManager.isKVDisabled()) return
+
+  const sessionInfo: SessionInfo = {
+    browserId: this.browserId,
+    connectionId,
+    session,
+    lastActivity: Date.now(),
+    isRefreshing: false
   }
 
-  getBrowserId(): string {
-    return this.browserId
-  }
+  const key = `session-${this.browserId}-${connectionId}`
 
-  async saveSession(connectionId: string, session: BullhornSession): Promise<void> {
-    const sessionInfo: SessionInfo = {
-      browserId: this.browserId,
-      connectionId,
-      session,
-      lastActivity: Date.now(),
-      isRefreshing: false
-    }
-
-    const key = `session-${this.browserId}-${connectionId}`
+  try {
     const adapter = await getStorageAdapter()
     await adapter.set(key, sessionInfo)
-    
+
     console.log('💾 Session saved:', {
       browserId: this.browserId,
       connectionId,
       corporationId: session.corporationId,
       key
     })
+  } catch (e) {
+    console.warn('🛑 KV write failed — disabling session manager')
+    SessionManager.disableKV()
+    this.heartbeatDisabled = true
+  }
+}
+
+/* ---------------- SESSION READ ---------------- */
+
+async getSession(connectionId: string): Promise<BullhornSession | null> {
+  if (this.heartbeatDisabled || SessionManager.isKVDisabled()) {
+    console.log('📭 KV disabled — skipping session lookup')
+    return null
   }
 
-  async getSession(connectionId: string): Promise<BullhornSession | null> {
-    const key = `session-${this.browserId}-${connectionId}`
+  const key = `session-${this.browserId}-${connectionId}`
+
+  let sessionInfo: SessionInfo | null = null
+
+  try {
     const adapter = await getStorageAdapter()
-    const sessionInfo = await adapter.get<SessionInfo>(key)
-    
-    if (!sessionInfo) {
-      console.log('📭 No session found for this browser:', { browserId: this.browserId, connectionId })
-      return null
-    }
+    sessionInfo = await adapter.get<SessionInfo>(key)
+  } catch (e) {
+    console.warn('🛑 KV read failed — disabling session manager')
+    SessionManager.disableKV()
+    this.heartbeatDisabled = true
+    return null
+  }
 
-    const now = Date.now()
-    const age = now - sessionInfo.lastActivity
-    
-    if (age > this.SESSION_TIMEOUT) {
-      console.log('⏰ Session expired:', {
-        browserId: this.browserId,
-        connectionId,
-        ageMs: age,
-        timeoutMs: this.SESSION_TIMEOUT
-      })
-      await this.clearSession(connectionId)
-      return null
-    }
+  if (!sessionInfo) {
+    console.log('📭 No session found:', { browserId: this.browserId, connectionId })
+    return null
+  }
 
-    sessionInfo.lastActivity = now
-    await adapter.set(key, sessionInfo)
-    
-    console.log('📬 Session retrieved and heartbeat updated:', {
+  const now = Date.now()
+  const age = now - sessionInfo.lastActivity
+
+  if (age > this.SESSION_TIMEOUT) {
+    console.log('⏰ Session expired:', {
       browserId: this.browserId,
       connectionId,
-      corporationId: sessionInfo.session.corporationId
+      ageMs: age
     })
-    
-    return sessionInfo.session
+    await this.clearSession(connectionId)
+    return null
   }
 
+  // Update heartbeat ONLY if KV still healthy
+  try {
+    sessionInfo.lastActivity = now
+    const adapter = await getStorageAdapter()
+    await adapter.set(key, sessionInfo)
+  } catch {
+    console.warn('🛑 KV heartbeat update failed — disabling session manager')
+    SessionManager.disableKV()
+    this.heartbeatDisabled = true
+  }
+
+  console.log('📬 Session retrieved:', {
+    browserId: this.browserId,
+    connectionId,
+    corporationId: sessionInfo.session.corporationId
+  })
+
+  return sessionInfo.session
+}
+``
   async clearSession(connectionId: string): Promise<void> {
     const key = `session-${this.browserId}-${connectionId}`
     const adapter = await getStorageAdapter()

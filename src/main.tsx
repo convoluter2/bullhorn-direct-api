@@ -1,3 +1,8 @@
+
+// MUST be before App renders
+;(window as any).__SPARK_DISABLE_AUDIT_LOGS__ = true
+``
+
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ErrorBoundary } from "react-error-boundary";
