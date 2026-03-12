@@ -117,6 +117,16 @@ export type CSVMapping = {
   csvColumn: string
   bullhornField: string
   transform?: string
+  compositeSubField?: string
+}
+
+export type CompositeFieldMapping = {
+  parentField: string
+  subFieldMappings: {
+    subField: string
+    csvColumn: string
+    transform?: string
+  }[]
 }
 
 export type CSVImportConfig = {

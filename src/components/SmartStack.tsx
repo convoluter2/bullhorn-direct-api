@@ -29,6 +29,7 @@ import { getAssociationsForRecord, mergeAssociationActions, describeAssociation 
 import { FilterGroupBuilder } from '@/components/FilterGroupBuilder'
 import { EntityHelpAlert } from '@/components/EntityHelpAlert'
 import { AutoRefreshControl } from '@/components/AutoRefreshControl'
+import { CompositeFieldMapper } from '@/components/CompositeFieldMapper'
 import { validateToOneField, validateToManyField } from '@/lib/field-validation'
 import type { QueryFilter, UpdateSnapshot, FilterGroup, ExecutionState } from '@/lib/types'
 
@@ -98,6 +99,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
   const [lastSnapshotId, setLastSnapshotId] = useState<string | null>(null)
   const [conditionalAssociations, setConditionalAssociations] = useState<ConditionalAssociation[]>([])
   const [useConditionalLogic, setUseConditionalLogic] = useState(false)
+  const [compositeFieldMappings, setCompositeFieldMappings] = useState<Record<string, Record<string, string>>>({})
   
   const [executionState, setExecutionState] = useState<ExecutionState>('idle')
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -549,6 +551,17 @@ export function SmartStack({ onLog }: SmartStackProps) {
             
             if (update.value === '' || update.value.toLowerCase() === 'null') {
               updateData[update.field] = null
+            } else if (fieldMeta?.composite) {
+              const compositeValue = compositeFieldMappings[update.field]
+              if (compositeValue) {
+                updateData[update.field] = compositeValue
+              } else {
+                try {
+                  updateData[update.field] = JSON.parse(update.value)
+                } catch {
+                  updateData[update.field] = update.value
+                }
+              }
             } else if (fieldMeta?.associationType === 'TO_MANY') {
               try {
                 const toManyValue = JSON.parse(update.value)

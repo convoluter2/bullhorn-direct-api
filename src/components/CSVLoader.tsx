@@ -25,6 +25,7 @@ import { LookupFieldSelector } from '@/components/LookupFieldSelector'
 import { SpeedControl } from '@/components/SpeedControl'
 import { ToManyConfigSelector } from '@/components/ToManyConfigSelector'
 import { AutoRefreshControl } from '@/components/AutoRefreshControl'
+import { CompositeFieldMapper } from '@/components/CompositeFieldMapper'
 import type { CSVMapping, UpdateSnapshot, ExecutionState } from '@/lib/types'
 
 interface CSVLoaderProps {
@@ -66,6 +67,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [csvData, setCsvData] = useState<{ headers: string[]; rows: string[][] } | null>(null)
   const [mappings, setMappings] = useState<CSVMapping[]>([])
   const [toManyConfigs, setToManyConfigs] = useState<Record<string, ToManyConfig>>({})
+  const [compositeFieldMappings, setCompositeFieldMappings] = useState<Record<string, Array<{ subField: string; csvColumn: string }>>>({})
   const [lookupField, setLookupField] = useState<string>('id')
   const [updateExisting, setUpdateExisting] = useState(true)
   const [createNew, setCreateNew] = useState(false)
@@ -402,6 +404,27 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     })
   }
 
+  const handleCompositeFieldMappingsChange = (fieldName: string, subFieldMappings: Array<{ subField: string; csvColumn: string }>) => {
+    setCompositeFieldMappings(prev => ({
+      ...prev,
+      [fieldName]: subFieldMappings
+    }))
+    
+    setMappings((currentMappings) => {
+      const existingNonComposite = currentMappings.filter(m => 
+        !m.compositeSubField || m.bullhornField !== fieldName
+      )
+      
+      const compositeMappings: CSVMapping[] = subFieldMappings.map(({ subField, csvColumn }) => ({
+        csvColumn,
+        bullhornField: fieldName,
+        compositeSubField: subField
+      }))
+      
+      return [...existingNonComposite, ...compositeMappings]
+    })
+  }
+
   const transformValue = (value: string, transform?: string): any => {
     if (!value || value === null || value === undefined) return value
 
@@ -615,64 +638,75 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           const transformedValue = transformValue(rawValue, mapping.transform)
           
           if (transformedValue === '' || transformedValue === null || transformedValue === undefined) {
-            data[mapping.bullhornField] = null
+            if (!mapping.compositeSubField) {
+              data[mapping.bullhornField] = null
+            }
           } else if (typeof transformedValue === 'string' && transformedValue.toLowerCase() === 'null') {
-            data[mapping.bullhornField] = null
+            if (!mapping.compositeSubField) {
+              data[mapping.bullhornField] = null
+            }
           } else {
-            const fieldMeta = metadata?.fieldsMap ? metadata.fieldsMap[mapping.bullhornField] : undefined
-            if (fieldMeta?.associationType === 'TO_MANY') {
-              const config = toManyConfigs[mapping.bullhornField] || { operation: 'add', subField: 'id' }
-              
-              const values = transformedValue.split(',').map((v: string) => v.trim()).filter((v: string) => v)
-              
-              if (config.subField === 'id') {
-                const ids = values
-                  .map((v: string) => {
-                    const trimmed = v.trim()
-                    return /^\d+$/.test(trimmed) ? parseInt(trimmed, 10) : null
-                  })
-                  .filter((id: number | null): id is number => id !== null && !isNaN(id))
-                
-                if (ids.length > 0) {
-                  data[`__tomany_${mapping.bullhornField}`] = {
-                    operation: config.operation,
-                    ids: ids,
-                    subField: 'id'
-                  }
-                } else {
-                  console.warn(`⚠️ TO_MANY field ${mapping.bullhornField}: No valid integer IDs found in "${transformedValue}"`)
-                }
-              } else {
-                if (values.length > 0) {
-                  data[`__tomany_${mapping.bullhornField}`] = {
-                    operation: config.operation,
-                    ids: values,
-                    subField: config.subField
-                  }
-                }
+            if (mapping.compositeSubField) {
+              if (!data[mapping.bullhornField]) {
+                data[mapping.bullhornField] = {}
               }
-            } else if (fieldMeta?.associationType === 'TO_ONE') {
-              const trimmedValue = transformedValue.trim()
-              if (trimmedValue && /^\d+$/.test(trimmedValue)) {
-                const numericId = parseInt(trimmedValue, 10)
-                if (!isNaN(numericId)) {
-                  data[mapping.bullhornField] = { id: numericId }
+              data[mapping.bullhornField][mapping.compositeSubField] = transformedValue
+            } else {
+              const fieldMeta = metadata?.fieldsMap ? metadata.fieldsMap[mapping.bullhornField] : undefined
+              if (fieldMeta?.associationType === 'TO_MANY') {
+                const config = toManyConfigs[mapping.bullhornField] || { operation: 'add', subField: 'id' }
+                
+                const values = transformedValue.split(',').map((v: string) => v.trim()).filter((v: string) => v)
+                
+                if (config.subField === 'id') {
+                  const ids = values
+                    .map((v: string) => {
+                      const trimmed = v.trim()
+                      return /^\d+$/.test(trimmed) ? parseInt(trimmed, 10) : null
+                    })
+                    .filter((id: number | null): id is number => id !== null && !isNaN(id))
+                  
+                  if (ids.length > 0) {
+                    data[`__tomany_${mapping.bullhornField}`] = {
+                      operation: config.operation,
+                      ids: ids,
+                      subField: 'id'
+                    }
+                  } else {
+                    console.warn(`⚠️ TO_MANY field ${mapping.bullhornField}: No valid integer IDs found in "${transformedValue}"`)
+                  }
                 } else {
-                  console.warn(`⚠️ TO_ONE field ${mapping.bullhornField}: Invalid integer ID "${trimmedValue}"`)
+                  if (values.length > 0) {
+                    data[`__tomany_${mapping.bullhornField}`] = {
+                      operation: config.operation,
+                      ids: values,
+                      subField: config.subField
+                    }
+                  }
+                }
+              } else if (fieldMeta?.associationType === 'TO_ONE') {
+                const trimmedValue = transformedValue.trim()
+                if (trimmedValue && /^\d+$/.test(trimmedValue)) {
+                  const numericId = parseInt(trimmedValue, 10)
+                  if (!isNaN(numericId)) {
+                    data[mapping.bullhornField] = { id: numericId }
+                  } else {
+                    console.warn(`⚠️ TO_ONE field ${mapping.bullhornField}: Invalid integer ID "${trimmedValue}"`)
+                    data[mapping.bullhornField] = null
+                  }
+                } else if (trimmedValue) {
+                  console.warn(`⚠️ TO_ONE field ${mapping.bullhornField}: Requires integer ID, got "${trimmedValue}"`)
+                  data[mapping.bullhornField] = null
+                } else {
                   data[mapping.bullhornField] = null
                 }
-              } else if (trimmedValue) {
-                console.warn(`⚠️ TO_ONE field ${mapping.bullhornField}: Requires integer ID, got "${trimmedValue}"`)
-                data[mapping.bullhornField] = null
+              } else if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
+                data[mapping.bullhornField] = Number(transformedValue)
+              } else if (fieldMeta?.type === 'Boolean') {
+                data[mapping.bullhornField] = transformedValue === 'true' || transformedValue === '1'
               } else {
-                data[mapping.bullhornField] = null
+                data[mapping.bullhornField] = transformedValue
               }
-            } else if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
-              data[mapping.bullhornField] = Number(transformedValue)
-            } else if (fieldMeta?.type === 'Boolean') {
-              data[mapping.bullhornField] = transformedValue === 'true' || transformedValue === '1'
-            } else {
-              data[mapping.bullhornField] = transformedValue
             }
           }
         }
@@ -1641,6 +1675,16 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                       </Card>
                     )
                   })}
+                  
+                  {csvData && availableFields.filter(f => f.composite && f.compositeFields && f.compositeFields.length > 0).map(compositeField => (
+                    <CompositeFieldMapper
+                      key={compositeField.name}
+                      compositeField={compositeField}
+                      csvHeaders={csvData.headers}
+                      currentMappings={mappings}
+                      onMappingsChange={handleCompositeFieldMappingsChange}
+                    />
+                  ))}
                 </div>
               </div>
 

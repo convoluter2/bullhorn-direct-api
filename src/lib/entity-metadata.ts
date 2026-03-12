@@ -23,6 +23,15 @@ export interface EntityFieldMetadata {
   confidential?: 'Candidate' | 'Client' | 'Both' | null
   sortOrder?: number
   hideFromSearch?: boolean
+  composite?: boolean
+  compositeFields?: Array<{
+    name: string
+    label: string
+    type: string
+    dataType: string
+    optionsType?: string
+    optionsUrl?: string
+  }>
 }
 
 export interface EntityMetadata {
@@ -98,7 +107,18 @@ export class EntityMetadataService {
       description: field.description,
       confidential: field.confidential,
       sortOrder: field.sortOrder,
-      hideFromSearch: field.hideFromSearch
+      hideFromSearch: field.hideFromSearch,
+      composite: field.type === 'COMPOSITE' || field.dataType === 'Address',
+      compositeFields: (field.type === 'COMPOSITE' || field.dataType === 'Address') && field.fields 
+        ? field.fields.map((subField: any) => ({
+            name: subField.name,
+            label: subField.label || subField.name,
+            type: subField.type,
+            dataType: subField.dataType,
+            optionsType: subField.optionsType,
+            optionsUrl: subField.optionsUrl
+          }))
+        : undefined
     }))
 
     const metadata: EntityMetadata = {
