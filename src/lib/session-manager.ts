@@ -179,7 +179,7 @@ async getSession(connectionId: string): Promise<BullhornSession | null> {
 
   return sessionInfo.session
 }
-``
+
   async clearSession(connectionId: string): Promise<void> {
     const key = `session-${this.browserId}-${connectionId}`
     const adapter = await getStorageAdapter()
