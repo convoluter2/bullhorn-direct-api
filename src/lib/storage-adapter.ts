@@ -133,12 +133,30 @@ export class FallbackStore {
 }
 
 /**
+ * Runtime capability check
+ */
+export function hasSparkKV() {
+  return (
+    typeof window !== 'undefined' &&
+    !!window.spark &&
+    !!window.spark.kv
+  )
+}
+
+/**
  * Factory
  */
 export async function createStore() {
   const spark = new SparkKVStore()
   await spark.ensureReady()
-  return spark.ready ? spark : new FallbackStore()
+  
+  if (spark.ready) {
+    console.log('✅ Using Spark KV storage')
+    return spark
+  } else {
+    console.warn('⚠️ Spark KV unavailable – using fallback storage (localStorage/memory)')
+    return new FallbackStore()
+  }
 }
-// storage-adapter.ts (bottom)
+
 export const storageAdapter = await createStore()

@@ -1,5 +1,5 @@
 import type { BullhornSession } from './types'
-import { storageAdapter } from './storage-adapter'
+import { storageAdapter, hasSparkKV } from './storage-adapter'
 
 export type SessionInfo = {
   browserId: string
@@ -33,8 +33,14 @@ class SessionManager {
 
   constructor() {
     this.browserId = this.getOrCreateBrowserId()
-    this.startHeartbeat()
-    console.log('🆔 SessionManager initialized with browserId:', this.browserId)
+    
+    if (hasSparkKV()) {
+      this.startHeartbeat()
+      console.log('🆔 SessionManager initialized with browserId:', this.browserId)
+    } else {
+      console.warn('🛑 Spark KV unavailable – disabling heartbeat/session manager')
+      this.heartbeatDisabled = true
+    }
   }
 
   private getOrCreateBrowserId(): string {
@@ -236,7 +242,7 @@ class SessionManager {
   }
 
   async cleanupExpiredSessions(): Promise<void> {
-    if (this.heartbeatDisabled) {
+    if (this.heartbeatDisabled || !hasSparkKV()) {
       return
     }
 
@@ -291,7 +297,7 @@ class SessionManager {
   }
 
   private async updateHeartbeat(): Promise<void> {
-    if (this.heartbeatDisabled) {
+    if (this.heartbeatDisabled || !hasSparkKV()) {
       return
     }
 
@@ -327,6 +333,12 @@ class SessionManager {
   }
 
   private startHeartbeat(): void {
+    if (!hasSparkKV()) {
+      console.warn('🛑 Spark KV unavailable – heartbeat will not start')
+      this.heartbeatDisabled = true
+      return
+    }
+
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval)
     }
