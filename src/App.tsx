@@ -31,6 +31,7 @@ import { toast } from 'sonner'
 import type { BullhornSession, AuditLog } from '@/lib/types'
 import { fieldValueCache } from '@/lib/field-value-cache'
 import { entityCacheService } from '@/lib/entity-cache-service'
+import { kvRequestManager } from '@/lib/kv-request-manager'
 
 function App() {
   const isRefreshingRef = useRef(false)
@@ -294,6 +295,7 @@ function App() {
           })
           bullhornAPI.clearSession()
           fieldValueCache.invalidateAll()
+          kvRequestManager.invalidateMemoryCache()
           await entityCacheService.clearAllCaches()
           setSession(null)
           setCurrentConnectionId(null)
@@ -335,6 +337,7 @@ function App() {
       
       bullhornAPI.clearSession()
       fieldValueCache.invalidateAll()
+      kvRequestManager.invalidateMemoryCache()
       entityCacheService.clearAllCaches().catch(err => {
         console.warn('⚠️ Failed to clear entity caches:', err)
       })
@@ -429,6 +432,7 @@ function App() {
       
       bullhornAPI.clearSession()
       fieldValueCache.invalidateAll()
+      kvRequestManager.invalidateMemoryCache()
       await entityCacheService.clearAllCaches()
       
       setSession(null)
@@ -527,6 +531,7 @@ function App() {
       
       bullhornAPI.clearSession()
       fieldValueCache.invalidateAll()
+      kvRequestManager.invalidateMemoryCache()
       await entityCacheService.clearAllCaches()
       
       if (currentConnectionId) {
@@ -609,6 +614,7 @@ function App() {
       console.error('❌ Connection switch failed:', error)
       bullhornAPI.clearSession()
       fieldValueCache.invalidateAll()
+      kvRequestManager.invalidateMemoryCache()
       await entityCacheService.clearAllCaches()
       setSession(null)
       setCurrentConnectionId(null)

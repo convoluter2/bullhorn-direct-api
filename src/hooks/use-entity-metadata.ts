@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { getCustomFieldLabel } from '@/lib/custom-field-labels'
 import { entityCacheService } from '@/lib/entity-cache-service'
@@ -29,14 +29,18 @@ export type EntityMetadata = {
   lastUpdated: number
 }
 
+const sessionLoadedEntities = new Set<string>()
+
 export function useEntityMetadata(entity: string | undefined) {
   const [metadata, setMetadata] = useState<EntityMetadata | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const loadingRef = useRef(false)
 
   const refresh = useCallback(() => {
     if (entity) {
+      sessionLoadedEntities.delete(entity)
       setRefreshTrigger(prev => prev + 1)
     }
   }, [entity])
@@ -49,7 +53,20 @@ export function useEntityMetadata(entity: string | undefined) {
       return
     }
 
+    if (loadingRef.current) {
+      console.log(`⏸️ Already loading metadata for ${entity}, skipping duplicate request`)
+      return
+    }
+
+    if (refreshTrigger === 0 && sessionLoadedEntities.has(entity) && metadata?.entity === entity) {
+      console.log(`📦 Metadata already loaded for ${entity} this session, using existing`)
+      return
+    }
+
     const loadMetadata = async () => {
+      if (loadingRef.current) return
+      
+      loadingRef.current = true
       setLoading(true)
       setError(null)
 
@@ -58,7 +75,9 @@ export function useEntityMetadata(entity: string | undefined) {
         if (cached && refreshTrigger === 0) {
           console.log('📦 Using cached metadata for:', entity)
           setMetadata(cached.metadata)
+          sessionLoadedEntities.add(entity)
           setLoading(false)
+          loadingRef.current = false
           return
         }
 
@@ -73,9 +92,12 @@ export function useEntityMetadata(entity: string | undefined) {
         const fieldsMap: Record<string, EntityField> = {}
 
         if (response.fields && Array.isArray(response.fields)) {
-          const fieldPromises = response.fields.map(async (field) => {
+          const fields: EntityField[] = []
+          const fieldsMap: Record<string, EntityField> = {}
+          
+          for (const field of response.fields) {
             if (!field || !field.name) {
-              return null
+              continue
             }
             
             const defaultLabel = field.label || field.name
@@ -133,16 +155,8 @@ export function useEntityMetadata(entity: string | undefined) {
               }
             }
 
-            return fieldInfo
-          })
-
-          const resolvedFields = await Promise.all(fieldPromises)
-          
-          for (const fieldInfo of resolvedFields) {
-            if (fieldInfo) {
-              fields.push(fieldInfo)
-              fieldsMap[fieldInfo.name] = fieldInfo
-            }
+            fields.push(fieldInfo)
+            fieldsMap[fieldInfo.name] = fieldInfo
           }
         }
 
@@ -155,6 +169,7 @@ export function useEntityMetadata(entity: string | undefined) {
         }
 
         setMetadata(newMetadata)
+        sessionLoadedEntities.add(entity)
         
         await entityCacheService.saveMetadataCache(entity, newMetadata)
         
@@ -188,15 +203,17 @@ export function useEntityMetadata(entity: string | undefined) {
         setMetadata(null)
       } finally {
         setLoading(false)
+        loadingRef.current = false
       }
     }
 
     loadMetadata().catch(err => {
       console.error('❌ Unexpected error in loadMetadata:', err)
       setLoading(false)
+      loadingRef.current = false
       setError(err instanceof Error ? err.message : 'Unexpected error')
     })
-  }, [entity, refreshTrigger])
+  }, [entity, refreshTrigger, metadata?.entity])
 
   return { metadata, loading, error, refresh }
 }

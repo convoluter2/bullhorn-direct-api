@@ -1,6 +1,7 @@
 import type { BullhornSession } from './types'
 import { bullhornAPI } from './bullhorn-api'
 import { entityCacheService } from './entity-cache-service'
+import { kvRequestManager } from './kv-request-manager'
 
 export interface EntityFieldMetadata {
   name: string
@@ -115,18 +116,20 @@ export class EntityMetadataService {
 
   async clearCache(entityName?: string): Promise<void> {
     if (entityName) {
-      const allKeys = await window.spark.kv.keys()
+      const allKeys = await kvRequestManager.enqueueKVKeys(() => window.spark.kv.keys())
       const keysToDelete = allKeys.filter(key => key === `metadata-cache-${entityName}`)
       for (const key of keysToDelete) {
         await window.spark.kv.delete(key)
       }
+      kvRequestManager.invalidateMemoryCache(`metadata-cache-${entityName}`)
       console.log(`🧹 Cleared cache for entity: ${entityName}`)
     } else {
-      const allKeys = await window.spark.kv.keys()
+      const allKeys = await kvRequestManager.enqueueKVKeys(() => window.spark.kv.keys())
       const metadataKeys = allKeys.filter(key => key.startsWith('metadata-cache-'))
       for (const key of metadataKeys) {
         await window.spark.kv.delete(key)
       }
+      kvRequestManager.invalidateMemoryCache('metadata-cache-')
       console.log('🧹 Cleared all metadata cache')
     }
   }
