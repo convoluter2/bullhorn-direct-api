@@ -1455,7 +1455,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                   {(mappings || [])
                     .filter(m => m && m.csvColumn && m.csvColumn.trim() !== '')
                     .map((mapping) => {
-                    const fieldMeta = mapping?.bullhornField && mapping.bullhornField !== '__skip__' && metadata?.fieldsMap?.[mapping.bullhornField]
+                    const fieldMeta = mapping?.bullhornField && mapping.bullhornField !== '__skip__' && metadata?.fieldsMap
                       ? metadata.fieldsMap[mapping.bullhornField] 
                       : undefined
                     const isToMany = fieldMeta ? (
