@@ -3,65 +3,60 @@ import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { FloppyDisk, Trash, FolderOpen, X, Ma
-import type { SavedQuery, QueryFilter, Filter
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { FloppyDisk, Trash, FolderOpen, X, MagnifyingGlass } from '@phosphor-icons/react'
+import { toast } from 'sonner'
+import type { SavedQuery, QueryFilter, FilterGroup } from '@/lib/types'
+
 interface SavedQueryManagerProps {
+  entity: string
   fields: string[]
+  filters: QueryFilter[]
   filterGroups?: FilterGroup[]
+  groupLogic?: 'AND' | 'OR'
   orderBy?: string
-  filterMode: 'simple' | 'grou
+  count?: number
+  filterMode: 'simple' | 'grouped'
+  onLoadQuery: (query: SavedQuery) => void
 }
 
+export function SavedQueryManager({
+  entity,
   fields,
+  filters,
   filterGroups,
+  groupLogic,
   orderBy,
+  count,
   filterMode,
+  onLoadQuery,
 }: SavedQueryManagerProps) {
-  const [saveDialogOpen, se
-  const [queryName
-  const [queryTa
-  const [selectedEntity, setSelect
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false)
+  const [loadDialogOpen, setLoadDialogOpen] = useState(false)
+  const [queryName, setQueryName] = useState('')
+  const [queryDescription, setQueryDescription] = useState('')
+  const [queryTags, setQueryTags] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedEntity, setSelectedEntity] = useState<string>('all')
+  const [savedQueries, setSavedQueries] = useKV<SavedQuery[]>('saved-queries', [])
+
   const handleSaveQuery = () => {
- 
+    if (!queryName.trim()) {
+      toast.error('Please enter a query name')
+      return
+    }
 
     if (!entity) {
-      ret
-
-      toas
+      toast.error('No entity selected')
+      return
     }
-    const new
-      name
-      en
-      filters
-      groupLo
-      count,
-      createdAt: Date.now(),
-      tags: queryTags.trim() ? queryTags.split(',').map(t => 
 
-    toast.success(`Query "${queryName}" saved su
-    setQueryName('')
-    setQueryTags('')
-  }
-  const handleDeleteQuery = (queryId: string) => {
-
-    if (confirm(`Delete query "${
-      toast.success(`Query "
-  }
-  const hand
-    s
-
-  const filteredQu
-      query.name.toLowerCase().includes(searchTerm
-      query.
-    c
-
-
-
-
-    <
-
-            size="sm"
-            disabled={!canSaveQuery}
+    const newQuery: SavedQuery = {
+      id: `query-${Date.now()}`,
       name: queryName.trim(),
       description: queryDescription.trim() || undefined,
       entity,
@@ -126,9 +121,9 @@ interface SavedQueryManagerProps {
             variant="outline"
             disabled={!canSaveQuery}
             title={canSaveQuery ? 'Save current query' : 'Select entity and fields to save query'}
-           
+          >
             <FloppyDisk size={16} />
-            <FolderOpe
+            Save Query
           </Button>
         </DialogTrigger>
         <DialogContent className="max-w-lg">
@@ -146,23 +141,23 @@ interface SavedQueryManagerProps {
                 value={queryName}
                 onChange={(e) => setQueryName(e.target.value)}
               />
-              >
+            </div>
             <div className="space-y-2">
               <Label>Description</Label>
               <Textarea
-            </div>
+                placeholder="Optional description of what this query does"
                 value={queryDescription}
                 onChange={(e) => setQueryDescription(e.target.value)}
                 rows={3}
               />
             </div>
-              ) : (
+            <div className="space-y-2">
               <Label>Tags (comma-separated)</Label>
-                    
+              <Input
                 placeholder="e.g., candidate, active, recruiting"
                 value={queryTags}
                 onChange={(e) => setQueryTags(e.target.value)}
-                
+              />
             </div>
             <div className="rounded-lg border p-3 bg-muted/50">
               <div className="text-sm font-medium mb-2">Query Preview</div>
@@ -174,17 +169,17 @@ interface SavedQueryManagerProps {
               </div>
             </div>
           </div>
-                        
+          <DialogFooter>
             <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
-                    
+              Cancel
             </Button>
-            <Button onClick={handleSaveQuery}>
+            <Button onClick={handleSaveQuery} disabled={!queryName.trim()}>
               <FloppyDisk size={16} />
               Save Query
             </Button>
-                         
+          </DialogFooter>
         </DialogContent>
-               
+      </Dialog>
 
       <Dialog open={loadDialogOpen} onOpenChange={setLoadDialogOpen}>
         <DialogTrigger asChild>
@@ -198,27 +193,27 @@ interface SavedQueryManagerProps {
           </Button>
         </DialogTrigger>
         <DialogContent className="max-w-3xl max-h-[80vh]">
-      </Dialog>
+          <DialogHeader>
             <DialogTitle>Saved Queries</DialogTitle>
-}
+            <DialogDescription>
               Load a previously saved query configuration
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
-
+            <div className="flex gap-2">
               <div className="relative flex-1">
                 <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
                 <Input
-
+                  placeholder="Search queries..."
                   value={searchTerm}
-
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-9"
-
+                />
               </div>
               <select
                 className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-
+                value={selectedEntity}
                 onChange={(e) => setSelectedEntity(e.target.value)}
               >
                 <option value="all">All Entities</option>
@@ -228,7 +223,7 @@ interface SavedQueryManagerProps {
               </select>
             </div>
 
-
+            <ScrollArea className="h-[400px] pr-4">
               {filteredQueries.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   {searchTerm || selectedEntity !== 'all' 
@@ -252,53 +247,52 @@ interface SavedQueryManagerProps {
                               size="sm"
                               variant="outline"
                               onClick={() => handleLoadQuery(query)}
-
+                            >
                               <FolderOpen size={14} />
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                              Load
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteQuery(query.id)}
+                            >
+                              <Trash size={14} />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          <Badge variant="secondary">{query.entity}</Badge>
+                          <Badge variant="outline">{query.fields.length} fields</Badge>
+                          {query.filterMode === 'simple' ? (
+                            <Badge variant="outline">{query.filters.length} filters</Badge>
+                          ) : (
+                            <Badge variant="outline">{query.filterGroups?.length || 0} filter groups</Badge>
+                          )}
+                          {query.orderBy && <Badge variant="outline">Sorted</Badge>}
+                        </div>
+                        {query.tags && query.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {query.tags.map((tag, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        <div className="text-xs text-muted-foreground mt-2">
+                          Created: {new Date(query.createdAt).toLocaleString()}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
