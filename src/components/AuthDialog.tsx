@@ -128,6 +128,18 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       let codeToExtract = input.trim()
       let extractedClientId: string | null = null
       
+      if (codeToExtract.includes('/oauth/welcome.bullhornstaffing.com')) {
+        console.error('🚨 MALFORMED REDIRECT URL DETECTED in input!')
+        console.error('   Input URL:', codeToExtract.substring(0, 150))
+        console.error('   This URL has /oauth/welcome.bullhornstaffing.com which is incorrect')
+        console.error('   Attempting to extract code parameter anyway...')
+        
+        toast.warning(
+          'Detected malformed OAuth redirect URL. Attempting to extract code parameter. If this fails, manually copy just the code value.',
+          { duration: 8000 }
+        )
+      }
+      
       if (codeToExtract.includes('code=')) {
         const url = new URL(codeToExtract)
         const codeParam = url.searchParams.get('code')
@@ -135,7 +147,14 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
         
         if (codeParam) {
           codeToExtract = codeParam
-          console.log('📋 Extracted code from URL parameter')
+          console.log('📋 Extracted code from URL parameter (length:', codeParam.length, ')')
+          
+          if (input.includes('/oauth/welcome.bullhornstaffing.com')) {
+            toast.success(
+              'Successfully extracted code from malformed URL. Proceeding with authentication.',
+              { duration: 5000 }
+            )
+          }
         }
         
         if (extractedClientId && manualAuth.clientId && extractedClientId !== manualAuth.clientId) {
@@ -167,6 +186,25 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
       return codeToExtract
     } catch (error) {
       console.error('❌ Error extracting code from input:', error)
+      console.log('   Input was:', input.substring(0, 150))
+      
+      if (input.includes('/oauth/welcome.bullhornstaffing.com') && input.includes('code=')) {
+        console.log('⚠️ URL parse failed but this looks like a malformed redirect URL with a code parameter')
+        console.log('   Attempting manual extraction...')
+        
+        try {
+          const match = input.match(/code=([^&]+)/)
+          if (match && match[1]) {
+            const manuallyExtracted = decodeURIComponent(match[1])
+            console.log('✅ Manually extracted code via regex:', manuallyExtracted.substring(0, 20) + '...')
+            toast.success('Successfully extracted code from malformed URL using fallback method.', { duration: 5000 })
+            return manuallyExtracted
+          }
+        } catch (fallbackError) {
+          console.error('❌ Manual extraction also failed:', fallbackError)
+        }
+      }
+      
       return input
     }
   }
@@ -641,7 +679,7 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
               </Alert>
             </div>
 
-            <div className="space-y-2 p-3 bg-muted rounded-lg">
+              <div className="space-y-2 p-3 bg-muted rounded-lg">
               <Label className="text-sm font-medium">Authorization Code or URL</Label>
               <p className="text-xs text-muted-foreground mb-2">
                 Paste the entire URL from the popup after authorization, or just the code. We'll extract and decode it automatically.
@@ -654,27 +692,41 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
                 disabled={loading}
                 placeholder="https://welcome.bullhornstaffing.com/?code=25184_8090191_44%3A0e19f0db... OR 25184_8090191_44:0e19f0db..."
               />
-              <p className="text-xs text-muted-foreground">
-                ✨ Pro tip: Just paste the full URL from the popup - the colon (:) will be decoded automatically
-              </p>
+              <div className="space-y-1 mt-2">
+                <p className="text-xs text-muted-foreground">
+                  ✨ Pro tip: Just paste the full URL from the popup - the colon (:) will be decoded automatically
+                </p>
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  ⚠️ If you see a malformed URL like <code className="bg-black/10 px-1 rounded">/oauth/welcome.bullhornstaffing.com</code>, 
+                  paste it anyway - the app will extract the code automatically. Or copy just the code value after <code className="bg-black/10 px-1 rounded">code=</code>
+                </p>
+              </div>
             </div>
 
             <Alert className="border-destructive/30 bg-destructive/5">
               <Warning className="text-destructive" size={16} weight="fill" />
               <AlertDescription className="text-xs space-y-2">
                 <p className="font-semibold text-destructive">🚨 Seeing "HTTP Status 404" or Tomcat errors in the popup?</p>
-                <p><strong>Root Cause:</strong> Browser cookies are cached from a previous Bullhorn login, causing authentication conflicts.</p>
+                <p><strong>Root Cause:</strong> Browser cookies are cached from a previous Bullhorn login, causing authentication conflicts or malformed redirect URLs.</p>
                 <div className="mt-2">
                   <p className="font-semibold mb-1">Solutions (in order of preference):</p>
                   <ol className="list-decimal ml-4 space-y-1">
                     <li><strong>Use Incognito/Private Mode</strong> - Click "Copy for Incognito" above, open a private window, paste the URL, log in, then copy the final URL back here</li>
-                    <li><strong>Clear Bullhorn Cookies</strong> - Click the "Clear Cookies & Cache" button in the header, select "Clear Bullhorn Cookies & Sessions"</li>
+                    <li><strong>Clear Bullhorn Cookies</strong> - Clear all cookies for <code className="bg-black/10 px-1 rounded">bullhornstaffing.com</code> and <code className="bg-black/10 px-1 rounded">auth-*.bullhornstaffing.com</code></li>
                     <li><strong>Use a different browser</strong> - If Safari has cached credentials, try Chrome or Firefox</li>
+                    <li><strong>Contact Bullhorn Support</strong> - If the URL shows <code className="bg-black/10 px-1 rounded">/oauth/welcome.bullhornstaffing.com</code> instead of <code className="bg-black/10 px-1 rounded">welcome.bullhornstaffing.com</code>, this is an OAuth configuration issue that requires Bullhorn support to fix</li>
                   </ol>
                 </div>
                 <p className="mt-2 text-destructive font-medium">
                   💡 Why this happens: Bullhorn's OAuth service remembers your last login via cookies. When switching between different tenants/connections, 
-                  these cookies can return the wrong authorization code, causing 404 errors or authentication to the wrong corporation.
+                  these cookies can return the wrong authorization code or malformed URLs, causing 404 errors or authentication to the wrong corporation.
+                </p>
+                <p className="mt-2 text-amber-600 dark:text-amber-400 font-semibold">
+                  ⚠️ Special Case - HCS NPE Connection: If you're authenticating to the HCS NPE tenant and seeing URLs like 
+                  <code className="bg-black/10 px-1 rounded text-xs ml-1">https://auth-east.bullhornstaffing.com/oauth/welcome.bullhornstaffing.com?code=...</code> 
+                  instead of <code className="bg-black/10 px-1 rounded text-xs ml-1">https://welcome.bullhornstaffing.com/?code=...</code>, 
+                  this is a known OAuth misconfiguration. The workaround is to manually extract the code parameter from the malformed URL and paste just the code value below 
+                  (the part after <code className="bg-black/10 px-1 rounded text-xs">code=</code>).
                 </p>
               </AlertDescription>
             </Alert>

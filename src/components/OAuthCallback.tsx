@@ -41,6 +41,7 @@ export function OAuthCallback({
       try {
         console.log(`🔍 Extracting code from URL IMMEDIATELY to prevent expiration...`)
         
+        const fullUrl = window.location.href
         const urlParams = new URLSearchParams(window.location.search)
         const code = urlParams.get('code')
         const errorParam = urlParams.get('error')
@@ -48,8 +49,10 @@ export function OAuthCallback({
         console.log('OAuth Callback - URL params:', { 
           code: code ? code.substring(0, 20) + '...' : null, 
           errorParam,
-          fullUrl: window.location.href.substring(0, 150),
-          hasColon: code ? code.includes(':') || code.includes('%3A') || code.includes('%3a') : false
+          fullUrl: fullUrl.substring(0, 200),
+          hasColon: code ? code.includes(':') || code.includes('%3A') || code.includes('%3a') : false,
+          hostname: window.location.hostname,
+          pathname: window.location.pathname
         })
         
         if (errorParam) {
@@ -61,10 +64,26 @@ export function OAuthCallback({
           return { code, error: null }
         }
         
-        if (window.location.href.includes('welcome.bullhornstaffing.com')) {
+        if (fullUrl.includes('welcome.bullhornstaffing.com') || window.location.hostname.includes('welcome.bullhornstaffing.com')) {
           console.log('⚠️ WELCOME TO BULLHORN page detected but NO CODE parameter')
+          console.log('⚠️ Full URL:', fullUrl)
           console.log('⚠️ This indicates the OAuth flow failed silently or the code was already consumed')
           return { code: null, error: 'No code found on welcome page' }
+        }
+        
+        if (fullUrl.includes('/oauth/welcome.bullhornstaffing.com')) {
+          console.error('🚨 MALFORMED REDIRECT DETECTED!')
+          console.error('   URL is incorrectly formatted as: /oauth/welcome.bullhornstaffing.com')
+          console.error('   This is a Bullhorn OAuth service bug - the redirect_uri was not properly configured')
+          console.error('   Expected: https://welcome.bullhornstaffing.com/')
+          console.error('   Got: https://auth-*.bullhornstaffing.com/oauth/welcome.bullhornstaffing.com')
+          
+          toast.error(
+            'OAuth redirect URL malformed. This connection may have incorrect OAuth configuration. Please contact your Bullhorn administrator.',
+            { duration: 15000 }
+          )
+          
+          return { code: null, error: 'Malformed OAuth redirect URL - please verify OAuth configuration with Bullhorn support' }
         }
         
         return { code: null, error: null }
