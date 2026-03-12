@@ -1208,8 +1208,8 @@ export function SmartStack({ onLog }: SmartStackProps) {
               ) : (
                 <div className="space-y-2">
                   {fieldUpdates.map((update) => {
-                    const isToMany = fieldMeta?.associationType === 'TO_MANY' || fieldMeta?.type === 'TO_MANY'
-                    const isToOne = fieldMeta?.associationType === 'TO_ONE' || fieldMeta?.type === 'TO_ONE'
+                    const fieldMeta = update.field ? fieldsMap[update.field] : undefined
+                    const isToMany = fieldMeta?.associationType === 'TO_MANY' || fieldMeta?.type === 'TO_MANY' ||
                       (fieldMeta?.dataType === 'TO_MANY') ||
                       (fieldMeta?.associatedEntity && fieldMeta?.associationType?.includes('MANY'))
                     const isToOne = fieldMeta?.associationType === 'TO_ONE' || fieldMeta?.type === 'TO_ONE' ||
@@ -1225,15 +1225,14 @@ export function SmartStack({ onLog }: SmartStackProps) {
                       fieldMeta: fieldMeta ? {
                         name: fieldMeta.name,
                         type: fieldMeta.type,
-                      isToOne,
                         associationType: fieldMeta.associationType,
                         associatedEntity: fieldMeta.associatedEntity
+                      } : undefined,
                       willShowToOneInput: isToOne && fieldMeta,
                       isToMany,
                       isToOne,
                       metadataLoading,
                       willShowToManyInput: isToMany && fieldMeta,
-                      willShowToOneInput: isToOne && fieldMeta,
                       fieldsMapSample: Object.keys(fieldsMap).slice(0, 10)
                     })
                     
