@@ -1249,17 +1249,19 @@ export function SmartStack({ onLog }: SmartStackProps) {
                   {fieldUpdates.map((update) => {
                     const baseFieldName = update.field?.includes('.') ? update.field.split('.')[0] : update.field
                     const fieldMeta = baseFieldName ? fieldsMap[baseFieldName] : undefined
-                    const isToMany = fieldMeta?.associationType === 'TO_MANY' || fieldMeta?.type === 'TO_MANY' ||
+                    const isCompositeSubfield = update.field?.includes('.')
+                    const isToMany = !isCompositeSubfield && (fieldMeta?.associationType === 'TO_MANY' || fieldMeta?.type === 'TO_MANY' ||
                       (fieldMeta?.dataType === 'TO_MANY') ||
-                      (fieldMeta?.associatedEntity && fieldMeta?.associationType?.includes('MANY'))
-                    const isToOne = fieldMeta?.associationType === 'TO_ONE' || fieldMeta?.type === 'TO_ONE' ||
+                      (fieldMeta?.associatedEntity && fieldMeta?.associationType?.includes('MANY')))
+                    const isToOne = !isCompositeSubfield && (fieldMeta?.associationType === 'TO_ONE' || fieldMeta?.type === 'TO_ONE' ||
                       (fieldMeta?.dataType === 'TO_ONE') ||
-                      (fieldMeta?.associatedEntity && fieldMeta?.associationType?.includes('ONE'))
+                      (fieldMeta?.associatedEntity && fieldMeta?.associationType?.includes('ONE')))
                     
                     console.log('🔍 SmartStack Field Update Render:', {
                       updateId: update.id,
                       field: update.field,
                       baseFieldName,
+                      isCompositeSubfield,
                       selectedEntity,
                       hasMetadata: !!metadata,
                       fieldsMapKeys: Object.keys(fieldsMap).length,
@@ -1276,7 +1278,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
                       fieldsMapSample: Object.keys(fieldsMap).slice(0, 10)
                     })
                     
-                    if (baseFieldName && !fieldMeta) {
+                    if (baseFieldName && !fieldMeta && !isCompositeSubfield) {
                       console.error('❌ SmartStack Field Update - Field not found in metadata:', {
                         field: baseFieldName,
                         availableFields: Object.keys(fieldsMap).sort(),
@@ -1394,13 +1396,13 @@ export function SmartStack({ onLog }: SmartStackProps) {
                             </>
                           ) : (
                             <>
-                              {console.log('❌ Rendering standard ValidatedFieldInput for:', {
+                              {console.log('✅ Rendering standard ValidatedFieldInput for:', {
                                 field: update.field,
-                                isComposite,
+                                isCompositeSubfield,
                                 isToMany,
                                 isToOne,
                                 hasFieldMeta: !!fieldMeta,
-                                reason: !fieldMeta ? 'no fieldMeta' : isComposite ? 'composite but failed check' : !isToMany && !isToOne ? 'scalar field' : 'unknown'
+                                reason: !fieldMeta && !isCompositeSubfield ? 'no fieldMeta' : isCompositeSubfield ? 'composite subfield (e.g. address.city)' : !isToMany && !isToOne ? 'scalar field' : 'unknown'
                               })}
                               <ValidatedFieldInput
                                 field={fieldMeta || null}

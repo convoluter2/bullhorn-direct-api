@@ -822,21 +822,35 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       })
 
       if (data.address && typeof data.address === 'object') {
-        if (!data.address.countryID) {
-          data.address.countryID = 1
+        const { validateAddressField } = await import('@/lib/field-validation')
+        const validation = validateAddressField(data.address, 'address', true)
+        
+        if (!validation.isValid) {
+          const errorMsg = `Row ${i + 1}: Address validation failed - ${validation.errors.join(', ')}`
+          throw new Error(errorMsg)
         }
-        if (data.address.address2 === undefined) {
-          data.address.address2 = ''
+        
+        if (validation.warnings.length > 0) {
+          console.info(`Row ${i + 1}: Address warnings - ${validation.warnings.join(', ')}`)
         }
+        
+        data.address = validation.validatedAddress
       }
       
       if (data.secondaryAddress && typeof data.secondaryAddress === 'object') {
-        if (!data.secondaryAddress.countryID) {
-          data.secondaryAddress.countryID = 1
+        const { validateAddressField } = await import('@/lib/field-validation')
+        const validation = validateAddressField(data.secondaryAddress, 'secondaryAddress', true)
+        
+        if (!validation.isValid) {
+          const errorMsg = `Row ${i + 1}: Secondary address validation failed - ${validation.errors.join(', ')}`
+          throw new Error(errorMsg)
         }
-        if (data.secondaryAddress.address2 === undefined) {
-          data.secondaryAddress.address2 = ''
+        
+        if (validation.warnings.length > 0) {
+          console.info(`Row ${i + 1}: Secondary address warnings - ${validation.warnings.join(', ')}`)
         }
+        
+        data.secondaryAddress = validation.validatedAddress
       }
 
       if (updateExisting && lookupField && lookupField !== '__none__' && lookupValue) {
