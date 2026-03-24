@@ -735,6 +735,11 @@ export class BullhornAPI {
         url: fullUrl
       })
       
+      if (response.status === 401 || response.status === 403) {
+        console.error('🚨 Authentication/authorization error during search - session may be invalid')
+        throw new Error(`Authentication failed for ${config.entity} search. Your session may have expired. Status: ${response.status}`)
+      }
+      
       let errorObj
       try {
         errorObj = JSON.parse(error)
@@ -748,7 +753,7 @@ export class BullhornAPI {
         }
       }
       
-      throw new Error(`Search failed: ${error}`)
+      throw new Error(`Search failed for ${config.entity}: ${error}`)
     }
 
     const result = await response.json()
@@ -971,7 +976,13 @@ export class BullhornAPI {
         where,
         url: fullUrl
       })
-      throw new Error(`Query failed: ${error}`)
+      
+      if (response.status === 401 || response.status === 403) {
+        console.error('🚨 Authentication/authorization error during query - session may be invalid')
+        throw new Error(`Authentication failed for ${entity} query. Your session may have expired. Status: ${response.status}`)
+      }
+      
+      throw new Error(`Query failed for ${entity}: ${error}`)
     }
 
     const result = await response.json()
@@ -1064,10 +1075,16 @@ export class BullhornAPI {
       const error = await response.text()
       console.error(`❌ Search failed for ${entity}:`, {
         status: response.status,
+        statusText: response.statusText,
         error,
         searchTerm,
         url: fullUrl
       })
+      
+      if (response.status === 401 || response.status === 403) {
+        console.error('🚨 Authentication/authorization error during search - session may be invalid')
+        throw new Error(`Authentication failed for ${entity} search. Your session may have expired. Status: ${response.status}`)
+      }
       
       console.log(`🔄 Search failed, falling back to query for ${entity}`)
       const nameField = fieldsArray.find(f => f === 'name' || f === 'firstName' || f === 'lastName' || f === 'title')
@@ -1076,7 +1093,7 @@ export class BullhornAPI {
         return this.query(entity, fieldsStr, whereClause, params, expectedCorporationId)
       }
       
-      throw new Error(`Search failed: ${error}`)
+      throw new Error(`Search failed for ${entity}: ${error}`)
     }
 
     const result = await response.json()
@@ -2020,8 +2037,19 @@ export class BullhornAPI {
 
     if (!response.ok) {
       const error = await response.text()
-      console.error(`Get metadata failed for ${entity}:`, error)
-      throw new Error(`Get metadata failed: ${error}`)
+      console.error(`Get metadata failed for ${entity}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        error,
+        entity
+      })
+      
+      if (response.status === 401 || response.status === 403) {
+        console.error('🚨 Authentication/authorization error - session may be invalid')
+        throw new Error(`Authentication failed for ${entity}. Your session may have expired. Status: ${response.status}`)
+      }
+      
+      throw new Error(`Get metadata failed for ${entity}: ${error}`)
     }
 
     const data = await response.json()

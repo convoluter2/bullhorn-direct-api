@@ -393,9 +393,16 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load entity metadata'
+      console.error('❌ Error loading metadata:', errorMessage, err)
+      
       if (!silent) {
         setError(errorMessage)
-        toast.error(errorMessage)
+        
+        if (errorMessage.includes('Authentication') || errorMessage.includes('session') || errorMessage.includes('expired')) {
+          toast.error('Session expired or authentication failed. Please reconnect to Bullhorn.', { duration: 5000 })
+        } else {
+          toast.error(errorMessage)
+        }
       }
     } finally {
       if (!silent) {

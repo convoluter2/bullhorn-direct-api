@@ -72,7 +72,19 @@ export class EntityMetadataService {
 
     console.log(`📚 Fetching fresh metadata for: ${entityName}${forceRefresh ? ' (forced)' : ''}`)
     
-    const data = await bullhornAPI.getMetadata(entityName)
+    let data
+    try {
+      data = await bullhornAPI.getMetadata(entityName)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      console.error(`❌ Failed to fetch metadata for ${entityName}:`, errorMessage)
+      
+      if (errorMessage.includes('Authentication failed') || errorMessage.includes('401') || errorMessage.includes('403')) {
+        throw new Error(`Authentication error while fetching ${entityName}. Your session may have expired. Please reconnect.`)
+      }
+      
+      throw error
+    }
     
     console.log('📊 Metadata response for', entityName, ':', {
       entity: data.entity,
