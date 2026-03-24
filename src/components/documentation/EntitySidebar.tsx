@@ -58,9 +58,10 @@ export function EntitySidebar({
 
   const filteredEntities = allEntities.filter(entity => {
     if (!search) return true
+    if (!entity || (!entity.label && !entity.id)) return false
     const searchLower = search.toLowerCase()
-    const entityLabel = (entity?.label || '').toLowerCase()
-    const entityId = (entity?.id || '').toLowerCase()
+    const entityLabel = (entity.label || '').toLowerCase()
+    const entityId = (entity.id || '').toLowerCase()
     return entityLabel.includes(searchLower) || entityId.includes(searchLower)
   })
 
