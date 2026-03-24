@@ -57,11 +57,11 @@ export function EntitySidebar({
   }))
 
   const filteredEntities = allEntities.filter(entity => {
+    if (!search) return true
     const searchLower = search.toLowerCase()
-    const entityLabel = entity.label || ''
-    const entityId = entity.id || ''
-    return entityLabel.toLowerCase().includes(searchLower) ||
-           entityId.toLowerCase().includes(searchLower)
+    const entityLabel = (entity?.label || '').toLowerCase()
+    const entityId = (entity?.id || '').toLowerCase()
+    return entityLabel.includes(searchLower) || entityId.includes(searchLower)
   })
 
   return (
