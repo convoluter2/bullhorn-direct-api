@@ -350,11 +350,19 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
           console.log('📥 No cache found, fetching from API...')
           await entityCacheService.refreshEntityList()
           const refreshedEntities = await entityCacheService.getEntityList()
-          const entityNames = refreshedEntities.map(e => e.entity).sort()
+          const entityNames = refreshedEntities
+            .map(e => e?.entity)
+            .filter(name => name != null && name !== '')
+            .map(name => String(name))
+            .sort()
           setAvailableEntities(entityNames)
           toast.success(`Loaded ${entityNames.length} entities`)
         } else {
-          const entityNames = cachedEntities.map(e => e.entity).sort()
+          const entityNames = cachedEntities
+            .map(e => e?.entity)
+            .filter(name => name != null && name !== '')
+            .map(name => String(name))
+            .sort()
           setAvailableEntities(entityNames)
           console.log(`✅ Loaded ${entityNames.length} entities from cache`)
         }

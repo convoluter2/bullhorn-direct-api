@@ -50,19 +50,26 @@ export function EntitySidebar({
     })
   }
 
-  const allEntities = (Array.isArray(customEntities) ? customEntities : []).map(id => ({ 
-    id, 
-    label: entityMetadata.get(id)?.label || id,
-    isCached: entityMetadata.has(id)
-  }))
+  const allEntities = (Array.isArray(customEntities) ? customEntities : [])
+    .filter(id => id != null && id !== '')
+    .map(id => {
+      const entityId = String(id)
+      return { 
+        id: entityId, 
+        label: entityMetadata.get(entityId)?.label || entityId,
+        isCached: entityMetadata.has(entityId)
+      }
+    })
 
   const filteredEntities = allEntities.filter(entity => {
     if (!search) return true
-    if (!entity || (!entity.label && !entity.id)) return false
+    if (!entity) return false
     
     const searchLower = search.toLowerCase()
-    const entityLabel = entity.label ? String(entity.label).toLowerCase() : ''
-    const entityId = entity.id ? String(entity.id).toLowerCase() : ''
+    const entityLabel = entity.label != null ? String(entity.label).toLowerCase() : ''
+    const entityId = entity.id != null ? String(entity.id).toLowerCase() : ''
+    
+    if (!entityLabel && !entityId) return false
     
     return entityLabel.includes(searchLower) || entityId.includes(searchLower)
   })
