@@ -38,9 +38,9 @@ export function FieldTable({ fields }: FieldTableProps) {
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
       result = result.filter(field => 
-        field.name.toLowerCase().includes(term) ||
-        field.label.toLowerCase().includes(term) ||
-        field.dataType.toLowerCase().includes(term) ||
+        (field.name || '').toLowerCase().includes(term) ||
+        (field.label || '').toLowerCase().includes(term) ||
+        (field.dataType || '').toLowerCase().includes(term) ||
         (field.associatedEntity?.entity || '').toLowerCase().includes(term)
       )
     }
@@ -72,16 +72,16 @@ export function FieldTable({ fields }: FieldTableProps) {
 
         switch (sortField) {
           case 'name':
-            aVal = a.name.toLowerCase()
-            bVal = b.name.toLowerCase()
+            aVal = (a.name || '').toLowerCase()
+            bVal = (b.name || '').toLowerCase()
             break
           case 'type':
-            aVal = a.type
-            bVal = b.type
+            aVal = a.type || ''
+            bVal = b.type || ''
             break
           case 'dataType':
-            aVal = a.dataType
-            bVal = b.dataType
+            aVal = a.dataType || ''
+            bVal = b.dataType || ''
             break
           case 'required':
             aVal = a.required ? 1 : 0
@@ -92,8 +92,8 @@ export function FieldTable({ fields }: FieldTableProps) {
             bVal = b.readonly ? 1 : 0
             break
           case 'associatedEntity':
-            aVal = a.associatedEntity?.entity || ''
-            bVal = b.associatedEntity?.entity || ''
+            aVal = (a.associatedEntity?.entity || '').toLowerCase()
+            bVal = (b.associatedEntity?.entity || '').toLowerCase()
             break
           default:
             return 0
@@ -329,7 +329,7 @@ export function FieldTable({ fields }: FieldTableProps) {
                         <code className="text-sm font-mono text-accent font-medium">
                           {field.name}
                         </code>
-                        {field.label !== field.name && (
+                        {field.label && field.label !== field.name && (
                           <span className="text-xs text-muted-foreground">
                             {field.label}
                           </span>
