@@ -87,11 +87,12 @@ export function FileManager({ onLog }: FileManagerProps) {
 
   const fileAttachmentEntities = [
     'Candidate',
+    'ClientContact',
+    'ClientCorporation',
     'Placement',
     'Opportunity',
     'Certification',
-    'JobOrder',
-    'ClientContact'
+    'JobOrder'
   ]
 
   const { entities, loading: entitiesLoading } = useEntities()

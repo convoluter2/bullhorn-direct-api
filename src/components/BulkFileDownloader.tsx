@@ -55,12 +55,13 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
   const { entities, loading: entitiesLoading } = useEntities()
 
   const fileAttachmentEntities = [
-    'Placement',
+    'Candidate',
+    'ClientContact',
+    'ClientCorporation',
     'Placement',
     'Opportunity',
     'Certification',
-    'JobOrder',
-    'ClientContact'
+    'JobOrder'
   ]
 
   const filteredEntities = entities.filter(entity => 

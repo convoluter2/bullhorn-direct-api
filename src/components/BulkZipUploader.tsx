@@ -54,11 +54,12 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
 
   const fileAttachmentEntities = [
     'Candidate',
+    'ClientContact',
+    'ClientCorporation',
     'Placement',
     'Opportunity',
     'Certification',
-    'JobOrder',
-    'ClientContact'
+    'JobOrder'
   ]
 
   const filteredEntities = entities.filter(entity => 
