@@ -678,7 +678,7 @@ function App() {
               <Database className="text-accent" size={32} weight="duotone" />
               <div className="flex items-center gap-4">
                 <div>
-                  <h1 className="text-2xl font-bold tracking-tight">Bullhorn Data Manager</h1>
+                  <h1 className="text-2xl font-bold tracking-tight">Ingenovis Bullhorn Data Manager</h1>
                   <p className="text-sm text-muted-foreground">Direct API integration for advanced data operations</p>
                 </div>
                 {session && savedConnections.find(conn => conn.id === currentConnectionId) && (
@@ -838,7 +838,7 @@ function App() {
           <div className="space-y-8">
             <div className="text-center py-12">
               <Database size={64} className="mx-auto mb-6 text-accent opacity-50" weight="duotone" />
-              <h2 className="text-3xl font-bold mb-3">Welcome to Bullhorn Data Manager</h2>
+              <h2 className="text-3xl font-bold mb-3">Welcome to Ingenovis Bullhorn Data Manager</h2>
               <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
                 Connect to your Bullhorn instance to access QueryBlast, CSV Loader, SmartStack v2, 
                 QueryStack, and comprehensive audit logging features.
