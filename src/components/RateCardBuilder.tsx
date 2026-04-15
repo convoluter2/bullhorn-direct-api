@@ -233,7 +233,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
 
     setLoading(true)
     try {
-      const response = await bullhornAPI.getEntity('PlacementRateCard', parseInt(searchId), {
+      const response = await bullhornAPI.getEntity('PlacementRateCard', parseInt(searchId, 10), {
         fields: 'id,effectiveDate,placement(id),owner(id,firstName,lastName),placementRateCardStatusLookup(id,label),dateAdded,dateLastModified'
       })
 
@@ -371,14 +371,14 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
         if (!lineGroupsMap.has(groupKey)) {
           lineGroupsMap.set(groupKey, {
             isBase: row.isBase?.toLowerCase() === 'true' || row.isBase === '1',
-            earnCodeGroup: { id: parseInt(groupKey) },
+            earnCodeGroup: { id: parseInt(groupKey, 10) },
             placementRateCardLines: []
           })
         }
 
         const group = lineGroupsMap.get(groupKey)!
         group.placementRateCardLines.push({
-          earnCode: { id: parseInt(row.earnCodeId) },
+          earnCode: { id: parseInt(row.earnCodeId, 10) },
           payMultiplier: parseFloat(row.payMultiplier) || 1,
           payRate: row.payRate ? parseFloat(row.payRate) : undefined,
           billMultiplier: parseFloat(row.billMultiplier) || 1,
@@ -393,15 +393,15 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
       const payload: any = {
         placementRateCardLineGroups: Array.from(lineGroupsMap.values()),
         effectiveDate: firstRow.effectiveDate,
-        placement: { id: parseInt(firstRow.placementId) }
+        placement: { id: parseInt(firstRow.placementId, 10) }
       }
 
       if (firstRow.ownerId) {
-        payload.owner = { id: parseInt(firstRow.ownerId) }
+        payload.owner = { id: parseInt(firstRow.ownerId, 10) }
       }
 
       if (firstRow.statusLookupId) {
-        payload.placementRateCardStatusLookup = { id: parseInt(firstRow.statusLookupId) }
+        payload.placementRateCardStatusLookup = { id: parseInt(firstRow.statusLookupId, 10) }
       }
 
       console.log('Creating rate card with payload:', payload)
@@ -474,14 +474,14 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
             if (!lineGroupsMap.has(groupKey)) {
               lineGroupsMap.set(groupKey, {
                 isBase: row.isBase?.toLowerCase() === 'true' || row.isBase === '1',
-                earnCodeGroup: { id: parseInt(groupKey) },
+                earnCodeGroup: { id: parseInt(groupKey, 10) },
                 placementRateCardLines: []
               })
             }
 
             const group = lineGroupsMap.get(groupKey)!
             group.placementRateCardLines.push({
-              earnCode: { id: parseInt(row.earnCodeId) },
+              earnCode: { id: parseInt(row.earnCodeId, 10) },
               payMultiplier: parseFloat(row.payMultiplier) || 1,
               payRate: row.payRate ? parseFloat(row.payRate) : undefined,
               billMultiplier: parseFloat(row.billMultiplier) || 1,
@@ -496,15 +496,15 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
           const payload: any = {
             placementRateCardLineGroups: Array.from(lineGroupsMap.values()),
             effectiveDate: firstRow.effectiveDate,
-            placement: { id: parseInt(firstRow.placementId) }
+            placement: { id: parseInt(firstRow.placementId, 10) }
           }
 
           if (firstRow.ownerId) {
-            payload.owner = { id: parseInt(firstRow.ownerId) }
+            payload.owner = { id: parseInt(firstRow.ownerId, 10) }
           }
 
           if (firstRow.statusLookupId) {
-            payload.placementRateCardStatusLookup = { id: parseInt(firstRow.statusLookupId) }
+            payload.placementRateCardStatusLookup = { id: parseInt(firstRow.statusLookupId, 10) }
           }
 
           console.log(`Creating rate card for ${key}:`, payload)
