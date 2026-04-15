@@ -1,8 +1,11 @@
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { CreditCard } from '@phosphor-icons/react'
 
-  onLog: (operation: string, status: 'success
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+interface RateCardBuilderProps {
+  onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
+}
+
 export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
   return (
     <Card>
@@ -27,37 +30,3 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     </Card>
   )
 }
-  const [processing, setProc
-  const [previewM
-
- 
-
-      earnCodeGroupName: '
-      lines: [
-          earnCodeId: '
-          payMultiplier: '1',
- 
-
-          customText1: '',
-        }
-    }
-
-    const file = even
-
-      let hea
-
-
-        rows = result.rows
-        const result = await parseExcel(file)
-        rows = result.rows
-        toast.error('Unsupported file type. Please up
-      }
-      setCsvData({ headers, rows })
-      toast.success(`Loaded ${rows.length} rows from 
-
-    }
-    if (fileInputRef.current) {
-    }
-
-    const configs: RateCar
-
