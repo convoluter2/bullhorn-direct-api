@@ -614,20 +614,47 @@ export function SmartStack({ onLog }: SmartStackProps) {
                 updateData[update.field] = update.value
               }
             } else if (fieldMeta?.associationType === 'TO_ONE') {
-              const trimmedValue = String(update.value).trim()
-              if (trimmedValue && /^\d+$/.test(trimmedValue)) {
-                const numericId = parseInt(trimmedValue, 10)
-                if (!isNaN(numericId)) {
-                  updateData[update.field] = { id: numericId }
+              try {
+                const toOneValue = JSON.parse(update.value)
+                if (toOneValue.operation === 'clear') {
+                  updateData[update.field] = null
+                  console.log(`✅ TO_ONE field ${update.field}: Clear operation, setting to null`)
+                } else if (toOneValue.operation === 'set' && toOneValue.id) {
+                  const trimmedId = String(toOneValue.id).trim()
+                  if (/^\d+$/.test(trimmedId)) {
+                    const numericId = parseInt(trimmedId, 10)
+                    if (!isNaN(numericId)) {
+                      updateData[update.field] = { id: numericId }
+                      console.log(`✅ TO_ONE field ${update.field}: Set operation with ID ${numericId}`)
+                    } else {
+                      console.warn(`⚠️ TO_ONE field ${update.field}: Invalid ID after parsing: ${trimmedId}`)
+                      updateData[update.field] = null
+                    }
+                  } else {
+                    console.warn(`⚠️ TO_ONE field ${update.field}: ID must be numeric, got: ${trimmedId}`)
+                    updateData[update.field] = null
+                  }
                 } else {
-                  console.warn(`⚠️ TO_ONE field ${update.field} requires an integer ID, got: ${trimmedValue}`)
+                  console.warn(`⚠️ TO_ONE field ${update.field}: Invalid TO_ONE value structure:`, toOneValue)
                   updateData[update.field] = null
                 }
-              } else if (trimmedValue) {
-                console.warn(`⚠️ TO_ONE field ${update.field} requires an integer ID, got: ${trimmedValue}`)
-                updateData[update.field] = null
-              } else {
-                updateData[update.field] = null
+              } catch {
+                const trimmedValue = String(update.value).trim()
+                if (trimmedValue && /^\d+$/.test(trimmedValue)) {
+                  const numericId = parseInt(trimmedValue, 10)
+                  if (!isNaN(numericId)) {
+                    updateData[update.field] = { id: numericId }
+                    console.log(`✅ TO_ONE field ${update.field}: Legacy format, using plain ID ${numericId}`)
+                  } else {
+                    console.warn(`⚠️ TO_ONE field ${update.field}: Legacy format invalid ID: ${trimmedValue}`)
+                    updateData[update.field] = null
+                  }
+                } else if (trimmedValue) {
+                  console.warn(`⚠️ TO_ONE field ${update.field}: Legacy format requires integer ID, got: ${trimmedValue}`)
+                  updateData[update.field] = null
+                } else {
+                  updateData[update.field] = null
+                }
               }
             } else if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
               updateData[update.field] = Number(update.value)
