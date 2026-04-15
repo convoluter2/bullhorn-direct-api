@@ -1,17 +1,29 @@
 import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Alert, AlertDescription } from '@/co
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import Papa from 'papaparse'
 import { CreditCard, Plus, Trash, Download, Upload, FolderOpen } from '@phosphor-icons/react'
-  onLog: (operation: string, status: 'success' |
 import { useKV } from '@github/spark/hooks'
+import { bullhornAPI } from '@/lib/bullhorn-api'
+import { toast } from 'sonner'
+
+interface RateCardBuilderProps {
+  onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
+}
+
 interface RateCardVersion {
   id: number
+  name: string
+  effectiveDate: number
+  effectiveEndDate?: number
+}
+
+interface RateCardLine {
   id: number
   externalID: string
   earnCode: string
