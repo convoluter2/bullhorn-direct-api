@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -6,8 +6,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { CreditCard, Plus, Trash, Download, Upload, FolderOpen } from '@phosphor-icons/react'
+import { CreditCard, Plus, Trash, Download, Upload, FolderOpen, ArrowsLeftRight } from '@phosphor-icons/react'
 import { useKV } from '@github/spark/hooks'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import Papa from 'papaparse'
@@ -55,6 +56,21 @@ interface CSVRateCardLine {
   unitOfMeasure: string
   rate: number
   markupPercent?: number
+  [key: string]: any
+}
+
+interface FieldMapping {
+  csvColumn: string
+  rateCardField: string
+}
+
+interface RateCardLineField {
+  name: string
+  label: string
+  type: string
+  dataType: string
+  required?: boolean
+  readonly?: boolean
 }
 
 export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
@@ -70,7 +86,35 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
   const [newRateCardName, setNewRateCardName] = useState('')
   const [newRateCardEffectiveDate, setNewRateCardEffectiveDate] = useState('')
   const [csvLines, setCsvLines] = useState<CSVRateCardLine[]>([])
+  const [csvColumns, setCsvColumns] = useState<string[]>([])
+  const [showMappingDialog, setShowMappingDialog] = useState(false)
+  const [fieldMappings, setFieldMappings] = useState<FieldMapping[]>([])
+  const [availableFields, setAvailableFields] = useState<RateCardLineField[]>([])
+  const [rawCsvData, setRawCsvData] = useState<any[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    loadRateCardLineMetadata()
+  }, [])
+
+  const loadRateCardLineMetadata = async () => {
+    try {
+      const metadata = await bullhornAPI.getMetadata('RateCardLine')
+      const fields: RateCardLineField[] = metadata.fields
+        .filter((f: any) => !f.readonly && f.name !== 'id')
+        .map((f: any) => ({
+          name: f.name,
+          label: f.label || f.name,
+          type: f.type,
+          dataType: f.dataType,
+          required: f.required,
+          readonly: f.readonly
+        }))
+      setAvailableFields(fields)
+    } catch (error) {
+      console.error('Failed to load RateCardLine metadata:', error)
+    }
+  }
 
   const loadRateCard = async () => {
     if (!rateCardVersionId.trim()) {
@@ -300,27 +344,59 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
       skipEmptyLines: true,
       complete: (results) => {
         try {
-          const parsedLines: CSVRateCardLine[] = results.data.map((row: any) => ({
-            earnCode: row['Earn Code'] || row['earnCode'] || '',
-            title: row['Title'] || row['title'] || '',
-            unitOfMeasure: row['Unit of Measure'] || row['unitOfMeasure'] || row['Unit'] || 'Hour',
-            rate: parseFloat(row['Rate'] || row['rate'] || '0'),
-            markupPercent: row['Markup %'] || row['markupPercent'] ? parseFloat(row['Markup %'] || row['markupPercent']) : undefined
-          }))
-
-          const validLines = parsedLines.filter(line => line.earnCode && line.title)
-          
-          if (validLines.length === 0) {
-            toast.error('No valid lines found in CSV')
+          if (!results.data || results.data.length === 0) {
+            toast.error('CSV file is empty')
             return
           }
 
-          setCsvLines(validLines)
-          toast.success(`Loaded ${validLines.length} lines from CSV`)
-          onLog('CSV Upload', 'success', `Parsed ${validLines.length} rate card lines from CSV`, {
-            fileName: file.name,
-            lineCount: validLines.length
-          })
+          const firstRow = results.data[0] as any
+          const columns = Object.keys(firstRow)
+          
+          setCsvColumns(columns)
+          setRawCsvData(results.data as any[])
+          
+          const hasStandardColumns = 
+            columns.some(col => col.toLowerCase().includes('earn') || col.toLowerCase().includes('code')) &&
+            columns.some(col => col.toLowerCase().includes('title')) &&
+            columns.some(col => col.toLowerCase().includes('rate'))
+          
+          if (hasStandardColumns) {
+            const parsedLines: CSVRateCardLine[] = results.data.map((row: any) => {
+              const line: CSVRateCardLine = {
+                earnCode: row['Earn Code'] || row['earnCode'] || row['EarnCode'] || row['code'] || '',
+                title: row['Title'] || row['title'] || '',
+                unitOfMeasure: row['Unit of Measure'] || row['unitOfMeasure'] || row['Unit'] || row['unit'] || 'Hour',
+                rate: parseFloat(row['Rate'] || row['rate'] || '0'),
+                markupPercent: row['Markup %'] || row['markupPercent'] ? parseFloat(row['Markup %'] || row['markupPercent']) : undefined
+              }
+              
+              Object.keys(row).forEach(key => {
+                const normalizedKey = key.toLowerCase().replace(/\s+/g, '')
+                if (!['earncode', 'code', 'title', 'unitofmeasure', 'unit', 'rate', 'markup%', 'markuppercent'].includes(normalizedKey)) {
+                  line[key] = row[key]
+                }
+              })
+              
+              return line
+            })
+
+            const validLines = parsedLines.filter(line => line.earnCode && line.title)
+            
+            if (validLines.length === 0) {
+              toast.error('No valid lines found in CSV')
+              return
+            }
+
+            setCsvLines(validLines)
+            toast.success(`Loaded ${validLines.length} lines from CSV`)
+            onLog('CSV Upload', 'success', `Parsed ${validLines.length} rate card lines from CSV`, {
+              fileName: file.name,
+              lineCount: validLines.length
+            })
+          } else {
+            setShowMappingDialog(true)
+            toast.info(`Found ${columns.length} columns. Please map them to RateCardLine fields.`)
+          }
         } catch (error) {
           console.error('Failed to parse CSV:', error)
           toast.error('Failed to parse CSV file')
@@ -337,6 +413,71 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
+  }
+
+  const applyFieldMappings = () => {
+    try {
+      const parsedLines: CSVRateCardLine[] = rawCsvData.map((row: any) => {
+        const line: CSVRateCardLine = {
+          earnCode: '',
+          title: '',
+          unitOfMeasure: 'Hour',
+          rate: 0
+        }
+        
+        fieldMappings.forEach(mapping => {
+          const value = row[mapping.csvColumn]
+          if (value !== undefined && value !== null) {
+            if (mapping.rateCardField === 'rate' || mapping.rateCardField === 'markupPercent') {
+              line[mapping.rateCardField] = parseFloat(value) || 0
+            } else {
+              line[mapping.rateCardField] = value
+            }
+          }
+        })
+        
+        Object.keys(row).forEach(key => {
+          const isMapped = fieldMappings.some(m => m.csvColumn === key)
+          if (!isMapped) {
+            line[key] = row[key]
+          }
+        })
+        
+        return line
+      })
+
+      const validLines = parsedLines.filter(line => line.earnCode && line.title)
+      
+      if (validLines.length === 0) {
+        toast.error('No valid lines found after mapping. Ensure Earn Code and Title are mapped.')
+        return
+      }
+
+      setCsvLines(validLines)
+      setShowMappingDialog(false)
+      toast.success(`Loaded ${validLines.length} lines from CSV with custom mapping`)
+      onLog('CSV Mapping', 'success', `Applied field mappings to ${validLines.length} rate card lines`, {
+        mappings: fieldMappings,
+        lineCount: validLines.length
+      })
+    } catch (error) {
+      console.error('Failed to apply mappings:', error)
+      toast.error('Failed to apply field mappings')
+    }
+  }
+
+  const addFieldMapping = () => {
+    setFieldMappings([...fieldMappings, { csvColumn: '', rateCardField: '' }])
+  }
+
+  const removeFieldMapping = (index: number) => {
+    setFieldMappings(fieldMappings.filter((_, i) => i !== index))
+  }
+
+  const updateFieldMapping = (index: number, field: 'csvColumn' | 'rateCardField', value: string) => {
+    setFieldMappings(fieldMappings.map((mapping, i) => 
+      i === index ? { ...mapping, [field]: value } : mapping
+    ))
   }
 
   const createRateCard = async () => {
@@ -378,12 +519,20 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
 
       for (const line of csvLines) {
         try {
-          const rateCardLineResponse = await bullhornAPI.insert('RateCardLine', {
+          const rateCardLineData: any = {
             earnCode: line.earnCode,
             title: line.title,
             unitOfMeasure: line.unitOfMeasure,
             externalID: `${line.earnCode}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          }
+          
+          Object.keys(line).forEach(key => {
+            if (!['earnCode', 'title', 'unitOfMeasure', 'rate', 'markupPercent'].includes(key)) {
+              rateCardLineData[key] = line[key]
+            }
           })
+
+          const rateCardLineResponse = await bullhornAPI.insert('RateCardLine', rateCardLineData)
 
           await bullhornAPI.insert('RateCardLineVersion', {
             rateCardLine: { id: rateCardLineResponse.changedEntityId },
@@ -588,12 +737,18 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                       <Label className="text-sm text-muted-foreground">
                         {csvLines.length} line{csvLines.length !== 1 ? 's' : ''} loaded from CSV
                       </Label>
-                      <Button variant="ghost" size="sm" onClick={() => setCsvLines([])}>
-                        Clear All
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => setShowMappingDialog(true)}>
+                          <ArrowsLeftRight size={16} />
+                          Adjust Mapping
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setCsvLines([])}>
+                          Clear All
+                        </Button>
+                      </div>
                     </div>
                     <div className="max-h-96 overflow-y-auto space-y-2 border border-border rounded-lg p-3 bg-muted/30">
-                      {csvLines.map((line, index) => (
+                      {csvLines.slice(0, 10).map((line, index) => (
                         <div key={index} className="grid grid-cols-12 gap-2 items-center p-2 bg-card border border-border rounded text-sm">
                           <div className="col-span-2 font-mono">{line.earnCode}</div>
                           <div className="col-span-3">{line.title}</div>
@@ -607,6 +762,11 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                           </div>
                         </div>
                       ))}
+                      {csvLines.length > 10 && (
+                        <div className="text-xs text-muted-foreground text-center py-2">
+                          ... and {csvLines.length - 10} more lines
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -633,6 +793,92 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
           </Tabs>
         </CardContent>
       </Card>
+
+      <Dialog open={showMappingDialog} onOpenChange={setShowMappingDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Map CSV Columns to RateCardLine Fields</DialogTitle>
+            <DialogDescription>
+              Map your CSV columns to the corresponding RateCardLine fields. Required fields: Earn Code, Title, Rate.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="flex justify-between items-center">
+              <Label>Field Mappings</Label>
+              <Button variant="outline" size="sm" onClick={addFieldMapping}>
+                <Plus size={16} />
+                Add Mapping
+              </Button>
+            </div>
+
+            {fieldMappings.map((mapping, index) => (
+              <div key={index} className="grid grid-cols-12 gap-3 items-end">
+                <div className="col-span-5">
+                  <Label className="text-xs">CSV Column</Label>
+                  <Select value={mapping.csvColumn} onValueChange={(value) => updateFieldMapping(index, 'csvColumn', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select CSV column" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {csvColumns.map(col => (
+                        <SelectItem key={col} value={col}>{col}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="col-span-1 flex items-center justify-center pb-2">
+                  <ArrowsLeftRight size={20} className="text-muted-foreground" />
+                </div>
+                <div className="col-span-5">
+                  <Label className="text-xs">RateCardLine Field</Label>
+                  <Select value={mapping.rateCardField} onValueChange={(value) => updateFieldMapping(index, 'rateCardField', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select field" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="earnCode">Earn Code *</SelectItem>
+                      <SelectItem value="title">Title *</SelectItem>
+                      <SelectItem value="unitOfMeasure">Unit of Measure</SelectItem>
+                      <SelectItem value="rate">Rate *</SelectItem>
+                      <SelectItem value="markupPercent">Markup Percent</SelectItem>
+                      {availableFields
+                        .filter(f => !['earnCode', 'title', 'unitOfMeasure', 'externalID'].includes(f.name))
+                        .map(field => (
+                          <SelectItem key={field.name} value={field.name}>
+                            {field.label} ({field.name})
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="col-span-1 flex items-center pb-2">
+                  <Button variant="ghost" size="sm" onClick={() => removeFieldMapping(index)} className="h-9 w-9 p-0">
+                    <Trash size={16} className="text-destructive" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+
+            {fieldMappings.length === 0 && (
+              <Alert>
+                <AlertDescription>
+                  Click "Add Mapping" to map CSV columns to RateCardLine fields.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setShowMappingDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={applyFieldMappings} disabled={fieldMappings.length === 0}>
+                Apply Mappings
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {rateCardData && (
         <>

@@ -130,16 +130,102 @@ export class EntityCacheService {
 
   async saveMetadataCache(entityName: string, metadata: any): Promise<void> {
     try {
-      await kvRequestManager.enqueueKVSet(
-        `metadata-cache-${entityName}`,
-        () => window.spark.kv.set(`metadata-cache-${entityName}`, {
-          metadata,
-          cachedAt: Date.now()
-        })
-      )
+      const compressedMetadata = this.compressMetadata(metadata)
+      
+      const cacheData = {
+        metadata: compressedMetadata,
+        cachedAt: Date.now()
+      }
+      
+      const dataSize = JSON.stringify(cacheData).length
+      console.log(`📏 Metadata cache size for ${entityName}: ${Math.round(dataSize / 1024)}KB`)
+      
+      if (dataSize > 500000) {
+        console.warn(`⚠️ Metadata for ${entityName} is too large (${Math.round(dataSize / 1024)}KB), storing minimal version`)
+        const minimalMetadata = this.createMinimalMetadata(metadata)
+        await kvRequestManager.enqueueKVSet(
+          `metadata-cache-${entityName}`,
+          () => window.spark.kv.set(`metadata-cache-${entityName}`, {
+            metadata: minimalMetadata,
+            cachedAt: Date.now()
+          })
+        )
+      } else {
+        await kvRequestManager.enqueueKVSet(
+          `metadata-cache-${entityName}`,
+          () => window.spark.kv.set(`metadata-cache-${entityName}`, cacheData)
+        )
+      }
       console.log(`💾 Saved metadata cache for: ${entityName}`)
     } catch (error) {
-      console.error(`Failed to save metadata cache for ${entityName}:`, error)
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      if (errorMsg.includes('KeyValuePairExceedsMaxLength')) {
+        console.warn(`⚠️ Metadata too large for ${entityName}, storing minimal version`)
+        try {
+          const minimalMetadata = this.createMinimalMetadata(metadata)
+          await kvRequestManager.enqueueKVSet(
+            `metadata-cache-${entityName}`,
+            () => window.spark.kv.set(`metadata-cache-${entityName}`, {
+              metadata: minimalMetadata,
+              cachedAt: Date.now()
+            })
+          )
+          console.log(`💾 Saved minimal metadata cache for: ${entityName}`)
+        } catch (minimalError) {
+          console.error(`Failed to save even minimal metadata for ${entityName}:`, minimalError)
+        }
+      } else {
+        console.error(`Failed to save metadata cache for ${entityName}:`, error)
+      }
+    }
+  }
+
+  private compressMetadata(metadata: any): any {
+    if (!metadata || !metadata.fields) return metadata
+    
+    return {
+      entity: metadata.entity,
+      label: metadata.label,
+      fields: metadata.fields.map((field: any) => ({
+        name: field.name,
+        label: field.label,
+        type: field.type,
+        dataType: field.dataType,
+        dataSpecialization: field.dataSpecialization,
+        required: field.required,
+        readonly: field.readonly,
+        multiValue: field.multiValue,
+        optionsType: field.optionsType,
+        associatedEntity: field.associatedEntity ? {
+          entity: field.associatedEntity.entity,
+          label: field.associatedEntity.label
+        } : undefined,
+        composite: field.composite,
+        compositeFields: field.compositeFields ? field.compositeFields.map((cf: any) => ({
+          name: cf.name,
+          label: cf.label,
+          type: cf.type,
+          dataType: cf.dataType
+        })) : undefined
+      }))
+    }
+  }
+
+  private createMinimalMetadata(metadata: any): any {
+    if (!metadata || !metadata.fields) return metadata
+    
+    return {
+      entity: metadata.entity,
+      label: metadata.label,
+      fields: metadata.fields.map((field: any) => ({
+        name: field.name,
+        label: field.label,
+        type: field.type,
+        dataType: field.dataType,
+        associatedEntity: field.associatedEntity ? {
+          entity: field.associatedEntity.entity
+        } : undefined
+      }))
     }
   }
 
