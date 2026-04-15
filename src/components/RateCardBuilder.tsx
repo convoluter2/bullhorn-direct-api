@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
+import { Select, SelectContent, SelectItem, S
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { toast } from 'sonner'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { CreditCard, Plus, Trash, Copy, Download, Upload } from '@phosphor-icons/react'
 import { toast } from 'sonner'
@@ -47,7 +47,7 @@ interface NewRateCardLine {
   markupPercent: number
 }
 
-export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
+    lines: Array<RateCardLine & { lineVersion?: RateCardLineVersio
   const [rateCardVersionId, setRateCardVersionId] = useState('')
   const [rateCardData, setRateCardData] = useState<{
     version: RateCardVersion | null
@@ -276,7 +276,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     })
   }
 
-  return (
+          
     <div className="space-y-6">
       <Card>
         <CardHeader>
@@ -288,7 +288,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                 Load, edit, and manage Bullhorn rate cards
               </CardDescription>
             </div>
-          </div>
+            <div
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-3">
@@ -514,5 +514,4 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
         </>
       )}
     </div>
-  )
-}
+
