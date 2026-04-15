@@ -11,9 +11,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import { CreditCard, MagnifyingGlass, Plus, Upload, Trash, PencilSimple, FloppyDisk, X } from '@phosphor-icons/react'
+import { CreditCard, MagnifyingGlass, Plus, Upload, Trash, PencilSimple, FloppyDisk, X, DownloadSimple } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import Papa from 'papaparse'
+import templateCsv from '@/assets/documents/rate-card-template.csv'
 
 interface RateCardBuilderProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -59,6 +60,10 @@ interface RateCardLine {
 }
 
 interface CSVLineRow {
+  placementId: string
+  effectiveDate: string
+  ownerId?: string
+  statusLookupId?: string
   earnCodeGroupId: string
   isBase: string
   earnCodeId: string
@@ -82,15 +87,21 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [csvData, setCsvData] = useState<CSVLineRow[]>([])
-  const [newRateCard, setNewRateCard] = useState({
-    placementId: '',
-    effectiveDate: '',
-    ownerId: '',
-    statusLookupId: ''
-  })
   const [lineGroups, setLineGroups] = useState<RateCardLineGroup[]>([])
   const [editingLineId, setEditingLineId] = useState<number | null>(null)
   const [editFormData, setEditFormData] = useState<Partial<RateCardLine>>({})
+  const [bulkCreateMode, setBulkCreateMode] = useState(false)
+  const [rateCardsToCreate, setRateCardsToCreate] = useState<Map<string, CSVLineRow[]>>(new Map())
+
+  const handleDownloadTemplate = () => {
+    const link = document.createElement('a')
+    link.href = templateCsv
+    link.download = 'rate-card-template.csv'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast.success('Template downloaded')
+  }
 
   useEffect(() => {
     if (rateCard) {
@@ -296,7 +307,24 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
       skipEmptyLines: true,
       complete: (results) => {
         setCsvData(results.data)
-        toast.success(`Loaded ${results.data.length} rate card lines from CSV`)
+        
+        const rateCardMap = new Map<string, CSVLineRow[]>()
+        results.data.forEach((row) => {
+          const key = `${row.placementId || ''}_${row.effectiveDate || ''}`
+          if (!rateCardMap.has(key)) {
+            rateCardMap.set(key, [])
+          }
+          rateCardMap.get(key)!.push(row)
+        })
+        
+        setRateCardsToCreate(rateCardMap)
+        setBulkCreateMode(rateCardMap.size > 1)
+        
+        if (rateCardMap.size === 1) {
+          toast.success(`Loaded ${results.data.length} rate card lines from CSV for 1 rate card`)
+        } else {
+          toast.success(`Loaded ${results.data.length} rate card lines from CSV for ${rateCardMap.size} rate cards`)
+        }
       },
       error: (error) => {
         toast.error('Failed to parse CSV file')
@@ -306,18 +334,29 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
   }
 
   const handleCreateRateCard = async () => {
-    if (!newRateCard.placementId.trim()) {
-      toast.error('Please enter a Placement ID')
-      return
-    }
-
-    if (!newRateCard.effectiveDate) {
-      toast.error('Please enter an Effective Date')
-      return
-    }
-
     if (csvData.length === 0) {
       toast.error('Please upload a CSV file with rate card lines')
+      return
+    }
+
+    if (bulkCreateMode) {
+      await handleBulkCreateRateCards()
+    } else {
+      await handleSingleCreateRateCard()
+    }
+  }
+
+  const handleSingleCreateRateCard = async () => {
+    if (csvData.length === 0) return
+
+    const firstRow = csvData[0]
+    if (!firstRow.placementId?.trim()) {
+      toast.error('Placement ID is required in CSV')
+      return
+    }
+
+    if (!firstRow.effectiveDate) {
+      toast.error('Effective Date is required in CSV')
       return
     }
 
@@ -341,28 +380,28 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
         group.placementRateCardLines.push({
           earnCode: { id: parseInt(row.earnCodeId) },
           payMultiplier: parseFloat(row.payMultiplier) || 1,
-          payRate: row.payRate || '',
+          payRate: row.payRate ? parseFloat(row.payRate) : undefined,
           billMultiplier: parseFloat(row.billMultiplier) || 1,
-          billRate: row.billRate || '',
-          markupPercent: row.markupPercent || '',
-          markupValue: row.markupValue || '',
+          billRate: row.billRate ? parseFloat(row.billRate) : undefined,
+          markupPercent: row.markupPercent ? parseFloat(row.markupPercent) : undefined,
+          markupValue: row.markupValue ? parseFloat(row.markupValue) : undefined,
           customText1: row.customText1 || '',
-          customFloat1: row.customFloat1 || ''
+          customFloat1: row.customFloat1 ? parseFloat(row.customFloat1) : undefined
         })
       })
 
       const payload: any = {
         placementRateCardLineGroups: Array.from(lineGroupsMap.values()),
-        effectiveDate: newRateCard.effectiveDate,
-        placement: { id: parseInt(newRateCard.placementId) }
+        effectiveDate: firstRow.effectiveDate,
+        placement: { id: parseInt(firstRow.placementId) }
       }
 
-      if (newRateCard.ownerId) {
-        payload.owner = { id: parseInt(newRateCard.ownerId) }
+      if (firstRow.ownerId) {
+        payload.owner = { id: parseInt(firstRow.ownerId) }
       }
 
-      if (newRateCard.statusLookupId) {
-        payload.placementRateCardStatusLookup = { id: parseInt(newRateCard.statusLookupId) }
+      if (firstRow.statusLookupId) {
+        payload.placementRateCardStatusLookup = { id: parseInt(firstRow.statusLookupId) }
       }
 
       console.log('Creating rate card with payload:', payload)
@@ -372,14 +411,10 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
       if (response.changedEntityId) {
         toast.success('Rate card created successfully!')
         setCreateDialogOpen(false)
-        setNewRateCard({
-          placementId: '',
-          effectiveDate: '',
-          ownerId: '',
-          statusLookupId: ''
-        })
         setCsvData([])
         setCsvFile(null)
+        setRateCardsToCreate(new Map())
+        setBulkCreateMode(false)
 
         const createdCard = await bullhornAPI.getEntity('PlacementRateCard', response.changedEntityId, {
           fields: 'id,effectiveDate,placement(id),owner(id,firstName,lastName),placementRateCardStatusLookup(id,label)'
@@ -390,8 +425,8 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
 
         onLog('Rate Card Create', 'success', `Created Rate Card ID: ${response.changedEntityId}`, {
           rateCardId: response.changedEntityId,
-          placementId: newRateCard.placementId,
-          effectiveDate: newRateCard.effectiveDate,
+          placementId: firstRow.placementId,
+          effectiveDate: firstRow.effectiveDate,
           lineGroupCount: lineGroupsMap.size,
           totalLines: csvData.length,
           response
@@ -404,6 +439,125 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
       console.error('Rate card creation error:', error)
       toast.error('Failed to create rate card')
       onLog('Rate Card Create', 'error', 'Failed to create rate card', { error: String(error) })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleBulkCreateRateCards = async () => {
+    setLoading(true)
+    const results: any[] = []
+    let successCount = 0
+    let failureCount = 0
+
+    try {
+      for (const [key, rows] of rateCardsToCreate.entries()) {
+        const firstRow = rows[0]
+        if (!firstRow.placementId?.trim() || !firstRow.effectiveDate) {
+          console.error(`Skipping rate card ${key} - missing required fields`)
+          failureCount++
+          results.push({
+            key,
+            status: 'error',
+            message: 'Missing placementId or effectiveDate'
+          })
+          continue
+        }
+
+        try {
+          const lineGroupsMap = new Map<string, RateCardLineGroup>()
+
+          rows.forEach((row) => {
+            const groupKey = row.earnCodeGroupId
+            if (!groupKey) return
+
+            if (!lineGroupsMap.has(groupKey)) {
+              lineGroupsMap.set(groupKey, {
+                isBase: row.isBase?.toLowerCase() === 'true' || row.isBase === '1',
+                earnCodeGroup: { id: parseInt(groupKey) },
+                placementRateCardLines: []
+              })
+            }
+
+            const group = lineGroupsMap.get(groupKey)!
+            group.placementRateCardLines.push({
+              earnCode: { id: parseInt(row.earnCodeId) },
+              payMultiplier: parseFloat(row.payMultiplier) || 1,
+              payRate: row.payRate ? parseFloat(row.payRate) : undefined,
+              billMultiplier: parseFloat(row.billMultiplier) || 1,
+              billRate: row.billRate ? parseFloat(row.billRate) : undefined,
+              markupPercent: row.markupPercent ? parseFloat(row.markupPercent) : undefined,
+              markupValue: row.markupValue ? parseFloat(row.markupValue) : undefined,
+              customText1: row.customText1 || '',
+              customFloat1: row.customFloat1 ? parseFloat(row.customFloat1) : undefined
+            })
+          })
+
+          const payload: any = {
+            placementRateCardLineGroups: Array.from(lineGroupsMap.values()),
+            effectiveDate: firstRow.effectiveDate,
+            placement: { id: parseInt(firstRow.placementId) }
+          }
+
+          if (firstRow.ownerId) {
+            payload.owner = { id: parseInt(firstRow.ownerId) }
+          }
+
+          if (firstRow.statusLookupId) {
+            payload.placementRateCardStatusLookup = { id: parseInt(firstRow.statusLookupId) }
+          }
+
+          console.log(`Creating rate card for ${key}:`, payload)
+
+          const response = await bullhornAPI.createEntity('PlacementRateCard', payload)
+
+          if (response.changedEntityId) {
+            successCount++
+            results.push({
+              key,
+              status: 'success',
+              rateCardId: response.changedEntityId,
+              placementId: firstRow.placementId,
+              effectiveDate: firstRow.effectiveDate,
+              lineCount: rows.length
+            })
+          } else {
+            failureCount++
+            results.push({
+              key,
+              status: 'error',
+              message: 'No changedEntityId returned',
+              response
+            })
+          }
+        } catch (error) {
+          console.error(`Failed to create rate card ${key}:`, error)
+          failureCount++
+          results.push({
+            key,
+            status: 'error',
+            message: String(error)
+          })
+        }
+      }
+
+      toast.success(`Bulk creation complete: ${successCount} succeeded, ${failureCount} failed`)
+      setCreateDialogOpen(false)
+      setCsvData([])
+      setCsvFile(null)
+      setRateCardsToCreate(new Map())
+      setBulkCreateMode(false)
+
+      onLog('Bulk Rate Card Create', successCount > 0 ? 'success' : 'error', 
+        `Created ${successCount} rate cards, ${failureCount} failed`, {
+          successCount,
+          failureCount,
+          results
+        })
+    } catch (error) {
+      console.error('Bulk rate card creation error:', error)
+      toast.error('Bulk creation failed')
+      onLog('Bulk Rate Card Create', 'error', 'Bulk creation failed', { error: String(error) })
     } finally {
       setLoading(false)
     }
@@ -749,53 +903,28 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
       </Card>
 
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create Rate Card</DialogTitle>
+            <DialogTitle>Create Rate Card(s) from CSV</DialogTitle>
             <DialogDescription>
-              Upload a CSV file with rate card lines. Required columns: earnCodeGroupId, isBase, earnCodeId, payMultiplier, billMultiplier
+              Upload a CSV file where each row represents a rate card line. Repeat placementId and effectiveDate for lines on the same rate card.
+              <br />
+              Required columns: placementId, effectiveDate, earnCodeGroupId, isBase, earnCodeId, payMultiplier, billMultiplier
+              <br />
+              Optional columns: ownerId, statusLookupId, payRate, billRate, markupPercent, markupValue, customText1, customFloat1
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="new-placement">Placement ID *</Label>
-              <Input
-                id="new-placement"
-                placeholder="Enter Placement ID"
-                value={newRateCard.placementId}
-                onChange={(e) => setNewRateCard({ ...newRateCard, placementId: e.target.value })}
-              />
+            <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+              <div className="text-sm">
+                <div className="font-semibold">Need a template?</div>
+                <div className="text-muted-foreground">Download the CSV template to get started</div>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+                <DownloadSimple size={18} />
+                Download Template
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="new-effective-date">Effective Date *</Label>
-              <Input
-                id="new-effective-date"
-                type="date"
-                value={newRateCard.effectiveDate}
-                onChange={(e) => setNewRateCard({ ...newRateCard, effectiveDate: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="new-owner">Owner ID (optional)</Label>
-              <Input
-                id="new-owner"
-                placeholder="Enter Owner ID"
-                value={newRateCard.ownerId}
-                onChange={(e) => setNewRateCard({ ...newRateCard, ownerId: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="new-status">Status Lookup ID (optional)</Label>
-              <Input
-                id="new-status"
-                placeholder="Enter Status Lookup ID"
-                value={newRateCard.statusLookupId}
-                onChange={(e) => setNewRateCard({ ...newRateCard, statusLookupId: e.target.value })}
-              />
-            </div>
-
-            <Separator />
-
             <div className="space-y-2">
               <Label htmlFor="csv-upload">Upload CSV File *</Label>
               <Input
@@ -805,8 +934,15 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                 onChange={handleFileUpload}
               />
               {csvFile && (
-                <div className="text-sm text-muted-foreground">
-                  File: {csvFile.name} ({csvData.length} lines)
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">
+                    File: {csvFile.name} ({csvData.length} lines)
+                  </div>
+                  {bulkCreateMode && (
+                    <Badge variant="default" className="text-sm">
+                      Bulk Mode: {rateCardsToCreate.size} rate cards detected
+                    </Badge>
+                  )}
                 </div>
               )}
             </div>
@@ -818,7 +954,9 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Earn Code Group</TableHead>
+                        <TableHead>Placement</TableHead>
+                        <TableHead>Eff. Date</TableHead>
+                        <TableHead>Grp ID</TableHead>
                         <TableHead>Base</TableHead>
                         <TableHead>Earn Code</TableHead>
                         <TableHead>Pay Mult</TableHead>
@@ -828,6 +966,8 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                     <TableBody>
                       {csvData.slice(0, 5).map((row, idx) => (
                         <TableRow key={idx}>
+                          <TableCell className="font-mono">{row.placementId}</TableCell>
+                          <TableCell>{row.effectiveDate}</TableCell>
                           <TableCell className="font-mono">{row.earnCodeGroupId}</TableCell>
                           <TableCell>{row.isBase}</TableCell>
                           <TableCell className="font-mono">{row.earnCodeId}</TableCell>
@@ -845,14 +985,42 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                 )}
               </div>
             )}
+
+            {bulkCreateMode && rateCardsToCreate.size > 0 && (
+              <div className="space-y-2">
+                <Label>Rate Cards to Create ({rateCardsToCreate.size})</Label>
+                <div className="border rounded-md p-4 space-y-2 max-h-60 overflow-y-auto">
+                  {Array.from(rateCardsToCreate.entries()).map(([key, rows]) => {
+                    const firstRow = rows[0]
+                    return (
+                      <div key={key} className="flex items-center justify-between p-2 bg-muted rounded">
+                        <div className="flex-1">
+                          <div className="font-semibold">Placement ID: {firstRow.placementId}</div>
+                          <div className="text-sm text-muted-foreground">
+                            Effective: {firstRow.effectiveDate} | {rows.length} line(s)
+                          </div>
+                        </div>
+                        <Badge variant="outline">{rows.length} lines</Badge>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+            <Button variant="outline" onClick={() => {
+              setCreateDialogOpen(false)
+              setCsvData([])
+              setCsvFile(null)
+              setRateCardsToCreate(new Map())
+              setBulkCreateMode(false)
+            }}>
               Cancel
             </Button>
-            <Button onClick={handleCreateRateCard} disabled={loading}>
+            <Button onClick={handleCreateRateCard} disabled={loading || csvData.length === 0}>
               <Plus size={18} />
-              Create Rate Card
+              {bulkCreateMode ? `Create ${rateCardsToCreate.size} Rate Cards` : 'Create Rate Card'}
             </Button>
           </DialogFooter>
         </DialogContent>

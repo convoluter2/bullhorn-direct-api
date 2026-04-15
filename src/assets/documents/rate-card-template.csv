@@ -1,0 +1,6 @@
+placementId,effectiveDate,ownerId,statusLookupId,earnCodeGroupId,isBase,earnCodeId,payMultiplier,payRate,billMultiplier,billRate,markupPercent,markupValue,customText1,customFloat1
+12345,2025-01-01,100,1,500,true,1001,1.0,50.00,1.0,75.00,50,25.00,Regular Hours,1.0
+12345,2025-01-01,100,1,500,true,1002,1.5,75.00,1.5,112.50,50,37.50,Overtime,1.5
+12345,2025-01-01,100,1,501,false,1003,2.0,100.00,2.0,150.00,50,50.00,Double Time,2.0
+67890,2025-02-01,100,1,500,true,1001,1.0,55.00,1.0,80.00,45.45,25.00,Regular Hours,1.0
+67890,2025-02-01,100,1,500,true,1002,1.5,82.50,1.5,120.00,45.45,37.50,Overtime,1.5
