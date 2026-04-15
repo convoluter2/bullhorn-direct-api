@@ -794,7 +794,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                   }
                 }
               } else if (fieldMeta?.associationType === 'TO_ONE') {
-                const trimmedValue = transformedValue.trim()
+                const trimmedValue = String(transformedValue).trim()
                 if (trimmedValue && /^\d+$/.test(trimmedValue)) {
                   const numericId = parseInt(trimmedValue, 10)
                   if (!isNaN(numericId)) {
@@ -812,7 +812,8 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               } else if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
                 data[mapping.bullhornField] = Number(transformedValue)
               } else if (fieldMeta?.type === 'Boolean') {
-                data[mapping.bullhornField] = transformedValue === 'true' || transformedValue === '1'
+                const lowerValue = String(transformedValue).toLowerCase().trim()
+                data[mapping.bullhornField] = lowerValue === 'true' || lowerValue === '1' || lowerValue === 'yes'
               } else {
                 data[mapping.bullhornField] = transformedValue
               }

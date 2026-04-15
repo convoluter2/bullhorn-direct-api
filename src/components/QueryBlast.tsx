@@ -474,10 +474,27 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
         
         if (update.value === '' || update.value.toLowerCase() === 'null') {
           updateData[update.field] = null
+        } else if (fieldMeta?.associationType === 'TO_ONE') {
+          const trimmedValue = String(update.value).trim()
+          if (trimmedValue && /^\d+$/.test(trimmedValue)) {
+            const numericId = parseInt(trimmedValue, 10)
+            if (!isNaN(numericId)) {
+              updateData[update.field] = { id: numericId }
+            } else {
+              console.warn(`⚠️ TO_ONE field ${update.field}: Invalid integer ID "${trimmedValue}"`)
+              updateData[update.field] = null
+            }
+          } else if (trimmedValue) {
+            console.warn(`⚠️ TO_ONE field ${update.field}: Requires integer ID, got "${trimmedValue}"`)
+            updateData[update.field] = null
+          } else {
+            updateData[update.field] = null
+          }
         } else if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
           updateData[update.field] = Number(update.value)
         } else if (fieldMeta?.type === 'Boolean') {
-          updateData[update.field] = update.value === 'true' || update.value === '1'
+          const lowerValue = String(update.value).toLowerCase().trim()
+          updateData[update.field] = lowerValue === 'true' || lowerValue === '1' || lowerValue === 'yes'
         } else {
           updateData[update.field] = update.value
         }
@@ -554,10 +571,27 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
             
             if (update.value === '' || update.value.toLowerCase() === 'null') {
               updateData[update.field] = null
+            } else if (fieldMeta?.associationType === 'TO_ONE') {
+              const trimmedValue = String(update.value).trim()
+              if (trimmedValue && /^\d+$/.test(trimmedValue)) {
+                const numericId = parseInt(trimmedValue, 10)
+                if (!isNaN(numericId)) {
+                  updateData[update.field] = { id: numericId }
+                } else {
+                  console.warn(`⚠️ TO_ONE field ${update.field}: Invalid integer ID "${trimmedValue}"`)
+                  updateData[update.field] = null
+                }
+              } else if (trimmedValue) {
+                console.warn(`⚠️ TO_ONE field ${update.field}: Requires integer ID, got "${trimmedValue}"`)
+                updateData[update.field] = null
+              } else {
+                updateData[update.field] = null
+              }
             } else if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
               updateData[update.field] = Number(update.value)
             } else if (fieldMeta?.type === 'Boolean') {
-              updateData[update.field] = update.value === 'true' || update.value === '1'
+              const lowerValue = String(update.value).toLowerCase().trim()
+              updateData[update.field] = lowerValue === 'true' || lowerValue === '1' || lowerValue === 'yes'
             } else {
               updateData[update.field] = update.value
             }
@@ -589,10 +623,27 @@ export function QueryBlast({ onLog }: QueryBlastProps) {
             
             if (update.value === '' || update.value.toLowerCase() === 'null') {
               updateData[update.field] = null
+            } else if (fieldMeta?.associationType === 'TO_ONE') {
+              const trimmedValue = String(update.value).trim()
+              if (trimmedValue && /^\d+$/.test(trimmedValue)) {
+                const numericId = parseInt(trimmedValue, 10)
+                if (!isNaN(numericId)) {
+                  updateData[update.field] = { id: numericId }
+                } else {
+                  console.warn(`⚠️ TO_ONE field ${update.field}: Invalid integer ID "${trimmedValue}"`)
+                  updateData[update.field] = null
+                }
+              } else if (trimmedValue) {
+                console.warn(`⚠️ TO_ONE field ${update.field}: Requires integer ID, got "${trimmedValue}"`)
+                updateData[update.field] = null
+              } else {
+                updateData[update.field] = null
+              }
             } else if (fieldMeta?.type === 'Integer' || fieldMeta?.type === 'Double') {
               updateData[update.field] = Number(update.value)
             } else if (fieldMeta?.type === 'Boolean') {
-              updateData[update.field] = update.value === 'true' || update.value === '1'
+              const lowerValue = String(update.value).toLowerCase().trim()
+              updateData[update.field] = lowerValue === 'true' || lowerValue === '1' || lowerValue === 'yes'
             } else {
               updateData[update.field] = update.value
             }

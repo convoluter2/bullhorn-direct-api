@@ -468,7 +468,8 @@ function BooleanInput({
   onChange: (v: string) => void
   className?: string
 }) {
-  const boolValue = value === 'true' || value === '1'
+  const lowerValue = String(value).toLowerCase().trim()
+  const boolValue = lowerValue === 'true' || lowerValue === '1' || lowerValue === 'yes'
 
   return (
     <div className="flex gap-2">
