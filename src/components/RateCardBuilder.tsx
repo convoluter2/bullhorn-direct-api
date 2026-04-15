@@ -14,7 +14,7 @@ import { bullhornAPI } from '@/lib/bullhorn-api'
 import { CreditCard, MagnifyingGlass, Plus, Upload, Trash, PencilSimple, FloppyDisk, X, DownloadSimple } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import Papa from 'papaparse'
-import templateCsv from '@/assets/documents/rate-card-template.csv'
+import templateCsv from '@/assets/documents/rate-card-template.csv?url'
 
 interface RateCardBuilderProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
