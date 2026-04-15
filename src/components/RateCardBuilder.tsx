@@ -500,7 +500,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     try {
       const effectiveDate = new Date(newRateCardEffectiveDate).getTime()
 
-      const versionResponse = await bullhornAPI.insert('RateCardVersion', {
+      const versionResponse = await bullhornAPI.createEntity('RateCardVersion', {
         name: newRateCardName,
         effectiveDate: effectiveDate
       })
@@ -532,9 +532,9 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
             }
           })
 
-          const rateCardLineResponse = await bullhornAPI.insert('RateCardLine', rateCardLineData)
+          const rateCardLineResponse = await bullhornAPI.createEntity('RateCardLine', rateCardLineData)
 
-          await bullhornAPI.insert('RateCardLineVersion', {
+          await bullhornAPI.createEntity('RateCardLineVersion', {
             rateCardLine: { id: rateCardLineResponse.changedEntityId },
             rateCardVersion: { id: versionId },
             rate: line.rate,
