@@ -14,7 +14,7 @@ import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
 import type { CSVMapping } from '@/lib/types'
 
-interface MappingTemplate {
+export interface FieldMappingTemplate {
   id: string
   name: string
   description?: string
@@ -28,11 +28,11 @@ interface MappingTemplate {
 interface FieldMappingTemplatesProps {
   currentEntity: string
   currentMappings: CSVMapping[]
-  onLoadTemplate: (template: MappingTemplate) => void
+  onApplyTemplate: (template: FieldMappingTemplate) => void
 }
 
-export function FieldMappingTemplates({ currentEntity, currentMappings, onLoadTemplate }: FieldMappingTemplatesProps) {
-  const [templates, setTemplates] = useKV<MappingTemplate[]>('field-mapping-templates', [])
+export function FieldMappingTemplates({ currentEntity, currentMappings, onApplyTemplate }: FieldMappingTemplatesProps) {
+  const [templates, setTemplates] = useKV<FieldMappingTemplate[]>('field-mapping-templates', [])
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
   const [loadDialogOpen, setLoadDialogOpen] = useState(false)
   const [templateName, setTemplateName] = useState('')
@@ -58,7 +58,7 @@ export function FieldMappingTemplates({ currentEntity, currentMappings, onLoadTe
       return
     }
 
-    const newTemplate: MappingTemplate = {
+    const newTemplate: FieldMappingTemplate = {
       id: `template-${Date.now()}-${Math.random().toString(36).substring(7)}`,
       name: templateName.trim(),
       description: templateDescription.trim() || undefined,
@@ -76,7 +76,7 @@ export function FieldMappingTemplates({ currentEntity, currentMappings, onLoadTe
     setSaveDialogOpen(false)
   }
 
-  const handleLoadTemplate = (template: MappingTemplate) => {
+  const handleLoadTemplate = (template: FieldMappingTemplate) => {
     setTemplates((current) =>
       (current || []).map(t =>
         t.id === template.id
@@ -84,7 +84,7 @@ export function FieldMappingTemplates({ currentEntity, currentMappings, onLoadTe
           : t
       )
     )
-    onLoadTemplate(template)
+    onApplyTemplate(template)
     setLoadDialogOpen(false)
     toast.success(`Template "${template.name}" loaded`)
   }
