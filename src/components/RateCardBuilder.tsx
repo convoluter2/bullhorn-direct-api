@@ -1,10 +1,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-interface RateCardBuilderProps {
+import { CreditCard } from '@phosphor-icons/react'
 
-export function RateCardBuilder(
-    <Card>
- 
+interface RateCardBuilderProps {
+  onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
+}
 
 export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
   return (
@@ -14,7 +14,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
           <CreditCard size={24} className="text-primary" weight="duotone" />
           <div>
             <CardTitle>Rate Card Builder</CardTitle>
-          <AlertDescription>
+            <CardDescription>
               Build and manage Bullhorn rate cards
             </CardDescription>
           </div>
@@ -22,11 +22,11 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
       </CardHeader>
       <CardContent>
         <Alert>
-
+          <AlertDescription>
             This component is currently being rebuilt. Please check back soon.
-
+          </AlertDescription>
         </Alert>
       </CardContent>
     </Card>
-
+  )
 }
