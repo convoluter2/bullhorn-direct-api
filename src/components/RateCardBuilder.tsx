@@ -1,12 +1,12 @@
 import { useState, useRef } from 'react'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/co
+import { Tabs, TabsContent, TabsList, TabsTri
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import Papa from 'papaparse'
+import { toast } from 'sonne
 import { CreditCard, Plus, Trash, Download, Upload, FolderOpen } from '@phosphor-icons/react'
 import { useKV } from '@github/spark/hooks'
 import { bullhornAPI } from '@/lib/bullhorn-api'
@@ -29,45 +29,40 @@ interface RateCardLine {
   earnCode: string
   title: string
   unitOfMeasure: string
-}
+} rateCardLine: { id: number }
 
-interface RateCardLineVersion {
-  id: number
-  rateCardLine: { id: number }
-  rateCardVersion: { id: number }
   rate: number
-  markupPercent?: number | null
+  id: number
 }
-
+  rateCardVersion: { id: number }
 interface NewRateCardLine {
+  markupPercent?: number | null
+  earnCode: string
+
+  unitOfMeasure: string
   tempId: string
   earnCode: string
   title: string
   unitOfMeasure: string
   rate: number
   markupPercent: number
-}
-
+  title: string
+  unitOfMeasure: string
 interface CSVRateCardLine {
   earnCode: string
   title: string
   unitOfMeasure: string
-  rate: number
+  rate: number: RateCardBuilderProps) {
   markupPercent?: number
-}
-
+  const [rateCardVersionId, setRateCardVersionId] = useState('')
+  const [rateCardData, setRateCardData] = useState<{
 export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
   const [activeMode, setActiveMode] = useState<'load' | 'create'>('load')
   const [rateCardVersionId, setRateCardVersionId] = useState('')
   const [rateCardData, setRateCardData] = useState<{
-    version: RateCardVersion | null
-    lines: Array<RateCardLine & { lineVersion?: RateCardLineVersion }>
+    version: RateCardVersion | nullCardLine[]>([])
+    lines: Array<RateCardLine & { lineVersion?: RateCardLineVersion }>ed-rate-cards', [])
   } | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [newLines, setNewLines] = useState<NewRateCardLine[]>([])
-  const [savedRateCards, setSavedRateCards] = useKV<Array<{ id: number; name: string }>>('saved-rate-cards', [])
-  
-  const [newRateCardName, setNewRateCardName] = useState('')
   const [newRateCardEffectiveDate, setNewRateCardEffectiveDate] = useState('')
   const [csvLines, setCsvLines] = useState<CSVRateCardLine[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
