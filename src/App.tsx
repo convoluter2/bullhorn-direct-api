@@ -35,6 +35,7 @@ import type { BullhornSession, AuditLog } from '@/lib/types'
 import { fieldValueCache } from '@/lib/field-value-cache'
 import { entityCacheService } from '@/lib/entity-cache-service'
 import { kvRequestManager } from '@/lib/kv-request-manager'
+import { AuditLogManager } from '@/lib/audit-log-manager'
 
 function App() {
   const isRefreshingRef = useRef(false)
@@ -120,6 +121,15 @@ function App() {
       }
     }
     initSession()
+
+    setLogs((currentLogs) => {
+      if (!currentLogs || currentLogs.length === 0) return []
+      const prunedLogs = AuditLogManager.pruneLogsIfNeeded(currentLogs)
+      if (prunedLogs.length !== currentLogs.length) {
+        console.log(`🔧 Pruned logs on load: ${currentLogs.length} -> ${prunedLogs.length}`)
+      }
+      return prunedLogs
+    })
   }, [])
 
   const addLog = useCallback((operation: string, status: 'success' | 'error', message: string, details?: any) => {
@@ -135,7 +145,7 @@ function App() {
       rollbackData: details?.rollbackData,
       failedOperations: details?.failedOperations
     }
-    setLogs((currentLogs) => [newLog, ...(currentLogs || [])])
+    setLogs((currentLogs) => AuditLogManager.addLogWithAutoprune(currentLogs || [], newLog))
   }, [setLogs])
 
   const clearLogs = useCallback(() => {

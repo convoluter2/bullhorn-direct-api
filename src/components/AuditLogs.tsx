@@ -16,10 +16,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { ClockCounterClockwise, DownloadSimple, MagnifyingGlass, Trash, ArrowCounterClockwise, ArrowBendUpLeft, XCircle, ArrowsClockwise, PlugsConnected, ListChecks } from '@phosphor-icons/react'
+import { ClockCounterClockwise, DownloadSimple, MagnifyingGlass, Trash, ArrowCounterClockwise, ArrowBendUpLeft, XCircle, ArrowsClockwise, PlugsConnected, ListChecks, Info } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { exportToCSV, exportToJSON } from '@/lib/csv-utils'
 import { bullhornAPI } from '@/lib/bullhorn-api'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import type { AuditLog } from '@/lib/types'
 
 interface AuditLogsProps {
@@ -46,6 +47,12 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
   const [isRetrying, setIsRetrying] = useState(false)
 
   const safeLogs = Array.isArray(logs) ? logs : []
+  
+  const hasTruncatedDetails = safeLogs.some(log => 
+    log.details?._truncated || 
+    log.details?._rollbackDataRemoved || 
+    log.details?._failedOperationsTruncated
+  )
   
   const connectionOperations = ['Authentication', 'Disconnect', 'Token Refresh', 'Connection Switch']
   
@@ -525,6 +532,15 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
           </TabsList>
           
           <TabsContent value={logTab} className="space-y-4 mt-0">
+            {hasTruncatedDetails && (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  Some log details have been truncated to stay within storage limits. Core information is preserved.
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <div className="flex gap-2">
               <div className="flex-1 relative">
                 <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />

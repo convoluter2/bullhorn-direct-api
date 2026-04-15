@@ -457,7 +457,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
       setShowMappingDialog(false)
       toast.success(`Loaded ${validLines.length} lines from CSV with custom mapping`)
       onLog('CSV Mapping', 'success', `Applied field mappings to ${validLines.length} rate card lines`, {
-        mappings: fieldMappings,
+        mappingCount: fieldMappings.length,
         lineCount: validLines.length
       })
     } catch (error) {
