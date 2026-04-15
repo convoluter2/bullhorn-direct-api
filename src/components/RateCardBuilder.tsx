@@ -1,15 +1,16 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, S
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { CreditCard, Plus, Trash, Copy, Download, Upload } from '@phosphor-icons/react'
-import { toast } from 'sonner'
+import { CreditCard, Plus, Trash, Download, Upload, FolderOpen } from '@phosphor-icons/react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { useKV } from '@github/spark/hooks'
+import Papa from 'papaparse'
 
 interface RateCardBuilderProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -47,7 +48,16 @@ interface NewRateCardLine {
   markupPercent: number
 }
 
-    lines: Array<RateCardLine & { lineVersion?: RateCardLineVersio
+interface CSVRateCardLine {
+  earnCode: string
+  title: string
+  unitOfMeasure: string
+  rate: number
+  markupPercent?: number
+}
+
+export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
+  const [activeMode, setActiveMode] = useState<'load' | 'create'>('load')
   const [rateCardVersionId, setRateCardVersionId] = useState('')
   const [rateCardData, setRateCardData] = useState<{
     version: RateCardVersion | null
@@ -56,6 +66,11 @@ interface NewRateCardLine {
   const [loading, setLoading] = useState(false)
   const [newLines, setNewLines] = useState<NewRateCardLine[]>([])
   const [savedRateCards, setSavedRateCards] = useKV<Array<{ id: number; name: string }>>('saved-rate-cards', [])
+  
+  const [newRateCardName, setNewRateCardName] = useState('')
+  const [newRateCardEffectiveDate, setNewRateCardEffectiveDate] = useState('')
+  const [csvLines, setCsvLines] = useState<CSVRateCardLine[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const loadRateCard = async () => {
     if (!rateCardVersionId.trim()) {
@@ -276,7 +291,179 @@ interface NewRateCardLine {
     })
   }
 
+  const handleCSVUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        try {
+          const parsedLines: CSVRateCardLine[] = results.data.map((row: any) => ({
+            earnCode: row['Earn Code'] || row['earnCode'] || '',
+            title: row['Title'] || row['title'] || '',
+            unitOfMeasure: row['Unit of Measure'] || row['unitOfMeasure'] || row['Unit'] || 'Hour',
+            rate: parseFloat(row['Rate'] || row['rate'] || '0'),
+            markupPercent: row['Markup %'] || row['markupPercent'] ? parseFloat(row['Markup %'] || row['markupPercent']) : undefined
+          }))
+
+          const validLines = parsedLines.filter(line => line.earnCode && line.title)
           
+          if (validLines.length === 0) {
+            toast.error('No valid lines found in CSV')
+            return
+          }
+
+          setCsvLines(validLines)
+          toast.success(`Loaded ${validLines.length} lines from CSV`)
+          onLog('CSV Upload', 'success', `Parsed ${validLines.length} rate card lines from CSV`, {
+            fileName: file.name,
+            lineCount: validLines.length
+          })
+        } catch (error) {
+          console.error('Failed to parse CSV:', error)
+          toast.error('Failed to parse CSV file')
+          onLog('CSV Upload', 'error', 'Failed to parse CSV', { error: String(error) })
+        }
+      },
+      error: (error) => {
+        console.error('CSV parse error:', error)
+        toast.error('Failed to read CSV file')
+        onLog('CSV Upload', 'error', 'Failed to read CSV', { error: String(error) })
+      }
+    })
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const createRateCard = async () => {
+    if (!newRateCardName.trim()) {
+      toast.error('Please enter a rate card name')
+      return
+    }
+
+    if (!newRateCardEffectiveDate) {
+      toast.error('Please enter an effective date')
+      return
+    }
+
+    if (csvLines.length === 0) {
+      toast.error('Please upload a CSV file with rate card lines')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const effectiveDate = new Date(newRateCardEffectiveDate).getTime()
+
+      const versionResponse = await bullhornAPI.insert('RateCardVersion', {
+        name: newRateCardName,
+        effectiveDate: effectiveDate
+      })
+
+      const versionId = versionResponse.changedEntityId
+
+      toast.success(`Created rate card version: ${newRateCardName}`)
+      onLog('Rate Card Create', 'success', `Created rate card version ${versionId}`, {
+        versionId,
+        name: newRateCardName,
+        effectiveDate: newRateCardEffectiveDate
+      })
+
+      let successCount = 0
+      let errorCount = 0
+
+      for (const line of csvLines) {
+        try {
+          const rateCardLineResponse = await bullhornAPI.insert('RateCardLine', {
+            earnCode: line.earnCode,
+            title: line.title,
+            unitOfMeasure: line.unitOfMeasure,
+            externalID: `${line.earnCode}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          })
+
+          await bullhornAPI.insert('RateCardLineVersion', {
+            rateCardLine: { id: rateCardLineResponse.changedEntityId },
+            rateCardVersion: { id: versionId },
+            rate: line.rate,
+            markupPercent: line.markupPercent || null
+          })
+
+          successCount++
+        } catch (error) {
+          console.error(`Failed to create line ${line.earnCode}:`, error)
+          errorCount++
+        }
+      }
+
+      if (errorCount > 0) {
+        toast.warning(`Created rate card with ${successCount} lines (${errorCount} failed)`)
+        onLog('Rate Card Create', 'success', `Created rate card with partial success`, {
+          versionId,
+          successCount,
+          errorCount
+        })
+      } else {
+        toast.success(`Created rate card with ${successCount} lines`)
+        onLog('Rate Card Create', 'success', `Created rate card with all lines`, {
+          versionId,
+          lineCount: successCount
+        })
+      }
+
+      setSavedRateCards((current: any) => [
+        ...(current || []),
+        { id: versionId, name: newRateCardName }
+      ])
+
+      setNewRateCardName('')
+      setNewRateCardEffectiveDate('')
+      setCsvLines([])
+      setRateCardVersionId(String(versionId))
+      setActiveMode('load')
+      
+      setTimeout(() => loadRateCard(), 500)
+    } catch (error) {
+      console.error('Failed to create rate card:', error)
+      toast.error('Failed to create rate card')
+      onLog('Rate Card Create', 'error', 'Failed to create rate card', { error: String(error) })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const removeCsvLine = (index: number) => {
+    setCsvLines(csvLines.filter((_, i) => i !== index))
+  }
+
+  const downloadCSVTemplate = () => {
+    const headers = ['Earn Code', 'Title', 'Unit of Measure', 'Rate', 'Markup %']
+    const sampleRows = [
+      ['REG', 'Regular Time', 'Hour', '50.00', '10.00'],
+      ['OT', 'Overtime', 'Hour', '75.00', '10.00'],
+      ['DT', 'Double Time', 'Hour', '100.00', '10.00']
+    ]
+
+    const csvContent = [
+      headers.join(','),
+      ...sampleRows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'rate-card-template.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+
+    toast.success('Downloaded CSV template')
+  }
+
+  return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
@@ -285,52 +472,165 @@ interface NewRateCardLine {
             <div>
               <CardTitle>Rate Card Builder</CardTitle>
               <CardDescription>
-                Load, edit, and manage Bullhorn rate cards
+                Load existing rate cards or create new ones with CSV upload
               </CardDescription>
             </div>
-            <div
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <Label htmlFor="rate-card-version-id">Rate Card Version ID</Label>
-              <Input
-                id="rate-card-version-id"
-                type="number"
-                placeholder="Enter RateCardVersion ID"
-                value={rateCardVersionId}
-                onChange={(e) => setRateCardVersionId(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && loadRateCard()}
-              />
-            </div>
-            <div className="flex items-end gap-2">
-              <Button onClick={loadRateCard} disabled={loading}>
-                <Upload />
-                Load Rate Card
-              </Button>
-            </div>
           </div>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeMode} onValueChange={(v) => setActiveMode(v as 'load' | 'create')}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="load">
+                <FolderOpen className="mr-2" size={16} />
+                Load Existing
+              </TabsTrigger>
+              <TabsTrigger value="create">
+                <Plus className="mr-2" size={16} />
+                Create New
+              </TabsTrigger>
+            </TabsList>
 
-          {savedRateCards && savedRateCards.length > 0 && (
-            <div>
-              <Label>Recent Rate Cards</Label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {savedRateCards.map((rc: any) => (
-                  <Button
-                    key={rc.id}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setRateCardVersionId(String(rc.id))
-                      setTimeout(() => loadRateCard(), 100)
-                    }}
-                  >
-                    {rc.name} (ID: {rc.id})
+            <TabsContent value="load" className="space-y-4 mt-4">
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <Label htmlFor="rate-card-version-id">Rate Card Version ID</Label>
+                  <Input
+                    id="rate-card-version-id"
+                    type="number"
+                    placeholder="Enter RateCardVersion ID"
+                    value={rateCardVersionId}
+                    onChange={(e) => setRateCardVersionId(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && loadRateCard()}
+                  />
+                </div>
+                <div className="flex items-end gap-2">
+                  <Button onClick={loadRateCard} disabled={loading}>
+                    <FolderOpen />
+                    Load Rate Card
                   </Button>
-                ))}
+                </div>
               </div>
-            </div>
-          )}
+
+              {savedRateCards && savedRateCards.length > 0 && (
+                <div>
+                  <Label>Recent Rate Cards</Label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {savedRateCards.map((rc: any) => (
+                      <Button
+                        key={rc.id}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setRateCardVersionId(String(rc.id))
+                          setTimeout(() => loadRateCard(), 100)
+                        }}
+                      >
+                        {rc.name} (ID: {rc.id})
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="create" className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="new-rate-card-name">Rate Card Name *</Label>
+                  <Input
+                    id="new-rate-card-name"
+                    placeholder="e.g., Standard Rates 2024"
+                    value={newRateCardName}
+                    onChange={(e) => setNewRateCardName(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="new-rate-card-effective-date">Effective Date *</Label>
+                  <Input
+                    id="new-rate-card-effective-date"
+                    type="date"
+                    value={newRateCardEffectiveDate}
+                    onChange={(e) => setNewRateCardEffectiveDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Rate Card Lines (CSV Upload)</Label>
+                  <Button variant="outline" size="sm" onClick={downloadCSVTemplate}>
+                    <Download size={16} />
+                    Download Template
+                  </Button>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-1"
+                  >
+                    <Upload />
+                    Upload CSV File
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCSVUpload}
+                    className="hidden"
+                  />
+                </div>
+
+                {csvLines.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm text-muted-foreground">
+                        {csvLines.length} line{csvLines.length !== 1 ? 's' : ''} loaded from CSV
+                      </Label>
+                      <Button variant="ghost" size="sm" onClick={() => setCsvLines([])}>
+                        Clear All
+                      </Button>
+                    </div>
+                    <div className="max-h-96 overflow-y-auto space-y-2 border border-border rounded-lg p-3 bg-muted/30">
+                      {csvLines.map((line, index) => (
+                        <div key={index} className="grid grid-cols-12 gap-2 items-center p-2 bg-card border border-border rounded text-sm">
+                          <div className="col-span-2 font-mono">{line.earnCode}</div>
+                          <div className="col-span-3">{line.title}</div>
+                          <div className="col-span-2">{line.unitOfMeasure}</div>
+                          <div className="col-span-2 font-mono">${line.rate.toFixed(2)}</div>
+                          <div className="col-span-2 font-mono">{line.markupPercent ? `${line.markupPercent.toFixed(2)}%` : '-'}</div>
+                          <div className="col-span-1 flex justify-end">
+                            <Button variant="ghost" size="sm" onClick={() => removeCsvLine(index)} className="h-7 w-7 p-0">
+                              <Trash size={14} className="text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {csvLines.length === 0 && (
+                  <Alert>
+                    <AlertDescription>
+                      Upload a CSV file with columns: Earn Code, Title, Unit of Measure, Rate, Markup %
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  onClick={createRateCard}
+                  disabled={loading || !newRateCardName || !newRateCardEffectiveDate || csvLines.length === 0}
+                >
+                  <Plus />
+                  Create Rate Card
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
@@ -514,4 +814,5 @@ interface NewRateCardLine {
         </>
       )}
     </div>
-
+  )
+}
