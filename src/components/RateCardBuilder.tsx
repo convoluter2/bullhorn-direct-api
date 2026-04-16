@@ -314,20 +314,40 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
       } else if (response?.placementRateCardLineGroups) {
         lineGroupsData = response.placementRateCardLineGroups.data || response.placementRateCardLineGroups
       } else {
-        console.error('No placementRateCardLineGroups found. Response keys:', Object.keys(response || {}))
-        console.error('Full response:', response)
-        toast.error('No rate card line groups found in response')
-        setLineGroups([])
-        setLoading(false)
-        return
+        console.warn('No placementRateCardLineGroups found in main response')
+        lineGroupsData = []
       }
       
       if (!Array.isArray(lineGroupsData)) {
-        console.error('placementRateCardLineGroups is not an array:', lineGroupsData)
-        toast.error('Unexpected response format from API')
-        setLineGroups([])
-        setLoading(false)
-        return
+        console.warn('placementRateCardLineGroups is not an array, treating as empty:', lineGroupsData)
+        lineGroupsData = []
+      }
+
+      console.log('Processing line groups count from groups:', lineGroupsData.length)
+
+      console.log('🔍 Searching for orphaned PlacementRateCardLine records...')
+      let orphanedLines: any[] = []
+      try {
+        const orphanedLinesResponse = await bullhornAPI.query(
+          'PlacementRateCardLine',
+          'id,earnCode(id,title,code),payMultiplier,payRate,billMultiplier,billRate,markupPercent,markupValue,customText1,customFloat1,placementRateCardLineGroup(id)',
+          `placementRateCard.id=${rateCard.id}`,
+          { count: 500 }
+        )
+        
+        if (orphanedLinesResponse.data && orphanedLinesResponse.data.length > 0) {
+          const linesWithoutGroup = orphanedLinesResponse.data.filter((line: any) => !line.placementRateCardLineGroup || !line.placementRateCardLineGroup.id)
+          orphanedLines = linesWithoutGroup
+          console.log(`✅ Found ${orphanedLinesResponse.data.length} total lines, ${linesWithoutGroup.length} are orphaned (not in groups)`)
+          
+          if (linesWithoutGroup.length > 0) {
+            toast.info(`Found ${linesWithoutGroup.length} orphaned rate card line(s) not in any group`)
+          }
+        } else {
+          console.log('ℹ️ No additional PlacementRateCardLine records found via direct query')
+        }
+      } catch (orphanError) {
+        console.error('⚠️ Failed to query for orphaned lines:', orphanError)
       }
 
       console.log('Processing line groups count:', lineGroupsData.length)
@@ -378,11 +398,43 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
         }
       })
       
+      if (orphanedLines.length > 0) {
+        console.log('📦 Adding orphaned lines as a separate group')
+        const orphanedGroup: RateCardLineGroup = {
+          id: -1,
+          isBase: false,
+          earnCodeGroup: {
+            id: -1,
+            name: '⚠️ Orphaned Lines (No Group)'
+          },
+          placementRateCardLines: orphanedLines.map((line: any, lineIdx: number) => {
+            console.log(`  Orphaned Line ${lineIdx + 1}: EarnCode ID ${line.earnCode?.id}, Title: ${line.earnCode?.title}, Code: ${line.earnCode?.code}`)
+            return {
+              id: line.id,
+              earnCode: {
+                id: line.earnCode?.id || 0,
+                name: line.earnCode?.title || line.earnCode?.code || `EarnCode ${line.earnCode?.id || lineIdx}`
+              },
+              payMultiplier: line.payMultiplier,
+              payRate: line.payRate,
+              billMultiplier: line.billMultiplier,
+              billRate: line.billRate,
+              markupPercent: line.markupPercent,
+              markupValue: line.markupValue,
+              customText1: line.customText1,
+              customFloat1: line.customFloat1
+            }
+          })
+        }
+        mappedGroups.push(orphanedGroup)
+      }
+      
       const totalLines = mappedGroups.reduce((sum, g) => sum + g.placementRateCardLines.length, 0)
       
       console.log('Successfully processed rate card lines:', {
         groupCount: mappedGroups.length, 
         lineCount: totalLines,
+        orphanedCount: orphanedLines.length,
         groups: mappedGroups.map(g => ({ 
           id: g.id, 
           name: g.earnCodeGroup.name, 
@@ -391,11 +443,13 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
       })
       
       setLineGroups(mappedGroups)
-      toast.success(`Rate card lines loaded: ${mappedGroups.length} group(s), ${totalLines} line(s)`)
+      const orphanedMessage = orphanedLines.length > 0 ? ` (${orphanedLines.length} orphaned)` : ''
+      toast.success(`Rate card lines loaded: ${mappedGroups.length} group(s), ${totalLines} line(s)${orphanedMessage}`)
       onLog('Load Rate Card Lines', 'success', `Loaded ${mappedGroups.length} groups with ${totalLines} lines`, {
         rateCardId: rateCard.id,
         groupCount: mappedGroups.length,
-        lineCount: totalLines
+        lineCount: totalLines,
+        orphanedLineCount: orphanedLines.length
       })
     } catch (error) {
       console.error('Failed to load rate card lines:', error)
@@ -979,25 +1033,33 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                       </div>
                     ) : (
                       <div className="space-y-6">
-                        {lineGroups.map((group, groupIdx) => (
-                          <Card key={group.id || groupIdx}>
-                            <CardHeader>
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <CardTitle className="text-base">
-                                    Earn Code Group: {group.earnCodeGroup.name || group.earnCodeGroup.id}
-                                  </CardTitle>
-                                  <CardDescription>
-                                    {group.isBase ? (
-                                      <Badge variant="default">Base Group</Badge>
-                                    ) : (
-                                      <Badge variant="secondary">Additional Group</Badge>
-                                    )}
-                                    <span className="ml-2">{group.placementRateCardLines.length} line(s)</span>
-                                  </CardDescription>
+                        {lineGroups.map((group, groupIdx) => {
+                          const isOrphanedGroup = group.id === -1
+                          return (
+                            <Card key={group.id || groupIdx} className={isOrphanedGroup ? 'border-destructive' : ''}>
+                              <CardHeader>
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <CardTitle className="text-base">
+                                      {isOrphanedGroup ? (
+                                        <span className="text-destructive">{group.earnCodeGroup.name}</span>
+                                      ) : (
+                                        <>Earn Code Group: {group.earnCodeGroup.name || group.earnCodeGroup.id}</>
+                                      )}
+                                    </CardTitle>
+                                    <CardDescription>
+                                      {isOrphanedGroup ? (
+                                        <Badge variant="destructive">Not in Line Group</Badge>
+                                      ) : group.isBase ? (
+                                        <Badge variant="default">Base Group</Badge>
+                                      ) : (
+                                        <Badge variant="secondary">Additional Group</Badge>
+                                      )}
+                                      <span className="ml-2">{group.placementRateCardLines.length} line(s)</span>
+                                    </CardDescription>
+                                  </div>
                                 </div>
-                              </div>
-                            </CardHeader>
+                              </CardHeader>
                             <CardContent>
                               <div className="border rounded-md overflow-x-auto">
                                 <Table>
@@ -1164,7 +1226,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                               </div>
                             </CardContent>
                           </Card>
-                        ))}
+                        )})}
                       </div>
                     )}
                   </div>
