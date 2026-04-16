@@ -116,9 +116,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
 
     setLoading(true)
     try {
-      const response = await bullhornAPI.getEntity('PlacementRateCard', rateCard.id, {
-        fields: 'id,placementRateCardLineGroups(id,isBase,earnCodeGroup(id,name),placementRateCardLines(id,earnCode(id,name),payMultiplier,payRate,billMultiplier,billRate,markupPercent,markupValue,customText1,customFloat1))'
-      })
+      const response = await bullhornAPI.getEntity('PlacementRateCard', rateCard.id, 'id,placementRateCardLineGroups(id,isBase,earnCodeGroup(id,name),placementRateCardLines(id,earnCode(id,name),payMultiplier,payRate,billMultiplier,billRate,markupPercent,markupValue,customText1,customFloat1))')
 
       if (response.data?.placementRateCardLineGroups) {
         setLineGroups(response.data.placementRateCardLineGroups)
@@ -233,9 +231,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
 
     setLoading(true)
     try {
-      const response = await bullhornAPI.getEntity('PlacementRateCard', parseInt(searchId, 10), {
-        fields: 'id,effectiveDate,placement(id),owner(id,firstName,lastName),placementRateCardStatusLookup(id,label),dateAdded,dateLastModified'
-      })
+      const response = await bullhornAPI.getEntity('PlacementRateCard', parseInt(searchId, 10), 'id,effectiveDate,placement(id),owner(id,firstName,lastName),placementRateCardStatusLookup(id,label),dateAdded,dateLastModified')
 
       if (response.data) {
         setRateCard(response.data)
@@ -416,9 +412,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
         setRateCardsToCreate(new Map())
         setBulkCreateMode(false)
 
-        const createdCard = await bullhornAPI.getEntity('PlacementRateCard', response.changedEntityId, {
-          fields: 'id,effectiveDate,placement(id),owner(id,firstName,lastName),placementRateCardStatusLookup(id,label)'
-        })
+        const createdCard = await bullhornAPI.getEntity('PlacementRateCard', response.changedEntityId, 'id,effectiveDate,placement(id),owner(id,firstName,lastName),placementRateCardStatusLookup(id,label)')
 
         setRateCard(createdCard.data)
         setActiveTab('lookup')
