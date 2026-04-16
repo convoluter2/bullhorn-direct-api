@@ -1374,11 +1374,9 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                                                     <Badge variant="default" className="text-xs">Regular</Badge>
                                                     <div className="flex-1">
                                                       <div className="font-medium">{earnCodeGroup.defaultEarnCode.title || 'Untitled'}</div>
-                                                        <div className="text-xs text-muted-foreground font-mono">
-                                                          Code: {earnCodeGroup.defaultEarnCode.code}
-                                                          Code: {earnCodeGroup.defaultEarnCode.code}
-                                                        </div>
-                                                      )}
+                                                      <div className="text-xs text-muted-foreground font-mono">
+                                                        Code: {earnCodeGroup.defaultEarnCode.code}
+                                                      </div>
                                                     </div>
                                                     <div className="text-sm text-muted-foreground font-mono">
                                                       ID: {earnCodeGroup.defaultEarnCode.id}
