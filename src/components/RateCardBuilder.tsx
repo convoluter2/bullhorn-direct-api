@@ -305,18 +305,23 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
       const response = await bullhornAPI.getEntity('PlacementRateCard', rateCard.id, 'id,placementRateCardLineGroups(id,isBase,earnCodeGroup(id,defaultEarnCode(id,title)),placementRateCardLines(id,earnCode(id,title,code),payMultiplier,payRate,billMultiplier,billRate,markupPercent,markupValue,customText1,customFloat1))')
 
       console.log('Rate card response:', response)
+      console.log('Full response structure:', JSON.stringify(response, null, 2))
 
-      if (response?.placementRateCardLineGroups) {
-        const lineGroupsData = response.placementRateCardLineGroups.data || response.placementRateCardLineGroups
+      if (response?.data?.placementRateCardLineGroups) {
+        const lineGroupsData = response.data.placementRateCardLineGroups.data || response.data.placementRateCardLineGroups
         
         if (!Array.isArray(lineGroupsData)) {
-          console.error('placementRateCardLineGroups is not an array:', response.placementRateCardLineGroups)
+          console.error('placementRateCardLineGroups is not an array:', response.data.placementRateCardLineGroups)
           toast.error('Unexpected response format from API')
           return
         }
 
+        console.log('Processing line groups:', lineGroupsData.length)
+
         const mappedGroups = lineGroupsData.map((group: any) => {
+          console.log('Processing group:', group.id, 'Lines structure:', group.placementRateCardLines)
           const linesData = group.placementRateCardLines?.data || group.placementRateCardLines || []
+          console.log('Extracted lines data:', linesData)
           
           return {
             ...group,
@@ -334,9 +339,46 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
           }
         })
         
+        console.log('Mapped groups:', mappedGroups)
+        setLineGroups(mappedGroups)
+        toast.success(`Rate card lines loaded: ${mappedGroups.length} group(s), ${mappedGroups.reduce((sum, g) => sum + g.placementRateCardLines.length, 0)} line(s)`)
+      } else if (response?.placementRateCardLineGroups) {
+        const lineGroupsData = response.placementRateCardLineGroups.data || response.placementRateCardLineGroups
+        
+        if (!Array.isArray(lineGroupsData)) {
+          console.error('placementRateCardLineGroups is not an array:', response.placementRateCardLineGroups)
+          toast.error('Unexpected response format from API')
+          return
+        }
+
+        console.log('Processing line groups (alternate path):', lineGroupsData.length)
+
+        const mappedGroups = lineGroupsData.map((group: any) => {
+          console.log('Processing group:', group.id, 'Lines structure:', group.placementRateCardLines)
+          const linesData = group.placementRateCardLines?.data || group.placementRateCardLines || []
+          console.log('Extracted lines data:', linesData)
+          
+          return {
+            ...group,
+            earnCodeGroup: {
+              id: group.earnCodeGroup.id,
+              name: group.earnCodeGroup.defaultEarnCode?.title || `Group ${group.earnCodeGroup.id}`
+            },
+            placementRateCardLines: linesData.map((line: any) => ({
+              ...line,
+              earnCode: {
+                id: line.earnCode.id,
+                name: line.earnCode.title || line.earnCode.code || `EarnCode ${line.earnCode.id}`
+              }
+            }))
+          }
+        })
+        
+        console.log('Mapped groups:', mappedGroups)
         setLineGroups(mappedGroups)
         toast.success(`Rate card lines loaded: ${mappedGroups.length} group(s), ${mappedGroups.reduce((sum, g) => sum + g.placementRateCardLines.length, 0)} line(s)`)
       } else {
+        console.error('No placementRateCardLineGroups found. Response keys:', Object.keys(response || {}))
         toast.error('No rate card line groups found in response')
       }
     } catch (error) {
