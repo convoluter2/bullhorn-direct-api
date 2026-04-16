@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import { CreditCard, MagnifyingGlass, Plus, Upload, Trash, PencilSimple, FloppyDisk, X, DownloadSimple } from '@phosphor-icons/react'
+import { CreditCard, MagnifyingGlass, Plus, Upload, Trash, PencilSimple, FloppyDisk, X, DownloadSimple, ListChecks, FolderOpen } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import Papa from 'papaparse'
 import templateCsv from '@/assets/documents/rate-card-template.csv?url'
@@ -78,6 +78,21 @@ interface CSVLineRow {
   [key: string]: string | undefined
 }
 
+interface EarnCode {
+  id: number
+  name: string
+  code?: string
+  externalID?: string
+  isDeleted?: boolean
+}
+
+interface EarnCodeGroup {
+  id: number
+  name: string
+  externalID?: string
+  isDeleted?: boolean
+}
+
 export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
   const [activeTab, setActiveTab] = useState('lookup')
   const [searchId, setSearchId] = useState('')
@@ -92,6 +107,11 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
   const [editFormData, setEditFormData] = useState<Partial<RateCardLine>>({})
   const [bulkCreateMode, setBulkCreateMode] = useState(false)
   const [rateCardsToCreate, setRateCardsToCreate] = useState<Map<string, CSVLineRow[]>>(new Map())
+  const [earnCodes, setEarnCodes] = useState<EarnCode[]>([])
+  const [earnCodeGroups, setEarnCodeGroups] = useState<EarnCodeGroup[]>([])
+  const [loadingEarnCodes, setLoadingEarnCodes] = useState(false)
+  const [earnCodeSearch, setEarnCodeSearch] = useState('')
+  const [earnCodeGroupSearch, setEarnCodeGroupSearch] = useState('')
 
   const handleDownloadTemplate = () => {
     const link = document.createElement('a')
@@ -102,6 +122,65 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     document.body.removeChild(link)
     toast.success('Template downloaded')
   }
+
+  const loadEarnCodes = async () => {
+    setLoadingEarnCodes(true)
+    try {
+      const response = await bullhornAPI.query('EarnCode', {
+        where: 'isDeleted=false',
+        fields: 'id,name,code,externalID,isDeleted',
+        orderBy: 'name',
+        count: 500
+      })
+
+      if (response.data) {
+        setEarnCodes(response.data)
+        toast.success(`Loaded ${response.data.length} earn codes`)
+        onLog('Load Earn Codes', 'success', `Loaded ${response.data.length} earn codes`, {
+          count: response.data.length
+        })
+      }
+    } catch (error) {
+      console.error('Failed to load earn codes:', error)
+      toast.error('Failed to load earn codes')
+      onLog('Load Earn Codes', 'error', 'Failed to load earn codes', { error: String(error) })
+    } finally {
+      setLoadingEarnCodes(false)
+    }
+  }
+
+  const loadEarnCodeGroups = async () => {
+    setLoadingEarnCodes(true)
+    try {
+      const response = await bullhornAPI.query('EarnCodeGroup', {
+        where: 'isDeleted=false',
+        fields: 'id,name,externalID,isDeleted',
+        orderBy: 'name',
+        count: 500
+      })
+
+      if (response.data) {
+        setEarnCodeGroups(response.data)
+        toast.success(`Loaded ${response.data.length} earn code groups`)
+        onLog('Load Earn Code Groups', 'success', `Loaded ${response.data.length} earn code groups`, {
+          count: response.data.length
+        })
+      }
+    } catch (error) {
+      console.error('Failed to load earn code groups:', error)
+      toast.error('Failed to load earn code groups')
+      onLog('Load Earn Code Groups', 'error', 'Failed to load earn code groups', { error: String(error) })
+    } finally {
+      setLoadingEarnCodes(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === 'earn-codes' && earnCodes.length === 0) {
+      loadEarnCodes()
+      loadEarnCodeGroups()
+    }
+  }, [activeTab])
 
   useEffect(() => {
     if (rateCard) {
@@ -584,7 +663,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="lookup" className="gap-2">
                 <MagnifyingGlass size={18} />
                 Lookup
@@ -592,6 +671,10 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
               <TabsTrigger value="details" className="gap-2" disabled={!rateCard}>
                 <CreditCard size={18} />
                 Details
+              </TabsTrigger>
+              <TabsTrigger value="earn-codes" className="gap-2">
+                <ListChecks size={18} />
+                Earn Codes
               </TabsTrigger>
             </TabsList>
 
@@ -891,6 +974,165 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                   </div>
                 </div>
               )}
+            </TabsContent>
+
+            <TabsContent value="earn-codes" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <ListChecks size={20} className="text-accent" weight="duotone" />
+                          Earn Codes
+                        </CardTitle>
+                        <CardDescription>
+                          {earnCodes.length} earn codes available
+                        </CardDescription>
+                      </div>
+                      <Button onClick={loadEarnCodes} disabled={loadingEarnCodes} size="sm" variant="outline">
+                        Refresh
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="earn-code-search">Search Earn Codes</Label>
+                      <Input
+                        id="earn-code-search"
+                        placeholder="Filter by name, code, or ID..."
+                        value={earnCodeSearch}
+                        onChange={(e) => setEarnCodeSearch(e.target.value)}
+                      />
+                    </div>
+
+                    {loadingEarnCodes ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        Loading earn codes...
+                      </div>
+                    ) : earnCodes.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p className="mb-4">No earn codes loaded</p>
+                        <Button onClick={loadEarnCodes} size="sm">
+                          Load Earn Codes
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="border rounded-md overflow-hidden">
+                        <div className="max-h-[600px] overflow-y-auto">
+                          <Table>
+                            <TableHeader className="sticky top-0 bg-muted">
+                              <TableRow>
+                                <TableHead>ID</TableHead>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Code</TableHead>
+                                <TableHead>External ID</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {earnCodes
+                                .filter(ec => {
+                                  if (!earnCodeSearch) return true
+                                  const search = earnCodeSearch.toLowerCase()
+                                  return (
+                                    ec.id.toString().includes(search) ||
+                                    ec.name.toLowerCase().includes(search) ||
+                                    (ec.code && ec.code.toLowerCase().includes(search)) ||
+                                    (ec.externalID && ec.externalID.toLowerCase().includes(search))
+                                  )
+                                })
+                                .map((earnCode) => (
+                                  <TableRow key={earnCode.id}>
+                                    <TableCell className="font-mono font-semibold">{earnCode.id}</TableCell>
+                                    <TableCell>{earnCode.name}</TableCell>
+                                    <TableCell className="font-mono text-sm">{earnCode.code || '-'}</TableCell>
+                                    <TableCell className="font-mono text-sm">{earnCode.externalID || '-'}</TableCell>
+                                  </TableRow>
+                                ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <FolderOpen size={20} className="text-accent" weight="duotone" />
+                          Earn Code Groups
+                        </CardTitle>
+                        <CardDescription>
+                          {earnCodeGroups.length} earn code groups available
+                        </CardDescription>
+                      </div>
+                      <Button onClick={loadEarnCodeGroups} disabled={loadingEarnCodes} size="sm" variant="outline">
+                        Refresh
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="earn-code-group-search">Search Earn Code Groups</Label>
+                      <Input
+                        id="earn-code-group-search"
+                        placeholder="Filter by name or ID..."
+                        value={earnCodeGroupSearch}
+                        onChange={(e) => setEarnCodeGroupSearch(e.target.value)}
+                      />
+                    </div>
+
+                    {loadingEarnCodes ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        Loading earn code groups...
+                      </div>
+                    ) : earnCodeGroups.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <p className="mb-4">No earn code groups loaded</p>
+                        <Button onClick={loadEarnCodeGroups} size="sm">
+                          Load Earn Code Groups
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="border rounded-md overflow-hidden">
+                        <div className="max-h-[600px] overflow-y-auto">
+                          <Table>
+                            <TableHeader className="sticky top-0 bg-muted">
+                              <TableRow>
+                                <TableHead>ID</TableHead>
+                                <TableHead>Name</TableHead>
+                                <TableHead>External ID</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {earnCodeGroups
+                                .filter(ecg => {
+                                  if (!earnCodeGroupSearch) return true
+                                  const search = earnCodeGroupSearch.toLowerCase()
+                                  return (
+                                    ecg.id.toString().includes(search) ||
+                                    ecg.name.toLowerCase().includes(search) ||
+                                    (ecg.externalID && ecg.externalID.toLowerCase().includes(search))
+                                  )
+                                })
+                                .map((earnCodeGroup) => (
+                                  <TableRow key={earnCodeGroup.id}>
+                                    <TableCell className="font-mono font-semibold">{earnCodeGroup.id}</TableCell>
+                                    <TableCell>{earnCodeGroup.name}</TableCell>
+                                    <TableCell className="font-mono text-sm">{earnCodeGroup.externalID || '-'}</TableCell>
+                                  </TableRow>
+                                ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
           </Tabs>
         </CardContent>
