@@ -340,22 +340,21 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
           linesStructure: group.placementRateCardLines
         })
         
-        const linesData = Array.isArray(group.placementRateCardLines?.data) 
           ? group.placementRateCardLines.data 
-          : (Array.isArray(group.placementRateCardLines) ? group.placementRateCardLines : [])
+          ? group.placementRateCardLines.data 
         
-        console.log(`Group ${group.id} extracted ${linesData.length} lines`)
+        ngth} lines`)
         
-        const earnCodeGroupName = group.earnCodeGroup?.payBillOptionsLookup?.label || `Group ${group.earnCodeGroup?.id || group.id}`
+        ?.payBillOptionsLookup?.label || `Group ${group.earnCodeGroup?.id || group.id}`
         
         return {
           id: group.id,
           isBase: group.isBase,
           earnCodeGroup: {
-            id: group.earnCodeGroup?.id || 0,
+          earnCodeGroup: {
             name: earnCodeGroupName
-          },
-          placementRateCardLines: linesData.map((line: any, lineIdx: number) => {
+            name: earnCodeGroupName
+          },line: any, lineIdx: number) => {
             console.log(`  Line ${lineIdx + 1}: EarnCode ID ${line.earnCode?.id}, Title: ${line.earnCode?.title}, Code: ${line.earnCode?.code}`)
             return {
               id: line.id,
@@ -363,23 +362,23 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                 id: line.earnCode?.id || 0,
                 name: line.earnCode?.title || line.earnCode?.code || `EarnCode ${line.earnCode?.id || lineIdx}`
               },
-              payMultiplier: line.payMultiplier,
+              },
               payRate: line.payRate,
-              billMultiplier: line.billMultiplier,
+              payRate: line.payRate,
               billRate: line.billRate,
               markupPercent: line.markupPercent,
               markupValue: line.markupValue,
-              customText1: line.customText1,
+              markupValue: line.markupValue,
               customFloat1: line.customFloat1
             }
           })
         }
       })
-      
+      })
       const totalLines = mappedGroups.reduce((sum, g) => sum + g.placementRateCardLines.length, 0)
-      console.log('Mapped groups complete:', { 
+      const totalLines = mappedGroups.reduce((sum, g) => sum + g.placementRateCardLines.length, 0)
         groupCount: mappedGroups.length, 
-        totalLines,
+        groupCount: mappedGroups.length, 
         groups: mappedGroups.map(g => ({ 
           id: g.id, 
           name: g.earnCodeGroup.name, 
@@ -395,6 +394,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
         lineCount: totalLines
       })
     } catch (error) {
+    } catch (error) {
       console.error('Failed to load rate card lines:', error)
       toast.error('Failed to load rate card lines')
       onLog('Load Rate Card Lines', 'error', 'Failed to load rate card lines', { error: String(error), rateCardId: rateCard.id })
@@ -408,12 +408,11 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     setEditingLineId(line.id || null)
     setEditFormData({
       payMultiplier: line.payMultiplier,
-      payRate: line.payRate || '',
       billMultiplier: line.billMultiplier,
       billRate: line.billRate || '',
       markupPercent: line.markupPercent || '',
       markupValue: line.markupValue || '',
-      customText1: line.customText1 || '',
+      markupValue: line.markupValue || '',
       customFloat1: line.customFloat1 || ''
     })
   }
