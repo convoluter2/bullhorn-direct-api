@@ -123,6 +123,92 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     toast.success('Template downloaded')
   }
 
+  const handleExportEarnCodes = () => {
+    if (earnCodes.length === 0) {
+      toast.error('No earn codes to export')
+      return
+    }
+
+    const filteredCodes = earnCodes.filter(ec => {
+      if (!earnCodeSearch) return true
+      const search = earnCodeSearch.toLowerCase()
+      return (
+        ec.id.toString().includes(search) ||
+        ec.name.toLowerCase().includes(search) ||
+        (ec.code && ec.code.toLowerCase().includes(search)) ||
+        (ec.externalID && ec.externalID.toLowerCase().includes(search))
+      )
+    })
+
+    const csvData = filteredCodes.map(ec => ({
+      id: ec.id,
+      name: ec.name,
+      code: ec.code || '',
+      externalID: ec.externalID || '',
+      isDeleted: ec.isDeleted || false
+    }))
+
+    const csv = Papa.unparse(csvData)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    
+    link.setAttribute('href', url)
+    link.setAttribute('download', `earn-codes-${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    toast.success(`Exported ${filteredCodes.length} earn codes to CSV`)
+    onLog('Export Earn Codes', 'success', `Exported ${filteredCodes.length} earn codes`, {
+      count: filteredCodes.length,
+      filtered: earnCodeSearch !== ''
+    })
+  }
+
+  const handleExportEarnCodeGroups = () => {
+    if (earnCodeGroups.length === 0) {
+      toast.error('No earn code groups to export')
+      return
+    }
+
+    const filteredGroups = earnCodeGroups.filter(ecg => {
+      if (!earnCodeGroupSearch) return true
+      const search = earnCodeGroupSearch.toLowerCase()
+      return (
+        ecg.id.toString().includes(search) ||
+        ecg.name.toLowerCase().includes(search) ||
+        (ecg.externalID && ecg.externalID.toLowerCase().includes(search))
+      )
+    })
+
+    const csvData = filteredGroups.map(ecg => ({
+      id: ecg.id,
+      name: ecg.name,
+      externalID: ecg.externalID || '',
+      isDeleted: ecg.isDeleted || false
+    }))
+
+    const csv = Papa.unparse(csvData)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    
+    link.setAttribute('href', url)
+    link.setAttribute('download', `earn-code-groups-${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    toast.success(`Exported ${filteredGroups.length} earn code groups to CSV`)
+    onLog('Export Earn Code Groups', 'success', `Exported ${filteredGroups.length} earn code groups`, {
+      count: filteredGroups.length,
+      filtered: earnCodeGroupSearch !== ''
+    })
+  }
+
   const loadEarnCodes = async () => {
     setLoadingEarnCodes(true)
     try {
@@ -990,9 +1076,20 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                           {earnCodes.length} earn codes available
                         </CardDescription>
                       </div>
-                      <Button onClick={loadEarnCodes} disabled={loadingEarnCodes} size="sm" variant="outline">
-                        Refresh
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={handleExportEarnCodes} 
+                          disabled={loadingEarnCodes || earnCodes.length === 0} 
+                          size="sm" 
+                          variant="outline"
+                        >
+                          <DownloadSimple size={16} />
+                          Export CSV
+                        </Button>
+                        <Button onClick={loadEarnCodes} disabled={loadingEarnCodes} size="sm" variant="outline">
+                          Refresh
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -1069,9 +1166,20 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                           {earnCodeGroups.length} earn code groups available
                         </CardDescription>
                       </div>
-                      <Button onClick={loadEarnCodeGroups} disabled={loadingEarnCodes} size="sm" variant="outline">
-                        Refresh
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={handleExportEarnCodeGroups} 
+                          disabled={loadingEarnCodes || earnCodeGroups.length === 0} 
+                          size="sm" 
+                          variant="outline"
+                        >
+                          <DownloadSimple size={16} />
+                          Export CSV
+                        </Button>
+                        <Button onClick={loadEarnCodeGroups} disabled={loadingEarnCodes} size="sm" variant="outline">
+                          Refresh
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
