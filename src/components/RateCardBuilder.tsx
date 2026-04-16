@@ -212,12 +212,12 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
   const loadEarnCodes = async () => {
     setLoadingEarnCodes(true)
     try {
-      const response = await bullhornAPI.query('EarnCode', {
-        where: 'isDeleted=false',
-        fields: 'id,name,code,externalID,isDeleted',
-        orderBy: 'name',
-        count: 500
-      })
+      const response = await bullhornAPI.query(
+        'EarnCode',
+        'id,name,code,externalID,isDeleted',
+        'isDeleted=false',
+        { orderBy: 'name', count: 500 }
+      )
 
       if (response.data) {
         setEarnCodes(response.data)
@@ -238,12 +238,12 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
   const loadEarnCodeGroups = async () => {
     setLoadingEarnCodes(true)
     try {
-      const response = await bullhornAPI.query('EarnCodeGroup', {
-        where: 'isDeleted=false',
-        fields: 'id,name,externalID,isDeleted',
-        orderBy: 'name',
-        count: 500
-      })
+      const response = await bullhornAPI.query(
+        'EarnCodeGroup',
+        'id,name,externalID,isDeleted',
+        'isDeleted=false',
+        { orderBy: 'name', count: 500 }
+      )
 
       if (response.data) {
         setEarnCodeGroups(response.data)
@@ -283,8 +283,8 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     try {
       const response = await bullhornAPI.getEntity('PlacementRateCard', rateCard.id, 'id,placementRateCardLineGroups(id,isBase,earnCodeGroup(id,name),placementRateCardLines(id,earnCode(id,name),payMultiplier,payRate,billMultiplier,billRate,markupPercent,markupValue,customText1,customFloat1))')
 
-      if (response.data?.placementRateCardLineGroups) {
-        setLineGroups(response.data.placementRateCardLineGroups)
+      if (response?.placementRateCardLineGroups) {
+        setLineGroups(response.placementRateCardLineGroups)
         toast.success('Rate card lines loaded')
       }
     } catch (error) {
@@ -398,12 +398,12 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     try {
       const response = await bullhornAPI.getEntity('PlacementRateCard', parseInt(searchId, 10), 'id,effectiveDate,placement(id),owner(id,firstName,lastName),placementRateCardStatusLookup(id,label),dateAdded,dateLastModified')
 
-      if (response.data) {
-        setRateCard(response.data)
+      if (response) {
+        setRateCard(response)
         toast.success('Rate Card found')
         onLog('Rate Card Lookup', 'success', `Found Rate Card ID: ${searchId}`, {
           rateCardId: searchId,
-          placementId: response.data.placement?.id
+          placementId: response.placement?.id
         })
       } else {
         toast.error('Rate Card not found')
@@ -428,12 +428,12 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
 
     setLoading(true)
     try {
-      const response = await bullhornAPI.query('PlacementRateCard', {
-        where: `placement.id=${placementId}`,
-        fields: 'id,effectiveDate,placement(id),owner(id,firstName,lastName),placementRateCardStatusLookup(id,label),dateAdded,dateLastModified',
-        orderBy: '-dateLastModified',
-        count: 10
-      })
+      const response = await bullhornAPI.query(
+        'PlacementRateCard',
+        'id,effectiveDate,placement(id),owner(id,firstName,lastName),placementRateCardStatusLookup(id,label),dateAdded,dateLastModified',
+        `placement.id=${placementId}`,
+        { orderBy: '-dateLastModified', count: 10 }
+      )
 
       if (response.data && response.data.length > 0) {
         setRateCard(response.data[0])
@@ -579,7 +579,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
 
         const createdCard = await bullhornAPI.getEntity('PlacementRateCard', response.changedEntityId, 'id,effectiveDate,placement(id),owner(id,firstName,lastName),placementRateCardStatusLookup(id,label)')
 
-        setRateCard(createdCard.data)
+        setRateCard(createdCard)
         setActiveTab('lookup')
 
         onLog('Rate Card Create', 'success', `Created Rate Card ID: ${response.changedEntityId}`, {
