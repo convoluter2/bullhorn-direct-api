@@ -214,16 +214,23 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     try {
       const response = await bullhornAPI.query(
         'EarnCode',
-        'id,name,code,externalID,isDeleted',
-        'isDeleted=false',
-        { orderBy: 'name', count: 500 }
+        'id,title,code,externalID,description',
+        'id>0',
+        { orderBy: 'title', count: 500 }
       )
 
       if (response.data) {
-        setEarnCodes(response.data)
-        toast.success(`Loaded ${response.data.length} earn codes`)
-        onLog('Load Earn Codes', 'success', `Loaded ${response.data.length} earn codes`, {
-          count: response.data.length
+        const mappedData = response.data.map((ec: any) => ({
+          id: ec.id,
+          name: ec.title || ec.code || `EarnCode ${ec.id}`,
+          code: ec.code,
+          externalID: ec.externalID,
+          isDeleted: false
+        }))
+        setEarnCodes(mappedData)
+        toast.success(`Loaded ${mappedData.length} earn codes`)
+        onLog('Load Earn Codes', 'success', `Loaded ${mappedData.length} earn codes`, {
+          count: mappedData.length
         })
       }
     } catch (error) {
@@ -240,16 +247,22 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     try {
       const response = await bullhornAPI.query(
         'EarnCodeGroup',
-        'id,name,externalID,isDeleted',
-        'isDeleted=false',
-        { orderBy: 'name', count: 500 }
+        'id,defaultEarnCode(id,title),doubleTimeEarnCode(id,title),overtimeEarnCode(id,title)',
+        'id>0',
+        { orderBy: 'id', count: 500 }
       )
 
       if (response.data) {
-        setEarnCodeGroups(response.data)
-        toast.success(`Loaded ${response.data.length} earn code groups`)
-        onLog('Load Earn Code Groups', 'success', `Loaded ${response.data.length} earn code groups`, {
-          count: response.data.length
+        const mappedData = response.data.map((ecg: any) => ({
+          id: ecg.id,
+          name: ecg.defaultEarnCode?.title || `EarnCodeGroup ${ecg.id}`,
+          externalID: '',
+          isDeleted: false
+        }))
+        setEarnCodeGroups(mappedData)
+        toast.success(`Loaded ${mappedData.length} earn code groups`)
+        onLog('Load Earn Code Groups', 'success', `Loaded ${mappedData.length} earn code groups`, {
+          count: mappedData.length
         })
       }
     } catch (error) {
@@ -281,10 +294,24 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
 
     setLoading(true)
     try {
-      const response = await bullhornAPI.getEntity('PlacementRateCard', rateCard.id, 'id,placementRateCardLineGroups(id,isBase,earnCodeGroup(id,name),placementRateCardLines(id,earnCode(id,name),payMultiplier,payRate,billMultiplier,billRate,markupPercent,markupValue,customText1,customFloat1))')
+      const response = await bullhornAPI.getEntity('PlacementRateCard', rateCard.id, 'id,placementRateCardLineGroups(id,isBase,earnCodeGroup(id,defaultEarnCode(id,title)),placementRateCardLines(id,earnCode(id,title,code),payMultiplier,payRate,billMultiplier,billRate,markupPercent,markupValue,customText1,customFloat1))')
 
       if (response?.placementRateCardLineGroups) {
-        setLineGroups(response.placementRateCardLineGroups)
+        const mappedGroups = response.placementRateCardLineGroups.map((group: any) => ({
+          ...group,
+          earnCodeGroup: {
+            id: group.earnCodeGroup.id,
+            name: group.earnCodeGroup.defaultEarnCode?.title || `Group ${group.earnCodeGroup.id}`
+          },
+          placementRateCardLines: group.placementRateCardLines.map((line: any) => ({
+            ...line,
+            earnCode: {
+              id: line.earnCode.id,
+              name: line.earnCode.title || line.earnCode.code || `EarnCode ${line.earnCode.id}`
+            }
+          }))
+        }))
+        setLineGroups(mappedGroups)
         toast.success('Rate card lines loaded')
       }
     } catch (error) {
