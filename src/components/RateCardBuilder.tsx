@@ -10,8 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import { CreditCard, MagnifyingGlass, Plus, Upload, Trash, PencilSimple, FloppyDisk, X, DownloadSimple, ListChecks, FolderOpen } from '@phosphor-icons/react'
+import { CreditCard, MagnifyingGlass, Plus, Upload, Trash, PencilSimple, FloppyDisk, X, DownloadSimple, ListChecks, FolderOpen, CaretDown, CaretRight } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import Papa from 'papaparse'
 import templateCsv from '@/assets/documents/rate-card-template.csv?url'
@@ -91,6 +92,9 @@ interface EarnCodeGroup {
   name: string
   externalID?: string
   isDeleted?: boolean
+  defaultEarnCode?: { id: number; title?: string }
+  overtimeEarnCode?: { id: number; title?: string }
+  doubleTimeEarnCode?: { id: number; title?: string }
 }
 
 export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
@@ -112,6 +116,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
   const [loadingEarnCodes, setLoadingEarnCodes] = useState(false)
   const [earnCodeSearch, setEarnCodeSearch] = useState('')
   const [earnCodeGroupSearch, setEarnCodeGroupSearch] = useState('')
+  const [expandedGroupId, setExpandedGroupId] = useState<number | null>(null)
 
   const handleDownloadTemplate = () => {
     const link = document.createElement('a')
@@ -247,7 +252,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     try {
       const response = await bullhornAPI.query(
         'EarnCodeGroup',
-        'id,defaultEarnCode(id,title),doubleTimeEarnCode(id,title),overtimeEarnCode(id,title)',
+        'id,defaultEarnCode(id,title,code),doubleTimeEarnCode(id,title,code),overtimeEarnCode(id,title,code)',
         'id>0',
         { orderBy: 'id', count: 500 }
       )
@@ -257,7 +262,10 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
           id: ecg.id,
           name: ecg.defaultEarnCode?.title || `EarnCodeGroup ${ecg.id}`,
           externalID: '',
-          isDeleted: false
+          isDeleted: false,
+          defaultEarnCode: ecg.defaultEarnCode,
+          overtimeEarnCode: ecg.overtimeEarnCode,
+          doubleTimeEarnCode: ecg.doubleTimeEarnCode
         }))
         setEarnCodeGroups(mappedData)
         toast.success(`Loaded ${mappedData.length} earn code groups`)
@@ -1237,6 +1245,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                           <Table>
                             <TableHeader className="sticky top-0 bg-muted">
                               <TableRow>
+                                <TableHead className="w-[50px]"></TableHead>
                                 <TableHead>ID</TableHead>
                                 <TableHead>Name</TableHead>
                                 <TableHead>External ID</TableHead>
@@ -1253,13 +1262,94 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                                     (ecg.externalID && ecg.externalID.toLowerCase().includes(search))
                                   )
                                 })
-                                .map((earnCodeGroup) => (
-                                  <TableRow key={earnCodeGroup.id}>
-                                    <TableCell className="font-mono font-semibold">{earnCodeGroup.id}</TableCell>
-                                    <TableCell>{earnCodeGroup.name}</TableCell>
-                                    <TableCell className="font-mono text-sm">{earnCodeGroup.externalID || '-'}</TableCell>
-                                  </TableRow>
-                                ))}
+                                .map((earnCodeGroup) => {
+                                  const isExpanded = expandedGroupId === earnCodeGroup.id
+                                  const hasEarnCodes = earnCodeGroup.defaultEarnCode || earnCodeGroup.overtimeEarnCode || earnCodeGroup.doubleTimeEarnCode
+                                  
+                                  return (
+                                    <>
+                                      <TableRow key={earnCodeGroup.id} className="cursor-pointer hover:bg-muted/50" onClick={() => {
+                                        if (hasEarnCodes) {
+                                          setExpandedGroupId(isExpanded ? null : earnCodeGroup.id)
+                                        }
+                                      }}>
+                                        <TableCell>
+                                          {hasEarnCodes && (
+                                            isExpanded ? (
+                                              <CaretDown size={16} weight="bold" className="text-muted-foreground" />
+                                            ) : (
+                                              <CaretRight size={16} weight="bold" className="text-muted-foreground" />
+                                            )
+                                          )}
+                                        </TableCell>
+                                        <TableCell className="font-mono font-semibold">{earnCodeGroup.id}</TableCell>
+                                        <TableCell>{earnCodeGroup.name}</TableCell>
+                                        <TableCell className="font-mono text-sm">{earnCodeGroup.externalID || '-'}</TableCell>
+                                      </TableRow>
+                                      {isExpanded && hasEarnCodes && (
+                                        <TableRow key={`${earnCodeGroup.id}-details`}>
+                                          <TableCell colSpan={4} className="bg-muted/30">
+                                            <div className="p-4 space-y-3">
+                                              <div className="text-sm font-semibold text-muted-foreground mb-2">
+                                                Linked Earn Codes
+                                              </div>
+                                              <div className="grid gap-2">
+                                                {earnCodeGroup.defaultEarnCode && (
+                                                  <div className="flex items-center gap-3 p-2 bg-background rounded border">
+                                                    <Badge variant="default" className="text-xs">Regular</Badge>
+                                                    <div className="flex-1">
+                                                      <div className="font-medium">{earnCodeGroup.defaultEarnCode.title || 'Untitled'}</div>
+                                                      {earnCodeGroup.defaultEarnCode.code && (
+                                                        <div className="text-xs text-muted-foreground font-mono">
+                                                          Code: {earnCodeGroup.defaultEarnCode.code}
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                    <div className="text-sm text-muted-foreground font-mono">
+                                                      ID: {earnCodeGroup.defaultEarnCode.id}
+                                                    </div>
+                                                  </div>
+                                                )}
+                                                {earnCodeGroup.overtimeEarnCode && (
+                                                  <div className="flex items-center gap-3 p-2 bg-background rounded border">
+                                                    <Badge variant="secondary" className="text-xs">Overtime</Badge>
+                                                    <div className="flex-1">
+                                                      <div className="font-medium">{earnCodeGroup.overtimeEarnCode.title || 'Untitled'}</div>
+                                                      {earnCodeGroup.overtimeEarnCode.code && (
+                                                        <div className="text-xs text-muted-foreground font-mono">
+                                                          Code: {earnCodeGroup.overtimeEarnCode.code}
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                    <div className="text-sm text-muted-foreground font-mono">
+                                                      ID: {earnCodeGroup.overtimeEarnCode.id}
+                                                    </div>
+                                                  </div>
+                                                )}
+                                                {earnCodeGroup.doubleTimeEarnCode && (
+                                                  <div className="flex items-center gap-3 p-2 bg-background rounded border">
+                                                    <Badge variant="secondary" className="text-xs">Double Time</Badge>
+                                                    <div className="flex-1">
+                                                      <div className="font-medium">{earnCodeGroup.doubleTimeEarnCode.title || 'Untitled'}</div>
+                                                      {earnCodeGroup.doubleTimeEarnCode.code && (
+                                                        <div className="text-xs text-muted-foreground font-mono">
+                                                          Code: {earnCodeGroup.doubleTimeEarnCode.code}
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                    <div className="text-sm text-muted-foreground font-mono">
+                                                      ID: {earnCodeGroup.doubleTimeEarnCode.id}
+                                                    </div>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </TableCell>
+                                        </TableRow>
+                                      )}
+                                    </>
+                                  )
+                                })}
                             </TableBody>
                           </Table>
                         </div>
