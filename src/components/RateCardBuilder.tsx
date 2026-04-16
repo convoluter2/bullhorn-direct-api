@@ -304,23 +304,40 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     try {
       const response = await bullhornAPI.getEntity('PlacementRateCard', rateCard.id, 'id,placementRateCardLineGroups(id,isBase,earnCodeGroup(id,defaultEarnCode(id,title)),placementRateCardLines(id,earnCode(id,title,code),payMultiplier,payRate,billMultiplier,billRate,markupPercent,markupValue,customText1,customFloat1))')
 
+      console.log('Rate card response:', response)
+
       if (response?.placementRateCardLineGroups) {
-        const mappedGroups = response.placementRateCardLineGroups.map((group: any) => ({
-          ...group,
-          earnCodeGroup: {
-            id: group.earnCodeGroup.id,
-            name: group.earnCodeGroup.defaultEarnCode?.title || `Group ${group.earnCodeGroup.id}`
-          },
-          placementRateCardLines: group.placementRateCardLines.map((line: any) => ({
-            ...line,
-            earnCode: {
-              id: line.earnCode.id,
-              name: line.earnCode.title || line.earnCode.code || `EarnCode ${line.earnCode.id}`
-            }
-          }))
-        }))
+        const lineGroupsData = response.placementRateCardLineGroups.data || response.placementRateCardLineGroups
+        
+        if (!Array.isArray(lineGroupsData)) {
+          console.error('placementRateCardLineGroups is not an array:', response.placementRateCardLineGroups)
+          toast.error('Unexpected response format from API')
+          return
+        }
+
+        const mappedGroups = lineGroupsData.map((group: any) => {
+          const linesData = group.placementRateCardLines?.data || group.placementRateCardLines || []
+          
+          return {
+            ...group,
+            earnCodeGroup: {
+              id: group.earnCodeGroup.id,
+              name: group.earnCodeGroup.defaultEarnCode?.title || `Group ${group.earnCodeGroup.id}`
+            },
+            placementRateCardLines: linesData.map((line: any) => ({
+              ...line,
+              earnCode: {
+                id: line.earnCode.id,
+                name: line.earnCode.title || line.earnCode.code || `EarnCode ${line.earnCode.id}`
+              }
+            }))
+          }
+        })
+        
         setLineGroups(mappedGroups)
-        toast.success('Rate card lines loaded')
+        toast.success(`Rate card lines loaded: ${mappedGroups.length} group(s), ${mappedGroups.reduce((sum, g) => sum + g.placementRateCardLines.length, 0)} line(s)`)
+      } else {
+        toast.error('No rate card line groups found in response')
       }
     } catch (error) {
       console.error('Failed to load rate card lines:', error)
