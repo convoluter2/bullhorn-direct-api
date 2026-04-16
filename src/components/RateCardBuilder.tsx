@@ -1365,7 +1365,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
 
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+                  {Array.from(rateCardsToCreate.entries()).map(([key, rows]) => {
             <DialogTitle>Create Rate Card(s) from CSV</DialogTitle>
             <DialogDescription>
               Upload a CSV file where each row represents a rate card line. Repeat placementId and effectiveDate for lines on the same rate card.
