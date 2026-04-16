@@ -302,89 +302,103 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
 
     setLoading(true)
     try {
-      const response = await bullhornAPI.getEntity('PlacementRateCard', rateCard.id, 'id,placementRateCardLineGroups(id,isBase,earnCodeGroup(id,defaultEarnCode(id,title)),placementRateCardLines(id,earnCode(id,title,code),payMultiplier,payRate,billMultiplier,billRate,markupPercent,markupValue,customText1,customFloat1))')
+      const response = await bullhornAPI.getEntity('PlacementRateCard', rateCard.id, 'id,placementRateCardLineGroups(id,isBase,earnCodeGroup(id,accruesOT,payBillOptionsLookup(id,label)),placementRateCardLines(id,earnCode(id,title,code),payMultiplier,payRate,billMultiplier,billRate,markupPercent,markupValue,customText1,customFloat1))')
 
       console.log('Rate card response:', response)
       console.log('Full response structure:', JSON.stringify(response, null, 2))
 
+      let lineGroupsData: any[] = []
+      
       if (response?.data?.placementRateCardLineGroups) {
-        const lineGroupsData = response.data.placementRateCardLineGroups.data || response.data.placementRateCardLineGroups
-        
-        if (!Array.isArray(lineGroupsData)) {
-          console.error('placementRateCardLineGroups is not an array:', response.data.placementRateCardLineGroups)
-          toast.error('Unexpected response format from API')
-          return
-        }
-
-        console.log('Processing line groups:', lineGroupsData.length)
-
-        const mappedGroups = lineGroupsData.map((group: any) => {
-          console.log('Processing group:', group.id, 'Lines structure:', group.placementRateCardLines)
-          const linesData = group.placementRateCardLines?.data || group.placementRateCardLines || []
-          console.log('Extracted lines data:', linesData)
-          
-          return {
-            ...group,
-            earnCodeGroup: {
-              id: group.earnCodeGroup.id,
-              name: group.earnCodeGroup.defaultEarnCode?.title || `Group ${group.earnCodeGroup.id}`
-            },
-            placementRateCardLines: linesData.map((line: any) => ({
-              ...line,
-              earnCode: {
-                id: line.earnCode.id,
-                name: line.earnCode.title || line.earnCode.code || `EarnCode ${line.earnCode.id}`
-              }
-            }))
-          }
-        })
-        
-        console.log('Mapped groups:', mappedGroups)
-        setLineGroups(mappedGroups)
-        toast.success(`Rate card lines loaded: ${mappedGroups.length} group(s), ${mappedGroups.reduce((sum, g) => sum + g.placementRateCardLines.length, 0)} line(s)`)
+        lineGroupsData = response.data.placementRateCardLineGroups.data || response.data.placementRateCardLineGroups
       } else if (response?.placementRateCardLineGroups) {
-        const lineGroupsData = response.placementRateCardLineGroups.data || response.placementRateCardLineGroups
-        
-        if (!Array.isArray(lineGroupsData)) {
-          console.error('placementRateCardLineGroups is not an array:', response.placementRateCardLineGroups)
-          toast.error('Unexpected response format from API')
-          return
-        }
-
-        console.log('Processing line groups (alternate path):', lineGroupsData.length)
-
-        const mappedGroups = lineGroupsData.map((group: any) => {
-          console.log('Processing group:', group.id, 'Lines structure:', group.placementRateCardLines)
-          const linesData = group.placementRateCardLines?.data || group.placementRateCardLines || []
-          console.log('Extracted lines data:', linesData)
-          
-          return {
-            ...group,
-            earnCodeGroup: {
-              id: group.earnCodeGroup.id,
-              name: group.earnCodeGroup.defaultEarnCode?.title || `Group ${group.earnCodeGroup.id}`
-            },
-            placementRateCardLines: linesData.map((line: any) => ({
-              ...line,
-              earnCode: {
-                id: line.earnCode.id,
-                name: line.earnCode.title || line.earnCode.code || `EarnCode ${line.earnCode.id}`
-              }
-            }))
-          }
-        })
-        
-        console.log('Mapped groups:', mappedGroups)
-        setLineGroups(mappedGroups)
-        toast.success(`Rate card lines loaded: ${mappedGroups.length} group(s), ${mappedGroups.reduce((sum, g) => sum + g.placementRateCardLines.length, 0)} line(s)`)
+        lineGroupsData = response.placementRateCardLineGroups.data || response.placementRateCardLineGroups
       } else {
         console.error('No placementRateCardLineGroups found. Response keys:', Object.keys(response || {}))
+        console.error('Full response:', response)
         toast.error('No rate card line groups found in response')
+        setLineGroups([])
+        setLoading(false)
+        return
       }
+      
+      if (!Array.isArray(lineGroupsData)) {
+        console.error('placementRateCardLineGroups is not an array:', lineGroupsData)
+        toast.error('Unexpected response format from API')
+        setLineGroups([])
+        setLoading(false)
+        return
+      }
+
+      console.log('Processing line groups count:', lineGroupsData.length)
+
+      const mappedGroups = lineGroupsData.map((group: any, groupIdx: number) => {
+        console.log(`Processing group ${groupIdx + 1}/${lineGroupsData.length}:`, {
+          id: group.id,
+          isBase: group.isBase,
+          earnCodeGroup: group.earnCodeGroup,
+          linesStructure: group.placementRateCardLines
+        })
+        
+        const linesData = Array.isArray(group.placementRateCardLines?.data) 
+          ? group.placementRateCardLines.data 
+          : (Array.isArray(group.placementRateCardLines) ? group.placementRateCardLines : [])
+        
+        console.log(`Group ${group.id} extracted ${linesData.length} lines`)
+        
+        const earnCodeGroupName = group.earnCodeGroup?.payBillOptionsLookup?.label || `Group ${group.earnCodeGroup?.id || group.id}`
+        
+        return {
+          id: group.id,
+          isBase: group.isBase,
+          earnCodeGroup: {
+            id: group.earnCodeGroup?.id || 0,
+            name: earnCodeGroupName
+          },
+          placementRateCardLines: linesData.map((line: any, lineIdx: number) => {
+            console.log(`  Line ${lineIdx + 1}: EarnCode ID ${line.earnCode?.id}, Title: ${line.earnCode?.title}, Code: ${line.earnCode?.code}`)
+            return {
+              id: line.id,
+              earnCode: {
+                id: line.earnCode?.id || 0,
+                name: line.earnCode?.title || line.earnCode?.code || `EarnCode ${line.earnCode?.id || lineIdx}`
+              },
+              payMultiplier: line.payMultiplier,
+              payRate: line.payRate,
+              billMultiplier: line.billMultiplier,
+              billRate: line.billRate,
+              markupPercent: line.markupPercent,
+              markupValue: line.markupValue,
+              customText1: line.customText1,
+              customFloat1: line.customFloat1
+            }
+          })
+        }
+      })
+      
+      const totalLines = mappedGroups.reduce((sum, g) => sum + g.placementRateCardLines.length, 0)
+      console.log('Mapped groups complete:', { 
+        groupCount: mappedGroups.length, 
+        totalLines,
+        groups: mappedGroups.map(g => ({ 
+          id: g.id, 
+          name: g.earnCodeGroup.name, 
+          lineCount: g.placementRateCardLines.length 
+        }))
+      })
+      
+      setLineGroups(mappedGroups)
+      toast.success(`Rate card lines loaded: ${mappedGroups.length} group(s), ${totalLines} line(s)`)
+      onLog('Load Rate Card Lines', 'success', `Loaded ${mappedGroups.length} groups with ${totalLines} lines`, {
+        rateCardId: rateCard.id,
+        groupCount: mappedGroups.length,
+        lineCount: totalLines
+      })
     } catch (error) {
       console.error('Failed to load rate card lines:', error)
       toast.error('Failed to load rate card lines')
       onLog('Load Rate Card Lines', 'error', 'Failed to load rate card lines', { error: String(error), rateCardId: rateCard.id })
+      setLineGroups([])
     } finally {
       setLoading(false)
     }
