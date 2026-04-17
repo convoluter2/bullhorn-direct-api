@@ -1090,6 +1090,8 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
 
     toast.loading(`Updating ${updateCsvData.length} rate card line(s)...`, { id: 'bulk-update' })
 
+    const allRateCardLines: RateCardLine[] = lineGroups.flatMap(group => group.placementRateCardLines)
+
     try {
       for (let i = 0; i < updateCsvData.length; i++) {
         const row = updateCsvData[i]
@@ -1109,12 +1111,12 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
         try {
           const currentLine = allRateCardLines.find(line => line.id === lineId)
           if (!currentLine || !currentLine.id) {
-            console.warn(`Row ${i + 1}: Line ID ${lineId} not found`)
+            console.warn(`Row ${i + 1}: Line ID ${lineId} not found in loaded rate card data`)
             errorCount++
             errors.push({ 
               rowNumber: i + 1,
               lineId, 
-              error: 'PlacementRateCardLine not found' 
+              error: 'PlacementRateCardLine not found in loaded rate card data' 
             })
             continue
           }
@@ -1127,7 +1129,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
             const csvValue = row[mapping.csvColumn]
             if (csvValue === undefined || csvValue === null || csvValue === '') continue
 
-            const fieldName = mapping.rateCardField
+            const fieldName = mapping.rateCardField as keyof RateCardLine
             originalValues[fieldName] = currentLine[fieldName]
 
             if (fieldName === 'customText1') {
