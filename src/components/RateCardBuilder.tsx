@@ -2132,7 +2132,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                   
                   <Separator />
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between p-3 bg-muted rounded-md">
                       <div className="text-sm">
                         <div className="font-semibold">Need a template?</div>
@@ -2239,7 +2239,6 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                               </TableBody>
                             </Table>
                           </div>
-                        </div>
 
                         <Separator />
 
@@ -2322,6 +2321,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                             </Button>
                           </div>
                         </div>
+                      </div>
                       </>
                     )}
 
