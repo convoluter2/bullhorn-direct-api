@@ -947,7 +947,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
             })
           }
         } catch (error) {
-          console.error(`Failed to create rate card ${key}:`, error)
+        }
           failureCount++
           results.push({
             key,
@@ -1030,35 +1030,35 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
         
         if (columns.length === 0) {
           toast.error('CSV must contain at least one column besides placementRateCardLineId')
-          setUpdateCsvData([])
+      console.error('Rows with missing placementRateCardLineId:', missingLineIds)
           setFieldMappings([])
           return
         }
-        
-        const initialMappings: FieldMapping[] = columns.map(col => ({
-          csvColumn: col,
-          rateCardField: ''
+    if (!confirm(`Are you sure you want to update ${updateCsvData.length} rate card line(s)? This action can be rolled back.`)) {
+      return
+    }
+
         }))
         
         setFieldMappings(initialMappings)
         toast.success(`Loaded ${results.data.length} rate card line update(s) from CSV with ${columns.length} mappable column(s)`)
         
         onLog('CSV Upload', 'success', `Loaded bulk update CSV with ${results.data.length} rows`, {
-          fileName: file.name,
-          rowCount: results.data.length,
+    toast.loading(`Updating ${updateCsvData.length} rate card line(s)...`, { id: 'bulk-update' })
+
           columns: Object.keys(firstRow)
-        })
-      },
+      for (let i = 0; i < updateCsvData.length; i++) {
+        const row = updateCsvData[i]
       error: (error) => {
-        console.error('CSV parse error:', error)
-        toast.error(`Failed to parse CSV file: ${error.message || 'Unknown error'}`)
-        setUpdateCsvFile(null)
-        setUpdateCsvData([])
-        setFieldMappings([])
         
-        onLog('CSV Upload', 'error', 'Failed to parse CSV file', {
-          error: String(error),
-          fileName: file.name
+        toast.error(`Failed to parse CSV file: ${error.message || 'Unknown error'}`)
+          console.warn(`Row ${i + 1}: Invalid line ID: ${row.placementRateCardLineId}`)
+        setUpdateCsvData([])
+          errors.push({ 
+            rowNumber: i + 1,
+            lineId: row.placementRateCardLineId, 
+            error: 'Invalid line ID - must be a number' 
+          })
         })
       }
     })
@@ -1069,65 +1069,6 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
       prev.map(mapping => 
         mapping.csvColumn === csvColumn 
           ? { ...mapping, rateCardField } 
-          : mapping
-      )
-    )
-  }
-
-  const handleExecuteBulkUpdate = async () => {
-    if (updateCsvData.length === 0) {
-      toast.error('Please upload a CSV file first')
-      return
-    }
-
-    const validMappings = fieldMappings.filter(m => m.rateCardField)
-    if (validMappings.length === 0) {
-      toast.error('Please map at least one CSV column to a rate card field')
-      return
-    }
-
-    const missingLineIds = updateCsvData.filter(row => !row.placementRateCardLineId?.trim())
-    if (missingLineIds.length > 0) {
-      toast.error(`${missingLineIds.length} row(s) are missing placementRateCardLineId`)
-      console.error('Rows with missing placementRateCardLineId:', missingLineIds)
-      return
-    }
-
-    if (!confirm(`Are you sure you want to update ${updateCsvData.length} rate card line(s)? This action can be rolled back.`)) {
-      return
-    }
-
-    setLoading(true)
-    const backupRecords: UpdateBackupRecord[] = []
-    let successCount = 0
-    let errorCount = 0
-    const errors: any[] = []
-
-    toast.loading(`Updating ${updateCsvData.length} rate card line(s)...`, { id: 'bulk-update' })
-
-    try {
-      for (let i = 0; i < updateCsvData.length; i++) {
-        const row = updateCsvData[i]
-        const lineId = parseInt(row.placementRateCardLineId, 10)
-        
-        if (isNaN(lineId)) {
-          console.warn(`Row ${i + 1}: Invalid line ID: ${row.placementRateCardLineId}`)
-          errorCount++
-          errors.push({ 
-            rowNumber: i + 1,
-            lineId: row.placementRateCardLineId, 
-            error: 'Invalid line ID - must be a number' 
-          })
-          continue
-        }
-
-        try {
-          const currentLine = await bullhornAPI.getEntity(
-            'PlacementRateCardLine',
-            lineId,
-            'id,payMultiplier,payRate,billMultiplier,billRate,markupPercent,markupValue,customText1,customFloat1'
-          )
-
           if (!currentLine || !currentLine.id) {
             console.warn(`Row ${i + 1}: Line ID ${lineId} not found`)
             errorCount++
@@ -1139,11 +1080,70 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
             continue
           }
 
-          const updatePayload: any = {}
-          const originalValues: Record<string, any> = {}
-          const newValues: Record<string, any> = {}
+    const validMappings = fieldMappings.filter(m => m.rateCardField)
+    if (validMappings.length === 0) {
+      toast.error('Please map at least one CSV column to a rate card field')
+      return
+    }
 
-          for (const mapping of validMappings) {
+            if (csvValue === undefined || csvValue === null || csvValue === '') continue
+    if (missingLineIds.length > 0) {
+      toast.error(`${missingLineIds.length} row(s) are missing placementRateCardLineId`)
+      console.error('Rows with missing placementRateCardLineId:', missingLineIds)
+      return
+    }
+              updatePayload[fieldName] = String(csvValue).trim()
+              newValues[fieldName] = String(csvValue).trim()can be rolled back.`)) {
+      return
+              const numericValue = parseFloat(String(csvValue))
+
+    setLoading(true)
+    const backupRecords: UpdateBackupRecord[] = []
+              } else {
+                console.warn(`Row ${i + 1}: Invalid numeric value for ${fieldName}: ${csvValue}`)
+    const errors: any[] = []
+
+    toast.loading(`Updating ${updateCsvData.length} rate card line(s)...`, { id: 'bulk-update' })
+
+    try {
+            console.log(`Row ${i + 1}: No valid updates for line ${lineId} (all values empty or invalid)`)
+        const row = updateCsvData[i]
+        const lineId = parseInt(row.placementRateCardLineId, 10)
+        
+          console.log(`Row ${i + 1}: Updating PlacementRateCardLine ${lineId}:`, updatePayload)
+          console.warn(`Row ${i + 1}: Invalid line ID: ${row.placementRateCardLineId}`)
+          errorCount++
+          errors.push({ 
+            rowNumber: i + 1,
+            lineId: row.placementRateCardLineId, 
+            error: 'Invalid line ID - must be a number' 
+          })
+          continue
+        }
+
+        try {
+            console.error(`Row ${i + 1}: Update failed - no changedEntityId returned`, response)
+            'PlacementRateCardLine',
+            errors.push({ 
+              rowNumber: i + 1,
+              lineId, 
+              error: 'Update failed - no changedEntityId returned', 
+              response 
+            })
+            errorCount++
+            errors.push({ 
+          console.error(`Row ${i + 1}: Failed to update line ${lineId}:`, error)
+              lineId, 
+          errors.push({ 
+            rowNumber: i + 1,
+            lineId, 
+            error: error instanceof Error ? error.message : String(error)
+          })
+          const updatePayload: any = {}
+
+        if ((i + 1) % 10 === 0) {
+          toast.loading(`Updated ${i + 1} of ${updateCsvData.length} line(s)...`, { id: 'bulk-update' })
+        }
             const csvValue = row[mapping.csvColumn]
             if (csvValue === undefined || csvValue === null || csvValue === '') continue
 
@@ -1152,21 +1152,21 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
 
             if (fieldName === 'customText1') {
               updatePayload[fieldName] = String(csvValue).trim()
-              newValues[fieldName] = String(csvValue).trim()
-            } else {
+        onLog('Bulk Rate Card Line Update', successCount === updateCsvData.length ? 'success' : 'error', 
+          `Updated ${successCount} rate card line(s)${errorCount > 0 ? `, ${errorCount} failed` : ''}`, {
               const numericValue = parseFloat(String(csvValue))
               if (!isNaN(numericValue)) {
                 updatePayload[fieldName] = numericValue
                 newValues[fieldName] = numericValue
-              } else {
+            errors: errors.length > 0 ? errors.slice(0, 50) : undefined,
                 console.warn(`Row ${i + 1}: Invalid numeric value for ${fieldName}: ${csvValue}`)
               }
             }
           }
-
-          if (Object.keys(updatePayload).length === 0) {
-            console.log(`Row ${i + 1}: No valid updates for line ${lineId} (all values empty or invalid)`)
-            continue
+        toast.success(`Updated ${successCount} of ${updateCsvData.length} rate card line(s)${errorCount > 0 ? `, ${errorCount} failed` : ''}`, { 
+          id: 'bulk-update',
+          duration: 5000
+        })
           }
 
           console.log(`Row ${i + 1}: Updating PlacementRateCardLine ${lineId}:`, updatePayload)
@@ -1176,25 +1176,25 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
           if (response.changedEntityId) {
             successCount++
             backupRecords.push({
-              lineId,
+            errors: errors.slice(0, 50)
               originalValues,
               newValues
-            })
-          } else {
-            console.error(`Row ${i + 1}: Update failed - no changedEntityId returned`, response)
-            errorCount++
+        toast.error(`All ${updateCsvData.length} updates failed. Check logs for details.`, { 
+          id: 'bulk-update',
+          duration: 5000
+        })
             errors.push({ 
               rowNumber: i + 1,
               lineId, 
-              error: 'Update failed - no changedEntityId returned', 
-              response 
-            })
-          }
+      toast.error(`Bulk update failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { 
+        id: 'bulk-update',
+        duration: 5000
+      })
         } catch (error) {
-          console.error(`Row ${i + 1}: Failed to update line ${lineId}:`, error)
+        error: error instanceof Error ? error.message : String(error),
           errorCount++
-          errors.push({ 
-            rowNumber: i + 1,
+        errorCount,
+        errors: errors.slice(0, 50)
             lineId, 
             error: error instanceof Error ? error.message : String(error)
           })
