@@ -16,6 +16,7 @@ import { CreditCard, MagnifyingGlass, Plus, Upload, Trash, PencilSimple, FloppyD
 import { toast } from 'sonner'
 import Papa from 'papaparse'
 import templateCsv from '@/assets/documents/rate-card-template.csv?url'
+import updateTemplateCsv from '@/assets/documents/rate-card-line-update-template.csv?url'
 
 interface RateCardBuilderProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -159,6 +160,65 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     link.click()
     document.body.removeChild(link)
     toast.success('Template downloaded')
+  }
+
+  const handleDownloadUpdateTemplate = () => {
+    const link = document.createElement('a')
+    link.href = updateTemplateCsv
+    link.download = 'rate-card-line-update-template.csv'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    toast.success('Update template downloaded')
+  }
+
+  const handleExportCurrentRateCardLines = () => {
+    if (!rateCard || lineGroups.length === 0) {
+      toast.error('No rate card lines to export')
+      return
+    }
+
+    const exportData: any[] = []
+    
+    lineGroups.forEach(group => {
+      group.placementRateCardLines.forEach(line => {
+        exportData.push({
+          placementRateCardLineId: line.id || '',
+          earnCodeId: line.earnCode?.id || '',
+          earnCodeName: line.earnCode?.name || '',
+          earnCodeGroupId: group.earnCodeGroup?.id || '',
+          earnCodeGroupName: group.earnCodeGroup?.name || '',
+          isBase: group.isBase ? 'TRUE' : 'FALSE',
+          payMultiplier: line.payMultiplier ?? '',
+          payRate: line.payRate ?? '',
+          billMultiplier: line.billMultiplier ?? '',
+          billRate: line.billRate ?? '',
+          markupPercent: line.markupPercent ?? '',
+          markupValue: line.markupValue ?? '',
+          customText1: line.customText1 ?? '',
+          customFloat1: line.customFloat1 ?? ''
+        })
+      })
+    })
+
+    const csv = Papa.unparse(exportData)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    
+    link.setAttribute('href', url)
+    link.setAttribute('download', `rate-card-${rateCard.id}-lines-${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    toast.success(`Exported ${exportData.length} rate card line(s) to CSV`)
+    onLog('Export Rate Card Lines', 'success', `Exported ${exportData.length} lines for rate card ${rateCard.id}`, {
+      rateCardId: rateCard.id,
+      lineCount: exportData.length,
+      groupCount: lineGroups.length
+    })
   }
 
   const handleExportEarnCodes = () => {
@@ -934,24 +994,72 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
+        console.log('CSV parse results:', results)
+        
+        if (results.errors && results.errors.length > 0) {
+          console.error('CSV parsing errors:', results.errors)
+          toast.error(`CSV parsing warnings: ${results.errors.length} issue(s) detected`)
+        }
+        
+        if (!results.data || results.data.length === 0) {
+          toast.error('CSV file is empty or has no valid data')
+          setUpdateCsvData([])
+          setFieldMappings([])
+          return
+        }
+        
         setUpdateCsvData(results.data)
         
-        if (results.data.length > 0) {
-          const firstRow = results.data[0]
-          const columns = Object.keys(firstRow).filter(key => key !== 'placementRateCardLineId')
-          
-          const initialMappings: FieldMapping[] = columns.map(col => ({
-            csvColumn: col,
-            rateCardField: ''
-          }))
-          
-          setFieldMappings(initialMappings)
-          toast.success(`Loaded ${results.data.length} rate card line updates from CSV`)
+        const firstRow = results.data[0]
+        if (!firstRow || typeof firstRow !== 'object') {
+          toast.error('Invalid CSV format: first row is not an object')
+          setUpdateCsvData([])
+          setFieldMappings([])
+          return
         }
+        
+        const hasLineIdColumn = 'placementRateCardLineId' in firstRow
+        if (!hasLineIdColumn) {
+          toast.error('CSV must contain a "placementRateCardLineId" column')
+          setUpdateCsvData([])
+          setFieldMappings([])
+          return
+        }
+        
+        const columns = Object.keys(firstRow).filter(key => key !== 'placementRateCardLineId')
+        
+        if (columns.length === 0) {
+          toast.error('CSV must contain at least one column besides placementRateCardLineId')
+          setUpdateCsvData([])
+          setFieldMappings([])
+          return
+        }
+        
+        const initialMappings: FieldMapping[] = columns.map(col => ({
+          csvColumn: col,
+          rateCardField: ''
+        }))
+        
+        setFieldMappings(initialMappings)
+        toast.success(`Loaded ${results.data.length} rate card line update(s) from CSV with ${columns.length} mappable column(s)`)
+        
+        onLog('CSV Upload', 'success', `Loaded bulk update CSV with ${results.data.length} rows`, {
+          fileName: file.name,
+          rowCount: results.data.length,
+          columns: Object.keys(firstRow)
+        })
       },
       error: (error) => {
-        toast.error('Failed to parse CSV file')
         console.error('CSV parse error:', error)
+        toast.error(`Failed to parse CSV file: ${error.message || 'Unknown error'}`)
+        setUpdateCsvFile(null)
+        setUpdateCsvData([])
+        setFieldMappings([])
+        
+        onLog('CSV Upload', 'error', 'Failed to parse CSV file', {
+          error: String(error),
+          fileName: file.name
+        })
       }
     })
   }
@@ -981,6 +1089,11 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     const missingLineIds = updateCsvData.filter(row => !row.placementRateCardLineId?.trim())
     if (missingLineIds.length > 0) {
       toast.error(`${missingLineIds.length} row(s) are missing placementRateCardLineId`)
+      console.error('Rows with missing placementRateCardLineId:', missingLineIds)
+      return
+    }
+
+    if (!confirm(`Are you sure you want to update ${updateCsvData.length} rate card line(s)? This action can be rolled back.`)) {
       return
     }
 
@@ -990,13 +1103,21 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     let errorCount = 0
     const errors: any[] = []
 
+    toast.loading(`Updating ${updateCsvData.length} rate card line(s)...`, { id: 'bulk-update' })
+
     try {
-      for (const row of updateCsvData) {
+      for (let i = 0; i < updateCsvData.length; i++) {
+        const row = updateCsvData[i]
         const lineId = parseInt(row.placementRateCardLineId, 10)
+        
         if (isNaN(lineId)) {
-          console.warn(`Invalid line ID: ${row.placementRateCardLineId}`)
+          console.warn(`Row ${i + 1}: Invalid line ID: ${row.placementRateCardLineId}`)
           errorCount++
-          errors.push({ lineId: row.placementRateCardLineId, error: 'Invalid line ID' })
+          errors.push({ 
+            rowNumber: i + 1,
+            lineId: row.placementRateCardLineId, 
+            error: 'Invalid line ID - must be a number' 
+          })
           continue
         }
 
@@ -1007,35 +1128,48 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
             'id,payMultiplier,payRate,billMultiplier,billRate,markupPercent,markupValue,customText1,customFloat1'
           )
 
+          if (!currentLine || !currentLine.id) {
+            console.warn(`Row ${i + 1}: Line ID ${lineId} not found`)
+            errorCount++
+            errors.push({ 
+              rowNumber: i + 1,
+              lineId, 
+              error: 'PlacementRateCardLine not found' 
+            })
+            continue
+          }
+
           const updatePayload: any = {}
           const originalValues: Record<string, any> = {}
           const newValues: Record<string, any> = {}
 
           for (const mapping of validMappings) {
             const csvValue = row[mapping.csvColumn]
-            if (csvValue === undefined || csvValue === '') continue
+            if (csvValue === undefined || csvValue === null || csvValue === '') continue
 
             const fieldName = mapping.rateCardField
             originalValues[fieldName] = currentLine[fieldName]
 
             if (fieldName === 'customText1') {
-              updatePayload[fieldName] = csvValue
-              newValues[fieldName] = csvValue
+              updatePayload[fieldName] = String(csvValue).trim()
+              newValues[fieldName] = String(csvValue).trim()
             } else {
-              const numericValue = parseFloat(csvValue)
+              const numericValue = parseFloat(String(csvValue))
               if (!isNaN(numericValue)) {
                 updatePayload[fieldName] = numericValue
                 newValues[fieldName] = numericValue
+              } else {
+                console.warn(`Row ${i + 1}: Invalid numeric value for ${fieldName}: ${csvValue}`)
               }
             }
           }
 
           if (Object.keys(updatePayload).length === 0) {
-            console.log(`No valid updates for line ${lineId}`)
+            console.log(`Row ${i + 1}: No valid updates for line ${lineId} (all values empty or invalid)`)
             continue
           }
 
-          console.log(`Updating PlacementRateCardLine ${lineId}:`, updatePayload)
+          console.log(`Row ${i + 1}: Updating PlacementRateCardLine ${lineId}:`, updatePayload)
 
           const response = await bullhornAPI.updateEntity('PlacementRateCardLine', lineId, updatePayload)
 
@@ -1047,13 +1181,27 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
               newValues
             })
           } else {
+            console.error(`Row ${i + 1}: Update failed - no changedEntityId returned`, response)
             errorCount++
-            errors.push({ lineId, error: 'No changedEntityId returned', response })
+            errors.push({ 
+              rowNumber: i + 1,
+              lineId, 
+              error: 'Update failed - no changedEntityId returned', 
+              response 
+            })
           }
         } catch (error) {
-          console.error(`Failed to update line ${lineId}:`, error)
+          console.error(`Row ${i + 1}: Failed to update line ${lineId}:`, error)
           errorCount++
-          errors.push({ lineId, error: String(error) })
+          errors.push({ 
+            rowNumber: i + 1,
+            lineId, 
+            error: error instanceof Error ? error.message : String(error)
+          })
+        }
+
+        if ((i + 1) % 10 === 0) {
+          toast.loading(`Updated ${i + 1} of ${updateCsvData.length} line(s)...`, { id: 'bulk-update' })
         }
       }
 
@@ -1063,18 +1211,21 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
         const logId = `bulk-update-${Date.now()}`
         setLastUpdateLogId(logId)
         
-        onLog('Bulk Rate Card Line Update', 'success', 
-          `Updated ${successCount} rate card line(s), ${errorCount} failed`, {
+        onLog('Bulk Rate Card Line Update', successCount === updateCsvData.length ? 'success' : 'error', 
+          `Updated ${successCount} rate card line(s)${errorCount > 0 ? `, ${errorCount} failed` : ''}`, {
             successCount,
             errorCount,
             totalRows: updateCsvData.length,
             mappings: validMappings,
-            errors: errors.length > 0 ? errors : undefined,
+            errors: errors.length > 0 ? errors.slice(0, 50) : undefined,
             rollbackData: backupRecords
           }
         )
 
-        toast.success(`Updated ${successCount} rate card line(s)${errorCount > 0 ? `, ${errorCount} failed` : ''}`)
+        toast.success(`Updated ${successCount} of ${updateCsvData.length} rate card line(s)${errorCount > 0 ? `, ${errorCount} failed` : ''}`, { 
+          id: 'bulk-update',
+          duration: 5000
+        })
         
         if (rateCard) {
           await loadRateCardLines()
@@ -1084,18 +1235,25 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
           'All updates failed', {
             errorCount,
             totalRows: updateCsvData.length,
-            errors
+            errors: errors.slice(0, 50)
           }
         )
-        toast.error('All updates failed')
+        toast.error(`All ${updateCsvData.length} updates failed. Check logs for details.`, { 
+          id: 'bulk-update',
+          duration: 5000
+        })
       }
     } catch (error) {
       console.error('Bulk update error:', error)
-      toast.error('Bulk update failed')
+      toast.error(`Bulk update failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { 
+        id: 'bulk-update',
+        duration: 5000
+      })
       onLog('Bulk Rate Card Line Update', 'error', 'Bulk update failed', { 
-        error: String(error),
+        error: error instanceof Error ? error.message : String(error),
         successCount,
-        errorCount
+        errorCount,
+        errors: errors.slice(0, 50)
       })
     } finally {
       setLoading(false)
@@ -1795,6 +1953,32 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+                      <div className="text-sm">
+                        <div className="font-semibold">Need a template?</div>
+                        <div className="text-muted-foreground">Download the CSV template to get started</div>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={handleDownloadUpdateTemplate}>
+                        <DownloadSimple size={18} />
+                        Template
+                      </Button>
+                    </div>
+                    
+                    {rateCard && lineGroups.length > 0 && (
+                      <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+                        <div className="text-sm">
+                          <div className="font-semibold">Export Current Lines</div>
+                          <div className="text-muted-foreground">Export rate card {rateCard.id} lines to CSV</div>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={handleExportCurrentRateCardLines}>
+                          <DownloadSimple size={18} />
+                          Export
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="update-csv-upload">Upload CSV File *</Label>
