@@ -947,7 +947,6 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
             })
           }
         } catch (error) {
-        }
           failureCount++
           results.push({
             key,
