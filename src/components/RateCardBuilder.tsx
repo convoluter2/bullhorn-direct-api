@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import { CreditCard, MagnifyingGlass, Plus, Upload, Trash, PencilSimple, FloppyDisk, X, DownloadSimple, ListChecks, FolderOpen, CaretDown, CaretRight } from '@phosphor-icons/react'
+import { CreditCard, MagnifyingGlass, Plus, Upload, Trash, PencilSimple, FloppyDisk, X, DownloadSimple, ListChecks, FolderOpen, CaretDown, CaretRight, ArrowsClockwise } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import Papa from 'papaparse'
 import templateCsv from '@/assets/documents/rate-card-template.csv?url'
@@ -79,6 +79,22 @@ interface CSVLineRow {
   [key: string]: string | undefined
 }
 
+interface CSVUpdateRow {
+  placementRateCardLineId: string
+  [key: string]: string | undefined
+}
+
+interface FieldMapping {
+  csvColumn: string
+  rateCardField: string
+}
+
+interface UpdateBackupRecord {
+  lineId: number
+  originalValues: Record<string, any>
+  newValues: Record<string, any>
+}
+
 interface EarnCode {
   id: number
   name: string
@@ -117,6 +133,23 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
   const [earnCodeSearch, setEarnCodeSearch] = useState('')
   const [earnCodeGroupSearch, setEarnCodeGroupSearch] = useState('')
   const [expandedGroupId, setExpandedGroupId] = useState<number | null>(null)
+  
+  const [updateCsvFile, setUpdateCsvFile] = useState<File | null>(null)
+  const [updateCsvData, setUpdateCsvData] = useState<CSVUpdateRow[]>([])
+  const [fieldMappings, setFieldMappings] = useState<FieldMapping[]>([])
+  const [updateBackup, setUpdateBackup] = useState<UpdateBackupRecord[]>([])
+  const [lastUpdateLogId, setLastUpdateLogId] = useState<string | null>(null)
+
+  const availableRateCardFields = [
+    { value: 'payMultiplier', label: 'Pay Multiplier' },
+    { value: 'payRate', label: 'Pay Rate' },
+    { value: 'billMultiplier', label: 'Bill Multiplier' },
+    { value: 'billRate', label: 'Bill Rate' },
+    { value: 'markupPercent', label: 'Markup Percent' },
+    { value: 'markupValue', label: 'Markup Value' },
+    { value: 'customText1', label: 'Custom Text 1' },
+    { value: 'customFloat1', label: 'Custom Float 1' }
+  ]
 
   const handleDownloadTemplate = () => {
     const link = document.createElement('a')
@@ -891,6 +924,257 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     return new Date(timestamp).toLocaleString()
   }
 
+  const handleUpdateFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setUpdateCsvFile(file)
+
+    Papa.parse<CSVUpdateRow>(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        setUpdateCsvData(results.data)
+        
+        if (results.data.length > 0) {
+          const firstRow = results.data[0]
+          const columns = Object.keys(firstRow).filter(key => key !== 'placementRateCardLineId')
+          
+          const initialMappings: FieldMapping[] = columns.map(col => ({
+            csvColumn: col,
+            rateCardField: ''
+          }))
+          
+          setFieldMappings(initialMappings)
+          toast.success(`Loaded ${results.data.length} rate card line updates from CSV`)
+        }
+      },
+      error: (error) => {
+        toast.error('Failed to parse CSV file')
+        console.error('CSV parse error:', error)
+      }
+    })
+  }
+
+  const handleUpdateFieldMapping = (csvColumn: string, rateCardField: string) => {
+    setFieldMappings(prev => 
+      prev.map(mapping => 
+        mapping.csvColumn === csvColumn 
+          ? { ...mapping, rateCardField } 
+          : mapping
+      )
+    )
+  }
+
+  const handleExecuteBulkUpdate = async () => {
+    if (updateCsvData.length === 0) {
+      toast.error('Please upload a CSV file first')
+      return
+    }
+
+    const validMappings = fieldMappings.filter(m => m.rateCardField)
+    if (validMappings.length === 0) {
+      toast.error('Please map at least one CSV column to a rate card field')
+      return
+    }
+
+    const missingLineIds = updateCsvData.filter(row => !row.placementRateCardLineId?.trim())
+    if (missingLineIds.length > 0) {
+      toast.error(`${missingLineIds.length} row(s) are missing placementRateCardLineId`)
+      return
+    }
+
+    setLoading(true)
+    const backupRecords: UpdateBackupRecord[] = []
+    let successCount = 0
+    let errorCount = 0
+    const errors: any[] = []
+
+    try {
+      for (const row of updateCsvData) {
+        const lineId = parseInt(row.placementRateCardLineId, 10)
+        if (isNaN(lineId)) {
+          console.warn(`Invalid line ID: ${row.placementRateCardLineId}`)
+          errorCount++
+          errors.push({ lineId: row.placementRateCardLineId, error: 'Invalid line ID' })
+          continue
+        }
+
+        try {
+          const currentLine = await bullhornAPI.getEntity(
+            'PlacementRateCardLine',
+            lineId,
+            'id,payMultiplier,payRate,billMultiplier,billRate,markupPercent,markupValue,customText1,customFloat1'
+          )
+
+          const updatePayload: any = {}
+          const originalValues: Record<string, any> = {}
+          const newValues: Record<string, any> = {}
+
+          for (const mapping of validMappings) {
+            const csvValue = row[mapping.csvColumn]
+            if (csvValue === undefined || csvValue === '') continue
+
+            const fieldName = mapping.rateCardField
+            originalValues[fieldName] = currentLine[fieldName]
+
+            if (fieldName === 'customText1') {
+              updatePayload[fieldName] = csvValue
+              newValues[fieldName] = csvValue
+            } else {
+              const numericValue = parseFloat(csvValue)
+              if (!isNaN(numericValue)) {
+                updatePayload[fieldName] = numericValue
+                newValues[fieldName] = numericValue
+              }
+            }
+          }
+
+          if (Object.keys(updatePayload).length === 0) {
+            console.log(`No valid updates for line ${lineId}`)
+            continue
+          }
+
+          console.log(`Updating PlacementRateCardLine ${lineId}:`, updatePayload)
+
+          const response = await bullhornAPI.updateEntity('PlacementRateCardLine', lineId, updatePayload)
+
+          if (response.changedEntityId) {
+            successCount++
+            backupRecords.push({
+              lineId,
+              originalValues,
+              newValues
+            })
+          } else {
+            errorCount++
+            errors.push({ lineId, error: 'No changedEntityId returned', response })
+          }
+        } catch (error) {
+          console.error(`Failed to update line ${lineId}:`, error)
+          errorCount++
+          errors.push({ lineId, error: String(error) })
+        }
+      }
+
+      setUpdateBackup(backupRecords)
+
+      if (successCount > 0) {
+        const logId = `bulk-update-${Date.now()}`
+        setLastUpdateLogId(logId)
+        
+        onLog('Bulk Rate Card Line Update', 'success', 
+          `Updated ${successCount} rate card line(s), ${errorCount} failed`, {
+            successCount,
+            errorCount,
+            totalRows: updateCsvData.length,
+            mappings: validMappings,
+            errors: errors.length > 0 ? errors : undefined,
+            rollbackData: backupRecords
+          }
+        )
+
+        toast.success(`Updated ${successCount} rate card line(s)${errorCount > 0 ? `, ${errorCount} failed` : ''}`)
+        
+        if (rateCard) {
+          await loadRateCardLines()
+        }
+      } else {
+        onLog('Bulk Rate Card Line Update', 'error', 
+          'All updates failed', {
+            errorCount,
+            totalRows: updateCsvData.length,
+            errors
+          }
+        )
+        toast.error('All updates failed')
+      }
+    } catch (error) {
+      console.error('Bulk update error:', error)
+      toast.error('Bulk update failed')
+      onLog('Bulk Rate Card Line Update', 'error', 'Bulk update failed', { 
+        error: String(error),
+        successCount,
+        errorCount
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleRollbackUpdates = async () => {
+    if (updateBackup.length === 0) {
+      toast.error('No updates to rollback')
+      return
+    }
+
+    if (!confirm(`Are you sure you want to rollback ${updateBackup.length} rate card line update(s)?`)) {
+      return
+    }
+
+    setLoading(true)
+    let successCount = 0
+    let errorCount = 0
+
+    try {
+      for (const backup of updateBackup) {
+        try {
+          const rollbackPayload: any = {}
+          
+          for (const [fieldName, originalValue] of Object.entries(backup.originalValues)) {
+            rollbackPayload[fieldName] = originalValue
+          }
+
+          console.log(`Rolling back PlacementRateCardLine ${backup.lineId}:`, rollbackPayload)
+
+          const response = await bullhornAPI.updateEntity('PlacementRateCardLine', backup.lineId, rollbackPayload)
+
+          if (response.changedEntityId) {
+            successCount++
+          } else {
+            errorCount++
+          }
+        } catch (error) {
+          console.error(`Failed to rollback line ${backup.lineId}:`, error)
+          errorCount++
+        }
+      }
+
+      onLog('Rollback Rate Card Line Updates', 'success', 
+        `Rolled back ${successCount} rate card line(s), ${errorCount} failed`, {
+          successCount,
+          errorCount,
+          totalBackupRecords: updateBackup.length
+        }
+      )
+
+      toast.success(`Rolled back ${successCount} rate card line(s)${errorCount > 0 ? `, ${errorCount} failed` : ''}`)
+      
+      setUpdateBackup([])
+      setLastUpdateLogId(null)
+      
+      if (rateCard) {
+        await loadRateCardLines()
+      }
+    } catch (error) {
+      console.error('Rollback error:', error)
+      toast.error('Rollback failed')
+      onLog('Rollback Rate Card Line Updates', 'error', 'Rollback failed', { 
+        error: String(error),
+        successCount,
+        errorCount
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleClearUpdateData = () => {
+    setUpdateCsvFile(null)
+    setUpdateCsvData([])
+    setFieldMappings([])
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -913,7 +1197,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="lookup" className="gap-2">
                 <MagnifyingGlass size={18} />
                 Lookup
@@ -925,6 +1209,10 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
               <TabsTrigger value="earn-codes" className="gap-2">
                 <ListChecks size={18} />
                 Earn Codes
+              </TabsTrigger>
+              <TabsTrigger value="bulk-update" className="gap-2">
+                <Upload size={18} />
+                Bulk Update
               </TabsTrigger>
             </TabsList>
 
@@ -1493,6 +1781,197 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                   </CardContent>
                 </Card>
               </div>
+            </TabsContent>
+
+            <TabsContent value="bulk-update" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Upload size={20} className="text-accent" weight="duotone" />
+                    Bulk Update Rate Card Lines
+                  </CardTitle>
+                  <CardDescription>
+                    Upload a CSV with PlacementRateCardLineId and map columns to fields you want to update
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="update-csv-upload">Upload CSV File *</Label>
+                      <Input
+                        id="update-csv-upload"
+                        type="file"
+                        accept=".csv"
+                        onChange={handleUpdateFileUpload}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        CSV must contain a column named <code className="bg-muted px-1 py-0.5 rounded">placementRateCardLineId</code> with the ID of each line to update
+                      </p>
+                      {updateCsvFile && (
+                        <div className="flex items-center justify-between p-3 bg-muted rounded-md">
+                          <div className="text-sm">
+                            <div className="font-semibold">{updateCsvFile.name}</div>
+                            <div className="text-muted-foreground">{updateCsvData.length} row(s) loaded</div>
+                          </div>
+                          <Button variant="outline" size="sm" onClick={handleClearUpdateData}>
+                            <X size={16} />
+                            Clear
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {fieldMappings.length > 0 && (
+                      <>
+                        <Separator />
+                        <div className="space-y-4">
+                          <div>
+                            <h3 className="text-lg font-semibold mb-2">Field Mapping</h3>
+                            <p className="text-sm text-muted-foreground mb-4">
+                              Map CSV columns to PlacementRateCardLine fields. Only mapped fields will be updated.
+                            </p>
+                          </div>
+                          
+                          <div className="border rounded-md overflow-hidden">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>CSV Column</TableHead>
+                                  <TableHead>Maps To Rate Card Field</TableHead>
+                                  <TableHead>Sample Value</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {fieldMappings.map((mapping, idx) => {
+                                  const sampleValue = updateCsvData[0]?.[mapping.csvColumn] || '-'
+                                  return (
+                                    <TableRow key={mapping.csvColumn}>
+                                      <TableCell className="font-mono font-semibold">
+                                        {mapping.csvColumn}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Select
+                                          value={mapping.rateCardField}
+                                          onValueChange={(value) => handleUpdateFieldMapping(mapping.csvColumn, value)}
+                                        >
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Select field..." />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="">Don't map</SelectItem>
+                                            {availableRateCardFields.map(field => (
+                                              <SelectItem key={field.value} value={field.value}>
+                                                {field.label}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </TableCell>
+                                      <TableCell className="font-mono text-sm text-muted-foreground">
+                                        {sampleValue}
+                                      </TableCell>
+                                    </TableRow>
+                                  )
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        <div className="space-y-4">
+                          <div>
+                            <h3 className="text-lg font-semibold mb-2">Preview Updates</h3>
+                            <p className="text-sm text-muted-foreground mb-4">
+                              First 5 rows from CSV
+                            </p>
+                          </div>
+                          
+                          <div className="border rounded-md overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Line ID</TableHead>
+                                  {fieldMappings.filter(m => m.rateCardField).map(mapping => (
+                                    <TableHead key={mapping.csvColumn}>
+                                      {mapping.csvColumn}
+                                      <div className="text-xs text-muted-foreground font-normal">
+                                        → {availableRateCardFields.find(f => f.value === mapping.rateCardField)?.label}
+                                      </div>
+                                    </TableHead>
+                                  ))}
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {updateCsvData.slice(0, 5).map((row, idx) => (
+                                  <TableRow key={idx}>
+                                    <TableCell className="font-mono font-semibold">
+                                      {row.placementRateCardLineId}
+                                    </TableCell>
+                                    {fieldMappings.filter(m => m.rateCardField).map(mapping => (
+                                      <TableCell key={mapping.csvColumn} className="font-mono">
+                                        {row[mapping.csvColumn] || '-'}
+                                      </TableCell>
+                                    ))}
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                          {updateCsvData.length > 5 && (
+                            <p className="text-sm text-muted-foreground">
+                              ...and {updateCsvData.length - 5} more row(s)
+                            </p>
+                          )}
+                        </div>
+
+                        <Separator />
+
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex-1">
+                            {updateBackup.length > 0 && (
+                              <div className="flex items-center gap-2 text-sm">
+                                <Badge variant="outline" className="gap-1">
+                                  <ArrowsClockwise size={14} />
+                                  {updateBackup.length} update(s) can be rolled back
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            {updateBackup.length > 0 && (
+                              <Button
+                                variant="outline"
+                                onClick={handleRollbackUpdates}
+                                disabled={loading}
+                              >
+                                <ArrowsClockwise size={18} />
+                                Rollback Last Update
+                              </Button>
+                            )}
+                            <Button
+                              onClick={handleExecuteBulkUpdate}
+                              disabled={loading || fieldMappings.filter(m => m.rateCardField).length === 0}
+                            >
+                              <Upload size={18} />
+                              Update {updateCsvData.length} Line(s)
+                            </Button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {updateCsvData.length === 0 && (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Upload size={48} className="mx-auto mb-4 opacity-50" weight="duotone" />
+                        <p className="text-lg font-semibold mb-2">No CSV file loaded</p>
+                        <p className="text-sm">Upload a CSV file to begin bulk updating rate card lines</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </CardContent>
