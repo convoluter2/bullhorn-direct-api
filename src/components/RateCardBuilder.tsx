@@ -1029,36 +1029,29 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
         
         if (columns.length === 0) {
           toast.error('CSV must contain at least one column besides placementRateCardLineId')
-      console.error('Rows with missing placementRateCardLineId:', missingLineIds)
+          setUpdateCsvData([])
           setFieldMappings([])
           return
         }
-    if (!confirm(`Are you sure you want to update ${updateCsvData.length} rate card line(s)? This action can be rolled back.`)) {
-      return
-    }
-
+        
+        const initialMappings: FieldMapping[] = columns.map(col => ({
+          csvColumn: col,
+          rateCardField: ''
         }))
         
         setFieldMappings(initialMappings)
         toast.success(`Loaded ${results.data.length} rate card line update(s) from CSV with ${columns.length} mappable column(s)`)
         
         onLog('CSV Upload', 'success', `Loaded bulk update CSV with ${results.data.length} rows`, {
-    toast.loading(`Updating ${updateCsvData.length} rate card line(s)...`, { id: 'bulk-update' })
-
+          rowCount: results.data.length,
           columns: Object.keys(firstRow)
-      for (let i = 0; i < updateCsvData.length; i++) {
-        const row = updateCsvData[i]
-      error: (error) => {
-        
-        toast.error(`Failed to parse CSV file: ${error.message || 'Unknown error'}`)
-          console.warn(`Row ${i + 1}: Invalid line ID: ${row.placementRateCardLineId}`)
-        setUpdateCsvData([])
-          errors.push({ 
-            rowNumber: i + 1,
-            lineId: row.placementRateCardLineId, 
-            error: 'Invalid line ID - must be a number' 
-          })
         })
+      },
+      error: (error) => {
+        console.error('CSV parsing error:', error)
+        toast.error(`Failed to parse CSV file: ${error.message || 'Unknown error'}`)
+        setUpdateCsvData([])
+        setFieldMappings([])
       }
     })
   }
@@ -1067,49 +1060,44 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     setFieldMappings(prev => 
       prev.map(mapping => 
         mapping.csvColumn === csvColumn 
-          ? { ...mapping, rateCardField } 
-          if (!currentLine || !currentLine.id) {
-            console.warn(`Row ${i + 1}: Line ID ${lineId} not found`)
-            errorCount++
-            errors.push({ 
-              rowNumber: i + 1,
-              lineId, 
-              error: 'PlacementRateCardLine not found' 
-            })
-            continue
-          }
+          ? { ...mapping, rateCardField: rateCardField === '__none__' ? '' : rateCardField } 
+          : mapping
+      )
+    )
+  }
 
+  const handleExecuteBulkUpdate = async () => {
     const validMappings = fieldMappings.filter(m => m.rateCardField)
     if (validMappings.length === 0) {
       toast.error('Please map at least one CSV column to a rate card field')
       return
     }
 
-            if (csvValue === undefined || csvValue === null || csvValue === '') continue
+    const missingLineIds = updateCsvData.filter(row => !row.placementRateCardLineId)
     if (missingLineIds.length > 0) {
       toast.error(`${missingLineIds.length} row(s) are missing placementRateCardLineId`)
       console.error('Rows with missing placementRateCardLineId:', missingLineIds)
       return
     }
-              updatePayload[fieldName] = String(csvValue).trim()
-              newValues[fieldName] = String(csvValue).trim()can be rolled back.`)) {
+
+    if (!confirm(`Are you sure you want to update ${updateCsvData.length} rate card line(s)? This action can be rolled back.`)) {
       return
-              const numericValue = parseFloat(String(csvValue))
+    }
 
     setLoading(true)
     const backupRecords: UpdateBackupRecord[] = []
-              } else {
-                console.warn(`Row ${i + 1}: Invalid numeric value for ${fieldName}: ${csvValue}`)
+    let successCount = 0
+    let errorCount = 0
     const errors: any[] = []
 
     toast.loading(`Updating ${updateCsvData.length} rate card line(s)...`, { id: 'bulk-update' })
 
     try {
-            console.log(`Row ${i + 1}: No valid updates for line ${lineId} (all values empty or invalid)`)
+      for (let i = 0; i < updateCsvData.length; i++) {
         const row = updateCsvData[i]
         const lineId = parseInt(row.placementRateCardLineId, 10)
         
-          console.log(`Row ${i + 1}: Updating PlacementRateCardLine ${lineId}:`, updatePayload)
+        if (isNaN(lineId)) {
           console.warn(`Row ${i + 1}: Invalid line ID: ${row.placementRateCardLineId}`)
           errorCount++
           errors.push({ 
@@ -1121,28 +1109,23 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
         }
 
         try {
-            console.error(`Row ${i + 1}: Update failed - no changedEntityId returned`, response)
-            'PlacementRateCardLine',
+          const currentLine = allRateCardLines.find(line => line.id === lineId)
+          if (!currentLine || !currentLine.id) {
+            console.warn(`Row ${i + 1}: Line ID ${lineId} not found`)
+            errorCount++
             errors.push({ 
               rowNumber: i + 1,
               lineId, 
-              error: 'Update failed - no changedEntityId returned', 
-              response 
+              error: 'PlacementRateCardLine not found' 
             })
-            errorCount++
-            errors.push({ 
-          console.error(`Row ${i + 1}: Failed to update line ${lineId}:`, error)
-              lineId, 
-          errors.push({ 
-            rowNumber: i + 1,
-            lineId, 
-            error: error instanceof Error ? error.message : String(error)
-          })
-          const updatePayload: any = {}
+            continue
+          }
 
-        if ((i + 1) % 10 === 0) {
-          toast.loading(`Updated ${i + 1} of ${updateCsvData.length} line(s)...`, { id: 'bulk-update' })
-        }
+          const updatePayload: any = {}
+          const originalValues: Record<string, any> = {}
+          const newValues: Record<string, any> = {}
+
+          for (const mapping of validMappings) {
             const csvValue = row[mapping.csvColumn]
             if (csvValue === undefined || csvValue === null || csvValue === '') continue
 
@@ -1151,21 +1134,21 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
 
             if (fieldName === 'customText1') {
               updatePayload[fieldName] = String(csvValue).trim()
-        onLog('Bulk Rate Card Line Update', successCount === updateCsvData.length ? 'success' : 'error', 
-          `Updated ${successCount} rate card line(s)${errorCount > 0 ? `, ${errorCount} failed` : ''}`, {
+              newValues[fieldName] = String(csvValue).trim()
+            } else {
               const numericValue = parseFloat(String(csvValue))
               if (!isNaN(numericValue)) {
                 updatePayload[fieldName] = numericValue
                 newValues[fieldName] = numericValue
-            errors: errors.length > 0 ? errors.slice(0, 50) : undefined,
+              } else {
                 console.warn(`Row ${i + 1}: Invalid numeric value for ${fieldName}: ${csvValue}`)
               }
             }
           }
-        toast.success(`Updated ${successCount} of ${updateCsvData.length} rate card line(s)${errorCount > 0 ? `, ${errorCount} failed` : ''}`, { 
-          id: 'bulk-update',
-          duration: 5000
-        })
+
+          if (Object.keys(updatePayload).length === 0) {
+            console.log(`Row ${i + 1}: No valid updates for line ${lineId} (all values empty or invalid)`)
+            continue
           }
 
           console.log(`Row ${i + 1}: Updating PlacementRateCardLine ${lineId}:`, updatePayload)
@@ -1175,25 +1158,25 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
           if (response.changedEntityId) {
             successCount++
             backupRecords.push({
-            errors: errors.slice(0, 50)
+              lineId,
               originalValues,
               newValues
-        toast.error(`All ${updateCsvData.length} updates failed. Check logs for details.`, { 
-          id: 'bulk-update',
-          duration: 5000
-        })
+            })
+          } else {
+            console.error(`Row ${i + 1}: Update failed - no changedEntityId returned`, response)
+            errorCount++
             errors.push({ 
               rowNumber: i + 1,
               lineId, 
-      toast.error(`Bulk update failed: ${error instanceof Error ? error.message : 'Unknown error'}`, { 
-        id: 'bulk-update',
-        duration: 5000
-      })
+              error: 'Update failed - no changedEntityId returned', 
+              response 
+            })
+          }
         } catch (error) {
-        error: error instanceof Error ? error.message : String(error),
+          console.error(`Row ${i + 1}: Failed to update line ${lineId}:`, error)
           errorCount++
-        errorCount,
-        errors: errors.slice(0, 50)
+          errors.push({ 
+            rowNumber: i + 1,
             lineId, 
             error: error instanceof Error ? error.message : String(error)
           })
@@ -2034,14 +2017,14 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                                       </TableCell>
                                       <TableCell>
                                         <Select
-                                          value={mapping.rateCardField}
+                                          value={mapping.rateCardField || '__none__'}
                                           onValueChange={(value) => handleUpdateFieldMapping(mapping.csvColumn, value)}
                                         >
                                           <SelectTrigger className="w-full">
                                             <SelectValue placeholder="Select field..." />
                                           </SelectTrigger>
                                           <SelectContent>
-                                            <SelectItem value="">Don't map</SelectItem>
+                                            <SelectItem value="__none__">Don't map</SelectItem>
                                             {availableRateCardFields.map(field => (
                                               <SelectItem key={field.value} value={field.value}>
                                                 {field.label}
@@ -2286,3 +2269,6 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     </div>
   )
 }
+
+export default RateCardBuilder
+
