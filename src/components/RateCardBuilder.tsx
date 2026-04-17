@@ -140,6 +140,9 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
   const [fieldMappings, setFieldMappings] = useState<FieldMapping[]>([])
   const [updateBackup, setUpdateBackup] = useState<UpdateBackupRecord[]>([])
   const [lastUpdateLogId, setLastUpdateLogId] = useState<string | null>(null)
+  const [queryPlacementIds, setQueryPlacementIds] = useState('')
+  const [queryLoading, setQueryLoading] = useState(false)
+  const [queryResults, setQueryResults] = useState<any[]>([])
 
   const availableRateCardFields = [
     { value: 'payMultiplier', label: 'Pay Multiplier' },
@@ -1078,7 +1081,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
       return
     }
 
-    if (!confirm(`Are you sure you want to update ${updateCsvData.length} rate card line(s)? This action can be rolled back.`)) {
+    if (!confirm(`Are you sure you want to update ${updateCsvData.length} rate card line(s) across multiple rate cards/placements? This action can be rolled back.`)) {
       return
     }
 
@@ -1089,8 +1092,6 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     const errors: any[] = []
 
     toast.loading(`Updating ${updateCsvData.length} rate card line(s)...`, { id: 'bulk-update' })
-
-    const allRateCardLines: RateCardLine[] = lineGroups.flatMap(group => group.placementRateCardLines)
 
     try {
       for (let i = 0; i < updateCsvData.length; i++) {
@@ -1109,16 +1110,29 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
         }
 
         try {
-          const currentLine = allRateCardLines.find(line => line.id === lineId)
-          if (!currentLine || !currentLine.id) {
-            console.warn(`Row ${i + 1}: Line ID ${lineId} not found in loaded rate card data`)
-            errorCount++
-            errors.push({ 
-              rowNumber: i + 1,
+          let currentLineValues: Record<string, any> = {}
+          
+          try {
+            const currentLineResponse = await bullhornAPI.getEntity(
+              'PlacementRateCardLine', 
               lineId, 
-              error: 'PlacementRateCardLine not found in loaded rate card data' 
-            })
-            continue
+              'id,payMultiplier,payRate,billMultiplier,billRate,markupPercent,markupValue,customText1,customFloat1'
+            )
+            
+            if (currentLineResponse) {
+              currentLineValues = {
+                payMultiplier: currentLineResponse.payMultiplier,
+                payRate: currentLineResponse.payRate,
+                billMultiplier: currentLineResponse.billMultiplier,
+                billRate: currentLineResponse.billRate,
+                markupPercent: currentLineResponse.markupPercent,
+                markupValue: currentLineResponse.markupValue,
+                customText1: currentLineResponse.customText1,
+                customFloat1: currentLineResponse.customFloat1
+              }
+            }
+          } catch (fetchError) {
+            console.warn(`Row ${i + 1}: Could not fetch current values for line ${lineId}, proceeding with update anyway`)
           }
 
           const updatePayload: any = {}
@@ -1129,8 +1143,8 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
             const csvValue = row[mapping.csvColumn]
             if (csvValue === undefined || csvValue === null || csvValue === '') continue
 
-            const fieldName = mapping.rateCardField as keyof RateCardLine
-            originalValues[fieldName] = currentLine[fieldName]
+            const fieldName = mapping.rateCardField
+            originalValues[fieldName] = currentLineValues[fieldName]
 
             if (fieldName === 'customText1') {
               updatePayload[fieldName] = String(csvValue).trim()
@@ -1194,7 +1208,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
         setLastUpdateLogId(logId)
         
         onLog('Bulk Rate Card Line Update', successCount === updateCsvData.length ? 'success' : 'error', 
-          `Updated ${successCount} rate card line(s)${errorCount > 0 ? `, ${errorCount} failed` : ''}`, {
+          `Updated ${successCount} rate card line(s) across multiple rate cards/placements${errorCount > 0 ? `, ${errorCount} failed` : ''}`, {
             successCount,
             errorCount,
             totalRows: updateCsvData.length,
@@ -1313,6 +1327,100 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
     setUpdateCsvFile(null)
     setUpdateCsvData([])
     setFieldMappings([])
+  }
+
+  const handleQueryRateLines = async () => {
+    if (!queryPlacementIds.trim()) {
+      toast.error('Please enter at least one Placement ID')
+      return
+    }
+
+    const placementIdList = queryPlacementIds
+      .split(',')
+      .map(id => id.trim())
+      .filter(id => id && !isNaN(parseInt(id, 10)))
+      .map(id => parseInt(id, 10))
+
+    if (placementIdList.length === 0) {
+      toast.error('No valid Placement IDs found')
+      return
+    }
+
+    setQueryLoading(true)
+    try {
+      const whereClause = placementIdList.length === 1
+        ? `placementRateCard.placement.id=${placementIdList[0]}`
+        : `placementRateCard.placement.id IN (${placementIdList.join(',')})`
+
+      const response = await bullhornAPI.query(
+        'PlacementRateCardLine',
+        'id,earnCode(id,title,code),payMultiplier,payRate,billMultiplier,billRate,markupPercent,markupValue,customText1,customFloat1,placementRateCardLineGroup(id,earnCodeGroup(id)),placementRateCard(id,effectiveDate,placement(id))',
+        whereClause,
+        { count: 500, orderBy: 'placementRateCard.placement.id,placementRateCard.id' }
+      )
+
+      if (response.data && response.data.length > 0) {
+        setQueryResults(response.data)
+        toast.success(`Found ${response.data.length} rate card line(s) for ${placementIdList.length} placement(s)`)
+        onLog('Query Rate Lines', 'success', `Found ${response.data.length} rate lines for ${placementIdList.length} placements`, {
+          placementIds: placementIdList,
+          lineCount: response.data.length
+        })
+      } else {
+        setQueryResults([])
+        toast.info('No rate card lines found for these placements')
+        onLog('Query Rate Lines', 'success', 'No rate lines found', { placementIds: placementIdList })
+      }
+    } catch (error) {
+      console.error('Failed to query rate lines:', error)
+      toast.error('Failed to query rate lines')
+      onLog('Query Rate Lines', 'error', 'Failed to query rate lines', { error: String(error), placementIds: placementIdList })
+      setQueryResults([])
+    } finally {
+      setQueryLoading(false)
+    }
+  }
+
+  const handleExportQueryResults = () => {
+    if (queryResults.length === 0) {
+      toast.error('No query results to export')
+      return
+    }
+
+    const exportData = queryResults.map(line => ({
+      placementRateCardLineId: line.id || '',
+      placementId: line.placementRateCard?.placement?.id || '',
+      rateCardId: line.placementRateCard?.id || '',
+      effectiveDate: line.placementRateCard?.effectiveDate || '',
+      earnCodeId: line.earnCode?.id || '',
+      earnCodeName: line.earnCode?.title || line.earnCode?.code || '',
+      earnCodeGroupId: line.placementRateCardLineGroup?.earnCodeGroup?.id || '',
+      payMultiplier: line.payMultiplier ?? '',
+      payRate: line.payRate ?? '',
+      billMultiplier: line.billMultiplier ?? '',
+      billRate: line.billRate ?? '',
+      markupPercent: line.markupPercent ?? '',
+      markupValue: line.markupValue ?? '',
+      customText1: line.customText1 ?? '',
+      customFloat1: line.customFloat1 ?? ''
+    }))
+
+    const csv = Papa.unparse(exportData)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    
+    link.setAttribute('href', url)
+    link.setAttribute('download', `rate-lines-query-${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    toast.success(`Exported ${exportData.length} rate card line(s) to CSV`)
+    onLog('Export Query Results', 'success', `Exported ${exportData.length} rate lines`, {
+      lineCount: exportData.length
+    })
   }
 
   return (
@@ -1931,10 +2039,99 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
                     Bulk Update Rate Card Lines
                   </CardTitle>
                   <CardDescription>
-                    Upload a CSV with PlacementRateCardLineId and map columns to fields you want to update
+                    Upload a CSV with PlacementRateCardLineId and map columns to fields you want to update. Works across multiple rate cards and placements - no need to load them first.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  <div className="border-2 border-dashed border-accent/30 rounded-lg p-6 bg-accent/5">
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3">
+                        <MagnifyingGlass size={24} className="text-accent mt-1" weight="duotone" />
+                        <div className="flex-1 space-y-3">
+                          <div>
+                            <h3 className="text-lg font-semibold mb-1">Find Rate Lines by Placement</h3>
+                            <p className="text-sm text-muted-foreground">
+                              Query rate card lines across multiple placements to get their IDs for bulk updating
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="query-placement-ids">Placement IDs (comma-separated)</Label>
+                            <div className="flex gap-2">
+                              <Textarea
+                                id="query-placement-ids"
+                                placeholder="e.g., 12345, 67890, 11223"
+                                value={queryPlacementIds}
+                                onChange={(e) => setQueryPlacementIds(e.target.value)}
+                                className="min-h-[80px]"
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <Button 
+                                onClick={handleQueryRateLines} 
+                                disabled={queryLoading || !queryPlacementIds.trim()}
+                                size="sm"
+                              >
+                                <MagnifyingGlass size={18} />
+                                Query Rate Lines
+                              </Button>
+                              {queryResults.length > 0 && (
+                                <Button 
+                                  onClick={handleExportQueryResults} 
+                                  variant="outline"
+                                  size="sm"
+                                >
+                                  <DownloadSimple size={18} />
+                                  Export {queryResults.length} Result(s)
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                          {queryResults.length > 0 && (
+                            <div className="mt-4 p-4 bg-background border rounded-md">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="text-sm font-semibold">Query Results</div>
+                                <Badge variant="outline">{queryResults.length} line(s) found</Badge>
+                              </div>
+                              <div className="border rounded-md overflow-x-auto max-h-[300px] overflow-y-auto">
+                                <Table>
+                                  <TableHeader className="sticky top-0 bg-muted">
+                                    <TableRow>
+                                      <TableHead>Line ID</TableHead>
+                                      <TableHead>Placement</TableHead>
+                                      <TableHead>Rate Card</TableHead>
+                                      <TableHead>Earn Code</TableHead>
+                                      <TableHead>Pay Rate</TableHead>
+                                      <TableHead>Bill Rate</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {queryResults.slice(0, 100).map((line) => (
+                                      <TableRow key={line.id}>
+                                        <TableCell className="font-mono font-semibold">{line.id}</TableCell>
+                                        <TableCell className="font-mono">{line.placementRateCard?.placement?.id || '-'}</TableCell>
+                                        <TableCell className="font-mono">{line.placementRateCard?.id || '-'}</TableCell>
+                                        <TableCell>{line.earnCode?.title || line.earnCode?.code || '-'}</TableCell>
+                                        <TableCell>{line.payRate || '-'}</TableCell>
+                                        <TableCell>{line.billRate || '-'}</TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                              {queryResults.length > 100 && (
+                                <p className="text-sm text-muted-foreground mt-2">
+                                  Showing first 100 of {queryResults.length} results. Export to see all.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex items-center justify-between p-3 bg-muted rounded-md">
                       <div className="text-sm">
