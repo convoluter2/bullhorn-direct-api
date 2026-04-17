@@ -1044,21 +1044,14 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
         
         onLog('CSV Upload', 'success', `Loaded bulk update CSV with ${results.data.length} rows`, {
           rowCount: results.data.length,
-          columns: Object.keys(firstRow)
+        })
         })
       },
-      error: (error) => {
         console.error('CSV parsing error:', error)
-        toast.error(`Failed to parse CSV file: ${error.message || 'Unknown error'}`)
+        console.error('CSV parsing error:', error)sage || 'Unknown error'}`)
         setUpdateCsvData([])
-        setFieldMappings([])
       }
-    })
-  }
-
-  const handleUpdateFieldMapping = (csvColumn: string, rateCardField: string) => {
-    setFieldMappings(prev => 
-      prev.map(mapping => 
+        setFieldMappings([])
         mapping.csvColumn === csvColumn 
           ? { ...mapping, rateCardField: rateCardField === '__none__' ? '' : rateCardField } 
           : mapping
