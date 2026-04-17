@@ -1048,6 +1048,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
       },
       error: (error) => {
         toast.error(`CSV parsing failed: ${error?.message || 'Unknown error'}`)
+        setUpdateCsvData([])
         setFieldMappings([])
       }
     })
@@ -2268,4 +2269,3 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
 }
 
 export default RateCardBuilder
-
