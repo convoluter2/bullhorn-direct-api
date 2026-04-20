@@ -1715,26 +1715,12 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                       fieldMeta.dataType === 'TO_ONE'
                     ) : false
                     
-                    if (mapping.bullhornField && mapping.bullhornField !== '__skip__') {
-                      console.log('CSV Loader Field Mapping Debug:', {
-                        csvColumn: mapping.csvColumn,
-                        bullhornField: mapping.bullhornField,
-                        hasMetadata: !!metadata,
-                        hasFieldsMap: !!metadata?.fieldsMap,
-                        fieldsMapKeys: metadata?.fieldsMap ? Object.keys(metadata.fieldsMap).length : 0,
-                        fieldMeta: fieldMeta ? {
-                          name: fieldMeta.name,
-                          associationType: fieldMeta.associationType,
-                          associatedEntity: fieldMeta.associatedEntity
-                        } : 'undefined - Field not found in metadata.fieldsMap',
-                      })
-                    }
-                    
                     return (
                       <Card key={mapping.csvColumn} className="p-3">
                         <div className="space-y-3">
                           <div className="flex items-center gap-2">
                             <div className="flex-1 font-mono text-sm bg-muted p-2 rounded border">
+                              {mapping.csvColumn}
                             </div>
                             <div className="text-muted-foreground">→</div>
                             <div className="flex-1">
@@ -1827,15 +1813,34 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                             </div>
                           </div>
                           
-                          {mapping.bullhornField && mapping.bullhornField !== '__skip__' && fieldMeta && !isCompositeSubfield && (
-                            <div className={`mt-2 p-2 rounded border text-xs space-y-1 ${isToMany ? 'bg-accent/20 border-accent' : isToOne ? 'bg-blue-500/10 border-blue-500/30' : 'bg-muted/30'}`}>
-                              <div><strong>Field Type:</strong> {fieldMeta.type}</div>
-                              <div><strong>Association Type:</strong> {fieldMeta.associationType || 'N/A'}</div>
-                              <div><strong>Data Type:</strong> {fieldMeta.dataType}</div>
-                              <div><strong>Associated Entity:</strong> {fieldMeta.associatedEntity?.entity || 'N/A'}</div>
-                              <div className={isToMany ? 'text-accent font-bold' : ''}><strong>Is TO_MANY:</strong> {isToMany ? '✅ YES' : '❌ NO'}</div>
-                              <div className={isToOne ? 'text-blue-600 font-bold' : ''}><strong>Is TO_ONE:</strong> {isToOne ? '✅ YES' : '❌ NO'}</div>
-                            </div>
+                          {mapping.bullhornField && mapping.bullhornField !== '__skip__' && !isCompositeSubfield && (
+                            metadataLoading ? (
+                              <div className="mt-2 p-2 rounded border bg-muted/30 text-xs">
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                  <div className="animate-spin">⏳</div>
+                                  <span>Loading field metadata...</span>
+                                </div>
+                              </div>
+                            ) : fieldMeta ? (
+                              <div className={`mt-2 p-2 rounded border text-xs space-y-1 ${isToMany ? 'bg-accent/20 border-accent' : isToOne ? 'bg-blue-500/10 border-blue-500/30' : 'bg-muted/30'}`}>
+                                <div><strong>Field Type:</strong> {fieldMeta.type}</div>
+                                <div><strong>Association Type:</strong> {fieldMeta.associationType || 'N/A'}</div>
+                                <div><strong>Data Type:</strong> {fieldMeta.dataType}</div>
+                                <div><strong>Associated Entity:</strong> {fieldMeta.associatedEntity?.entity || 'N/A'}</div>
+                                <div className={isToMany ? 'text-accent font-bold' : ''}><strong>Is TO_MANY:</strong> {isToMany ? '✅ YES' : '❌ NO'}</div>
+                                <div className={isToOne ? 'text-blue-600 font-bold' : ''}><strong>Is TO_ONE:</strong> {isToOne ? '✅ YES' : '❌ NO'}</div>
+                              </div>
+                            ) : (
+                              <div className="mt-2 p-2 rounded border bg-yellow-500/10 border-yellow-500/30 text-xs">
+                                <div className="flex items-center gap-2 text-yellow-700">
+                                  <span>⚠️</span>
+                                  <span>Field metadata not found for: <code className="bg-muted px-1 py-0.5 rounded">{mapping.bullhornField}</code></span>
+                                </div>
+                                <div className="mt-1 text-xs text-muted-foreground">
+                                  Try refreshing the metadata using the refresh button
+                                </div>
+                              </div>
+                            )
                           )}
                           
                           {isToMany && mapping.bullhornField && mapping.bullhornField !== '__skip__' && (
