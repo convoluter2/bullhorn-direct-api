@@ -1699,16 +1699,22 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                   {(mappings || [])
                     .filter(m => m && m.csvColumn && m.csvColumn.trim() !== '')
                     .map((mapping) => {
-                    const baseFieldName = mapping?.bullhornField?.includes('.') ? mapping.bullhornField.split('.')[0] : mapping.bullhornField
-                    const isCompositeSubfield = mapping?.bullhornField?.includes('.')
-                    const fieldMeta = mapping?.bullhornField && mapping.bullhornField !== '__skip__' && metadata?.fieldsMap && baseFieldName
+                    const isSkipped = !mapping?.bullhornField || mapping.bullhornField === '__skip__' || mapping.bullhornField === ''
+                    const isCompositeSubfield = mapping?.bullhornField?.includes('.') || false
+                    const baseFieldName = isCompositeSubfield && mapping.bullhornField 
+                      ? mapping.bullhornField.split('.')[0] 
+                      : mapping.bullhornField
+                    
+                    const fieldMeta = !isSkipped && metadata?.fieldsMap && baseFieldName && baseFieldName !== '__skip__'
                       ? metadata.fieldsMap[baseFieldName] 
                       : undefined
+                    
                     const isToMany = !isCompositeSubfield && fieldMeta ? (
                       fieldMeta.associationType === 'TO_MANY' || 
                       fieldMeta.type === 'TO_MANY' || 
                       fieldMeta.dataType === 'TO_MANY'
                     ) : false
+                    
                     const isToOne = !isCompositeSubfield && fieldMeta ? (
                       fieldMeta.associationType === 'TO_ONE' || 
                       fieldMeta.type === 'TO_ONE' ||
@@ -1813,7 +1819,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                             </div>
                           </div>
                           
-                          {mapping.bullhornField && mapping.bullhornField !== '__skip__' && !isCompositeSubfield && (
+                          {!isSkipped && (
                             metadataLoading ? (
                               <div className="mt-2 p-2 rounded border bg-muted/30 text-xs">
                                 <div className="flex items-center gap-2 text-muted-foreground">
@@ -1823,14 +1829,23 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                               </div>
                             ) : fieldMeta ? (
                               <div className={`mt-2 p-2 rounded border text-xs space-y-1 ${isToMany ? 'bg-accent/20 border-accent' : isToOne ? 'bg-blue-500/10 border-blue-500/30' : 'bg-muted/30'}`}>
+                                <div><strong>Field:</strong> {mapping.bullhornField}</div>
+                                <div><strong>Label:</strong> {fieldMeta.label}</div>
                                 <div><strong>Field Type:</strong> {fieldMeta.type}</div>
-                                <div><strong>Association Type:</strong> {fieldMeta.associationType || 'N/A'}</div>
                                 <div><strong>Data Type:</strong> {fieldMeta.dataType}</div>
-                                <div><strong>Associated Entity:</strong> {fieldMeta.associatedEntity?.entity || 'N/A'}</div>
-                                <div className={isToMany ? 'text-accent font-bold' : ''}><strong>Is TO_MANY:</strong> {isToMany ? '✅ YES' : '❌ NO'}</div>
-                                <div className={isToOne ? 'text-blue-600 font-bold' : ''}><strong>Is TO_ONE:</strong> {isToOne ? '✅ YES' : '❌ NO'}</div>
+                                {!isCompositeSubfield && (
+                                  <>
+                                    <div><strong>Association Type:</strong> {fieldMeta.associationType || 'N/A'}</div>
+                                    <div><strong>Associated Entity:</strong> {fieldMeta.associatedEntity?.entity || 'N/A'}</div>
+                                    <div className={isToMany ? 'text-accent font-bold' : ''}><strong>Is TO_MANY:</strong> {isToMany ? '✅ YES' : '❌ NO'}</div>
+                                    <div className={isToOne ? 'text-blue-600 font-bold' : ''}><strong>Is TO_ONE:</strong> {isToOne ? '✅ YES' : '❌ NO'}</div>
+                                  </>
+                                )}
+                                {isCompositeSubfield && (
+                                  <div className="text-muted-foreground italic">Composite subfield - part of {baseFieldName}</div>
+                                )}
                               </div>
-                            ) : (
+                            ) : !isCompositeSubfield ? (
                               <div className="mt-2 p-2 rounded border bg-yellow-500/10 border-yellow-500/30 text-xs">
                                 <div className="flex items-center gap-2 text-yellow-700">
                                   <span>⚠️</span>
@@ -1840,15 +1855,15 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                                   Try refreshing the metadata using the refresh button
                                 </div>
                               </div>
-                            )
+                            ) : null
                           )}
                           
-                          {isToMany && mapping.bullhornField && mapping.bullhornField !== '__skip__' && (
+                          {isToMany && !isSkipped && (
                             <ToManyConfigSelector
-                              fieldName={mapping.bullhornField}
-                              fieldLabel={fieldMeta?.label || mapping.bullhornField}
+                              fieldName={mapping.bullhornField!}
+                              fieldLabel={fieldMeta?.label || mapping.bullhornField!}
                               associatedEntity={fieldMeta?.associatedEntity?.entity || 'Unknown'}
-                              config={toManyConfigs[mapping.bullhornField] || { operation: 'replace', subField: 'id' }}
+                              config={toManyConfigs[mapping.bullhornField!] || { operation: 'replace', subField: 'id' }}
                               onChange={(config) => {
                                 console.log('ToManyConfigSelector changed:', config)
                                 setToManyConfigs(prev => ({
@@ -1859,7 +1874,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                             />
                           )}
                           
-                          {isToOne && mapping.bullhornField && mapping.bullhornField !== '__skip__' && (
+                          {isToOne && !isSkipped && (
                             <div className="p-3 rounded-md bg-blue-500/10 border border-blue-500/30 space-y-2">
                               <div className="flex items-center gap-2">
                                 <Badge variant="outline" className="border-blue-500/50 text-blue-600 bg-blue-500/10">

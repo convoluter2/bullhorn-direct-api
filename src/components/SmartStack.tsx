@@ -1298,48 +1298,23 @@ export function SmartStack({ onLog }: SmartStackProps) {
               ) : (
                 <div className="space-y-2">
                   {fieldUpdates.map((update) => {
-                    const baseFieldName = update.field?.includes('.') ? update.field.split('.')[0] : update.field
-                    const fieldMeta = baseFieldName ? fieldsMap[baseFieldName] : undefined
-                    const isCompositeSubfield = update.field?.includes('.')
+                    const isCompositeSubfield = update.field?.includes('.') || false
+                    const baseFieldName = isCompositeSubfield && update.field 
+                      ? update.field.split('.')[0] 
+                      : update.field
+                    const fieldMeta = baseFieldName && baseFieldName !== '' ? fieldsMap[baseFieldName] : undefined
                     
-                    const isToMany = !isCompositeSubfield && (
-                      fieldMeta?.associationType === 'TO_MANY' ||
-                      (fieldMeta?.associatedEntity && (fieldMeta?.type === 'TO_MANY' || fieldMeta?.dataType === 'TO_MANY'))
-                    )
+                    const isToMany = !isCompositeSubfield && fieldMeta ? (
+                      fieldMeta.associationType === 'TO_MANY' ||
+                      fieldMeta.type === 'TO_MANY' || 
+                      fieldMeta.dataType === 'TO_MANY'
+                    ) : false
                     
-                    const isToOne = !isCompositeSubfield && (
-                      fieldMeta?.associationType === 'TO_ONE' ||
-                      (fieldMeta?.associatedEntity && (fieldMeta?.type === 'TO_ONE' || fieldMeta?.dataType === 'TO_ONE'))
-                    )
-                    
-                    console.log('🔍 SmartStack Field Update Render:', {
-                      updateId: update.id,
-                      field: update.field,
-                      baseFieldName,
-                      isCompositeSubfield,
-                      selectedEntity,
-                      hasMetadata: !!metadata,
-                      fieldsMapKeys: Object.keys(fieldsMap).length,
-                      fieldMeta: fieldMeta ? {
-                        name: fieldMeta.name,
-                        type: fieldMeta.type,
-                        composite: fieldMeta.composite,
-                        associatedEntity: fieldMeta.associatedEntity
-                      } : undefined,
-                      isToMany,
-                      isToOne,
-                      metadataLoading,
-                      willShowToManyInput: isToMany && fieldMeta,
-                      fieldsMapSample: Object.keys(fieldsMap).slice(0, 10)
-                    })
-                    
-                    if (baseFieldName && !fieldMeta && !isCompositeSubfield) {
-                      console.error('❌ SmartStack Field Update - Field not found in metadata:', {
-                        field: baseFieldName,
-                        availableFields: Object.keys(fieldsMap).sort(),
-                        totalFields: Object.keys(fieldsMap).length
-                      })
-                    }
+                    const isToOne = !isCompositeSubfield && fieldMeta ? (
+                      fieldMeta.associationType === 'TO_ONE' ||
+                      fieldMeta.type === 'TO_ONE' ||
+                      fieldMeta.dataType === 'TO_ONE'
+                    ) : false
                     
                     return (
                       <Card key={update.id} className="p-3">
@@ -1412,61 +1387,71 @@ export function SmartStack({ onLog }: SmartStackProps) {
                               <Trash size={18} />
                             </Button>
                           </div>
+                          
+                          {update.field && (
+                            metadataLoading ? (
+                              <div className="mt-2 p-2 rounded border bg-muted/30 text-xs">
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                  <div className="animate-spin">⏳</div>
+                                  <span>Loading field metadata...</span>
+                                </div>
+                              </div>
+                            ) : fieldMeta ? (
+                              <div className={`mt-2 p-2 rounded border text-xs space-y-1 ${isToMany ? 'bg-accent/20 border-accent' : isToOne ? 'bg-blue-500/10 border-blue-500/30' : 'bg-muted/30'}`}>
+                                <div><strong>Field:</strong> {update.field}</div>
+                                <div><strong>Label:</strong> {fieldMeta.label}</div>
+                                <div><strong>Field Type:</strong> {fieldMeta.type}</div>
+                                <div><strong>Data Type:</strong> {fieldMeta.dataType}</div>
+                                {!isCompositeSubfield && (
+                                  <>
+                                    <div><strong>Association Type:</strong> {fieldMeta.associationType || 'N/A'}</div>
+                                    <div><strong>Associated Entity:</strong> {fieldMeta.associatedEntity?.entity || 'N/A'}</div>
+                                    <div className={isToMany ? 'text-accent font-bold' : ''}><strong>Is TO_MANY:</strong> {isToMany ? '✅ YES' : '❌ NO'}</div>
+                                    <div className={isToOne ? 'text-blue-600 font-bold' : ''}><strong>Is TO_ONE:</strong> {isToOne ? '✅ YES' : '❌ NO'}</div>
+                                  </>
+                                )}
+                                {isCompositeSubfield && (
+                                  <div className="text-muted-foreground italic">Composite subfield - part of {baseFieldName}</div>
+                                )}
+                              </div>
+                            ) : !isCompositeSubfield ? (
+                              <div className="mt-2 p-2 rounded border bg-yellow-500/10 border-yellow-500/30 text-xs">
+                                <div className="flex items-center gap-2 text-yellow-700">
+                                  <span>⚠️</span>
+                                  <span>Field metadata not found for: <code className="bg-muted px-1 py-0.5 rounded">{update.field}</code></span>
+                                </div>
+                                <div className="mt-1 text-xs text-muted-foreground">
+                                  Try refreshing the metadata using the refresh button
+                                </div>
+                              </div>
+                            ) : null
+                          )}
+                          
                           {metadataLoading && update.field ? (
                             <Skeleton className="h-10 w-full" />
                           ) : isToMany && fieldMeta ? (
-                            <>
-                              {console.log('✅ Rendering ToManyFieldInput for:', {
-                                field: update.field,
-                                fieldMeta: {
-                                  name: fieldMeta.name,
-                                  associationType: fieldMeta.associationType,
-                                  associatedEntity: fieldMeta.associatedEntity
-                                }
-                              })}
-                              <ToManyFieldInput
-                                field={fieldMeta}
-                                value={update.value}
-                                onChange={(v) => updateFieldUpdate(update.id, { value: v })}
-                                disabled={loading}
-                              />
-                            </>
+                            <ToManyFieldInput
+                              field={fieldMeta}
+                              value={update.value}
+                              onChange={(v) => updateFieldUpdate(update.id, { value: v })}
+                              disabled={loading}
+                            />
                           ) : isToOne && fieldMeta ? (
-                            <>
-                              {console.log('✅ Rendering ToOneFieldInput for:', {
-                                field: update.field,
-                                fieldMeta: {
-                                  name: fieldMeta.name,
-                                  associationType: fieldMeta.associationType,
-                                  associatedEntity: fieldMeta.associatedEntity
-                                }
-                              })}
-                              <ToOneFieldInput
-                                field={fieldMeta}
-                                value={update.value}
-                                onChange={(v) => updateFieldUpdate(update.id, { value: v })}
-                                disabled={loading}
-                                placeholder="Enter ID or search"
-                              />
-                            </>
+                            <ToOneFieldInput
+                              field={fieldMeta}
+                              value={update.value}
+                              onChange={(v) => updateFieldUpdate(update.id, { value: v })}
+                              disabled={loading}
+                              placeholder="Enter ID or search"
+                            />
                           ) : (
-                            <>
-                              {console.log('✅ Rendering standard ValidatedFieldInput for:', {
-                                field: update.field,
-                                isCompositeSubfield,
-                                isToMany,
-                                isToOne,
-                                hasFieldMeta: !!fieldMeta,
-                                reason: !fieldMeta && !isCompositeSubfield ? 'no fieldMeta' : isCompositeSubfield ? 'composite subfield (e.g. address.city)' : !isToMany && !isToOne ? 'scalar field' : 'unknown'
-                              })}
-                              <ValidatedFieldInput
-                                field={fieldMeta || null}
-                                value={update.value}
-                                onChange={(v) => updateFieldUpdate(update.id, { value: v })}
-                                disabled={loading}
-                                placeholder="New value"
-                              />
-                            </>
+                            <ValidatedFieldInput
+                              field={fieldMeta || null}
+                              value={update.value}
+                              onChange={(v) => updateFieldUpdate(update.id, { value: v })}
+                              disabled={loading}
+                              placeholder="New value"
+                            />
                           )}
                         </div>
                       </Card>
