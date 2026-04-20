@@ -1949,8 +1949,8 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                       <div className="flex items-center gap-2 text-xs text-yellow-600">
                         <Warning size={14} />
                         <span>{validationWarnings.length} warning{validationWarnings.length !== 1 ? 's' : ''} - review before proceeding</span>
-                      className="flex-1"
-                    >
+                      </div>
+                    )}
                   </div>
                 ) : null}
                 
