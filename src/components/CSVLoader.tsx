@@ -1735,7 +1735,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select Bullhorn field" />
                                   </SelectTrigger>
-                              {mapping.csvColumn}
+                                  <SelectContent>
                                     <div className="sticky top-0 z-10 bg-popover p-2">
                                       <Input
                                         placeholder="Search fields..."
