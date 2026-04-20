@@ -745,6 +745,19 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           const rawValue = row[csvIndex]
           const transformedValue = transformValue(rawValue, mapping.transform)
           
+          const fieldMeta = metadata?.fieldsMap ? metadata.fieldsMap[mapping.bullhornField] : undefined
+          
+          console.log(`🔍 Processing field "${mapping.bullhornField}":`, {
+            csvColumn: mapping.csvColumn,
+            rawValue,
+            transformedValue,
+            fieldMeta: fieldMeta ? {
+              type: fieldMeta.type,
+              dataType: fieldMeta.dataType,
+              associationType: fieldMeta.associationType
+            } : 'undefined'
+          })
+          
           if (transformedValue === '' || transformedValue === null || transformedValue === undefined) {
             if (!mapping.bullhornField.includes('.')) {
               data[mapping.bullhornField] = null
@@ -793,12 +806,27 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                     }
                   }
                 }
-              } else if (fieldMeta?.associationType === 'TO_ONE') {
+              } else if (
+                fieldMeta?.associationType === 'TO_ONE' || 
+                fieldMeta?.type === 'TO_ONE' ||
+                fieldMeta?.dataType === 'TO_ONE'
+              ) {
                 const trimmedValue = String(transformedValue).trim()
+                console.log(`🔗 TO_ONE field "${mapping.bullhornField}" detected:`, {
+                  csvValue: trimmedValue,
+                  fieldMeta: {
+                    type: fieldMeta?.type,
+                    dataType: fieldMeta?.dataType,
+                    associationType: fieldMeta?.associationType,
+                    associatedEntity: fieldMeta?.associatedEntity
+                  }
+                })
                 if (trimmedValue && /^\d+$/.test(trimmedValue)) {
                   const numericId = parseInt(trimmedValue, 10)
                   if (!isNaN(numericId)) {
-                    data[mapping.bullhornField] = { id: numericId }
+                    const toOneValue = { id: numericId }
+                    data[mapping.bullhornField] = toOneValue
+                    console.log(`✅ TO_ONE field "${mapping.bullhornField}" formatted as:`, toOneValue)
                   } else {
                     console.warn(`⚠️ TO_ONE field ${mapping.bullhornField}: Invalid integer ID "${trimmedValue}"`)
                     data[mapping.bullhornField] = null
@@ -926,6 +954,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
             
             if (Object.keys(regularData).length > 0) {
               try {
+                console.log(`📤 Updating ${entity} ID ${existingRecord.id} with data:`, JSON.stringify(regularData, null, 2))
                 await bullhornAPI.updateEntity(entity, existingRecord.id, regularData)
               } catch (updateError) {
                 const errorMsg = updateError instanceof Error ? updateError.message : String(updateError)
@@ -1020,6 +1049,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
             
             let result
             try {
+              console.log(`📤 Creating ${entity} with data:`, JSON.stringify(regularData, null, 2))
               result = await bullhornAPI.createEntity(entity, regularData)
             } catch (createError) {
               const errorMsg = createError instanceof Error ? createError.message : String(createError)
@@ -1813,11 +1843,33 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                           )}
                           
                           {isToOne && mapping.bullhornField && mapping.bullhornField !== '__skip__' && (
-                            <div className="pl-4 border-l-2 border-accent/30">
-                              <Label className="text-xs text-muted-foreground mb-2">To-One Configuration</Label>
-                              <p className="text-xs text-muted-foreground">
-                                CSV value should be the {fieldMeta?.associatedEntity?.entity || 'entity'} ID (e.g., 12345)
-                              </p>
+                            <div className="p-3 rounded-md bg-blue-500/10 border border-blue-500/30 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="border-blue-500/50 text-blue-600 bg-blue-500/10">
+                                  TO_ONE Association
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  Associated Entity: {fieldMeta?.associatedEntity?.entity || 'Unknown'}
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                <div className="flex items-start gap-2">
+                                  <Badge variant="secondary" className="text-xs shrink-0 mt-0.5">Set</Badge>
+                                  <div className="text-xs text-muted-foreground">
+                                    Provide the {fieldMeta?.associatedEntity?.entity || 'entity'} ID in your CSV (e.g., 12345).
+                                    Will be sent as: <code className="bg-muted px-1 py-0.5 rounded">{`{ "id": 12345 }`}</code>
+                                  </div>
+                                </div>
+                                <div className="flex items-start gap-2">
+                                  <Badge variant="secondary" className="text-xs shrink-0 mt-0.5">Remove</Badge>
+                                  <div className="text-xs text-muted-foreground">
+                                    Use <code className="bg-muted px-1 py-0.5 rounded">null</code> or leave empty to remove the association
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-700">
+                                ⚠️ CSV value must be a valid integer ID - non-numeric values will be ignored
+                              </div>
                             </div>
                           )}
                         </div>

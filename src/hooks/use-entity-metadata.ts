@@ -230,6 +230,39 @@ export function useEntityMetadata(entity: string | undefined) {
             .forEach(([name, field]) => {
               console.log(`  - ${name} → ${field.associatedEntity?.entity || 'Unknown'}`)
             })
+          
+          console.log('All TO_ONE fields in Candidate:')
+          Object.entries(fieldsMap)
+            .filter(([_, field]) => field.associationType === 'TO_ONE')
+            .forEach(([name, field]) => {
+              console.log(`  - ${name} → ${field.associatedEntity?.entity || 'Unknown'}`)
+            })
+          console.log('=========================================')
+        }
+        
+        if (entity === 'CandidateCertification') {
+          console.log('🎯 CANDIDATECERTIFICATION METADATA LOADED 🎯')
+          const certificationField = fieldsMap['certification']
+          if (certificationField) {
+            console.log('certification field found:', certificationField)
+            console.log('  - Type:', certificationField.type)
+            console.log('  - DataType:', certificationField.dataType)
+            console.log('  - AssociationType:', certificationField.associationType || 'None')
+            console.log('  - AssociatedEntity:', certificationField.associatedEntity?.entity || 'None')
+          } else {
+            console.log('⚠️ certification field NOT FOUND in CandidateCertification metadata')
+          }
+          
+          console.log('All TO_ONE fields in CandidateCertification:')
+          Object.entries(fieldsMap)
+            .filter(([_, field]) => field.associationType === 'TO_ONE')
+            .forEach(([name, field]) => {
+              console.log(`  - ${name} → ${field.associatedEntity?.entity || 'Unknown'}`)
+            })
+          console.log('All fields in CandidateCertification:')
+          Object.entries(fieldsMap).forEach(([name, field]) => {
+            console.log(`  - ${name}: type=${field.type}, dataType=${field.dataType}, assocType=${field.associationType || 'None'}`)
+          })
           console.log('=========================================')
         }
       } catch (err) {
