@@ -1719,11 +1719,11 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                       console.log('CSV Loader Field Mapping Debug:', {
                         csvColumn: mapping.csvColumn,
                         bullhornField: mapping.bullhornField,
-                        baseFieldName,
-                        isCompositeSubfield,
                         hasMetadata: !!metadata,
                         hasFieldsMap: !!metadata?.fieldsMap,
                         fieldsMapKeys: metadata?.fieldsMap ? Object.keys(metadata.fieldsMap).length : 0,
+                        fieldMeta: fieldMeta ? {
+                          name: fieldMeta.name,
                         fieldMeta: fieldMeta ? {
                           name: fieldMeta.name,
                           type: fieldMeta.type,
@@ -1731,15 +1731,13 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                           associationType: fieldMeta.associationType,
                           associatedEntity: fieldMeta.associatedEntity
                         } : 'undefined - Field not found in metadata.fieldsMap',
-                        isToMany: isToMany,
-                        isToOne: isToOne
                       })
                     }
                     
                     return (
                       <Card key={mapping.csvColumn} className="p-3">
                         <div className="space-y-3">
-                          <div className="flex gap-2 items-center">
+                      <Card key={mapping.csvColumn} className="p-3">
                             <div className="flex-1 font-mono text-sm bg-muted p-2 rounded border">
                               {mapping.csvColumn}
                             </div>
