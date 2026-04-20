@@ -776,7 +776,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
             } else {
               const fieldMeta = metadata?.fieldsMap ? metadata.fieldsMap[mapping.bullhornField] : undefined
               if (fieldMeta?.associationType === 'TO_MANY') {
-                const config = toManyConfigs[mapping.bullhornField] || { operation: 'add', subField: 'id' }
+                const config = toManyConfigs[mapping.bullhornField] || { operation: 'replace', subField: 'id' }
                 
                 const values = transformedValue.split(',').map((v: string) => v.trim()).filter((v: string) => v)
                 
@@ -789,10 +789,12 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                     .filter((id: number | null): id is number => id !== null && !isNaN(id))
                   
                   if (ids.length > 0) {
-                    data[`__tomany_${mapping.bullhornField}`] = {
-                      operation: config.operation,
-                      ids: ids,
-                      subField: 'id'
+                    if (config.operation === 'replace' || config.operation === 'add' || config.operation === 'remove') {
+                      data[`__tomany_${mapping.bullhornField}`] = {
+                        operation: config.operation,
+                        ids: ids,
+                        subField: 'id'
+                      }
                     }
                   } else {
                     console.warn(`⚠️ TO_MANY field ${mapping.bullhornField}: No valid integer IDs found in "${transformedValue}"`)
@@ -940,12 +942,17 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                 const fieldName = key.replace('__tomany_', '')
                 const toManyValue = data[key]
                 if (toManyValue.operation && toManyValue.ids) {
-                  toManyUpdates.push({
-                    field: fieldName,
-                    operation: toManyValue.operation,
-                    ids: toManyValue.ids,
-                    subField: toManyValue.subField || 'id'
-                  })
+                  if (toManyValue.operation === 'replace' && toManyValue.subField === 'id') {
+                    regularData[fieldName] = toManyValue.ids.map((id: number) => ({ id }))
+                    console.log(`✅ TO_MANY field "${fieldName}" formatted for replace in payload:`, regularData[fieldName])
+                  } else {
+                    toManyUpdates.push({
+                      field: fieldName,
+                      operation: toManyValue.operation,
+                      ids: toManyValue.ids,
+                      subField: toManyValue.subField || 'id'
+                    })
+                  }
                 }
               } else {
                 regularData[key] = data[key]
@@ -1031,12 +1038,17 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                 const fieldName = key.replace('__tomany_', '')
                 const toManyValue = data[key]
                 if (toManyValue.operation && toManyValue.ids) {
-                  toManyUpdates.push({
-                    field: fieldName,
-                    operation: toManyValue.operation,
-                    ids: toManyValue.ids,
-                    subField: toManyValue.subField || 'id'
-                  })
+                  if (toManyValue.operation === 'replace' && toManyValue.subField === 'id') {
+                    regularData[fieldName] = toManyValue.ids.map((id: number) => ({ id }))
+                    console.log(`✅ TO_MANY field "${fieldName}" formatted for replace in create payload:`, regularData[fieldName])
+                  } else {
+                    toManyUpdates.push({
+                      field: fieldName,
+                      operation: toManyValue.operation,
+                      ids: toManyValue.ids,
+                      subField: toManyValue.subField || 'id'
+                    })
+                  }
                 }
               } else {
                 regularData[key] = data[key]
@@ -1831,7 +1843,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                               fieldName={mapping.bullhornField}
                               fieldLabel={fieldMeta?.label || mapping.bullhornField}
                               associatedEntity={fieldMeta?.associatedEntity?.entity || 'Unknown'}
-                              config={toManyConfigs[mapping.bullhornField] || { operation: 'add', subField: 'id' }}
+                              config={toManyConfigs[mapping.bullhornField] || { operation: 'replace', subField: 'id' }}
                               onChange={(config) => {
                                 console.log('ToManyConfigSelector changed:', config)
                                 setToManyConfigs(prev => ({

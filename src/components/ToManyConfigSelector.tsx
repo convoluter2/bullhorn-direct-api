@@ -108,12 +108,22 @@ export function ToManyConfigSelector({
         <p className="font-medium">
           {config.operation === 'add' && '➕ CSV values will be added to existing associations'}
           {config.operation === 'remove' && '➖ Only specified CSV values will be removed'}
-          {config.operation === 'replace' && '⚠ All existing associations will be replaced'}
+          {config.operation === 'replace' && '🔄 All existing associations will be replaced with CSV values'}
         </p>
-        {config.subField && (
-          <p className="text-[10px]">
-            💡 CSV values will be matched using the <code className="font-mono">{config.subField}</code> field
+        {config.subField === 'id' && (
+          <p className="text-[10px] mt-2">
+            💡 Provide comma-separated IDs in your CSV (e.g., <code className="font-mono bg-muted px-1 py-0.5 rounded">102410</code> or <code className="font-mono bg-muted px-1 py-0.5 rounded">102410,102411</code>)
           </p>
+        )}
+        {config.subField !== 'id' && (
+          <p className="text-[10px] mt-2">
+            💡 Provide comma-separated <code className="font-mono">{config.subField}</code> values in your CSV
+          </p>
+        )}
+        {config.operation === 'replace' && (
+          <div className="p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-[10px] text-yellow-700 mt-2">
+            ⚠️ Replace mode will be sent as: <code className="bg-muted px-1 py-0.5 rounded font-mono">{`{ "fieldName": [{ "id": 102410 }] }`}</code>
+          </div>
         )}
       </div>
     </div>
