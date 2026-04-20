@@ -1724,8 +1724,6 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                         fieldsMapKeys: metadata?.fieldsMap ? Object.keys(metadata.fieldsMap).length : 0,
                         fieldMeta: fieldMeta ? {
                           name: fieldMeta.name,
-                        fieldMeta: fieldMeta ? {
-                          name: fieldMeta.name,
                           type: fieldMeta.type,
                           dataType: fieldMeta.dataType,
                           associationType: fieldMeta.associationType,
@@ -1737,7 +1735,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                     return (
                       <Card key={mapping.csvColumn} className="p-3">
                         <div className="space-y-3">
-                      <Card key={mapping.csvColumn} className="p-3">
+                          <div className="flex items-center gap-2">
                             <div className="flex-1 font-mono text-sm bg-muted p-2 rounded border">
                               {mapping.csvColumn}
                             </div>
