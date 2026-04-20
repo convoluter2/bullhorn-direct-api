@@ -474,9 +474,26 @@ export function SmartStack({ onLog }: SmartStackProps) {
         let toManyUpdates: Array<{ field: string; operation: string; ids: number[]; subField?: string }> = []
 
         try {
-          const entity = await bullhornAPI.getEntity(selectedEntity, numericId, fieldsToFetch)
+          const entityResponse = await bullhornAPI.getEntity(selectedEntity, numericId, fieldsToFetch)
           
-          if (!entity || !entity.data) {
+          if (!entityResponse) {
+            errors.push(`Entity not found: ${id}`)
+            failedCount++
+            if (dryRun) {
+              preview.push({
+                id,
+                willUpdate: false,
+                reason: 'Entity not found',
+                currentValues: {},
+                newValues: {}
+              })
+            }
+            continue
+          }
+
+          const entity = entityResponse.data || entityResponse
+          
+          if (!entity || !entity.id) {
             errors.push(`Entity not found: ${id}`)
             failedCount++
             if (dryRun) {
@@ -498,7 +515,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
             
             if (validFilters.length > 0) {
               passesFilters = validFilters.every(filter => {
-                const fieldValue = entity.data[filter.field]
+                const fieldValue = entity[filter.field]
                 const filterValue = filter.value
 
                 switch (filter.operator) {
@@ -526,7 +543,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
               return group.filters.every(filter => {
                 if (!filter.field) return true
                 
-                const fieldValue = entity.data[filter.field]
+                const fieldValue = entity[filter.field]
                 const filterValue = filter.value
 
                 switch (filter.operator) {
@@ -561,7 +578,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
                 id,
                 willUpdate: false,
                 reason: 'Does not match filters',
-                currentValues: entity.data,
+                currentValues: entity,
                 newValues: {}
               })
             }
@@ -667,7 +684,7 @@ export function SmartStack({ onLog }: SmartStackProps) {
           })
 
           if (useConditionalLogic && conditionalAssociations.length > 0) {
-            const conditionalActions = getAssociationsForRecord(conditionalAssociations, entity.data)
+            const conditionalActions = getAssociationsForRecord(conditionalAssociations, entity)
             const mergedActions = mergeAssociationActions(conditionalActions)
             
             mergedActions.forEach((action, field) => {
@@ -730,14 +747,14 @@ export function SmartStack({ onLog }: SmartStackProps) {
             preview.push({
               id,
               willUpdate: true,
-              currentValues: entity.data,
+              currentValues: entity,
               newValues: previewNewValues
             })
             successCount++
           } else {
             snapshotUpdates.push({
               entityId: numericId,
-              previousValues: entity.data,
+              previousValues: entity,
               newValues: updateData
             })
             
