@@ -1301,12 +1301,16 @@ export function SmartStack({ onLog }: SmartStackProps) {
                     const baseFieldName = update.field?.includes('.') ? update.field.split('.')[0] : update.field
                     const fieldMeta = baseFieldName ? fieldsMap[baseFieldName] : undefined
                     const isCompositeSubfield = update.field?.includes('.')
-                    const isToMany = !isCompositeSubfield && (fieldMeta?.associationType === 'TO_MANY' || fieldMeta?.type === 'TO_MANY' ||
-                      (fieldMeta?.dataType === 'TO_MANY') ||
-                      (fieldMeta?.associatedEntity && fieldMeta?.associationType?.includes('MANY')))
-                    const isToOne = !isCompositeSubfield && (fieldMeta?.associationType === 'TO_ONE' || fieldMeta?.type === 'TO_ONE' ||
-                      (fieldMeta?.dataType === 'TO_ONE') ||
-                      (fieldMeta?.associatedEntity && fieldMeta?.associationType?.includes('ONE')))
+                    
+                    const isToMany = !isCompositeSubfield && (
+                      fieldMeta?.associationType === 'TO_MANY' ||
+                      (fieldMeta?.associatedEntity && (fieldMeta?.type === 'TO_MANY' || fieldMeta?.dataType === 'TO_MANY'))
+                    )
+                    
+                    const isToOne = !isCompositeSubfield && (
+                      fieldMeta?.associationType === 'TO_ONE' ||
+                      (fieldMeta?.associatedEntity && (fieldMeta?.type === 'TO_ONE' || fieldMeta?.dataType === 'TO_ONE'))
+                    )
                     
                     console.log('🔍 SmartStack Field Update Render:', {
                       updateId: update.id,
