@@ -1724,8 +1724,6 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                         fieldsMapKeys: metadata?.fieldsMap ? Object.keys(metadata.fieldsMap).length : 0,
                         fieldMeta: fieldMeta ? {
                           name: fieldMeta.name,
-                          type: fieldMeta.type,
-                          dataType: fieldMeta.dataType,
                           associationType: fieldMeta.associationType,
                           associatedEntity: fieldMeta.associatedEntity
                         } : 'undefined - Field not found in metadata.fieldsMap',
@@ -1737,7 +1735,6 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                         <div className="space-y-3">
                           <div className="flex items-center gap-2">
                             <div className="flex-1 font-mono text-sm bg-muted p-2 rounded border">
-                              {mapping.csvColumn}
                             </div>
                             <div className="text-muted-foreground">→</div>
                             <div className="flex-1">
