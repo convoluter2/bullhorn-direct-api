@@ -1699,15 +1699,17 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                   {(mappings || [])
                     .filter(m => m && m.csvColumn && m.csvColumn.trim() !== '')
                     .map((mapping) => {
-                    const fieldMeta = mapping?.bullhornField && mapping.bullhornField !== '__skip__' && metadata?.fieldsMap
-                      ? metadata.fieldsMap[mapping.bullhornField] 
+                    const baseFieldName = mapping?.bullhornField?.includes('.') ? mapping.bullhornField.split('.')[0] : mapping.bullhornField
+                    const isCompositeSubfield = mapping?.bullhornField?.includes('.')
+                    const fieldMeta = mapping?.bullhornField && mapping.bullhornField !== '__skip__' && metadata?.fieldsMap && baseFieldName
+                      ? metadata.fieldsMap[baseFieldName] 
                       : undefined
-                    const isToMany = fieldMeta ? (
+                    const isToMany = !isCompositeSubfield && fieldMeta ? (
                       fieldMeta.associationType === 'TO_MANY' || 
                       fieldMeta.type === 'TO_MANY' || 
                       fieldMeta.dataType === 'TO_MANY'
                     ) : false
-                    const isToOne = fieldMeta ? (
+                    const isToOne = !isCompositeSubfield && fieldMeta ? (
                       fieldMeta.associationType === 'TO_ONE' || 
                       fieldMeta.type === 'TO_ONE' ||
                       fieldMeta.dataType === 'TO_ONE'
@@ -1717,13 +1719,18 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                       console.log('CSV Loader Field Mapping Debug:', {
                         csvColumn: mapping.csvColumn,
                         bullhornField: mapping.bullhornField,
+                        baseFieldName,
+                        isCompositeSubfield,
+                        hasMetadata: !!metadata,
+                        hasFieldsMap: !!metadata?.fieldsMap,
+                        fieldsMapKeys: metadata?.fieldsMap ? Object.keys(metadata.fieldsMap).length : 0,
                         fieldMeta: fieldMeta ? {
                           name: fieldMeta.name,
                           type: fieldMeta.type,
                           dataType: fieldMeta.dataType,
                           associationType: fieldMeta.associationType,
                           associatedEntity: fieldMeta.associatedEntity
-                        } : 'undefined',
+                        } : 'undefined - Field not found in metadata.fieldsMap',
                         isToMany: isToMany,
                         isToOne: isToOne
                       })
@@ -1827,14 +1834,14 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                             </div>
                           </div>
                           
-                          {mapping.bullhornField && mapping.bullhornField !== '__skip__' && fieldMeta && (
-                            <div className={`mt-2 p-2 rounded border text-xs space-y-1 ${isToMany ? 'bg-accent/20 border-accent' : 'bg-muted/30'}`}>
+                          {mapping.bullhornField && mapping.bullhornField !== '__skip__' && fieldMeta && !isCompositeSubfield && (
+                            <div className={`mt-2 p-2 rounded border text-xs space-y-1 ${isToMany ? 'bg-accent/20 border-accent' : isToOne ? 'bg-blue-500/10 border-blue-500/30' : 'bg-muted/30'}`}>
                               <div><strong>Field Type:</strong> {fieldMeta.type}</div>
                               <div><strong>Association Type:</strong> {fieldMeta.associationType || 'N/A'}</div>
                               <div><strong>Data Type:</strong> {fieldMeta.dataType}</div>
                               <div><strong>Associated Entity:</strong> {fieldMeta.associatedEntity?.entity || 'N/A'}</div>
                               <div className={isToMany ? 'text-accent font-bold' : ''}><strong>Is TO_MANY:</strong> {isToMany ? '✅ YES' : '❌ NO'}</div>
-                              <div className={isToOne ? 'text-accent font-bold' : ''}><strong>Is TO_ONE:</strong> {isToOne ? '✅ YES' : '❌ NO'}</div>
+                              <div className={isToOne ? 'text-blue-600 font-bold' : ''}><strong>Is TO_ONE:</strong> {isToOne ? '✅ YES' : '❌ NO'}</div>
                             </div>
                           )}
                           
