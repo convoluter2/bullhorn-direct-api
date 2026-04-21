@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import React from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -35,6 +36,8 @@ interface DownloadResult {
   filesDownloaded?: number
   totalFiles?: number
   retryCount?: number
+  failedFiles?: Array<{ fileName: string; fileId: number; error: string }>
+  successfulFiles?: string[]
 }
 
 interface EntityIdMapping {
@@ -526,6 +529,8 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
           const zip = new JSZip()
           let downloadedCount = 0
           const totalFiles = filteredFiles.length
+          const failedFiles: Array<{ fileName: string; fileId: number; error: string }> = []
+          const successfulFiles: string[] = []
 
           const downloadFile = async (file: any, fileIndex: number) => {
             results[i] = {
@@ -541,6 +546,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
               const newFileName = `${effectiveEntityId}-${file.name}`
               zip.file(newFileName, blob)
               downloadedCount++
+              successfulFiles.push(file.name)
               
               results[i] = {
                 ...results[i],
@@ -551,7 +557,13 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
               
               return { success: true, fileName: file.name }
             } catch (fileError) {
+              const errorMessage = fileError instanceof Error ? fileError.message : 'Unknown error'
               console.error(`❌ Failed to download file ${file.id} (${file.name}):`, fileError)
+              failedFiles.push({
+                fileName: file.name,
+                fileId: file.id,
+                error: errorMessage
+              })
               return { success: false, fileName: file.name, error: fileError }
             }
           }
@@ -578,16 +590,29 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             results[i] = {
               entityId,
               status: 'error',
-              message: 'Failed to download all files',
-              fileCount: 0
+              message: `Failed to download all ${totalFiles} file(s)`,
+              fileCount: 0,
+              failedFiles: failedFiles,
+              totalFiles: totalFiles
             }
             errorCount++
             setDownloadResults([...results])
             setDownloadProgress(Math.round(((i + 1) / entityIds.length) * 100))
+            
+            onLog('Bulk Download', 'error', `All files failed for ${entity} ID ${entityId}`, {
+              entity,
+              entityId,
+              totalFiles,
+              failedFiles
+            })
             continue
           }
 
           console.log(`✅ Downloaded ${downloadedCount}/${filteredFiles.length} filtered files for ${entity} ${entityId}`)
+          
+          if (failedFiles.length > 0) {
+            console.warn(`⚠️ ${failedFiles.length} file(s) failed to download for ${entity} ${entityId}:`, failedFiles)
+          }
 
           const zipBlob = await zip.generateAsync({ 
             type: 'blob',
@@ -612,23 +637,36 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             window.URL.revokeObjectURL(url)
           }, 100)
 
+          const mapping = entityIdMappings[i] || { entityId }
           results[i] = {
             entityId,
             mappedEntityId: mapping.mappedEntityId,
-            status: 'success',
-            message: `Downloaded ${downloadedCount} file(s)`,
+            status: failedFiles.length > 0 ? 'error' : 'success',
+            message: failedFiles.length > 0 
+              ? `Downloaded ${downloadedCount}/${totalFiles} file(s) - ${failedFiles.length} failed`
+              : `Downloaded ${downloadedCount} file(s)`,
             fileCount: downloadedCount,
             zipSize: zipBlob.size,
-            fileName: zipFileName
+            fileName: zipFileName,
+            failedFiles: failedFiles.length > 0 ? failedFiles : undefined,
+            successfulFiles: successfulFiles
           }
-          successCount++
+          
+          if (failedFiles.length > 0) {
+            errorCount++
+          } else {
+            successCount++
+          }
 
           const logDetails: any = {
             entity,
             entityId,
             fileCount: downloadedCount,
+            totalFiles,
             zipFileName,
-            zipSize: zipBlob.size
+            zipSize: zipBlob.size,
+            successfulFiles: successfulFiles.length,
+            failedFiles: failedFiles.length > 0 ? failedFiles : undefined
           }
           
           if (useMappedEntityRenaming && mapping.mappedEntityId) {
@@ -636,7 +674,12 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             logDetails.renamedWithMappedId = true
           }
 
-          onLog('Bulk Download', 'success', `Downloaded files for ${entity} ID ${entityId}`, logDetails)
+          onLog('Bulk Download', failedFiles.length > 0 ? 'error' : 'success', 
+            failedFiles.length > 0 
+              ? `Partial download for ${entity} ID ${entityId}: ${downloadedCount}/${totalFiles} succeeded`
+              : `Downloaded files for ${entity} ID ${entityId}`, 
+            logDetails
+          )
         } catch (error) {
           console.error(`❌ Failed to process ${entity} ${entityId}:`, error)
           const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -1181,7 +1224,8 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
                 </TableHeader>
                 <TableBody>
                   {downloadResults.map((result, index) => (
-                    <TableRow key={index}>
+                    <React.Fragment key={index}>
+                      <TableRow>
                       <TableCell className="font-mono font-medium">
                         {result.entityId}
                       </TableCell>
@@ -1239,13 +1283,66 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground max-w-[250px]">
-                        {result.fileName ? (
-                          <code className="text-xs bg-muted px-1 py-0.5 rounded block truncate">{result.fileName}</code>
-                        ) : (
-                          result.message || '-'
-                        )}
+                        <div className="space-y-1">
+                          {result.fileName ? (
+                            <code className="text-xs bg-muted px-1 py-0.5 rounded block truncate">{result.fileName}</code>
+                          ) : (
+                            <span>{result.message || '-'}</span>
+                          )}
+                          {result.failedFiles && result.failedFiles.length > 0 && (
+                            <div className="text-xs text-destructive">
+                              {result.failedFiles.length} file(s) failed
+                            </div>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
+                    {result.failedFiles && result.failedFiles.length > 0 && (
+                      <TableRow>
+                        <TableCell colSpan={entityIdMappings.some(m => m.mappedEntityId) ? 5 : 4} className="bg-destructive/5 p-4">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-destructive font-semibold text-sm flex items-center gap-2">
+                                <XCircle size={16} weight="fill" />
+                                Failed Files for Entity {result.entityId}
+                              </Label>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const failedList = result.failedFiles!.map(f => 
+                                    `Entity: ${result.entityId}, File: ${f.fileName}, ID: ${f.fileId}, Error: ${f.error}`
+                                  ).join('\n')
+                                  navigator.clipboard.writeText(failedList)
+                                  toast.success('Failed files list copied to clipboard')
+                                }}
+                                className="h-7 text-xs"
+                              >
+                                Copy Failed Files List
+                              </Button>
+                            </div>
+                            <ScrollArea className="h-[120px] border rounded-md bg-background p-3">
+                              <div className="space-y-2 text-xs font-mono">
+                                {result.failedFiles.map((failed, fidx) => (
+                                  <div key={fidx} className="p-2 bg-destructive/10 rounded border border-destructive/20">
+                                    <div className="font-semibold text-destructive">{failed.fileName}</div>
+                                    <div className="text-muted-foreground mt-1">File ID: {failed.fileId}</div>
+                                    <div className="text-destructive/80 mt-1">Error: {failed.error}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </ScrollArea>
+                            <Alert className="bg-blue-500/5 border-blue-500/20">
+                              <Info className="h-4 w-4 text-blue-600" />
+                              <AlertDescription className="text-xs text-blue-600">
+                                <strong>Manual Retry:</strong> You can manually download these failed files from the File Manager tab using the File IDs listed above, or use the "Retry Failed Downloads" button to attempt all failed entities again.
+                              </AlertDescription>
+                            </Alert>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </React.Fragment>
                   ))}
                 </TableBody>
               </Table>

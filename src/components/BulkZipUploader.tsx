@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import React from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -30,6 +31,8 @@ interface UploadResult {
   currentFile?: string
   retryCount?: number
   error?: any
+  failedFiles?: Array<{ fileName: string; error: string }>
+  successfulFiles?: string[]
 }
 
 interface ParsedZipFile {
@@ -257,6 +260,8 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
           setUploadResults([...results])
 
           let uploadedCount = 0
+          const failedFiles: Array<{ fileName: string; error: string }> = []
+          const successfulFiles: string[] = []
 
           const uploadFile = async (fileData: { name: string; blob: Blob }, fileIndex: number) => {
             results[i] = {
@@ -275,6 +280,7 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
               console.log(`✅ Successfully uploaded: ${fileData.name}`)
               
               uploadedCount++
+              successfulFiles.push(fileData.name)
               
               results[i] = {
                 ...results[i],
@@ -284,7 +290,12 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
               
               return { success: true, fileName: fileData.name }
             } catch (fileError) {
+              const errorMessage = fileError instanceof Error ? fileError.message : 'Unknown error'
               console.error(`❌ Failed to upload file ${fileData.name}:`, fileError)
+              failedFiles.push({
+                fileName: fileData.name,
+                error: errorMessage
+              })
               return { success: false, fileName: fileData.name, error: fileError }
             }
           }
@@ -311,30 +322,50 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
             results[i] = {
               ...results[i],
               status: 'error',
-              message: 'Failed to upload all files',
+              message: `Failed to upload all ${filesToUpload.length} file(s)`,
               fileCount: filesToUpload.length,
-              uploadedCount: 0
+              uploadedCount: 0,
+              failedFiles: failedFiles
             }
             errorCount++
-            onLog('Bulk Upload', 'error', `Failed to upload files from ${zipFile.fileName}`, {
+            onLog('Bulk Upload', 'error', `Failed to upload all files from ${zipFile.fileName}`, {
               entity,
               entityId: zipFile.entityId,
-              fileName: zipFile.fileName
+              fileName: zipFile.fileName,
+              totalFiles: filesToUpload.length,
+              failedFiles
             })
           } else {
             results[i] = {
               ...results[i],
-              status: 'success',
-              message: `Uploaded ${uploadedCount} file(s)`,
+              status: failedFiles.length > 0 ? 'error' : 'success',
+              message: failedFiles.length > 0 
+                ? `Uploaded ${uploadedCount}/${filesToUpload.length} file(s) - ${failedFiles.length} failed`
+                : `Uploaded ${uploadedCount} file(s)`,
               fileCount: filesToUpload.length,
-              uploadedCount: uploadedCount
+              uploadedCount: uploadedCount,
+              failedFiles: failedFiles.length > 0 ? failedFiles : undefined,
+              successfulFiles: successfulFiles
             }
-            successCount++
-            onLog('Bulk Upload', 'success', `Uploaded ${uploadedCount} file(s) from ${zipFile.fileName} to ${entity} ID ${zipFile.entityId}`, {
+            
+            if (failedFiles.length > 0) {
+              errorCount++
+              console.warn(`⚠️ ${failedFiles.length} file(s) failed to upload from ${zipFile.fileName}:`, failedFiles)
+            } else {
+              successCount++
+            }
+            
+            onLog('Bulk Upload', failedFiles.length > 0 ? 'error' : 'success', 
+              failedFiles.length > 0 
+                ? `Partial upload from ${zipFile.fileName}: ${uploadedCount}/${filesToUpload.length} succeeded`
+                : `Uploaded ${uploadedCount} file(s) from ${zipFile.fileName} to ${entity} ID ${zipFile.entityId}`, {
               entity,
               entityId: zipFile.entityId,
               fileName: zipFile.fileName,
-              fileCount: uploadedCount
+              fileCount: uploadedCount,
+              totalFiles: filesToUpload.length,
+              successfulFiles: successfulFiles.length,
+              failedFiles: failedFiles.length > 0 ? failedFiles : undefined
             })
           }
 
@@ -457,6 +488,8 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
       setUploadResults(results)
 
       let uploadedCount = 0
+      const failedFiles: Array<{ fileName: string; error: string }> = []
+      const successfulFiles: string[] = []
 
       const uploadFile = async (fileData: { name: string; blob: Blob }) => {
         results[index] = {
@@ -471,6 +504,7 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
           const file = new File([fileData.blob], fileData.name, { type: fileData.blob.type })
           await bullhornAPI.uploadFile(entity, parseInt(zipFile.entityId), file)
           uploadedCount++
+          successfulFiles.push(fileData.name)
           results[index] = {
             ...results[index],
             uploadedCount: uploadedCount
@@ -478,7 +512,12 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
           setUploadResults([...results])
           return { success: true, fileName: fileData.name }
         } catch (fileError) {
+          const errorMessage = fileError instanceof Error ? fileError.message : 'Unknown error'
           console.error(`❌ Failed to upload file ${fileData.name}:`, fileError)
+          failedFiles.push({
+            fileName: fileData.name,
+            error: errorMessage
+          })
           return { success: false, fileName: fileData.name, error: fileError }
         }
       }
@@ -493,33 +532,52 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
         results[index] = {
           ...results[index],
           status: 'error',
-          message: 'Failed to upload all files',
+          message: `Failed to upload all ${filesToUpload.length} file(s)`,
           fileCount: filesToUpload.length,
-          uploadedCount: 0
+          uploadedCount: 0,
+          failedFiles: failedFiles
         }
         setUploadResults(results)
         toast.error(`Retry failed for ${zipFile.fileName}`)
-        onLog('Bulk Upload Retry', 'error', `Failed to upload files from ${zipFile.fileName} on retry attempt ${retryCount}`, {
+        onLog('Bulk Upload Retry', 'error', `Failed to upload all files from ${zipFile.fileName} on retry attempt ${retryCount}`, {
           entity,
           entityId: zipFile.entityId,
           fileName: zipFile.fileName,
-          retryCount
+          retryCount,
+          totalFiles: filesToUpload.length,
+          failedFiles
         })
       } else {
         results[index] = {
           ...results[index],
-          status: 'success',
-          message: `Uploaded ${uploadedCount} file(s)`,
+          status: failedFiles.length > 0 ? 'error' : 'success',
+          message: failedFiles.length > 0 
+            ? `Uploaded ${uploadedCount}/${filesToUpload.length} file(s) - ${failedFiles.length} failed`
+            : `Uploaded ${uploadedCount} file(s)`,
           fileCount: filesToUpload.length,
-          uploadedCount: uploadedCount
+          uploadedCount: uploadedCount,
+          failedFiles: failedFiles.length > 0 ? failedFiles : undefined,
+          successfulFiles: successfulFiles
         }
         setUploadResults(results)
-        toast.success(`Successfully uploaded ${uploadedCount} file(s) from ${zipFile.fileName}`)
-        onLog('Bulk Upload Retry', 'success', `Uploaded ${uploadedCount} file(s) from ${zipFile.fileName} to ${entity} ID ${zipFile.entityId} on retry attempt ${retryCount}`, {
+        
+        if (failedFiles.length > 0) {
+          toast.warning(`Partially uploaded from ${zipFile.fileName}: ${uploadedCount}/${filesToUpload.length} succeeded`)
+        } else {
+          toast.success(`Successfully uploaded ${uploadedCount} file(s) from ${zipFile.fileName}`)
+        }
+        
+        onLog('Bulk Upload Retry', failedFiles.length > 0 ? 'error' : 'success', 
+          failedFiles.length > 0 
+            ? `Partial upload from ${zipFile.fileName} on retry ${retryCount}: ${uploadedCount}/${filesToUpload.length} succeeded`
+            : `Uploaded ${uploadedCount} file(s) from ${zipFile.fileName} to ${entity} ID ${zipFile.entityId} on retry attempt ${retryCount}`, {
           entity,
           entityId: zipFile.entityId,
           fileName: zipFile.fileName,
           fileCount: uploadedCount,
+          totalFiles: filesToUpload.length,
+          successfulFiles: successfulFiles.length,
+          failedFiles: failedFiles.length > 0 ? failedFiles : undefined,
           retryCount
         })
       }
@@ -802,7 +860,8 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
                 </TableHeader>
                 <TableBody>
                   {uploadResults.map((result, index) => (
-                    <TableRow key={index}>
+                    <React.Fragment key={index}>
+                      <TableRow>
                       <TableCell className="font-mono text-sm max-w-[200px] truncate">
                         {result.fileName}
                       </TableCell>
@@ -851,11 +910,18 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground max-w-[250px]">
-                        {result.currentFile ? (
-                          <span className="text-xs truncate block">{result.currentFile}</span>
-                        ) : (
-                          result.message || '-'
-                        )}
+                        <div className="space-y-1">
+                          {result.currentFile ? (
+                            <span className="text-xs truncate block">{result.currentFile}</span>
+                          ) : (
+                            <span>{result.message || '-'}</span>
+                          )}
+                          {result.failedFiles && result.failedFiles.length > 0 && (
+                            <div className="text-xs text-destructive">
+                              {result.failedFiles.length} file(s) failed
+                            </div>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         {result.status === 'error' && !isUploading && (
@@ -876,6 +942,51 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
                         )}
                       </TableCell>
                     </TableRow>
+                    {result.failedFiles && result.failedFiles.length > 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="bg-destructive/5 p-4">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-destructive font-semibold text-sm flex items-center gap-2">
+                                <XCircle size={16} weight="fill" />
+                                Failed Files from {result.fileName}
+                              </Label>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const failedList = result.failedFiles!.map(f => 
+                                    `ZIP: ${result.fileName}, Entity: ${result.entityId}, File: ${f.fileName}, Error: ${f.error}`
+                                  ).join('\n')
+                                  navigator.clipboard.writeText(failedList)
+                                  toast.success('Failed files list copied to clipboard')
+                                }}
+                                className="h-7 text-xs"
+                              >
+                                Copy Failed Files List
+                              </Button>
+                            </div>
+                            <ScrollArea className="h-[120px] border rounded-md bg-background p-3">
+                              <div className="space-y-2 text-xs font-mono">
+                                {result.failedFiles.map((failed, fidx) => (
+                                  <div key={fidx} className="p-2 bg-destructive/10 rounded border border-destructive/20">
+                                    <div className="font-semibold text-destructive">{failed.fileName}</div>
+                                    <div className="text-destructive/80 mt-1">Error: {failed.error}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </ScrollArea>
+                            <Alert className="bg-blue-500/5 border-blue-500/20">
+                              <Info className="h-4 w-4 text-blue-600" />
+                              <AlertDescription className="text-xs text-blue-600">
+                                <strong>Retry Options:</strong> Use the "Retry" button to attempt uploading this ZIP again, or "Retry All Failed" to retry all failed ZIPs at once. You can also manually check the files in the ZIP and re-upload them individually if needed.
+                              </AlertDescription>
+                            </Alert>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </React.Fragment>
                   ))}
                 </TableBody>
               </Table>
