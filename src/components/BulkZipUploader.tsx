@@ -49,6 +49,7 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
   const [isPaused, setIsPaused] = useState(false)
   const folderInputRef = useRef<HTMLInputElement>(null)
   const pauseRef = useRef(false)
+  const cancelledRef = useRef(false)
 
   const { entities, loading: entitiesLoading } = useEntities()
 
