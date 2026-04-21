@@ -7,19 +7,51 @@ interface StorageAdapter {
 
 class SparkKVAdapter implements StorageAdapter {
   async get<T>(key: string): Promise<T | undefined> {
-    return await window.spark.kv.get<T>(key)
+    try {
+      return await window.spark.kv.get<T>(key)
+    } catch (error: any) {
+      if (error?.status === 404 || error?.message?.includes('404') || error?.message?.includes('Not Found')) {
+        console.warn('⚠️ KV storage unavailable (404) - falling back to graceful degradation')
+        throw new Error('KV storage unavailable')
+      }
+      throw error
+    }
   }
 
   async set<T>(key: string, value: T): Promise<void> {
-    await window.spark.kv.set(key, value)
+    try {
+      await window.spark.kv.set(key, value)
+    } catch (error: any) {
+      if (error?.status === 404 || error?.message?.includes('404') || error?.message?.includes('Not Found')) {
+        console.warn('⚠️ KV storage unavailable (404) - falling back to graceful degradation')
+        throw new Error('KV storage unavailable')
+      }
+      throw error
+    }
   }
 
   async delete(key: string): Promise<void> {
-    await window.spark.kv.delete(key)
+    try {
+      await window.spark.kv.delete(key)
+    } catch (error: any) {
+      if (error?.status === 404 || error?.message?.includes('404') || error?.message?.includes('Not Found')) {
+        console.warn('⚠️ KV storage unavailable (404) - falling back to graceful degradation')
+        throw new Error('KV storage unavailable')
+      }
+      throw error
+    }
   }
 
   async keys(): Promise<string[]> {
-    return await window.spark.kv.keys()
+    try {
+      return await window.spark.kv.keys()
+    } catch (error: any) {
+      if (error?.status === 404 || error?.message?.includes('404') || error?.message?.includes('Not Found')) {
+        console.warn('⚠️ KV storage unavailable (404) - falling back to graceful degradation')
+        throw new Error('KV storage unavailable')
+      }
+      throw error
+    }
   }
 }
 

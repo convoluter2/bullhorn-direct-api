@@ -227,6 +227,14 @@ async getSession(connectionId: string): Promise<BullhornSession | null> {
   }
 
   async getSessionAwareness(connectionId: string): Promise<SessionAwareness> {
+    if (this.heartbeatDisabled || SessionManager.isKVDisabled() || !hasSparkKV()) {
+      return {
+        activeRefreshCount: 0,
+        activeSessions: [],
+        currentBrowserHasSession: false
+      }
+    }
+
     try {
       const adapter = await getStorageAdapter()
       const allKeys = await adapter.keys()
@@ -299,7 +307,10 @@ async getSession(connectionId: string): Promise<BullhornSession | null> {
 
       return awareness
     } catch (error) {
-      console.error('❌ getSessionAwareness failed:', error)
+      console.warn('⚠️ getSessionAwareness failed (KV unavailable), disabling session manager:', error)
+      SessionManager.disableKV()
+      this.heartbeatDisabled = true
+      this.stopHeartbeat()
       return {
         activeRefreshCount: 0,
         activeSessions: [],

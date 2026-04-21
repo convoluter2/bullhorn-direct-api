@@ -193,13 +193,17 @@ function App() {
         return
       }
       
-      const awareness = await sessionManager.getSessionAwareness(currentConnId)
-      
-      if (awareness.activeRefreshCount > 0 && !isRefreshingRef.current) {
-        console.log('⏸️ Another session is already refreshing the token, waiting...', {
-          activeRefreshes: awareness.activeRefreshCount
-        })
-        return
+      try {
+        const awareness = await sessionManager.getSessionAwareness(currentConnId)
+        
+        if (awareness.activeRefreshCount > 0 && !isRefreshingRef.current) {
+          console.log('⏸️ Another session is already refreshing the token, waiting...', {
+            activeRefreshes: awareness.activeRefreshCount
+          })
+          return
+        }
+      } catch (error) {
+        console.warn('⚠️ Session awareness check failed, continuing with token refresh check:', error)
       }
       
       const now = Date.now()
