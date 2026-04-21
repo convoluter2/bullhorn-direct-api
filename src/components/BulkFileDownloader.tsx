@@ -283,6 +283,17 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
         }
 
         if (!isDownloading) {
+          console.log('⚠️ Download cancelled by user')
+          for (let j = i; j < entityIds.length; j++) {
+            if (results[j].status === 'pending') {
+              results[j] = {
+                ...results[j],
+                status: 'error',
+                message: 'Cancelled by user'
+              }
+            }
+          }
+          setDownloadResults([...results])
           break
         }
 
@@ -300,6 +311,15 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
         
         try {
           console.log(`📥 Processing entity ${i + 1}/${entityIds.length}: ${entity} ID ${entityId}`)
+          
+          results[i] = {
+            entityId,
+            status: 'pending',
+            message: 'Fetching files...',
+            filesDownloaded: 0,
+            totalFiles: 0
+          }
+          setDownloadResults([...results])
           
           const filesResponse = await bullhornAPI.getEntityFiles(entity, parseInt(entityId), '')
           
@@ -366,6 +386,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             }
 
             if (!isDownloading) {
+              console.log('⚠️ Download cancelled during file processing')
               break
             }
 
@@ -389,6 +410,8 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             setDownloadProgress(Math.round(((i + 1) / entityIds.length) * 100))
             continue
           }
+
+          console.log(`✅ Downloaded ${downloadedCount}/${filesArray.length} files for ${entity} ${entityId}`)
 
           const zipBlob = await zip.generateAsync({ 
             type: 'blob',
@@ -472,10 +495,27 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
       const errorMessage = error instanceof Error ? error.message : 'Bulk download failed'
       toast.error(`Bulk download failed: ${errorMessage}`)
       onLog('Bulk Download', 'error', errorMessage, { error: errorMessage })
+      
+      setDownloadResults((currentResults) => 
+        currentResults.map(result => 
+          result.status === 'pending' 
+            ? { ...result, status: 'error', message: 'Cancelled or failed' } 
+            : result
+        )
+      )
     } finally {
       setIsDownloading(false)
       setIsPaused(false)
       pauseRef.current = false
+      
+      setDownloadResults((currentResults) => 
+        currentResults.map(result => 
+          result.status === 'pending' 
+            ? { ...result, status: 'error', message: 'Cancelled or interrupted' } 
+            : result
+        )
+      )
+      
       setTimeout(() => {
         setDownloadProgress(0)
         setCurrentEntityIndex(0)
