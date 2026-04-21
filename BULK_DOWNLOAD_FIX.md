@@ -3,91 +3,91 @@
 ## Issue
 The Bulk File Downloader was showing entities with "pending" status even after the download process completed (either successfully, with errors, or was cancelled). This created confusion as the toast notifications would show completion but the UI still displayed pending items.
 
-## Root Causes
-1. **No early status update**: Results were initialized as "pending" but not updated before making the API call to fetch files
-2. **Incomplete cancel handling**: When user cancelled download or an error occurred, pending items weren't marked as complete
-3. **Missing error propagation**: If the main try/catch caught an error, remaining pending items weren't updated
-4. **No finally block cleanup**: Remaining pending items weren't cleaned up at the end
 
-## Fixes Applied
 
-### 1. Early Status Update (Line ~302-310)
 ```typescript
-results[i] = {
   entityId,
-  status: 'pending',
   message: 'Fetching files...',
-  filesDownloaded: 0,
-  totalFiles: 0
-}
-setDownloadResults([...results])
-```
-**Why**: Provides immediate feedback that the entity is being processed before API call.
 
-### 2. Cancel Handling in Main Loop (Line ~285-298)
-```typescript
-if (!isDownloading) {
-  console.log('⚠️ Download cancelled by user')
-  for (let j = i; j < entityIds.length; j++) {
-    if (results[j].status === 'pending') {
-      results[j] = {
-        ...results[j],
-        status: 'error',
-        message: 'Cancelled by user'
+setDownloadResul
+
+### 2. Cancel Handling in Main Loop (Line 
+if (!isDownlo
+  for (let j =
+      resul
+        status: 'err
       }
-    }
   }
-  setDownloadResults([...results])
   break
-}
-```
-**Why**: When user clicks cancel, all remaining pending items are immediately marked as cancelled.
+`
 
-### 3. Improved Logging in File Download Loop (Line ~388-390)
-```typescript
-if (!isDownloading) {
+```
   console.log('⚠️ Download cancelled during file processing')
-  break
-}
-```
-**Why**: Better debugging visibility when download is interrupted during file processing.
 
-### 4. Error Catch Block Cleanup (Line ~479-489)
-```typescript
+**Why**: Better debugging visibility when download 
+### 4. Error 
 } catch (error) {
-  console.error('Bulk download error:', error)
-  const errorMessage = error instanceof Error ? error.message : 'Bulk download failed'
-  toast.error(`Bulk download failed: ${errorMessage}`)
-  onLog('Bulk Download', 'error', errorMessage, { error: errorMessage })
-  
+  const errorMessage = error instanceof Error 
+  onLog('Bulk Download', 'error', errorMessage
   setDownloadResults((currentResults) => 
-    currentResults.map(result => 
-      result.status === 'pending' 
-        ? { ...result, status: 'error', message: 'Cancelled or failed' } 
+      result.status 
         : result
-    )
   )
-}
 ```
-**Why**: If an unexpected error occurs, all pending items are marked as failed.
 
-### 5. Finally Block Safety Net (Line ~490-502)
-```typescript
-} finally {
-  setIsDownloading(false)
-  setIsPaused(false)
+```ty
+  s
   pauseRef.current = false
-  
-  setDownloadResults((currentResults) => 
-    currentResults.map(result => 
-      result.status === 'pending' 
-        ? { ...result, status: 'error', message: 'Cancelled or interrupted' } 
-        : result
-    )
+  setDo
+ 
+   
   )
-  
-  setTimeout(() => {
-    setDownloadProgress(0)
+
+    setCurrentEntityIndex(0)
+    setEstima
+}
+**Why**: Final safety net ensures no items are left in pendin
+## Test
+1
+3. 
+5. **Pause and resume**: Pause and resume - should continue properly without leaving item
+
+
+- `"Fetching 
+- `"Failed to dow
+- `"Cancelled or failed"` - When caught by err
+
+
+✅ **After**: All items show their final status (success/error) with clea
+✅ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     setCurrentEntityIndex(0)
     setStartTime(null)
     setEstimatedTimeRemaining(null)
