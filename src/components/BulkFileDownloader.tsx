@@ -25,6 +25,7 @@ interface BulkFileDownloaderProps {
 
 interface DownloadResult {
   entityId: string
+  mappedEntityId?: string
   status: 'success' | 'error' | 'pending'
   message?: string
   fileCount?: number
@@ -36,9 +37,15 @@ interface DownloadResult {
   retryCount?: number
 }
 
+interface EntityIdMapping {
+  entityId: string
+  mappedEntityId?: string
+}
+
 export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
   const [entity, setEntity] = useState('')
   const [entityIds, setEntityIds] = useState<string[]>([])
+  const [entityIdMappings, setEntityIdMappings] = useState<EntityIdMapping[]>([])
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [manualInput, setManualInput] = useState('')
   const [isDownloading, setIsDownloading] = useState(false)
@@ -52,6 +59,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
   const [downloadFileTypes, setDownloadFileTypes] = useState<string[]>([])
   const [downloadStartDate, setDownloadStartDate] = useState('')
   const [downloadEndDate, setDownloadEndDate] = useState('')
+  const [useMappedEntityRenaming, setUseMappedEntityRenaming] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pauseRef = useRef(false)
   const cancelledRef = useRef(false)
@@ -212,6 +220,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
         console.log('📊 CSV parsed:', results)
         
         const ids: string[] = []
+        const mappings: EntityIdMapping[] = []
         
         if (results.data && results.data.length > 0) {
           const firstRow = results.data[0] as any
@@ -227,11 +236,26 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             }
           }
           
+          const possibleMappedFields = ['mappedEntity', 'MappedEntity', 'mapped_entity', 'mappedEntityId', 'MappedEntityId']
+          const mappedField = possibleMappedFields.find(field => field in firstRow)
+          
+          if (mappedField) {
+            console.log(`✅ Found MappedEntity column: "${mappedField}"`)
+            setUseMappedEntityRenaming(true)
+          }
+          
           if (idField) {
             for (const row of results.data as any[]) {
               const id = row[idField]
               if (id && String(id).trim()) {
-                ids.push(String(id).trim())
+                const entityId = String(id).trim()
+                ids.push(entityId)
+                
+                const mappedId = mappedField && row[mappedField] ? String(row[mappedField]).trim() : undefined
+                mappings.push({
+                  entityId,
+                  mappedEntityId: mappedId
+                })
               }
             }
           }
@@ -247,11 +271,21 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
         }
         
         setEntityIds(ids)
+        setEntityIdMappings(mappings)
         setDownloadResults([])
-        toast.success(`Loaded ${ids.length} entity ID(s) from CSV`)
+        
+        const hasMappedEntities = mappings.some(m => m.mappedEntityId)
+        if (hasMappedEntities) {
+          const mappedCount = mappings.filter(m => m.mappedEntityId).length
+          toast.success(`Loaded ${ids.length} entity ID(s) from CSV (${mappedCount} with mapped entities)`)
+        } else {
+          toast.success(`Loaded ${ids.length} entity ID(s) from CSV`)
+        }
+        
         onLog('CSV Upload', 'success', `Loaded ${ids.length} entity IDs from CSV`, {
           fileName: file.name,
-          idCount: ids.length
+          idCount: ids.length,
+          mappedCount: mappings.filter(m => m.mappedEntityId).length
         })
       },
       error: (error) => {
@@ -282,8 +316,10 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
     }
 
     setEntityIds(ids)
+    setEntityIdMappings(ids.map(id => ({ entityId: id })))
     setDownloadResults([])
     setCsvFile(null)
+    setUseMappedEntityRenaming(false)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -395,11 +431,15 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
       setStartTime(Date.now())
       setEstimatedTimeRemaining(null)
       
-      const results: DownloadResult[] = entityIds.map(id => ({
-        entityId: id,
-        status: 'pending',
-        message: 'Pending...'
-      }))
+      const results: DownloadResult[] = entityIds.map((id, idx) => {
+        const mapping = entityIdMappings[idx] || { entityId: id }
+        return {
+          entityId: id,
+          mappedEntityId: mapping.mappedEntityId,
+          status: 'pending',
+          message: 'Pending...'
+        }
+      })
       setDownloadResults(results)
 
       let successCount = 0
@@ -480,6 +520,9 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
 
           const entityName = await fetchEntityName(entity, entityId)
           
+          const mapping = entityIdMappings[i] || { entityId }
+          const effectiveEntityId = useMappedEntityRenaming && mapping.mappedEntityId ? mapping.mappedEntityId : entityId
+          
           const zip = new JSZip()
           let downloadedCount = 0
           const totalFiles = filteredFiles.length
@@ -495,7 +538,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             
             try {
               const blob = await bullhornAPI.downloadFile(entity, parseInt(entityId), file.id)
-              const newFileName = `${entityId}-${file.name}`
+              const newFileName = `${effectiveEntityId}-${file.name}`
               zip.file(newFileName, blob)
               downloadedCount++
               
@@ -554,7 +597,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             }
           })
 
-          const zipFileName = `${entityId}-${entity}-${entityName}.zip`
+          const zipFileName = `${effectiveEntityId}-${entity}-${entityName}.zip`
 
           const url = window.URL.createObjectURL(zipBlob)
           const a = document.createElement('a')
@@ -571,6 +614,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
 
           results[i] = {
             entityId,
+            mappedEntityId: mapping.mappedEntityId,
             status: 'success',
             message: `Downloaded ${downloadedCount} file(s)`,
             fileCount: downloadedCount,
@@ -579,18 +623,27 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
           }
           successCount++
 
-          onLog('Bulk Download', 'success', `Downloaded files for ${entity} ID ${entityId}`, {
+          const logDetails: any = {
             entity,
             entityId,
             fileCount: downloadedCount,
             zipFileName,
             zipSize: zipBlob.size
-          })
+          }
+          
+          if (useMappedEntityRenaming && mapping.mappedEntityId) {
+            logDetails.mappedEntityId = mapping.mappedEntityId
+            logDetails.renamedWithMappedId = true
+          }
+
+          onLog('Bulk Download', 'success', `Downloaded files for ${entity} ID ${entityId}`, logDetails)
         } catch (error) {
           console.error(`❌ Failed to process ${entity} ${entityId}:`, error)
           const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+          const mapping = entityIdMappings[i] || { entityId }
           results[i] = {
             entityId,
+            mappedEntityId: mapping.mappedEntityId,
             status: 'error',
             message: errorMessage
           }
@@ -599,6 +652,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
           onLog('Bulk Download', 'error', `Failed to download files for ${entity} ID ${entityId}`, {
             entity,
             entityId,
+            mappedEntityId: mapping.mappedEntityId,
             error: errorMessage
           })
         }
@@ -660,9 +714,11 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
 
   const handleClear = () => {
     setEntityIds([])
+    setEntityIdMappings([])
     setDownloadResults([])
     setCsvFile(null)
     setManualInput('')
+    setUseMappedEntityRenaming(false)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -688,6 +744,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             <ol className="list-decimal list-inside space-y-1 mt-2">
               <li>Select the entity type (Candidate, Placement, etc.)</li>
               <li>Upload a CSV with entity IDs OR paste comma-separated IDs</li>
+              <li>Optional: Include a "MappedEntity" column in your CSV for cross-tenant uploads</li>
               <li>Click "Download All Files" to create individual ZIP files for each entity</li>
               <li>ZIP files are named: <code className="text-xs bg-muted px-1 py-0.5 rounded">EntityID-EntityType-EntityName.zip</code></li>
             </ol>
@@ -731,7 +788,8 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
               className="cursor-pointer"
             />
             <p className="text-xs text-muted-foreground">
-              CSV should have a column named "id" or "entityId" containing the entity IDs
+              CSV should have a column named "id" or "entityId" containing the entity IDs. 
+              Optional: Add "MappedEntity" column to enable cross-tenant file renaming.
             </p>
           </div>
 
@@ -793,6 +851,81 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
 
         {entityIds.length > 0 && (
           <>
+            {entityIdMappings.some(m => m.mappedEntityId) && (
+              <div className="space-y-3 p-4 border rounded-lg bg-purple-500/5 border-purple-500/20">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-purple-600 font-semibold text-base">Entity ID Mapping Detected</Label>
+                      <Badge variant="secondary" className="bg-purple-600 text-white">
+                        {entityIdMappings.filter(m => m.mappedEntityId).length} mapped
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Your CSV contains a MappedEntity column. Enable renaming to use mapped IDs for file and ZIP naming.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <div className="text-xs text-muted-foreground">Use Mapped IDs</div>
+                      <div className="text-xs font-mono text-purple-600">
+                        {useMappedEntityRenaming ? 'Enabled' : 'Disabled'}
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={useMappedEntityRenaming}
+                        onChange={(e) => setUseMappedEntityRenaming(e.target.checked)}
+                        disabled={isDownloading}
+                      />
+                      <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    </label>
+                  </div>
+                </div>
+                
+                <Alert className="bg-blue-500/5 border-blue-500/20">
+                  <Info className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-xs text-blue-600">
+                    {useMappedEntityRenaming ? (
+                      <>
+                        <strong>Renaming Active:</strong> Files and ZIPs will be named using the MappedEntity IDs from your CSV. 
+                        This allows you to upload the downloaded files to different entity IDs in another Bullhorn tenant.
+                      </>
+                    ) : (
+                      <>
+                        <strong>Renaming Disabled:</strong> Files and ZIPs will use the original entity IDs. 
+                        Enable to rename files with mapped entity IDs for cross-tenant uploads.
+                      </>
+                    )}
+                  </AlertDescription>
+                </Alert>
+
+                <ScrollArea className="h-[120px] border rounded-md bg-background p-3">
+                  <div className="space-y-1">
+                    {entityIdMappings.map((mapping, index) => (
+                      <div key={index} className="flex items-center justify-between text-xs py-1">
+                        <span className="font-mono text-muted-foreground">
+                          Original: <strong className="text-foreground">{mapping.entityId}</strong>
+                        </span>
+                        {mapping.mappedEntityId ? (
+                          <>
+                            <span className="text-muted-foreground">→</span>
+                            <span className="font-mono">
+                              Mapped: <strong className="text-purple-600">{mapping.mappedEntityId}</strong>
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground italic">(no mapping)</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+
             <div className="space-y-4 p-4 border rounded-lg bg-accent/10">
               <div className="flex items-center gap-2">
                 <Faders size={20} className="text-accent" weight="duotone" />
@@ -1038,6 +1171,9 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Entity ID</TableHead>
+                    {entityIdMappings.some(m => m.mappedEntityId) && (
+                      <TableHead>Mapped ID</TableHead>
+                    )}
                     <TableHead>Status</TableHead>
                     <TableHead>Progress</TableHead>
                     <TableHead>Message</TableHead>
@@ -1049,6 +1185,17 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
                       <TableCell className="font-mono font-medium">
                         {result.entityId}
                       </TableCell>
+                      {entityIdMappings.some(m => m.mappedEntityId) && (
+                        <TableCell className="font-mono text-sm">
+                          {result.mappedEntityId ? (
+                            <Badge variant="secondary" className="bg-purple-600 text-white text-xs">
+                              {result.mappedEntityId}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {result.status === 'success' ? (
@@ -1148,6 +1295,18 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             <p className="text-xs">
               Example: <code className="bg-muted px-1 py-0.5 rounded">19641937-Resume.pdf</code>
             </p>
+
+            <p className="mt-3"><strong>MappedEntity Column (Optional):</strong></p>
+            <p className="text-xs">
+              Add a <code className="bg-muted px-1 py-0.5 rounded">MappedEntity</code> column to your CSV to enable cross-tenant uploads. 
+              When enabled, files and ZIPs will be renamed with the mapped entity ID instead of the original, 
+              allowing you to upload them to different entity IDs in another Bullhorn tenant.
+            </p>
+            <code className="block bg-muted px-3 py-2 rounded text-xs mt-1">
+              id,MappedEntity{'\n'}
+              12345,67890{'\n'}
+              23456,78901
+            </code>
           </AlertDescription>
         </Alert>
       </CardContent>
