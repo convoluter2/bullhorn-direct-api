@@ -14,6 +14,7 @@ type SessionAwarenessDisplayProps = {
 export function SessionAwarenessDisplay({ connectionId, isRefreshing = false }: SessionAwarenessDisplayProps) {
   const [awareness, setAwareness] = useState<SessionAwareness | null>(null)
   const [loading, setLoading] = useState(false)
+  const [hasKVError, setHasKVError] = useState(false)
 
   const loadAwareness = async () => {
     if (!connectionId) {
@@ -21,12 +22,18 @@ export function SessionAwarenessDisplay({ connectionId, isRefreshing = false }: 
       return
     }
 
+    if (hasKVError) {
+      return
+    }
+
     setLoading(true)
     try {
       const data = await sessionManager.getSessionAwareness(connectionId)
       setAwareness(data)
+      setHasKVError(false)
     } catch (error) {
       console.warn('⚠️ Session awareness failed (KV likely unavailable), displaying minimal state')
+      setHasKVError(true)
       setAwareness({
         activeRefreshCount: 0,
         activeSessions: [],
@@ -40,9 +47,11 @@ export function SessionAwarenessDisplay({ connectionId, isRefreshing = false }: 
   useEffect(() => {
     loadAwareness()
 
-    const interval = setInterval(loadAwareness, 10000)
-    return () => clearInterval(interval)
-  }, [connectionId])
+    if (!hasKVError) {
+      const interval = setInterval(loadAwareness, 10000)
+      return () => clearInterval(interval)
+    }
+  }, [connectionId, hasKVError])
 
   if (!connectionId || !awareness) {
     return null

@@ -51,6 +51,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pauseRef = useRef(false)
+  const cancelledRef = useRef(false)
 
   const { entities, loading: entitiesLoading } = useEntities()
 
@@ -219,7 +220,8 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
   }
 
   const handleCancelDownload = () => {
-    pauseRef.current = true
+    cancelledRef.current = true
+    pauseRef.current = false
     setIsPaused(false)
     setIsDownloading(false)
     setDownloadProgress(0)
@@ -259,6 +261,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
     }
 
     try {
+      cancelledRef.current = false
       setIsDownloading(true)
       setIsPaused(false)
       pauseRef.current = false
@@ -278,11 +281,11 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
       let errorCount = 0
 
       for (let i = 0; i < entityIds.length; i++) {
-        while (pauseRef.current) {
+        while (pauseRef.current && !cancelledRef.current) {
           await new Promise(resolve => setTimeout(resolve, 100))
         }
 
-        if (!isDownloading) {
+        if (cancelledRef.current) {
           console.log('⚠️ Download cancelled by user')
           for (let j = i; j < entityIds.length; j++) {
             if (results[j].status === 'pending') {
@@ -381,11 +384,11 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
           }
 
           for (let fileIndex = 0; fileIndex < filesArray.length; fileIndex += concurrentDownloads) {
-            while (pauseRef.current) {
+            while (pauseRef.current && !cancelledRef.current) {
               await new Promise(resolve => setTimeout(resolve, 100))
             }
 
-            if (!isDownloading) {
+            if (cancelledRef.current) {
               console.log('⚠️ Download cancelled during file processing')
               break
             }
