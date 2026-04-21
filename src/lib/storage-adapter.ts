@@ -6,12 +6,28 @@ interface StorageAdapter {
 }
 
 class SparkKVAdapter implements StorageAdapter {
+  private kvDisabledUntil = 0
+  private readonly DISABLE_DURATION = 60000
+
+  private isTemporarilyDisabled(): boolean {
+    return Date.now() < this.kvDisabledUntil
+  }
+
+  private markTemporarilyDisabled(): void {
+    this.kvDisabledUntil = Date.now() + this.DISABLE_DURATION
+    console.warn('⚠️ KV storage temporarily disabled for 1 minute due to repeated failures')
+  }
+
   async get<T>(key: string): Promise<T | undefined> {
+    if (this.isTemporarilyDisabled()) {
+      return undefined
+    }
+
     try {
       return await window.spark.kv.get<T>(key)
     } catch (error: any) {
       if (error?.status === 404 || error?.message?.includes('404') || error?.message?.includes('Not Found')) {
-        console.warn('⚠️ KV storage unavailable (404) - falling back to graceful degradation')
+        this.markTemporarilyDisabled()
         throw new Error('KV storage unavailable')
       }
       throw error
@@ -19,11 +35,15 @@ class SparkKVAdapter implements StorageAdapter {
   }
 
   async set<T>(key: string, value: T): Promise<void> {
+    if (this.isTemporarilyDisabled()) {
+      return
+    }
+
     try {
       await window.spark.kv.set(key, value)
     } catch (error: any) {
       if (error?.status === 404 || error?.message?.includes('404') || error?.message?.includes('Not Found')) {
-        console.warn('⚠️ KV storage unavailable (404) - falling back to graceful degradation')
+        this.markTemporarilyDisabled()
         throw new Error('KV storage unavailable')
       }
       throw error
@@ -31,11 +51,15 @@ class SparkKVAdapter implements StorageAdapter {
   }
 
   async delete(key: string): Promise<void> {
+    if (this.isTemporarilyDisabled()) {
+      return
+    }
+
     try {
       await window.spark.kv.delete(key)
     } catch (error: any) {
       if (error?.status === 404 || error?.message?.includes('404') || error?.message?.includes('Not Found')) {
-        console.warn('⚠️ KV storage unavailable (404) - falling back to graceful degradation')
+        this.markTemporarilyDisabled()
         throw new Error('KV storage unavailable')
       }
       throw error
@@ -43,11 +67,15 @@ class SparkKVAdapter implements StorageAdapter {
   }
 
   async keys(): Promise<string[]> {
+    if (this.isTemporarilyDisabled()) {
+      return []
+    }
+
     try {
       return await window.spark.kv.keys()
     } catch (error: any) {
       if (error?.status === 404 || error?.message?.includes('404') || error?.message?.includes('Not Found')) {
-        console.warn('⚠️ KV storage unavailable (404) - falling back to graceful degradation')
+        this.markTemporarilyDisabled()
         throw new Error('KV storage unavailable')
       }
       throw error

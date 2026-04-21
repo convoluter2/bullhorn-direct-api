@@ -203,7 +203,7 @@ function App() {
           return
         }
       } catch (error) {
-        console.warn('⚠️ Session awareness check failed, continuing with token refresh check:', error)
+        console.warn('⚠️ Session awareness check failed (KV likely unavailable), continuing with token refresh check')
       }
       
       const now = Date.now()

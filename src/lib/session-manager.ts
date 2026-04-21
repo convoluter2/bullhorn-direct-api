@@ -181,49 +181,76 @@ async getSession(connectionId: string): Promise<BullhornSession | null> {
 }
 
   async clearSession(connectionId: string): Promise<void> {
-    const key = `session-${this.browserId}-${connectionId}`
-    const adapter = await getStorageAdapter()
-    await adapter.delete(key)
-    console.log('🗑️ Session cleared:', { browserId: this.browserId, connectionId })
+    if (this.heartbeatDisabled || SessionManager.isKVDisabled()) {
+      console.log('📭 KV disabled — skipping clearSession')
+      return
+    }
+
+    try {
+      const key = `session-${this.browserId}-${connectionId}`
+      const adapter = await getStorageAdapter()
+      await adapter.delete(key)
+      console.log('🗑️ Session cleared:', { browserId: this.browserId, connectionId })
+    } catch (error) {
+      console.warn('⚠️ clearSession failed (KV unavailable), continuing without clearing')
+    }
   }
 
   async markRefreshStarted(connectionId: string): Promise<void> {
-    const key = `session-${this.browserId}-${connectionId}`
-    const adapter = await getStorageAdapter()
-    const sessionInfo = await adapter.get<SessionInfo>(key)
-    
-    if (sessionInfo) {
-      sessionInfo.isRefreshing = true
-      sessionInfo.refreshStartedAt = Date.now()
-      sessionInfo.lastActivity = Date.now()
-      await adapter.set(key, sessionInfo)
+    if (this.heartbeatDisabled || SessionManager.isKVDisabled()) {
+      console.log('📭 KV disabled — skipping markRefreshStarted')
+      return
+    }
+
+    try {
+      const key = `session-${this.browserId}-${connectionId}`
+      const adapter = await getStorageAdapter()
+      const sessionInfo = await adapter.get<SessionInfo>(key)
       
-      console.log('🔄 Marked session as refreshing:', {
-        browserId: this.browserId,
-        connectionId
-      })
+      if (sessionInfo) {
+        sessionInfo.isRefreshing = true
+        sessionInfo.refreshStartedAt = Date.now()
+        sessionInfo.lastActivity = Date.now()
+        await adapter.set(key, sessionInfo)
+        
+        console.log('🔄 Marked session as refreshing:', {
+          browserId: this.browserId,
+          connectionId
+        })
+      }
+    } catch (error) {
+      console.warn('⚠️ markRefreshStarted failed (KV unavailable), continuing without marking')
     }
   }
 
   async markRefreshCompleted(connectionId: string, newSession: BullhornSession): Promise<void> {
-    const sessionInfo: SessionInfo = {
-      browserId: this.browserId,
-      connectionId,
-      session: newSession,
-      lastActivity: Date.now(),
-      isRefreshing: false,
-      refreshStartedAt: undefined
+    if (this.heartbeatDisabled || SessionManager.isKVDisabled()) {
+      console.log('📭 KV disabled — skipping markRefreshCompleted')
+      return
     }
 
-    const key = `session-${this.browserId}-${connectionId}`
-    const adapter = await getStorageAdapter()
-    await adapter.set(key, sessionInfo)
-    
-    console.log('✅ Marked session refresh complete:', {
-      browserId: this.browserId,
-      connectionId,
-      corporationId: newSession.corporationId
-    })
+    try {
+      const sessionInfo: SessionInfo = {
+        browserId: this.browserId,
+        connectionId,
+        session: newSession,
+        lastActivity: Date.now(),
+        isRefreshing: false,
+        refreshStartedAt: undefined
+      }
+
+      const key = `session-${this.browserId}-${connectionId}`
+      const adapter = await getStorageAdapter()
+      await adapter.set(key, sessionInfo)
+      
+      console.log('✅ Marked session refresh complete:', {
+        browserId: this.browserId,
+        connectionId,
+        corporationId: newSession.corporationId
+      })
+    } catch (error) {
+      console.warn('⚠️ markRefreshCompleted failed (KV unavailable), continuing without marking')
+    }
   }
 
   async getSessionAwareness(connectionId: string): Promise<SessionAwareness> {
@@ -307,7 +334,7 @@ async getSession(connectionId: string): Promise<BullhornSession | null> {
 
       return awareness
     } catch (error) {
-      console.warn('⚠️ getSessionAwareness failed (KV unavailable), disabling session manager:', error)
+      console.log('⚠️ Session awareness temporarily unavailable (KV storage issue)')
       SessionManager.disableKV()
       this.heartbeatDisabled = true
       this.stopHeartbeat()

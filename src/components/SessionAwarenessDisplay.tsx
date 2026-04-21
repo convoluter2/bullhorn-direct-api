@@ -26,7 +26,12 @@ export function SessionAwarenessDisplay({ connectionId, isRefreshing = false }: 
       const data = await sessionManager.getSessionAwareness(connectionId)
       setAwareness(data)
     } catch (error) {
-      console.error('Failed to load session awareness:', error)
+      console.warn('⚠️ Session awareness failed (KV likely unavailable), displaying minimal state')
+      setAwareness({
+        activeRefreshCount: 0,
+        activeSessions: [],
+        currentBrowserHasSession: false
+      })
     } finally {
       setLoading(false)
     }
