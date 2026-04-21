@@ -135,11 +135,19 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
   }
 
   const handleCancelUpload = () => {
-    pauseRef.current = true
-    setIsPaused(false)
-    setIsUploading(false)
-    setUploadProgress(0)
-    toast.info('Upload cancelled')
+    if (confirm('Are you sure you want to cancel the upload?')) {
+      pauseRef.current = true
+      cancelledRef.current = true
+      setIsPaused(false)
+      setIsUploading(false)
+      setUploadProgress(0)
+      toast.info('Upload cancelled')
+      onLog('Bulk ZIP Upload', 'error', 'Upload cancelled by user', {
+        entity,
+        completedZipFiles: currentFileIndex,
+        totalZipFiles: zipFiles.length
+      })
+    }
   }
 
   const handleBulkUpload = async () => {
@@ -153,10 +161,26 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
       return
     }
 
+    const session = bullhornAPI.getSession()
+    if (!session) {
+      toast.error('Not authenticated. Please connect to Bullhorn first.')
+      onLog('Bulk ZIP Upload', 'error', 'Upload attempted without active session')
+      return
+    }
+
+    console.log('🚀 Starting bulk ZIP upload:', {
+      entity,
+      zipFileCount: zipFiles.length,
+      concurrentUploads,
+      sessionActive: !!session,
+      corporationId: session.corporationId
+    })
+
     try {
       setIsUploading(true)
       setIsPaused(false)
       pauseRef.current = false
+      cancelledRef.current = false
       setUploadProgress(0)
       setCurrentFileIndex(0)
       
@@ -172,11 +196,12 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
       let errorCount = 0
 
       for (let i = 0; i < zipFiles.length; i++) {
-        while (pauseRef.current) {
+        while (pauseRef.current && !cancelledRef.current) {
           await new Promise(resolve => setTimeout(resolve, 100))
         }
 
-        if (!isUploading) {
+        if (cancelledRef.current) {
+          console.log('❌ Upload cancelled by user')
           break
         }
 
@@ -196,6 +221,8 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
           const zip = new JSZip()
           const zipContent = await zip.loadAsync(zipFile.file)
           
+          console.log(`📦 Extracted ZIP contents for ${zipFile.fileName}`)
+          
           const filesToUpload: Array<{ name: string; blob: Blob }> = []
           
           for (const [fileName, zipEntry] of Object.entries(zipContent.files)) {
@@ -204,6 +231,8 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
               filesToUpload.push({ name: fileName, blob })
             }
           }
+
+          console.log(`📋 Found ${filesToUpload.length} file(s) to upload from ${zipFile.fileName}`)
 
           if (filesToUpload.length === 0) {
             results[i] = {
@@ -240,7 +269,9 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
             try {
               const file = new File([fileData.blob], fileData.name, { type: fileData.blob.type })
               
+              console.log(`📤 Uploading file: ${fileData.name} to ${entity}/${zipFile.entityId}`)
               await bullhornAPI.uploadFile(entity, parseInt(zipFile.entityId), file)
+              console.log(`✅ Successfully uploaded: ${fileData.name}`)
               
               uploadedCount++
               
@@ -258,11 +289,12 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
           }
 
           for (let fileIndex = 0; fileIndex < filesToUpload.length; fileIndex += concurrentUploads) {
-            while (pauseRef.current) {
+            while (pauseRef.current && !cancelledRef.current) {
               await new Promise(resolve => setTimeout(resolve, 100))
             }
 
-            if (!isUploading) {
+            if (cancelledRef.current) {
+              console.log('❌ File upload batch cancelled by user')
               break
             }
 
