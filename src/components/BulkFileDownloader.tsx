@@ -49,6 +49,9 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
   const [isPaused, setIsPaused] = useState(false)
   const [startTime, setStartTime] = useState<number | null>(null)
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null)
+  const [downloadFileTypes, setDownloadFileTypes] = useState<string[]>([])
+  const [downloadStartDate, setDownloadStartDate] = useState('')
+  const [downloadEndDate, setDownloadEndDate] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pauseRef = useRef(false)
   const cancelledRef = useRef(false)
@@ -68,6 +71,128 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
   const filteredEntities = entities.filter(entity => 
     fileAttachmentEntities.includes(entity)
   )
+
+  const defaultFileTypes = [
+    { value: 'cover', label: 'Assignment Agreement Letter' },
+    { value: 'autosubmit', label: 'Auto-Submit Signoff' },
+    { value: 'background', label: 'Background Check' },
+    { value: 'benefits', label: 'Benefit Forms' },
+    { value: 'board', label: 'Board Certification' },
+    { value: 'meal', label: 'California Meal Waiver' },
+    { value: 'client', label: 'Client Packet' },
+    { value: 'competency', label: 'Competency Exam' },
+    { value: 'compliance', label: 'Compliance Paperwork' },
+    { value: 'confirmation', label: 'Confirmation Letters' },
+    { value: 'dd', label: 'DD Proof Document' },
+    { value: 'directdeposit', label: 'Direct Deposit' },
+    { value: 'drugscreen', label: 'Drug Screen' },
+    { value: 'education', label: 'Education-Manual' },
+    { value: 'employment', label: 'Employment-Manual' },
+    { value: 'exhibit', label: 'Exhibit' },
+    { value: 'facility', label: 'Facility Forms-Manual' },
+    { value: 'federal', label: 'Federal/State-Manual' },
+    { value: 'health', label: 'Health Record-Manual' },
+    { value: 'hiring', label: 'Hiring Document-Manual' },
+    { value: 'jobdesc', label: 'Job Description' },
+    { value: 'life', label: 'Life Cert-Manual' },
+    { value: 'nda', label: 'Non-Disclosure Agreement' },
+    { value: 'nurseprofile', label: 'Nurse Profile' },
+    { value: 'other', label: 'Other' },
+    { value: 'payroll', label: 'Payroll Document' },
+    { value: 'paystub', label: 'Paystub' },
+    { value: 'perfassessment', label: 'Perf Assessment-Manual' },
+    { value: 'agreement', label: 'Primary Applicant Agreement' },
+    { value: 'profcert', label: 'Prof Cert-Manual' },
+    { value: 'proflic', label: 'Prof Lic-Manual' },
+    { value: 'po', label: 'Purchase Order' },
+    { value: 'reference', label: 'Reference' },
+    { value: 'reimbursement', label: 'Reimbursement' },
+    { value: 'resume', label: 'Resume' },
+    { value: 'skills', label: 'Skills Assessment' },
+    { value: 'statew4', label: 'State W4' },
+    { value: 'sow', label: 'Statement of Work' },
+    { value: 'stitched', label: 'Stitched Nurse Profile' },
+    { value: 'submittal', label: 'Submittal Packet' },
+    { value: 'timesheet', label: 'Timesheet' },
+    { value: 'timesheetscan', label: 'Timesheet Scan' },
+    { value: 'travel', label: 'Travel/Lodging Information' },
+    { value: 'w4', label: 'W4' },
+    { value: 'w4federal', label: 'W4-Federal' },
+    { value: 'w4home', label: 'W4-Home' },
+    { value: 'w4working', label: 'W4-Working' },
+    { value: 'workerscomp', label: "Worker's Compensation" },
+    { value: 'onboarding365', label: 'Onboarding365' }
+  ]
+
+  const [fileTypeOptions, setFileTypeOptions] = useState<Array<{ value: string; label: string }>>(defaultFileTypes)
+
+  useEffect(() => {
+    const loadFileTypes = async () => {
+      try {
+        const options = await bullhornAPI.getFieldOptions('EntityFileAttachment', 'type')
+        
+        if (options && options.length > 0) {
+          const typeOptions = options.map(opt => ({
+            value: opt.value || opt.label || opt,
+            label: opt.label || opt.value || opt
+          }))
+          
+          setFileTypeOptions(typeOptions)
+          console.log('✅ Loaded file type options from API:', typeOptions)
+        }
+      } catch (error) {
+        console.error('❌ Failed to load file type options:', error)
+        setFileTypeOptions(defaultFileTypes)
+      }
+    }
+
+    loadFileTypes()
+  }, [])
+
+  const toggleFileTypeFilter = (typeValue: string) => {
+    setDownloadFileTypes(prev => {
+      if (prev.includes(typeValue)) {
+        return prev.filter(t => t !== typeValue)
+      } else {
+        return [...prev, typeValue]
+      }
+    })
+  }
+
+  const handleClearFilters = () => {
+    setDownloadFileTypes([])
+    setDownloadStartDate('')
+    setDownloadEndDate('')
+  }
+
+  const applyFilters = (filesList: any[]) => {
+    let filtered = [...filesList]
+    
+    if (downloadFileTypes.length > 0) {
+      filtered = filtered.filter(file => {
+        if (!file.type) return false
+        return downloadFileTypes.includes(file.type)
+      })
+    }
+    
+    if (downloadStartDate) {
+      const startTimestamp = new Date(downloadStartDate).getTime()
+      filtered = filtered.filter(file => {
+        if (!file.dateAdded) return false
+        return file.dateAdded >= startTimestamp
+      })
+    }
+    
+    if (downloadEndDate) {
+      const endTimestamp = new Date(downloadEndDate + 'T23:59:59').getTime()
+      filtered = filtered.filter(file => {
+        if (!file.dateAdded) return false
+        return file.dateAdded <= endTimestamp
+      })
+    }
+    
+    return filtered
+  }
 
   const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -335,11 +460,16 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             filesArray = filesResponse
           }
 
-          if (filesArray.length === 0) {
+          console.log(`📊 Found ${filesArray.length} total files before filtering`)
+          
+          const filteredFiles = applyFilters(filesArray)
+          console.log(`📊 After filtering: ${filteredFiles.length} files`)
+
+          if (filteredFiles.length === 0) {
             results[i] = {
               entityId,
               status: 'error',
-              message: 'No files found',
+              message: 'No files found matching filters',
               fileCount: 0
             }
             errorCount++
@@ -352,7 +482,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
           
           const zip = new JSZip()
           let downloadedCount = 0
-          const totalFiles = filesArray.length
+          const totalFiles = filteredFiles.length
 
           const downloadFile = async (file: any, fileIndex: number) => {
             results[i] = {
@@ -383,7 +513,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             }
           }
 
-          for (let fileIndex = 0; fileIndex < filesArray.length; fileIndex += concurrentDownloads) {
+          for (let fileIndex = 0; fileIndex < filteredFiles.length; fileIndex += concurrentDownloads) {
             while (pauseRef.current && !cancelledRef.current) {
               await new Promise(resolve => setTimeout(resolve, 100))
             }
@@ -393,7 +523,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
               break
             }
 
-            const batch = filesArray.slice(fileIndex, fileIndex + concurrentDownloads)
+            const batch = filteredFiles.slice(fileIndex, fileIndex + concurrentDownloads)
             const batchPromises = batch.map((file, batchIdx) => 
               downloadFile(file, fileIndex + batchIdx)
             )
@@ -414,7 +544,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             continue
           }
 
-          console.log(`✅ Downloaded ${downloadedCount}/${filesArray.length} files for ${entity} ${entityId}`)
+          console.log(`✅ Downloaded ${downloadedCount}/${filteredFiles.length} filtered files for ${entity} ${entityId}`)
 
           const zipBlob = await zip.generateAsync({ 
             type: 'blob',
@@ -663,6 +793,106 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
 
         {entityIds.length > 0 && (
           <>
+            <div className="space-y-4 p-4 border rounded-lg bg-accent/10">
+              <div className="flex items-center gap-2">
+                <Faders size={20} className="text-accent" weight="duotone" />
+                <Label className="text-base font-semibold">Filter Options</Label>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Filter files by document type and/or date range before downloading
+              </p>
+              
+              <div className="space-y-3">
+                <Label>Document Types (select multiple or none for all)</Label>
+                <ScrollArea className="h-[160px] border rounded-md p-3 bg-background">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {fileTypeOptions.map((type) => (
+                      <div key={type.value} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`bulk-filter-${type.value}`}
+                          checked={downloadFileTypes.includes(type.value)}
+                          onCheckedChange={() => toggleFileTypeFilter(type.value)}
+                        />
+                        <label
+                          htmlFor={`bulk-filter-${type.value}`}
+                          className="text-sm cursor-pointer leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {type.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+                {downloadFileTypes.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {downloadFileTypes.map(type => {
+                      const typeLabel = fileTypeOptions.find(t => t.value === type)?.label || type
+                      return (
+                        <Badge key={type} variant="secondary" className="text-xs">
+                          {typeLabel}
+                        </Badge>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="bulk-download-start-date">Start Date (Optional)</Label>
+                  <Input
+                    id="bulk-download-start-date"
+                    type="date"
+                    value={downloadStartDate}
+                    onChange={(e) => setDownloadStartDate(e.target.value)}
+                    disabled={isDownloading}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bulk-download-end-date">End Date (Optional)</Label>
+                  <Input
+                    id="bulk-download-end-date"
+                    type="date"
+                    value={downloadEndDate}
+                    onChange={(e) => setDownloadEndDate(e.target.value)}
+                    disabled={isDownloading}
+                  />
+                </div>
+              </div>
+
+              {(downloadFileTypes.length > 0 || downloadStartDate || downloadEndDate) && (
+                <div className="flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClearFilters}
+                    disabled={isDownloading}
+                  >
+                    <XCircle size={16} className="mr-2" />
+                    Clear Filters
+                  </Button>
+                </div>
+              )}
+
+              {(downloadFileTypes.length > 0 || downloadStartDate || downloadEndDate) && (
+                <Alert className="bg-blue-500/5 border-blue-500/20">
+                  <Info className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-xs text-blue-600">
+                    {downloadFileTypes.length > 0 && (
+                      <div>Filter by types: {downloadFileTypes.map(t => fileTypeOptions.find(opt => opt.value === t)?.label || t).join(', ')}</div>
+                    )}
+                    {downloadStartDate && (
+                      <div>Start date: {new Date(downloadStartDate).toLocaleDateString()}</div>
+                    )}
+                    {downloadEndDate && (
+                      <div>End date: {new Date(downloadEndDate).toLocaleDateString()}</div>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+
             <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
               <div className="flex items-center gap-2">
                 <Faders size={20} className="text-accent" weight="duotone" />
