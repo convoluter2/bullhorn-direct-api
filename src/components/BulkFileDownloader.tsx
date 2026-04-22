@@ -637,7 +637,6 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             window.URL.revokeObjectURL(url)
           }, 100)
 
-          const mapping = entityIdMappings[i] || { entityId }
           results[i] = {
             entityId,
             mappedEntityId: mapping.mappedEntityId,
