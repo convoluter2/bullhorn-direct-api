@@ -273,11 +273,35 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
             setUploadResults([...results])
             
             try {
-              const file = new File([fileData.blob], fileData.name, { type: fileData.blob.type })
+              const match = fileData.name.match(/^([^-]+)-(.+)$/)
+              let documentType: string | undefined
+              let actualFileName: string = fileData.name
               
-              console.log(`📤 Uploading file: ${fileData.name} to ${entity}/${zipFile.entityId}`)
-              await bullhornAPI.uploadFile(entity, parseInt(zipFile.entityId), file)
-              console.log(`✅ Successfully uploaded: ${fileData.name}`)
+              if (match) {
+                const extractedType = match[1].trim()
+                const extractedFileName = match[2].trim()
+                
+                if (extractedType.toLowerCase() !== 'blank') {
+                  documentType = extractedType
+                }
+                actualFileName = extractedFileName
+                
+                console.log(`📄 Parsed filename: "${fileData.name}"`, {
+                  documentType: documentType || 'none (blank or not set)',
+                  actualFileName
+                })
+              }
+              
+              const file = new File([fileData.blob], actualFileName, { type: fileData.blob.type })
+              
+              console.log(`📤 Uploading file: ${actualFileName} to ${entity}/${zipFile.entityId}`, {
+                originalFileName: fileData.name,
+                parsedFileName: actualFileName,
+                documentType: documentType || 'default'
+              })
+              
+              await bullhornAPI.uploadFile(entity, parseInt(zipFile.entityId), file, documentType)
+              console.log(`✅ Successfully uploaded: ${actualFileName}`)
               
               uploadedCount++
               successfulFiles.push(fileData.name)
@@ -501,8 +525,35 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
         setUploadResults([...results])
         
         try {
-          const file = new File([fileData.blob], fileData.name, { type: fileData.blob.type })
-          await bullhornAPI.uploadFile(entity, parseInt(zipFile.entityId), file)
+          const match = fileData.name.match(/^([^-]+)-(.+)$/)
+          let documentType: string | undefined
+          let actualFileName: string = fileData.name
+          
+          if (match) {
+            const extractedType = match[1].trim()
+            const extractedFileName = match[2].trim()
+            
+            if (extractedType.toLowerCase() !== 'blank') {
+              documentType = extractedType
+            }
+            actualFileName = extractedFileName
+            
+            console.log(`📄 Parsed filename: "${fileData.name}"`, {
+              documentType: documentType || 'none (blank or not set)',
+              actualFileName
+            })
+          }
+          
+          const file = new File([fileData.blob], actualFileName, { type: fileData.blob.type })
+          
+          console.log(`📤 Uploading file (retry): ${actualFileName} to ${entity}/${zipFile.entityId}`, {
+            originalFileName: fileData.name,
+            parsedFileName: actualFileName,
+            documentType: documentType || 'default'
+          })
+          
+          await bullhornAPI.uploadFile(entity, parseInt(zipFile.entityId), file, documentType)
+          
           uploadedCount++
           successfulFiles.push(fileData.name)
           results[index] = {
@@ -639,7 +690,7 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
           Bulk ZIP Upload
         </CardTitle>
         <CardDescription>
-          Upload files from multiple ZIP files to their respective entities. ZIP files must be named with the entity ID at the start (e.g., 12345-files.zip)
+          Upload files from multiple ZIP files to their respective entities. ZIP files must be named with the entity ID at the start (e.g., 12345-files.zip). Files inside ZIPs should be named [DocumentType]-[OriginalFileName] (e.g., Resume-JohnDoe.pdf)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -651,8 +702,9 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
               <li>Select the entity type (Candidate, Placement, etc.)</li>
               <li>Select a folder containing ZIP files</li>
               <li>Each ZIP file must be named starting with the entity ID: <code className="text-xs bg-muted px-1 py-0.5 rounded">12345-anything.zip</code></li>
-              <li>All files in each ZIP will be uploaded to the entity matching that ID</li>
-              <li>Files keep their original names from inside the ZIP</li>
+              <li>Files inside each ZIP should be named: <code className="text-xs bg-muted px-1 py-0.5 rounded">[DocumentType]-[FileName]</code></li>
+              <li>Document type will be extracted and set on the file. Use "Blank" to skip setting document type</li>
+              <li>Files will be uploaded with the original filename (without the DocumentType prefix)</li>
             </ol>
           </AlertDescription>
         </Alert>
@@ -1032,8 +1084,18 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
             </p>
             
             <p className="mt-3"><strong>Files inside each ZIP:</strong></p>
+            <code className="block bg-muted px-3 py-2 rounded text-xs mt-1 mb-3">
+              [DocumentType]-[OriginalFileName]
+            </code>
             <p className="text-xs">
-              Files will be uploaded with their original names from inside the ZIP to the entity matching the ID in the ZIP filename.
+              Examples:
+              <code className="bg-muted px-1 py-0.5 rounded ml-1">Resume-JohnDoe.pdf</code>
+              <code className="bg-muted px-1 py-0.5 rounded ml-1">CoverLetter-Application.docx</code>
+              <code className="bg-muted px-1 py-0.5 rounded ml-1">Blank-SomeFile.pdf</code> (no document type set)
+            </p>
+            <p className="text-xs mt-2">
+              The document type will be extracted from the filename and set on upload. The file will be saved with just the original filename part. 
+              Use "Blank" as the document type prefix to skip setting a document type.
             </p>
           </AlertDescription>
         </Alert>
