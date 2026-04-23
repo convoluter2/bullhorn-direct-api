@@ -805,6 +805,24 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
           </AlertDescription>
         </Alert>
 
+        <Alert className="bg-blue-500/5 border-blue-500/20">
+          <Info className="h-4 w-4 text-blue-600" />
+          <AlertTitle className="text-blue-600">Download Location</AlertTitle>
+          <AlertDescription className="text-sm text-blue-600 space-y-2">
+            <p>
+              Files will download to your browser's default download folder. To change the download location or enable "Ask where to save each file":
+            </p>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li><strong>Chrome/Edge:</strong> Settings → Downloads → Set location or enable "Ask where to save each file before downloading"</li>
+              <li><strong>Firefox:</strong> Settings → General → Downloads → Select "Always ask you where to save files"</li>
+              <li><strong>Safari:</strong> Preferences → General → File download location</li>
+            </ul>
+            <p className="text-xs mt-2">
+              💡 <strong>Tip:</strong> If downloading many files, consider disabling "Ask where to save" to avoid repeated prompts, and organize files from your download folder afterward.
+            </p>
+          </AlertDescription>
+        </Alert>
+
         <div className="space-y-2">
           <Label htmlFor="bulk-entity">Entity Type</Label>
           <Select value={entity} onValueChange={setEntity} disabled={entitiesLoading || isDownloading}>
