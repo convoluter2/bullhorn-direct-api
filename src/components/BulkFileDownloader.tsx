@@ -403,10 +403,18 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
     }
 
     const failedIds = failedDownloads.map(r => r.entityId)
+    const failedMappings = failedDownloads.map(r => ({
+      entityId: r.entityId,
+      mappedEntityId: r.mappedEntityId
+    }))
+    
     toast.info(`Retrying ${failedIds.length} failed download(s)...`)
     
     setEntityIds(failedIds)
-    setDownloadResults([])
+    setEntityIdMappings(failedMappings)
+    
+    const nonFailedResults = downloadResults.filter(r => r.status !== 'error')
+    setDownloadResults(nonFailedResults)
     
     setTimeout(() => {
       handleBulkDownload()
@@ -543,7 +551,11 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             
             try {
               const blob = await bullhornAPI.downloadFile(entity, parseInt(entityId), file.id)
-              const newFileName = `${effectiveEntityId}-${file.name}`
+              
+              const documentType = file.type || 'Blank'
+              const documentTypeLabel = fileTypeOptions.find(t => t.value === documentType)?.label || documentType
+              const newFileName = `${documentTypeLabel}-${file.name}`
+              
               zip.file(newFileName, blob)
               downloadedCount++
               successfulFiles.push(file.name)
@@ -1386,10 +1398,16 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
             
             <p className="mt-3"><strong>Files inside each ZIP:</strong></p>
             <code className="block bg-muted px-3 py-2 rounded text-xs mt-1 mb-3">
-              [EntityID]-[OriginalFileName]
+              [DocumentType]-[OriginalFileName]
             </code>
             <p className="text-xs">
-              Example: <code className="bg-muted px-1 py-0.5 rounded">19641937-Resume.pdf</code>
+              Examples: 
+              <code className="bg-muted px-1 py-0.5 rounded ml-1">Resume-JohnDoe.pdf</code>
+              <code className="bg-muted px-1 py-0.5 rounded ml-1">Blank-Document.docx</code>
+            </p>
+            <p className="text-xs mt-2">
+              <strong>Note:</strong> If a file has no document type, it will be prefixed with "Blank" instead.
+              The entity ID is not included in individual file names since it's already in the ZIP filename.
             </p>
 
             <p className="mt-3"><strong>MappedEntity Column (Optional):</strong></p>
