@@ -65,6 +65,53 @@ function App() {
       name: string
     }
   } | null>(null)
+  const [isRefreshingConnectionInfo, setIsRefreshingConnectionInfo] = useState(false)
+
+  const refreshConnectionInfo = async () => {
+    if (!session || !currentConnectionId) {
+      toast.error('No active connection to refresh')
+      return
+    }
+
+    try {
+      setIsRefreshingConnectionInfo(true)
+      console.log('🔄 Refreshing connection info...')
+
+      const dcInfo = bullhornAPI.getDatacenterInfo()
+      setDatacenterInfo(dcInfo)
+
+      const info = await bullhornAPI.getUserInfo()
+      if (info) {
+        setUserInfo(info)
+        console.log('✅ Connection info refreshed:', {
+          username: info.username,
+          corporationName: info.corporation.name,
+          corporationId: info.corporation.id,
+          dataCenterId: dcInfo.dataCenterId,
+          superClusterId: dcInfo.superClusterId
+        })
+        toast.success('Connection info refreshed successfully')
+        addLog('Refresh Connection Info', 'success', 'Connection information refreshed', {
+          username: info.username,
+          corporationName: info.corporation.name,
+          corporationId: info.corporation.id,
+          dataCenterId: dcInfo.dataCenterId,
+          superClusterId: dcInfo.superClusterId
+        })
+      } else {
+        toast.warning('Could not load user info')
+      }
+    } catch (error) {
+      console.error('❌ Failed to refresh connection info:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      toast.error(`Failed to refresh: ${errorMessage}`)
+      addLog('Refresh Connection Info', 'error', 'Failed to refresh connection information', {
+        error: errorMessage
+      })
+    } finally {
+      setIsRefreshingConnectionInfo(false)
+    }
+  }
 
   useEffect(() => {
     const loadConnections = async () => {
@@ -713,6 +760,27 @@ function App() {
                             </TooltipTrigger>
                             <TooltipContent side="bottom" className="max-w-md p-4">
                               <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="text-xs font-semibold text-muted-foreground">CONNECTION INFO</div>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      refreshConnectionInfo()
+                                    }}
+                                    disabled={isRefreshingConnectionInfo}
+                                    className="h-6 px-2 gap-1"
+                                  >
+                                    <ArrowsClockwise 
+                                      size={12} 
+                                      weight={isRefreshingConnectionInfo ? 'bold' : 'regular'} 
+                                      className={isRefreshingConnectionInfo ? 'animate-spin' : ''}
+                                    />
+                                    <span className="text-xs">{isRefreshingConnectionInfo ? 'Refreshing...' : 'Refresh'}</span>
+                                  </Button>
+                                </div>
+                                <Separator />
                                 <div>
                                   <div className="text-xs font-semibold text-muted-foreground mb-1">CONNECTION</div>
                                   <div className="text-sm font-mono">{savedConnections.find(conn => conn.id === currentConnectionId)?.name}</div>

@@ -747,9 +747,11 @@ export function AuditLogs({ logs, onClearLogs, onUpdateLog, onLog }: AuditLogsPr
                             <div className="mt-2 p-2 bg-destructive/10 rounded border border-destructive/30">
                               <div className="flex items-start gap-2">
                                 <XCircle size={14} className="text-destructive flex-shrink-0 mt-0.5" weight="fill" />
-                                <span className="text-xs text-destructive font-mono break-all whitespace-pre-wrap">
-                                  {errorString}
-                                </span>
+                                <ScrollArea className="max-h-32 flex-1">
+                                  <span className="text-xs text-destructive font-mono break-all whitespace-pre-wrap pr-3">
+                                    {errorString}
+                                  </span>
+                                </ScrollArea>
                               </div>
                             </div>
                           )

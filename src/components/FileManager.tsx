@@ -155,42 +155,45 @@ export function FileManager({ onLog }: FileManagerProps) {
     { value: 'onboarding365', label: 'Onboarding365' }
   ]
 
-  useEffect(() => {
-    const loadFileTypes = async () => {
-      try {
-        setLoadingFileTypes(true)
+  const loadFileTypes = async () => {
+    try {
+      setLoadingFileTypes(true)
+      
+      const options = await bullhornAPI.getFieldOptions('EntityFileAttachment', 'type')
+      
+      if (options && options.length > 0) {
+        const typeOptions = options.map(opt => ({
+          value: opt.value || opt.label || opt,
+          label: opt.label || opt.value || opt
+        }))
         
-        const options = await bullhornAPI.getFieldOptions('EntityFileAttachment', 'type')
-        
-        if (options && options.length > 0) {
-          const typeOptions = options.map(opt => ({
-            value: opt.value || opt.label || opt,
-            label: opt.label || opt.value || opt
-          }))
-          
-          setFileTypeOptions(typeOptions)
-          console.log('✅ Loaded file type options from API:', typeOptions)
-          onLog('Load File Types', 'success', `Loaded ${typeOptions.length} file types from API`, {
-            fileTypes: typeOptions
-          })
-        } else {
-          console.log('⚠️ No file type options returned, using defaults')
-          setFileTypeOptions(defaultFileTypes)
-        }
-      } catch (error) {
-        console.error('❌ Failed to load file type options:', error)
-        console.log('Using default file types')
-        setFileTypeOptions(defaultFileTypes)
-        onLog('Load File Types', 'error', 'Failed to load file types from API, using defaults', {
-          error: error instanceof Error ? error.message : String(error)
+        setFileTypeOptions(typeOptions)
+        console.log('✅ Loaded file type options from API:', typeOptions)
+        onLog('Load File Types', 'success', `Loaded ${typeOptions.length} file types from API`, {
+          fileTypes: typeOptions
         })
-      } finally {
-        setLoadingFileTypes(false)
+        toast.success(`Loaded ${typeOptions.length} document types from current tenant`)
+      } else {
+        console.log('⚠️ No file type options returned, using defaults')
+        setFileTypeOptions(defaultFileTypes)
+        toast.warning('No document types found, using defaults')
       }
+    } catch (error) {
+      console.error('❌ Failed to load file type options:', error)
+      console.log('Using default file types')
+      setFileTypeOptions(defaultFileTypes)
+      onLog('Load File Types', 'error', 'Failed to load file types from API, using defaults', {
+        error: error instanceof Error ? error.message : String(error)
+      })
+      toast.error('Failed to load document types from API')
+    } finally {
+      setLoadingFileTypes(false)
     }
+  }
 
+  useEffect(() => {
     loadFileTypes()
-  }, [onLog])
+  }, [])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -1117,13 +1120,30 @@ export function FileManager({ onLog }: FileManagerProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FolderOpen size={24} className="text-accent" weight="duotone" />
-          File Manager
-        </CardTitle>
-        <CardDescription>
-          Upload files to Bullhorn entities and download existing files
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <FolderOpen size={24} className="text-accent" weight="duotone" />
+              File Manager
+            </CardTitle>
+            <CardDescription>
+              Upload files to Bullhorn entities and download existing files
+            </CardDescription>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              loadFileTypes()
+              toast.info('Refreshing document types...')
+            }}
+            disabled={loadingFileTypes}
+            className="gap-2"
+          >
+            <ArrowClockwise size={16} weight={loadingFileTypes ? 'bold' : 'regular'} className={loadingFileTypes ? 'animate-spin' : ''} />
+            {loadingFileTypes ? 'Refreshing...' : 'Refresh Metadata'}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'upload' | 'download' | 'csv-bulk' | 'bulk-download')} className="space-y-6">

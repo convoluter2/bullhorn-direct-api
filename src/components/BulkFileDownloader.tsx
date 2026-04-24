@@ -136,27 +136,43 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
   ]
 
   const [fileTypeOptions, setFileTypeOptions] = useState<Array<{ value: string; label: string }>>(defaultFileTypes)
+  const [loadingFileTypes, setLoadingFileTypes] = useState(false)
+
+  const loadFileTypes = async () => {
+    try {
+      setLoadingFileTypes(true)
+      const options = await bullhornAPI.getFieldOptions('EntityFileAttachment', 'type')
+      
+      if (options && options.length > 0) {
+        const typeOptions = options.map(opt => ({
+          value: opt.value || opt.label || opt,
+          label: opt.label || opt.value || opt
+        }))
+        
+        setFileTypeOptions(typeOptions)
+        console.log('✅ Loaded file type options from API:', typeOptions)
+        onLog('Load File Types', 'success', `Loaded ${typeOptions.length} file types from API`, {
+          fileTypes: typeOptions
+        })
+        toast.success(`Loaded ${typeOptions.length} document types from current tenant`)
+      } else {
+        console.log('⚠️ No file type options returned, using defaults')
+        setFileTypeOptions(defaultFileTypes)
+        toast.warning('No document types found, using defaults')
+      }
+    } catch (error) {
+      console.error('❌ Failed to load file type options:', error)
+      setFileTypeOptions(defaultFileTypes)
+      onLog('Load File Types', 'error', 'Failed to load file types from API, using defaults', {
+        error: error instanceof Error ? error.message : String(error)
+      })
+      toast.error('Failed to load document types from API')
+    } finally {
+      setLoadingFileTypes(false)
+    }
+  }
 
   useEffect(() => {
-    const loadFileTypes = async () => {
-      try {
-        const options = await bullhornAPI.getFieldOptions('EntityFileAttachment', 'type')
-        
-        if (options && options.length > 0) {
-          const typeOptions = options.map(opt => ({
-            value: opt.value || opt.label || opt,
-            label: opt.label || opt.value || opt
-          }))
-          
-          setFileTypeOptions(typeOptions)
-          console.log('✅ Loaded file type options from API:', typeOptions)
-        }
-      } catch (error) {
-        console.error('❌ Failed to load file type options:', error)
-        setFileTypeOptions(defaultFileTypes)
-      }
-    }
-
     loadFileTypes()
   }, [])
 
@@ -782,13 +798,30 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileZip size={24} className="text-accent" weight="duotone" />
-          Bulk File Download
-        </CardTitle>
-        <CardDescription>
-          Download files for multiple entities at once. Each entity's files will be zipped separately and named: EntityID-EntityType-EntityName.zip
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <FileZip size={24} className="text-accent" weight="duotone" />
+              Bulk File Download
+            </CardTitle>
+            <CardDescription>
+              Download files for multiple entities at once. Each entity's files will be zipped separately and named: EntityID-EntityType-EntityName.zip
+            </CardDescription>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              loadFileTypes()
+              toast.info('Refreshing document types...')
+            }}
+            disabled={loadingFileTypes || isDownloading}
+            className="gap-2"
+          >
+            <ArrowClockwise size={16} weight={loadingFileTypes ? 'bold' : 'regular'} className={loadingFileTypes ? 'animate-spin' : ''} />
+            {loadingFileTypes ? 'Refreshing...' : 'Refresh Metadata'}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <Alert>
