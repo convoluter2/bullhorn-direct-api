@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { Separator } from '@/components/ui/separator'
+import { Switch } from '@/components/ui/switch'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -17,29 +17,29 @@ import { Database, Warning, CheckCircle, X, Upload, ArrowClockwise, Eye, FileArr
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import Papa from 'papaparse'
 
-interface MassUpdateProps {
-  onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
-}
-
-interface EntityOption {
-  value: string
-  label: string
-}
-
 interface FieldInfo {
-  name: string
   label: string
-  dataType: string
-  maxLength?: number
-  required?: boolean
+ 
+
+interface PreviewRecord 
+  currentValues
+  status: 'pend
 }
+
+  success: boolean
+}
+const COMMON_EN
+  { value: 'Client
+  { value: 'JobOrder
+  required?: boolean
+ 
 
 interface PreviewRecord {
-  id: number
+export funct
   currentValues: Record<string, any>
   newValues: Record<string, any>
   status: 'pending' | 'success' | 'error'
-  error?: string
+  const [parsedI
 }
 
 interface UpdateResult {
@@ -48,138 +48,138 @@ interface UpdateResult {
   error?: string
 }
 
-const COMMON_ENTITIES: EntityOption[] = [
-  { value: 'Candidate', label: 'Candidate' },
-  { value: 'ClientContact', label: 'Client Contact' },
-  { value: 'ClientCorporation', label: 'Client Corporation' },
-  { value: 'JobOrder', label: 'Job Order' },
-  { value: 'Placement', label: 'Placement' },
-  { value: 'Lead', label: 'Lead' },
-  { value: 'Opportunity', label: 'Opportunity' },
-  { value: 'Note', label: 'Note' },
-  { value: 'Task', label: 'Task' },
-  { value: 'Appointment', label: 'Appointment' },
-]
 
-export function MassUpdate({ onLog }: MassUpdateProps) {
-  const [selectedEntity, setSelectedEntity] = useState('')
-  const [availableFields, setAvailableFields] = useState<FieldInfo[]>([])
+    setAvailableFields([])
+    try {
+      
+        const fieldList = Object.entries(res
+            return field.dataType === 'String
+                   field.dataType =
+                   field.dataType === 'Boolean' |
+          })
+            name,
+            dataType: field.dataType,
+ 
+
+        setAvailableFields(fieldList)
+        
+          entity: selectedEntity,
   const [updateFields, setUpdateFields] = useState<Array<{ field: string; value: string }>>([{ field: '', value: '' }])
-  const [idsInput, setIdsInput] = useState('')
-  const [csvFile, setCsvFile] = useState<File | null>(null)
-  const [parsedIds, setParsedIds] = useState<number[]>([])
-  const [isLoadingFields, setIsLoadingFields] = useState(false)
+      }
+      const errorMessage = error instanceof Error ? error.m
+      onLog('Load Fields', 'error', 'Failed to load entity
+      setIsLoadingFields(false)
   const [isLoadingPreview, setIsLoadingPreview] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [progress, setProgress] = useState(0)
+
+    const file = event.target.files?.[0]
   const [previewRecords, setPreviewRecords] = useState<PreviewRecord[]>([])
-  const [results, setResults] = useState<UpdateResult[]>([])
+    setCsvFile(file)
   const [showPreview, setShowPreview] = useState(false)
   const [useStandardUpdate, setUseStandardUpdate] = useState(false)
 
-  const loadFields = async () => {
-    if (!selectedEntity) return
+        const idColumn = results.m
+        )
 
-    setIsLoadingFields(true)
-    setAvailableFields([])
+          setCsvFile(null)
+        }
     
-    try {
-      const response = await bullhornAPI.getEntityMetadata(selectedEntity)
-      
-      if (response && response.fields) {
-        const fieldList = Object.entries(response.fields)
-          .filter(([_, field]: [string, any]) => {
-            return field.dataType === 'String' || 
-                   field.dataType === 'Integer' || 
-                   field.dataType === 'Double' ||
+         
+          })
+
+        toast.success(`Loaded ${ids.leng
+      error: (error: any) => {
+      }
+  }
+  const handleIdsInputChange = (value: string) => {
+    setCsvFile(null)
                    field.dataType === 'BigDecimal' ||
                    field.dataType === 'Boolean' ||
                    field.dataType === 'Timestamp'
           })
-          .map(([name, field]: [string, any]) => ({
+    } else {
             name,
-            label: field.label || name,
+
             dataType: field.dataType,
-            maxLength: field.maxLength,
+    setParsedIds([])
             required: field.required
           }))
-          .sort((a, b) => a.label.localeCompare(b.label))
 
-        setAvailableFields(fieldList)
-        toast.success(`Loaded ${fieldList.length} updatable fields`)
-        
-        onLog('Load Fields', 'success', `Loaded fields for ${selectedEntity}`, {
+
+
+    setUpdateFields(updateFields.filter((_, i) => i !== index))
+
+    const updated = [...updateFields]
           entity: selectedEntity,
-          fieldCount: fieldList.length,
+
         })
-      } else {
-        throw new Error('Invalid response format')
-      }
+      return
+
+    if 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      toast.error(`Failed to load fields: ${errorMessage}`)
-      onLog('Load Fields', 'error', 'Failed to load entity fields', { error: errorMessage })
-    } finally {
-      setIsLoadingFields(false)
+
+      toast.error('Please provide record IDs')
     }
-  }
+    } finally {
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+     
 
-    setCsvFile(file)
+
+        const batchPromises = batch.map(async (id) => {
+            const currentData = await bu
+            const cur
+
+              curren
 
     Papa.parse(file, {
-      header: true,
+              statu
       skipEmptyLines: true,
-      complete: (results: any) => {
+              id,
         const idColumn = results.meta.fields?.find(
-          (field: string) => field.toLowerCase() === 'id'
+              error: error instanceof Error ? error.messa
         )
-        
-        if (!idColumn) {
-          toast.error('CSV must contain an "id" column')
-          setCsvFile(null)
-          return
+
+        preview.push(...
+      }
+      setShowPreview(true)
+      
         }
 
-        const ids = results.data
-          .map((row: any) => {
+    } catch (error) {
+      toast.error(`Failed to l
             const id = row[idColumn]
-            return id ? parseInt(id, 10) : null
-          })
-          .filter((id: number | null) => id !== null && !isNaN(id))
-
-        setParsedIds([...new Set(ids)])
-        toast.success(`Loaded ${ids.length} IDs from CSV`)
-      },
-      error: (error: any) => {
-        toast.error(`Failed to parse CSV: ${error.message}`)
-      }
-    })
-  }
-
-  const handleIdsInputChange = (value: string) => {
-    setIdsInput(value)
-    setCsvFile(null)
-    
-    if (value.trim()) {
-      const ids = value
-        .split(/[\n,;]/)
-        .map(id => parseInt(id.trim(), 10))
-        .filter(id => !isNaN(id))
-      
-      setParsedIds([...new Set(ids)])
-    } else {
-      setParsedIds([])
     }
+          })
+    if (!selectedEntity) {
+
+
+    if (validFields.length === 0) {
+      re
+
+      toast.error('Please provide record IDs')
+    }
+    co
   }
+
+    )) {
+    }
+    setIsProcessing(
+    
+    try {
+      validFields.forEa
+        if (fieldInfo?.d
+        } else if (fieldInfo?.dataType === 
+        } else if (fieldInfo?.dat
+      
+        }
+
+
+     
+   
 
   const clearIds = () => {
-    setIdsInput('')
+
     setCsvFile(null)
-    setParsedIds([])
+          const batc
     setPreviewRecords([])
     setResults([])
     setShowPreview(false)
@@ -200,10 +200,10 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
   }
 
   const loadPreview = async () => {
-    if (!selectedEntity) {
-      toast.error('Please select an entity')
-      return
-    }
+      } else {
+          const fieldsToFetch = validFields.
+          fo
+     
 
     const validFields = updateFields.filter(uf => uf.field)
     if (validFields.length === 0) {
@@ -212,7 +212,7 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
     }
 
     if (parsedIds.length === 0) {
-      toast.error('Please provide record IDs')
+            ids: parsedIds,
       return
     }
 
@@ -274,7 +274,7 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
       onLog('Preview Load', 'error', 'Failed to load preview', { error: errorMessage })
     } finally {
       setIsLoadingPreview(false)
-    }
+     
   }
 
   const executeMassUpdate = async () => {
@@ -296,16 +296,16 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
 
     const fieldsList = validFields.map(uf => `${uf.field}: ${uf.value || '(empty)'}`).join(', ')
     
-    if (!confirm(
-      `Are you sure you want to update ${parsedIds.length} ${selectedEntity} records?\n\n` +
+        fields: v
+      })
       `Fields to update:\n${fieldsList}\n\n` +
       `${useStandardUpdate ? 'Using Standard Update (one by one)' : 'Using Mass Update endpoint'}`
-    )) {
-      return
-    }
+  const 
 
-    setIsProcessing(true)
-    setProgress(0)
+    <
+
+            <Database siz
+          </CardTi
     setResults([])
 
     try {
@@ -325,15 +325,15 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
 
       const rollbackData: Array<{ id: number; originalData: Record<string, any> }> = []
 
-      onLog('Mass Update', 'success', `Starting mass update of ${selectedEntity}`, {
+                    setShowPreview(false)
         entity: selectedEntity,
         fields: validFields.map(f => f.field),
-        idCount: parsedIds.length,
+                  </SelectTrigger>
         updatePayload,
         method: useStandardUpdate ? 'standard' : 'massupdate'
       })
 
-      const updateResults: UpdateResult[] = []
+                </Select>
 
       if (useStandardUpdate) {
         const batchSize = 10
@@ -381,10 +381,10 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
               } catch (error) {
                 return { id, originalData: {} }
               }
-            })
+              
             const batchRollback = await Promise.all(batchRollbackPromises)
             rollbackData.push(...batchRollback)
-          }
+           
 
           const massUpdatePayload = {
             ids: parsedIds,
@@ -449,107 +449,107 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
             setResults([...updateResults])
           }
         }
-      }
 
-      const successCount = updateResults.filter(r => r.success).length
-      const errorCount = updateResults.filter(r => !r.success).length
 
-      if (successCount > 0) {
-        toast.success(`Successfully updated ${successCount} records`)
-      }
-      if (errorCount > 0) {
-        toast.error(`Failed to update ${errorCount} records`)
-      }
+                        {parsedIds.length} IDs ready
+                      <Button variant="ghost" size="sm" onClick={clea
 
-      onLog('Mass Update', successCount > 0 ? 'success' : 'error', 
-        `Mass update completed: ${successCount} success, ${errorCount} failed`, {
-          entity: selectedEntity,
+                  )}
+
+
+                  <div clas
+                      id="use-standard"
+       
+
+                      Use Standard Update (one by one)
+                  </div>
+                    <Button
           fields: validFields.map(f => ({ field: f.field, value: f.value })),
-          successCount,
-          errorCount,
+                       
+                     
           rollbackData: rollbackData.length > 0 ? rollbackData : undefined,
           failedOperations: updateResults.filter(r => !r.success).map(r => ({ id: r.id, error: r.error }))
-        })
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      toast.error(`Mass update failed: ${errorMessage}`)
-      onLog('Mass Update', 'error', 'Mass update operation failed', {
-        entity: selectedEntity,
+          
+                    <
+                      onClick={executeMassUpdate}
+                        !selectedEntity ||
+                        parsedIds.length === 0 ||
+                      }
         fields: validFields.map(f => f.field),
-        error: errorMessage,
-      })
-    } finally {
-      setIsProcessing(false)
-    }
-  }
+                      {isPro
+        
+               
+              </>
+     
+   
 
-  const successCount = results.filter(r => r.success).length
-  const errorCount = results.filter(r => !r.success).length
-
-  return (
-    <div>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Database size={24} weight="duotone" />
-            Mass Update
-          </CardTitle>
-          <CardDescription>
-            Bulk update multiple fields across multiple records using the Bullhorn Mass Update API
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <Alert>
-            <Warning className="h-4 w-4" />
-            <AlertDescription>
-              This tool updates records directly via the Bullhorn API with rollback data captured. Always preview and test with a small batch first.
-            </AlertDescription>
-          </Alert>
-
-          <div className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="entity-select">Entity Type</Label>
-                <Select
-                  value={selectedEntity}
-                  onValueChange={(value) => {
-                    setSelectedEntity(value)
-                    setUpdateFields([{ field: '', value: '' }])
-                    setAvailableFields([])
-                    setPreviewRecords([])
-                    setShowPreview(false)
-                  }}
-                  disabled={isProcessing}
-                >
-                  <SelectTrigger id="entity-select">
-                    <SelectValue placeholder="Select entity type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COMMON_ENTITIES.map((entity) => (
-                      <SelectItem key={entity.value} value={entity.value}>
-                        {entity.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {selectedEntity && (
-                <div className="flex items-end">
-                  <Button
-                    onClick={loadFields}
-                    disabled={isLoadingFields || isProcessing}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    {isLoadingFields ? 'Loading...' : 'Load Fields'}
-                  </Button>
-                </div>
-              )}
+                Processing mass update: {progress}% complete
             </div>
 
-            {availableFields.length > 0 && (
-              <>
+          
+         
+            
+                    
+                </div>
+            <Database size={24} weight="duotone" />
+                      <
+                      
+                           
+            Bulk update multiple fields across multiple records using the Bullhorn Mass Update API
+                    </TableH
+                     
+                          <TableCell classN
+                 
+                                <div classN
+                              
+              This tool updates records directly via the Bullhorn API with rollback data captured. Always preview and test with a small batch first.
+                              <
+                  
+
+                  </Table>
+              </div>
+          )}
+          {results.length > 0 && (
+              <Separato
+                <div className="flex ite
+                  <div className="flex items-
+                      <CheckCircle size={14}
+                    setUpdateFields([{ field: '', value: '' }])
+                      <Badge variant="dest
+                    setPreviewRecords([])
+                    setShowPreview(false)
+                    
+                </div>
+                 
+                      <div
+                        className={`flex items-center justify-betwee
+                            ? 'bor
+                        }`}
+                        <div className="flex items-cen
+                            <CheckCircle className="text-accent" size={16}
+                            <Warning c
+                          <span cla
+                       
+                            {resul
+                        )
+                    
+
+            </div>
+        </CardContent>
+    </div>
+}
+
+
+
+
+
+
+
+
+
+
+
+
                 <Separator />
                 
                 <div className="space-y-4">
@@ -558,7 +558,7 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
                     <Button onClick={addFieldUpdate} size="sm" variant="outline" disabled={isProcessing}>
                       Add Field
                     </Button>
-                  </div>
+
 
                   {updateFields.map((uf, index) => (
                     <div key={index} className="grid gap-4 md:grid-cols-2 items-end">
@@ -615,71 +615,71 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
                   ))}
                 </div>
 
-                <Separator />
 
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="csv-upload">Upload CSV (must contain an "id" column)</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id="csv-upload"
-                        type="file"
-                        accept=".csv"
-                        onChange={handleFileUpload}
-                        disabled={isProcessing}
-                      />
-                      {csvFile && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setCsvFile(null)
-                            setParsedIds([])
-                          }}
-                        >
-                          <X size={16} />
-                        </Button>
-                      )}
-                    </div>
-                    {csvFile && (
-                      <p className="text-xs text-muted-foreground">
-                        Loaded: {csvFile.name}
-                      </p>
-                    )}
-                  </div>
 
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <Separator />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-card px-2 text-muted-foreground">Or</span>
-                    </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="ids-input">Paste comma or newline-separated IDs</Label>
-                    <Textarea
-                      id="ids-input"
-                      value={idsInput}
-                      onChange={(e) => handleIdsInputChange(e.target.value)}
-                      placeholder="1234, 5678, 9012&#10;or one per line"
-                      rows={6}
-                      disabled={isProcessing}
-                    />
-                  </div>
 
-                  {parsedIds.length > 0 && (
-                    <div className="flex items-center justify-between p-3 border border-border rounded-lg bg-muted/50">
-                      <span className="text-sm font-medium">
-                        {parsedIds.length} IDs ready
-                      </span>
-                      <Button variant="ghost" size="sm" onClick={clearIds}>
-                        Clear
-                      </Button>
-                    </div>
-                  )}
-                </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
                 <Separator />
 
@@ -727,18 +727,18 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
                     </Button>
                   </div>
                 </div>
-              </>
-            )}
-          </div>
 
-          {isProcessing && (
-            <div className="space-y-2">
-              <Progress value={progress} />
-              <p className="text-xs text-center text-muted-foreground">
-                Processing mass update: {progress}% complete
-              </p>
-            </div>
-          )}
+
+
+
+
+
+
+
+
+
+
+
 
           {showPreview && previewRecords.length > 0 && !isProcessing && results.length === 0 && (
             <div className="space-y-4">
@@ -787,25 +787,25 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
             </div>
           )}
 
-          {results.length > 0 && (
-            <div className="space-y-4">
-              <Separator />
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold">Results</h3>
-                  <div className="flex items-center gap-4">
-                    <Badge variant="default" className="gap-1">
-                      <CheckCircle size={14} />
-                      {successCount} Success
-                    </Badge>
-                    {errorCount > 0 && (
-                      <Badge variant="destructive" className="gap-1">
-                        <Warning size={14} />
-                        {errorCount} Failed
-                      </Badge>
-                    )}
-                  </div>
-                </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                 <ScrollArea className="max-h-96">
                   <div className="space-y-2">
                     {results.map((result) => (
@@ -829,16 +829,16 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
                           <span className="text-xs text-destructive">
                             {result.error}
                           </span>
-                        )}
-                      </div>
+
+
                     ))}
                   </div>
                 </ScrollArea>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
+
+
+
+
+
+
+
+
