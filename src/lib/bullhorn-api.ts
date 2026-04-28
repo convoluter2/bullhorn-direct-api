@@ -2564,6 +2564,109 @@ export class BullhornAPI {
     console.log('✅ File deleted successfully:', result)
     return result
   }
+
+  async massUpdateGetEntities(): Promise<any> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const params = new URLSearchParams({
+      BhRestToken: this.session.BhRestToken
+    })
+
+    console.log('🔍 Fetching mass update entities')
+
+    const response = await this.throttledFetch(
+      `${this.session.restUrl}massUpdate?${params.toString()}`,
+      undefined,
+      0
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error('❌ Mass update entities fetch failed:', error)
+      throw new Error(`Mass update entities fetch failed: ${error}`)
+    }
+
+    const result = await response.json()
+    console.log('✅ Mass update entities retrieved:', result)
+    return result
+  }
+
+  async massUpdateGetFields(entity: string): Promise<any> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const encodedEntity = encodeURIComponent(entity)
+
+    const params = new URLSearchParams({
+      BhRestToken: this.session.BhRestToken
+    })
+
+    console.log(`🔍 Fetching mass update fields for ${entity}`)
+
+    const response = await this.throttledFetch(
+      `${this.session.restUrl}massUpdate/${encodedEntity}?${params.toString()}`,
+      undefined,
+      0
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error(`❌ Mass update fields fetch failed for ${entity}:`, error)
+      throw new Error(`Mass update fields fetch failed: ${error}`)
+    }
+
+    const result = await response.json()
+    console.log(`✅ Mass update fields retrieved for ${entity}:`, result)
+    return result
+  }
+
+  async massUpdate(entity: string, ids: number[], data: any): Promise<any> {
+    if (!this.session) {
+      throw new Error('Not authenticated')
+    }
+
+    const encodedEntity = encodeURIComponent(entity)
+
+    const params = new URLSearchParams({
+      BhRestToken: this.session.BhRestToken
+    })
+
+    console.log(`🚀 Executing mass update for ${entity}:`, {
+      entity,
+      idCount: ids.length,
+      data
+    })
+
+    const payload = {
+      ids,
+      ...data
+    }
+
+    const response = await this.throttledFetch(
+      `${this.session.restUrl}massUpdate/${encodedEntity}?${params.toString()}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      },
+      3
+    )
+
+    if (!response.ok) {
+      const error = await response.text()
+      console.error(`❌ Mass update failed for ${entity}:`, error)
+      throw new Error(`Mass update failed: ${error}`)
+    }
+
+    const result = await response.json()
+    console.log(`✅ Mass update completed for ${entity}:`, result)
+    return result
+  }
 }
 
 export const bullhornAPI = new BullhornAPI()

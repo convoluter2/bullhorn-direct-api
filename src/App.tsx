@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Separator } from '@/components/ui/separator'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen, FileZip, TestTube, ArrowsLeftRight, Info, CreditCard, ArrowsClockwise } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen, FileZip, CreditCard, ArrowsClockwise, Info } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -18,14 +18,11 @@ import { WFNExport } from '@/components/WFNExport'
 import { FileManager } from '@/components/FileManager'
 import { BulkZipUploader } from '@/components/BulkZipUploader'
 import { RateCardBuilder } from '@/components/RateCardBuilder'
+import { MassUpdate } from '@/components/MassUpdate'
 import { ConnectionManager, type SavedConnection, type SecureCredentials } from '@/components/ConnectionManager'
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { EntityDocumentation } from '@/components/documentation/EntityDocumentation'
-import { ToManyFieldTest } from '@/components/ToManyFieldTest'
 import { SessionAwarenessDisplay } from '@/components/SessionAwarenessDisplay'
-import { ConnectionSwitchTest } from '@/components/ConnectionSwitchTest'
-import { FieldInputIntegrationTests } from '@/components/FieldInputIntegrationTests'
-import { TestingSummary } from '@/components/TestingSummary'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { sessionManager } from '@/lib/session-manager'
@@ -941,7 +938,7 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-13 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-10 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -962,6 +959,10 @@ function App() {
                 <CreditCard size={18} />
                 <span className="hidden sm:inline">RateCard</span>
               </TabsTrigger>
+              <TabsTrigger value="massupdate" className="gap-2">
+                <Database size={18} />
+                <span className="hidden sm:inline">Mass Update</span>
+              </TabsTrigger>
               <TabsTrigger value="wfn-export" className="gap-2">
                 <Export size={18} />
                 <span className="hidden sm:inline">WFN Export</span>
@@ -977,18 +978,6 @@ function App() {
               <TabsTrigger value="documentation" className="gap-2">
                 <BookOpen size={18} />
                 <span className="hidden sm:inline">Documentation</span>
-              </TabsTrigger>
-              <TabsTrigger value="field-tests" className="gap-2">
-                <TestTube size={18} />
-                <span className="hidden sm:inline">Field Tests</span>
-              </TabsTrigger>
-              <TabsTrigger value="to-many-test" className="gap-2">
-                <TestTube size={18} />
-                <span className="hidden sm:inline">To-Many Test</span>
-              </TabsTrigger>
-              <TabsTrigger value="switch-test" className="gap-2">
-                <ArrowsLeftRight size={18} />
-                <span className="hidden sm:inline">Switch Test</span>
               </TabsTrigger>
               <TabsTrigger value="logs" className="gap-2">
                 <ClockCounterClockwise size={18} />
@@ -1021,6 +1010,10 @@ function App() {
               <RateCardBuilder onLog={addLog} />
             </TabsContent>
 
+            <TabsContent value="massupdate" className="space-y-6">
+              <MassUpdate onLog={addLog} />
+            </TabsContent>
+
             <TabsContent value="wfn-export" className="space-y-6">
               <WFNExport onLog={addLog} />
             </TabsContent>
@@ -1035,19 +1028,6 @@ function App() {
 
             <TabsContent value="documentation" className="space-y-6">
               <EntityDocumentation session={session} />
-            </TabsContent>
-
-            <TabsContent value="field-tests" className="space-y-6">
-              <TestingSummary />
-              <FieldInputIntegrationTests />
-            </TabsContent>
-
-            <TabsContent value="to-many-test" className="space-y-6">
-              <ToManyFieldTest />
-            </TabsContent>
-
-            <TabsContent value="switch-test" className="space-y-6">
-              <ConnectionSwitchTest />
             </TabsContent>
 
             <TabsContent value="logs" className="space-y-6">
