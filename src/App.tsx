@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Separator } from '@/components/ui/separator'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen, FileZip, CreditCard, ArrowsClockwise, Info } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen, FileZip, CreditCard, ArrowsClockwise, Info, ArrowsCounterClockwise } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -18,6 +18,7 @@ import { WFNExport } from '@/components/WFNExport'
 import { FileManager } from '@/components/FileManager'
 import { BulkZipUploader } from '@/components/BulkZipUploader'
 import { RateCardBuilder } from '@/components/RateCardBuilder'
+import { MassUpdate } from '@/components/MassUpdate'
 import { ConnectionManager, type SavedConnection, type SecureCredentials } from '@/components/ConnectionManager'
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { EntityDocumentation } from '@/components/documentation/EntityDocumentation'
@@ -937,7 +938,7 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-10 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -945,6 +946,10 @@ function App() {
               <TabsTrigger value="csvloader" className="gap-2">
                 <Upload size={18} />
                 <span className="hidden sm:inline">CSV Loader</span>
+              </TabsTrigger>
+              <TabsTrigger value="massupdate" className="gap-2">
+                <ArrowsCounterClockwise size={18} />
+                <span className="hidden sm:inline">Mass Update</span>
               </TabsTrigger>
               <TabsTrigger value="smartstack" className="gap-2">
                 <Stack size={18} />
@@ -991,6 +996,10 @@ function App() {
 
             <TabsContent value="csvloader" className="space-y-6">
               <CSVLoader onLog={addLog} />
+            </TabsContent>
+
+            <TabsContent value="massupdate" className="space-y-6">
+              <MassUpdate onLog={addLog} />
             </TabsContent>
 
             <TabsContent value="smartstack" className="space-y-6">
