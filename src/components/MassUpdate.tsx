@@ -8,10 +8,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
-import { Progress } from '@/components/ui/progress'
-import { toast } from 'sonner'
+import { toast } from 'sonner'mponents/ui/progress'
 import { Database, Warning, CheckCircle, X, Upload, ArrowClockwise, Eye, FileArrowUp } from '@phosphor-icons/react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import Papa from 'papaparse'
@@ -29,12 +27,12 @@ interface UpdateResult {
   error?: string
 }
 
-interface PreviewRecord {
+ terface PreviewRecord {
   id: number
   currentValues: Record<string, any>
   newValues: Record<string, any>
-  status: 'pending' | 'error'
-  error?: string
+interface PreviewRecord {
+export funct
 }
 
 const COMMON_ENTITIES = [
