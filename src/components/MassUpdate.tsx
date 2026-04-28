@@ -1,13 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Switch } from '@/components/ui/switch'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Switch } from '@/components/ui/switch'
+import { Separator } from '@/components/ui/separator'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from 'sonner'
 import { Database, Warning, CheckCircle, X, Upload, ArrowClockwise, Eye, FileArrowUp } from '@phosphor-icons/react'
@@ -16,29 +19,17 @@ import Papa from 'papaparse'
 
 interface FieldInfo {
   label: string
- 
-
-interface PreviewRecord 
-  currentValues
-  status: 'pend
-}
-
-  success: boolean
-}
-const COMMON_EN
-  { value: 'Client
-  { value: 'JobOrder
+  name: string
+  dataType: string
   required?: boolean
- 
-  required?: boolean
- 
+}
 
 interface PreviewRecord {
-export funct
+  id: number
   currentValues: Record<string, any>
   newValues: Record<string, any>
   status: 'pending' | 'success' | 'error'
-  const [parsedI
+  error?: string
 }
 
 interface UpdateResult {
@@ -47,136 +38,155 @@ interface UpdateResult {
   error?: string
 }
 
+const COMMON_ENTITIES = [
+  { value: 'ClientContact', label: 'Client Contact' },
+  { value: 'JobOrder', label: 'Job Order' },
+  { value: 'Candidate', label: 'Candidate' },
+  { value: 'Placement', label: 'Placement' },
+  { value: 'ClientCorporation', label: 'Client Corporation' },
+  { value: 'Lead', label: 'Lead' },
+  { value: 'Opportunity', label: 'Opportunity' },
+  { value: 'JobSubmission', label: 'Job Submission' },
+  { value: 'Appointment', label: 'Appointment' },
+  { value: 'Task', label: 'Task' },
+  { value: 'Note', label: 'Note' }
+]
 
-    setAvailableFields([])
-    try {
-      
-        const fieldList = Object.entries(res
-            return field.dataType === 'String
-                   field.dataType =
-                   field.dataType === 'Boolean' |
-          })
-            name,
-            dataType: field.dataType,
- 
-
-        setAvailableFields(fieldList)
+export function MassUpdate({ onLog }: { onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void }) {
+  const [selectedEntity, setSelectedEntity] = useState('')
+  const [customEntity, setCustomEntity] = useState('')
+  const [availableFields, setAvailableFields] = useState<FieldInfo[]>([])
+  const [isLoadingFields, setIsLoadingFields] = useState(false)
+  const [idsInput, setIdsInput] = useState('')
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [parsedIds, setParsedIds] = useState<number[]>([])
   const [updateFields, setUpdateFields] = useState<Array<{ field: string; value: string }>>([{ field: '', value: '' }])
-      }
-      const errorMessage = error instanceof Error ? error.m
-      onLog('Load Fields', 'error', 'Failed to load entity
-      setIsLoadingFields(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [results, setResults] = useState<UpdateResult[]>([])
   const [isLoadingPreview, setIsLoadingPreview] = useState(false)
-
-    const file = event.target.files?.[0]
   const [previewRecords, setPreviewRecords] = useState<PreviewRecord[]>([])
-    setCsvFile(file)
   const [showPreview, setShowPreview] = useState(false)
   const [useStandardUpdate, setUseStandardUpdate] = useState(false)
 
-        const idColumn = results.m
-        )
-
-          setCsvFile(null)
-        }
+  const loadEntityFields = async (entity: string) => {
+    if (!entity) return
     
-         
-          })
-
-        toast.success(`Loaded ${ids.leng
-      error: (error: any) => {
-      }
-  }
-  const handleIdsInputChange = (value: string) => {
-    setCsvFile(null)
-                   field.dataType === 'BigDecimal' ||
-                   field.dataType === 'Boolean' ||
-                   field.dataType === 'Timestamp'
-          })
-    } else {
-            name,
-
-            dataType: field.dataType,
-    setParsedIds([])
-            required: field.required
-          }))
-
-
-
-    setUpdateFields(updateFields.filter((_, i) => i !== index))
-
-    const updated = [...updateFields]
-          entity: selectedEntity,
-
-        })
-      return
-
-    if 
-    } catch (error) {
-
-      toast.error('Please provide record IDs')
-    }
-    } finally {
-
-     
-
-
-        const batchPromises = batch.map(async (id) => {
-            const currentData = await bu
-            const cur
-
-              curren
-
-    Papa.parse(file, {
-              statu
-      skipEmptyLines: true,
-              id,
-        const idColumn = results.meta.fields?.find(
-              error: error instanceof Error ? error.messa
-        )
-
-        preview.push(...
-      }
-      setShowPreview(true)
-      
-        }
-
-    } catch (error) {
-      toast.error(`Failed to l
-            const id = row[idColumn]
-    }
-          })
-    if (!selectedEntity) {
-
-
-    if (validFields.length === 0) {
-      re
-
-      toast.error('Please provide record IDs')
-    }
-    co
-  }
-
-    )) {
-    }
-    setIsProcessing(
+    setIsLoadingFields(true)
+    setAvailableFields([])
     
     try {
-      validFields.forEa
-        if (fieldInfo?.d
-        } else if (fieldInfo?.dataType === 
-        } else if (fieldInfo?.dat
+      const response = await bullhornAPI.getEntityMeta(entity, '*')
+      const fields = response.fields as Record<string, any>
       
+      const fieldList = Object.entries(fields)
+        .filter(([_, field]) => {
+          return field.dataType === 'String' ||
+                 field.dataType === 'Integer' ||
+                 field.dataType === 'Double' ||
+                 field.dataType === 'BigDecimal' ||
+                 field.dataType === 'Boolean' ||
+                 field.dataType === 'Timestamp'
+        })
+        .map(([name, field]) => ({
+          name,
+          label: field.label || name,
+          dataType: field.dataType,
+          required: field.required
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label))
+
+      setAvailableFields(fieldList)
+      toast.success(`Loaded ${fieldList.length} updateable fields`)
+      onLog('Load Fields', 'success', `Loaded fields for entity: ${entity}`, {
+        entity,
+        fieldCount: fieldList.length
+      })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      toast.error(`Failed to load fields: ${errorMessage}`)
+      onLog('Load Fields', 'error', `Failed to load entity fields for ${entity}`, { error: errorMessage })
+    } finally {
+      setIsLoadingFields(false)
+    }
+  }
+
+  const handleEntityChange = (value: string) => {
+    setSelectedEntity(value)
+    setCustomEntity('')
+    loadEntityFields(value)
+  }
+
+  const handleCustomEntityChange = (value: string) => {
+    setCustomEntity(value)
+    setSelectedEntity('')
+  }
+
+  const handleLoadCustomEntity = () => {
+    if (customEntity.trim()) {
+      loadEntityFields(customEntity.trim())
+      setSelectedEntity(customEntity.trim())
+    }
+  }
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      setCsvFile(file)
+      setIdsInput('')
+      parseCsvFile(file)
+    }
+  }
+
+  const parseCsvFile = (file: File) => {
+    Papa.parse(file, {
+      complete: (results: any) => {
+        const idColumn = results.meta.fields?.find(
+          (f: string) => f.toLowerCase() === 'id' || f.toLowerCase() === 'recordid'
+        )
+
+        if (!idColumn) {
+          toast.error('CSV must have an "id" or "recordId" column')
+          setCsvFile(null)
+          return
         }
 
+        const ids = results.data
+          .filter((row: any) => row[idColumn])
+          .map((row: any) => parseInt(row[idColumn], 10))
+          .filter((id: number) => !isNaN(id))
 
-     
-   
+        setParsedIds(ids)
+        toast.success(`Loaded ${ids.length} IDs from CSV`)
+      },
+      header: true,
+      skipEmptyLines: true,
+      error: (error: any) => {
+        toast.error(`Failed to parse CSV: ${error.message}`)
+        setCsvFile(null)
+      }
+    })
+  }
+
+  const handleIdsInputChange = (value: string) => {
+    setIdsInput(value)
+    setCsvFile(null)
+    
+    if (value.trim()) {
+      const ids = value
+        .split(/[\s,;]+/)
+        .map(id => parseInt(id.trim(), 10))
+        .filter(id => !isNaN(id))
+      setParsedIds(ids)
+    } else {
+      setParsedIds([])
+    }
+  }
 
   const clearIds = () => {
-
+    setIdsInput('')
     setCsvFile(null)
-          const batc
+    setParsedIds([])
     setPreviewRecords([])
     setResults([])
     setShowPreview(false)
@@ -197,10 +207,10 @@ interface UpdateResult {
   }
 
   const loadPreview = async () => {
-      } else {
-          const fieldsToFetch = validFields.
-          fo
-     
+    if (!selectedEntity) {
+      toast.error('Please select an entity')
+      return
+    }
 
     const validFields = updateFields.filter(uf => uf.field)
     if (validFields.length === 0) {
@@ -209,7 +219,7 @@ interface UpdateResult {
     }
 
     if (parsedIds.length === 0) {
-            ids: parsedIds,
+      toast.error('Please provide record IDs')
       return
     }
 
@@ -271,7 +281,7 @@ interface UpdateResult {
       onLog('Preview Load', 'error', 'Failed to load preview', { error: errorMessage })
     } finally {
       setIsLoadingPreview(false)
-     
+    }
   }
 
   const executeMassUpdate = async () => {
@@ -293,17 +303,19 @@ interface UpdateResult {
 
     const fieldsList = validFields.map(uf => `${uf.field}: ${uf.value || '(empty)'}`).join(', ')
     
-        fields: v
-      })
+    if (!confirm(
+      `Update ${parsedIds.length} ${selectedEntity} record(s)?\n\n` +
       `Fields to update:\n${fieldsList}\n\n` +
       `${useStandardUpdate ? 'Using Standard Update (one by one)' : 'Using Mass Update endpoint'}`
-  const 
+    )) {
+      return
+    }
 
-    <
-
-            <Database siz
-          </CardTi
+    setIsProcessing(true)
+    setProgress(0)
     setResults([])
+
+    const updateResults: UpdateResult[] = []
 
     try {
       const updatePayload: Record<string, any> = {}
@@ -322,15 +334,13 @@ interface UpdateResult {
 
       const rollbackData: Array<{ id: number; originalData: Record<string, any> }> = []
 
-                    setShowPreview(false)
+      onLog('Mass Update', 'success', `Starting mass update for ${parsedIds.length} ${selectedEntity} records`, {
         entity: selectedEntity,
         fields: validFields.map(f => f.field),
-                  </SelectTrigger>
+        recordCount: parsedIds.length,
         updatePayload,
         method: useStandardUpdate ? 'standard' : 'massupdate'
       })
-
-                </Select>
 
       if (useStandardUpdate) {
         const batchSize = 10
@@ -378,10 +388,11 @@ interface UpdateResult {
               } catch (error) {
                 return { id, originalData: {} }
               }
-              
+            })
+            
             const batchRollback = await Promise.all(batchRollbackPromises)
             rollbackData.push(...batchRollback)
-           
+          }
 
           const massUpdatePayload = {
             ids: parsedIds,
@@ -446,396 +457,395 @@ interface UpdateResult {
             setResults([...updateResults])
           }
         }
+      }
 
+      const successCount = updateResults.filter(r => r.success).length
+      const failCount = updateResults.filter(r => !r.success).length
 
-                        {parsedIds.length} IDs ready
-                      <Button variant="ghost" size="sm" onClick={clea
+      if (failCount === 0) {
+        toast.success(`Successfully updated all ${successCount} records`)
+      } else {
+        toast.warning(`Updated ${successCount} records, ${failCount} failed`)
+      }
 
-                  )}
+      onLog('Mass Update', successCount === updateResults.length ? 'success' : 'error', 
+        `Mass update completed: ${successCount} success, ${failCount} failed`, {
+        entity: selectedEntity,
+        successCount,
+        failCount,
+        fields: validFields.map(f => ({ field: f.field, value: f.value })),
+        recordCount: parsedIds.length,
+        rollbackData: rollbackData.length > 0 ? rollbackData : undefined,
+        failedOperations: updateResults.filter(r => !r.success).map(r => ({ id: r.id, error: r.error }))
+      })
 
-
-                  <div clas
-                      id="use-standard"
-       
-
-                      Use Standard Update (one by one)
-                  </div>
-                    <Button
-          fields: validFields.map(f => ({ field: f.field, value: f.value })),
-                       
-                     
-          rollbackData: rollbackData.length > 0 ? rollbackData : undefined,
-          failedOperations: updateResults.filter(r => !r.success).map(r => ({ id: r.id, error: r.error }))
-          
-                    <
-                      onClick={executeMassUpdate}
-                        !selectedEntity ||
-                        parsedIds.length === 0 ||
-                      }
+      setShowPreview(false)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      toast.error(`Mass update failed: ${errorMessage}`)
+      onLog('Mass Update', 'error', 'Mass update failed', { 
+        error: errorMessage,
+        entity: selectedEntity,
         fields: validFields.map(f => f.field),
-                      {isPro
-        
-               
-              </>
-     
-   
+        recordCount: parsedIds.length
+      })
+    } finally {
+      setIsProcessing(false)
+    }
+  }
 
-                Processing mass update: {progress}% complete
-            </div>
-
-          
-         
-            
-                    
-                </div>
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
             <Database size={24} weight="duotone" />
-                      <
-                      
-                           
-            Bulk update multiple fields across multiple records using the Bullhorn Mass Update API
-                    </TableH
-                     
-                          <TableCell classN
-                 
-                                <div classN
-                              
-              This tool updates records directly via the Bullhorn API with rollback data captured. Always preview and test with a small batch first.
-                              <
-                  
-
-                  </Table>
-              </div>
-          )}
-          {results.length > 0 && (
-              <Separato
-                <div className="flex ite
-                  <div className="flex items-
-                      <CheckCircle size={14}
-                    setUpdateFields([{ field: '', value: '' }])
-                      <Badge variant="dest
-                    setPreviewRecords([])
-                    setShowPreview(false)
-                    
-                </div>
-                 
-                      <div
-                        className={`flex items-center justify-betwee
-                            ? 'bor
-                        }`}
-                        <div className="flex items-cen
-                            <CheckCircle className="text-accent" size={16}
-                            <Warning c
-                          <span cla
-                       
-                            {resul
-                        )
-                    
-
+            <div>
+              <CardTitle>Mass Update</CardTitle>
+              <CardDescription>
+                Bulk update multiple fields across multiple records using the Bullhorn Mass Update API
+              </CardDescription>
             </div>
-        </CardContent>
-    </div>
-}
+          </div>
+          <Alert>
+            <Warning size={16} />
+            <AlertDescription>
+              This tool updates records directly via the Bullhorn API with rollback data captured. Always preview and test with a small batch first.
+            </AlertDescription>
+          </Alert>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="entity-select">Entity Type</Label>
+              <Select value={selectedEntity} onValueChange={handleEntityChange} disabled={isProcessing}>
+                <SelectTrigger id="entity-select">
+                  <SelectValue placeholder="Select entity type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {COMMON_ENTITIES.map((entity) => (
+                    <SelectItem key={entity.value} value={entity.value}>
+                      {entity.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="custom-entity">Or Enter Custom Entity</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="custom-entity"
+                  value={customEntity}
+                  onChange={(e) => handleCustomEntityChange(e.target.value)}
+                  placeholder="e.g., CorporateUser"
+                  disabled={isProcessing}
+                />
+                <Button
+                  onClick={handleLoadCustomEntity}
+                  disabled={!customEntity.trim() || isProcessing}
+                  variant="secondary"
+                >
+                  <ArrowClockwise size={18} />
+                  Load
+                </Button>
+              </div>
+            </div>
+          </div>
 
+          {isLoadingFields && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <ArrowClockwise size={16} className="animate-spin" />
+              Loading available fields...
+            </div>
+          )}
 
+          {selectedEntity && availableFields.length > 0 && (
+            <>
+              <Separator />
+              
+              <div className="space-y-4">
+                <Label>Record IDs to Update</Label>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="ids-input">Paste IDs (comma or newline separated)</Label>
+                    <Textarea
+                      id="ids-input"
+                      value={idsInput}
+                      onChange={(e) => handleIdsInputChange(e.target.value)}
+                      placeholder="123456, 789012, 345678"
+                      rows={5}
+                      disabled={isProcessing || !!csvFile}
+                    />
+                  </div>
 
+                  <div className="space-y-2">
+                    <Label htmlFor="csv-upload">Or Upload CSV with ID Column</Label>
+                    <div className="space-y-2">
+                      <Input
+                        id="csv-upload"
+                        type="file"
+                        accept=".csv"
+                        onChange={handleFileChange}
+                        disabled={isProcessing || !!idsInput}
+                      />
+                      {csvFile && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <FileArrowUp size={16} />
+                          {csvFile.name}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
-
-
-
-
-
-
-
-                <Separator />
-                
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label>Fields to Update</Label>
-                    <Button onClick={addFieldUpdate} size="sm" variant="outline" disabled={isProcessing}>
-                      Add Field
+                {parsedIds.length > 0 && (
+                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <Badge variant="secondary" className="text-sm">
+                      {parsedIds.length} IDs ready
+                    </Badge>
+                    <Button variant="ghost" size="sm" onClick={clearIds} disabled={isProcessing}>
+                      <X size={16} />
+                      Clear
                     </Button>
+                  </div>
+                )}
+              </div>
 
+              <Separator />
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label>Fields to Update</Label>
+                  <Button onClick={addFieldUpdate} size="sm" variant="outline" disabled={isProcessing}>
+                    Add Field
+                  </Button>
+                </div>
 
-                  {updateFields.map((uf, index) => (
-                    <div key={index} className="grid gap-4 md:grid-cols-2 items-end">
-                      <div className="space-y-2">
-                        <Label htmlFor={`field-select-${index}`}>Field {index + 1}</Label>
-                        <Select
-                          value={uf.field}
-                          onValueChange={(value) => updateFieldAtIndex(index, value, uf.value)}
-                          disabled={isProcessing}
-                        >
-                          <SelectTrigger id={`field-select-${index}`}>
-                            <SelectValue placeholder="Select field to update" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableFields.map((field) => (
-                              <SelectItem key={field.name} value={field.name}>
-                                {field.label} ({field.dataType})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                {updateFields.map((uf, index) => (
+                  <div key={index} className="grid gap-4 md:grid-cols-2 items-end">
+                    <div className="space-y-2">
+                      <Label htmlFor={`field-select-${index}`}>Field {index + 1}</Label>
+                      <Select
+                        value={uf.field}
+                        onValueChange={(value) => updateFieldAtIndex(index, value, uf.value)}
+                        disabled={isProcessing}
+                      >
+                        <SelectTrigger id={`field-select-${index}`}>
+                          <SelectValue placeholder="Select field to update" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableFields.map((field) => (
+                            <SelectItem key={field.name} value={field.name}>
+                              {field.label} ({field.dataType})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor={`field-value-${index}`}>New Value</Label>
+                        {uf.field && (
+                          <span className="text-xs text-muted-foreground">
+                            {availableFields.find(f => f.name === uf.field)?.dataType}
+                          </span>
+                        )}
                       </div>
+                      <div className="flex gap-2">
+                        <Input
+                          id={`field-value-${index}`}
+                          value={uf.value}
+                          onChange={(e) => updateFieldAtIndex(index, uf.field, e.target.value)}
+                          disabled={isProcessing}
+                          placeholder="Enter new value (leave empty for null)"
+                        />
+                        {updateFields.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeFieldUpdate(index)}
+                            disabled={isProcessing}
+                          >
+                            <X size={16} />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor={`field-value-${index}`}>New Value</Label>
-                          {uf.field && (
-                            <span className="text-xs text-muted-foreground">
-                              {availableFields.find(f => f.name === uf.field)?.dataType}
+              <Separator />
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="use-standard"
+                    checked={useStandardUpdate}
+                    onCheckedChange={setUseStandardUpdate}
+                    disabled={isProcessing}
+                  />
+                  <Label htmlFor="use-standard" className="cursor-pointer">
+                    Use Standard Update (one by one)
+                  </Label>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={loadPreview}
+                    disabled={
+                      !selectedEntity ||
+                      updateFields.filter(uf => uf.field).length === 0 ||
+                      parsedIds.length === 0 ||
+                      isLoadingPreview ||
+                      isProcessing
+                    }
+                    variant="secondary"
+                  >
+                    <Eye size={18} />
+                    {isLoadingPreview ? 'Loading...' : 'Preview Changes'}
+                  </Button>
+                  <Button
+                    onClick={executeMassUpdate}
+                    disabled={
+                      !selectedEntity ||
+                      updateFields.filter(uf => uf.field).length === 0 ||
+                      parsedIds.length === 0 ||
+                      isProcessing
+                    }
+                    size="lg"
+                  >
+                    <Upload size={18} />
+                    {isProcessing
+                      ? 'Processing...'
+                      : `Update ${parsedIds.length} Record${parsedIds.length !== 1 ? 's' : ''}`}
+                  </Button>
+                </div>
+              </div>
+
+              {isProcessing && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Processing mass update...</span>
+                    <span className="font-medium">{progress}%</span>
+                  </div>
+                  <Progress value={progress} />
+                </div>
+              )}
+
+              {showPreview && previewRecords.length > 0 && !isProcessing && results.length === 0 && (
+                <div className="space-y-4">
+                  <Separator />
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold">Preview Changes</h3>
+                      <Badge variant="secondary">
+                        {previewRecords.length} records
+                      </Badge>
+                    </div>
+                    <ScrollArea className="h-96 border rounded-lg">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>ID</TableHead>
+                            {updateFields.filter(uf => uf.field).map((uf, i) => (
+                              <TableHead key={i}>
+                                {availableFields.find(f => f.name === uf.field)?.label || uf.field}
+                              </TableHead>
+                            ))}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {previewRecords.map((record) => (
+                            <TableRow key={record.id}>
+                              <TableCell className="font-mono">{record.id}</TableCell>
+                              {updateFields.filter(uf => uf.field).map((uf, i) => (
+                                <TableCell key={i}>
+                                  <div className="space-y-1">
+                                    <div className="text-xs text-muted-foreground line-through">
+                                      {String(record.currentValues[uf.field] ?? '-')}
+                                    </div>
+                                    <div className="text-sm font-medium text-accent">
+                                      {String(record.newValues[uf.field] ?? '(null)')}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                              ))}
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </ScrollArea>
+                  </div>
+                </div>
+              )}
+
+              {results.length > 0 && (
+                <div className="space-y-4">
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle size={14} className="text-accent" />
+                        <span className="text-sm">{results.filter(r => r.success).length} success</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Warning size={14} className="text-destructive" />
+                        <span className="text-sm">{results.filter(r => !r.success).length} failed</span>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        setResults([])
+                        setParsedIds([])
+                        setIdsInput('')
+                        setCsvFile(null)
+                        setUpdateFields([{ field: '', value: '' }])
+                        setPreviewRecords([])
+                        setShowPreview(false)
+                      }}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                  <ScrollArea className="max-h-96">
+                    <div className="space-y-2">
+                      {results.map((result) => (
+                        <div
+                          key={result.id}
+                          className={`flex items-center justify-between p-2 rounded border ${
+                            result.success
+                              ? 'border-accent/20 bg-accent/5'
+                              : 'border-destructive/20 bg-destructive/5'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            {result.success ? (
+                              <CheckCircle className="text-accent" size={16} />
+                            ) : (
+                              <Warning className="text-destructive" size={16} />
+                            )}
+                            <span className="text-sm font-mono">ID: {result.id}</span>
+                          </div>
+                          {result.error && (
+                            <span className="text-xs text-destructive">
+                              {result.error}
                             </span>
                           )}
                         </div>
-                        <div className="flex gap-2">
-                          <Input
-                            id={`field-value-${index}`}
-                            value={uf.value}
-                            onChange={(e) => updateFieldAtIndex(index, uf.field, e.target.value)}
-                            disabled={isProcessing}
-                            placeholder="Enter new value (leave empty for null)"
-                          />
-                          {updateFields.length > 1 && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeFieldUpdate(index)}
-                              disabled={isProcessing}
-                            >
-                              <X size={16} />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                <Separator />
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="use-standard"
-                      checked={useStandardUpdate}
-                      onCheckedChange={setUseStandardUpdate}
-                      disabled={isProcessing}
-                    />
-                    <Label htmlFor="use-standard" className="cursor-pointer">
-                      Use Standard Update (one by one)
-                    </Label>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={loadPreview}
-                      disabled={
-                        !selectedEntity ||
-                        updateFields.filter(uf => uf.field).length === 0 ||
-                        parsedIds.length === 0 ||
-                        isLoadingPreview ||
-                        isProcessing
-                      }
-                      variant="secondary"
-                    >
-                      <Eye size={18} />
-                      {isLoadingPreview ? 'Loading...' : 'Preview Changes'}
-                    </Button>
-                    <Button
-                      onClick={executeMassUpdate}
-                      disabled={
-                        !selectedEntity ||
-                        updateFields.filter(uf => uf.field).length === 0 ||
-                        parsedIds.length === 0 ||
-                        isProcessing
-                      }
-                      size="lg"
-                    >
-                      <Upload size={18} />
-                      {isProcessing
-                        ? 'Processing...'
-                        : `Update ${parsedIds.length} Record${parsedIds.length !== 1 ? 's' : ''}`}
-                    </Button>
-                  </div>
-                </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-          {showPreview && previewRecords.length > 0 && !isProcessing && results.length === 0 && (
-            <div className="space-y-4">
-              <Separator />
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold">Preview Changes</h3>
-                  <Badge variant="secondary">
-                    {previewRecords.length} records
-                  </Badge>
-                </div>
-                <ScrollArea className="h-96 border rounded-lg">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>ID</TableHead>
-                        {updateFields.filter(uf => uf.field).map((uf, i) => (
-                          <TableHead key={i}>
-                            {availableFields.find(f => f.name === uf.field)?.label || uf.field}
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {previewRecords.map((record) => (
-                        <TableRow key={record.id}>
-                          <TableCell className="font-mono">{record.id}</TableCell>
-                          {updateFields.filter(uf => uf.field).map((uf, i) => (
-                            <TableCell key={i}>
-                              <div className="space-y-1">
-                                <div className="text-xs text-muted-foreground line-through">
-                                  {String(record.currentValues[uf.field] ?? '-')}
-                                </div>
-                                <div className="text-sm font-medium text-accent">
-                                  {String(record.newValues[uf.field] ?? '(null)')}
-                                </div>
-                              </div>
-                            </TableCell>
-                          ))}
-                        </TableRow>
                       ))}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-              </div>
-            </div>
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+            </>
           )}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                <ScrollArea className="max-h-96">
-                  <div className="space-y-2">
-                    {results.map((result) => (
-                      <div
-                        key={result.id}
-                        className={`flex items-center justify-between p-2 rounded border ${
-                          result.success
-                            ? 'border-accent/20 bg-accent/5'
-                            : 'border-destructive/20 bg-destructive/5'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          {result.success ? (
-                            <CheckCircle className="text-accent" size={16} />
-                          ) : (
-                            <Warning className="text-destructive" size={16} />
-                          )}
-                          <span className="text-sm font-mono">ID: {result.id}</span>
-                        </div>
-                        {result.error && (
-                          <span className="text-xs text-destructive">
-                            {result.error}
-                          </span>
-
-
-                    ))}
-                  </div>
-                </ScrollArea>
-
-
-
-
-
-
-
-
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
