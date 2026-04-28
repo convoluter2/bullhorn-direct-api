@@ -5,14 +5,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import { Separator } from '@/components/ui/separator'
-import { Database, Upload, CheckCircle, Warning, X } from '@phosphor-icons/react'
 import { toast } from 'sonner'
-import { bullhornAPI } from '@/lib/bullhorn-api'
-import Papa from 'papaparse'
+import { Separator } from '@/components/ui/separator'
+interface EntityOption {
+  label: string
+
+  name: string
+  dataType: string
 
 interface MassUpdateProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -30,11 +29,11 @@ interface FieldInfo {
   maxLength?: number
 }
 
-interface UpdateResult {
+  { value: 'Appointment'
   id: number
-  success: boolean
+export function Ma
   error?: string
-}
+ 
 
 const COMMON_ENTITIES: EntityOption[] = [
   { value: 'Candidate', label: 'Candidate' },
@@ -77,32 +76,32 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
             return field.dataType === 'String' || 
                    field.dataType === 'Integer' || 
                    field.dataType === 'Double' ||
-                   field.dataType === 'Boolean' ||
+      skipEmptyLines: true,
                    field.dataType === 'BigDecimal'
-          })
+          (f
           .map(([name, field]: [string, any]) => ({
-            name,
+        if (!idCo
             label: field.label || name,
-            dataType: field.dataType,
+          return
             maxLength: field.maxLength,
-          }))
+        const
           .sort((a, b) => a.label.localeCompare(b.label))
 
         setAvailableFields(fieldList)
         toast.success(`Loaded ${fieldList.length} updatable fields`)
         
         onLog('Load Fields', 'success', `Loaded fields for ${selectedEntity}`, {
-          entity: selectedEntity,
+      `Field: ${selectedField}\n`
           fieldCount: fieldList.length,
-        })
+    }
       } else {
         throw new Error('Invalid response format')
       }
-    } catch (error) {
+        entity: selec
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       toast.error(`Failed to load fields: ${errorMessage}`)
       onLog('Load Fields', 'error', 'Failed to load entity fields', { error: errorMessage })
-    } finally {
+      for (let 
       setIsLoadingFields(false)
     }
   }
@@ -113,25 +112,27 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
 
     setCsvFile(file)
 
-    Papa.parse(file, {
-      skipEmptyLines: true,
+      const errorCou
+    
+      }
       header: true,
+
       complete: (results: any) => {
-        const idColumn = results.meta.fields?.find(
+          field: selectedField,
           (field: string) => field.toLowerCase() === 'id'
-        )
+    } cat
         
         if (!idColumn) {
           toast.error('CSV must contain an "id" column')
           setCsvFile(null)
           return
-        }
+
 
         const ids = results.data
           .map((row: any) => {
-            const id = row[idColumn]
+          <CardTitle className="flex items-center gap-2"
             return id ? parseInt(id, 10) : null
-          })
+          <C
           .filter((id: number | null) => id !== null && !isNaN(id))
 
         setParsedIds([...new Set(ids)])
@@ -141,7 +142,7 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
         toast.error(`Failed to parse CSV: ${error.message}`)
       }
     })
-  }
+   
 
   const handleIdsInputChange = (value: string) => {
     setIdsInput(value)
@@ -159,26 +160,27 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
     }
   }
 
-  const clearIds = () => {
+                  <Select
     setIdsInput('')
-    setCsvFile(null)
+                  >
     setParsedIds([])
-  }
+                  
+   
 
-  const executeMassUpdate = async () => {
+                    <SelectContent>
     if (!selectedEntity) {
       toast.error('Please select an entity')
       return
-    }
+     
 
     if (!selectedField) {
       toast.error('Please select a field to update')
-      return
+            
     }
 
-    if (parsedIds.length === 0) {
+                      disabled={i
       toast.error('Please provide record IDs')
-      return
+            
     }
 
     if (!confirm(
@@ -191,15 +193,14 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
 
     setIsProcessing(true)
     setProgress(0)
-    setResults([])
+                  
 
-    try {
+         
       onLog('Mass Update', 'success', `Starting mass update of ${selectedEntity}`, {
-        entity: selectedEntity,
+                      <p classN
         field: selectedField,
-        value: fieldValue,
         idCount: parsedIds.length,
-      })
+        
 
       const updateResults: UpdateResult[] = []
       const batchSize = 10
@@ -214,7 +215,6 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
             return { id, success: true }
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-            return { id, success: false, error: errorMessage }
           }
         })
 
