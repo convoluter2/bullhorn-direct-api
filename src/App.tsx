@@ -18,7 +18,6 @@ import { WFNExport } from '@/components/WFNExport'
 import { FileManager } from '@/components/FileManager'
 import { BulkZipUploader } from '@/components/BulkZipUploader'
 import { RateCardBuilder } from '@/components/RateCardBuilder'
-import { MassUpdate } from '@/components/MassUpdate'
 import { ConnectionManager, type SavedConnection, type SecureCredentials } from '@/components/ConnectionManager'
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { EntityDocumentation } from '@/components/documentation/EntityDocumentation'
@@ -938,7 +937,7 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-10 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-9 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -958,10 +957,6 @@ function App() {
               <TabsTrigger value="ratecard" className="gap-2">
                 <CreditCard size={18} />
                 <span className="hidden sm:inline">RateCard</span>
-              </TabsTrigger>
-              <TabsTrigger value="massupdate" className="gap-2">
-                <Database size={18} />
-                <span className="hidden sm:inline">Mass Update</span>
               </TabsTrigger>
               <TabsTrigger value="wfn-export" className="gap-2">
                 <Export size={18} />
@@ -1008,10 +1003,6 @@ function App() {
 
             <TabsContent value="ratecard" className="space-y-6">
               <RateCardBuilder onLog={addLog} />
-            </TabsContent>
-
-            <TabsContent value="massupdate" className="space-y-6">
-              <MassUpdate onLog={addLog} />
             </TabsContent>
 
             <TabsContent value="wfn-export" className="space-y-6">

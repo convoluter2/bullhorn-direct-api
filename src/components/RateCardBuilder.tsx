@@ -456,11 +456,25 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
           linesStructure: group.placementRateCardLines
         })
         
-        const linesData = group.placementRateCardLines?.data 
-          || group.placementRateCardLines 
-          || []
+        let linesData: any[] = []
         
-        console.log(`  Group has ${linesData.length} lines`)
+        if (group.placementRateCardLines) {
+          if (typeof group.placementRateCardLines === 'object' && 'data' in group.placementRateCardLines) {
+            linesData = Array.isArray(group.placementRateCardLines.data) ? group.placementRateCardLines.data : []
+            console.log(`  Group has nested data structure with ${group.placementRateCardLines.total || linesData.length} total lines, extracted ${linesData.length} lines`)
+          } else if (Array.isArray(group.placementRateCardLines)) {
+            linesData = group.placementRateCardLines
+            console.log(`  Group has direct array with ${linesData.length} lines`)
+          } else {
+            console.warn(`  Group has unexpected placementRateCardLines structure:`, typeof group.placementRateCardLines)
+            linesData = []
+          }
+        } else {
+          console.log(`  Group has no placementRateCardLines property`)
+          linesData = []
+        }
+        
+        console.log(`  Processing ${linesData.length} lines for group ${group.id}`)
         
         const earnCodeGroupName = group.earnCodeGroup?.defaultEarnCode?.title 
           || group.earnCodeGroup?.payBillOptionsLookup?.label 
@@ -473,7 +487,7 @@ export function RateCardBuilder({ onLog }: RateCardBuilderProps) {
             id: group.earnCodeGroup?.id || 0,
             name: earnCodeGroupName
           },
-          placementRateCardLines: (Array.isArray(linesData) ? linesData : []).map((line: any, lineIdx: number) => {
+          placementRateCardLines: linesData.map((line: any, lineIdx: number) => {
             console.log(`  Line ${lineIdx + 1}: EarnCode ID ${line.earnCode?.id}, Title: ${line.earnCode?.title}, Code: ${line.earnCode?.code}`)
             return {
               id: line.id,
