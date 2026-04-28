@@ -1,19 +1,18 @@
 import { useState } from 'react'
-import { Card, CardContent, CardDescription, Ca
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/tex
-import { Separator } from '@/components/ui/se
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
-import { toast } from 'sonner'
-import { bullhornAPI } from '@/lib/bullhorn-a
-
-  onLog: (operation: string, status: 'success' | 'error', messa
-
-  value: string
+import { Database, Upload, Warning, CheckCircle, X } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import Papa from 'papaparse'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import type { AuditLog } from '@/lib/types'
 
 interface MassUpdateProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -67,10 +66,9 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
     if (!selectedEntity) return
 
     setIsLoadingFields(true)
-      complete: (results
     setAvailableFields([])
     
-        
+    try {
       const response = await bullhornAPI.getEntityMetadata(selectedEntity)
       
       if (response && response.fields) {
@@ -94,17 +92,17 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
         toast.success(`Loaded ${fieldList.length} updatable fields`)
         
         onLog('Load Fields', 'success', `Loaded fields for ${selectedEntity}`, {
-      setParsedIds([...new Set(id
+          entity: selectedEntity,
           fieldCount: fieldList.length,
-    }
+        })
       } else {
         throw new Error('Invalid response format')
       }
-    setParsedIds([])
+    } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       toast.error(`Failed to load fields: ${errorMessage}`)
       onLog('Load Fields', 'error', 'Failed to load entity fields', { error: errorMessage })
-
+    } finally {
       setIsLoadingFields(false)
     }
   }
@@ -114,27 +112,28 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
     if (!file) return
 
     setCsvFile(file)
-    )) {
+    setIdsInput('')
+    setParsedIds([])
     
-
+    Papa.parse(file, {
       header: true,
-    setResults([])
+      skipEmptyLines: true,
       complete: (results: any) => {
-        entity: selectedEntity,
+        const idColumn = results.meta.fields?.find(
           (field: string) => field.toLowerCase() === 'id'
-      })
+        )
         
         if (!idColumn) {
           toast.error('CSV must contain an "id" column')
           setCsvFile(null)
           return
-         
+        }
 
         const ids = results.data
           .map((row: any) => {
-            return { id, success: fa
+            const id = row[idColumn] || row.id || row.ID
             return id ? parseInt(id, 10) : null
-
+          })
           .filter((id: number | null) => id !== null && !isNaN(id))
 
         setParsedIds([...new Set(ids)])
@@ -144,7 +143,7 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
         toast.error(`Failed to parse CSV: ${error.message}`)
       }
     })
-   
+  }
 
   const handleIdsInputChange = (value: string) => {
     setIdsInput(value)
@@ -162,26 +161,27 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
     }
   }
 
-    } finally {
+  const clearIds = () => {
     setIdsInput('')
-  }
+    setCsvFile(null)
     setParsedIds([])
-  c
+    setResults([])
+  }
 
-    <div className="space-y-6">
+  const executeMassUpdate = async () => {
     if (!selectedEntity) {
       toast.error('Please select an entity')
       return
-     
+    }
 
     if (!selectedField) {
       toast.error('Please select a field to update')
-          <A
+      return
     }
 
-          <div className="space-y
+    if (parsedIds.length === 0) {
       toast.error('Please provide record IDs')
-            
+      return
     }
 
     if (!confirm(
@@ -194,14 +194,14 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
 
     setIsProcessing(true)
     setProgress(0)
-                </
+    setResults([])
 
-         
+    try {
       onLog('Mass Update', 'success', `Starting mass update of ${selectedEntity}`, {
-                    onClick={lo
+        entity: selectedEntity,
         field: selectedField,
         idCount: parsedIds.length,
-        
+      })
 
       const updateResults: UpdateResult[] = []
       const batchSize = 10
@@ -225,7 +225,7 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
         
         setProgress(Math.round((updateResults.length / parsedIds.length) * 100))
         setResults([...updateResults])
-       
+      }
 
       const successCount = updateResults.filter(r => r.success).length
       const errorCount = updateResults.filter(r => !r.success).length
@@ -240,30 +240,28 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
       onLog('Mass Update', successCount > 0 ? 'success' : 'error', 
         `Mass update completed: ${successCount} success, ${errorCount} failed`, {
           entity: selectedEntity,
-                      </p>
-                  </div>
+          field: selectedField,
           successCount,
           errorCount,
-          
+        })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       toast.error(`Mass update failed: ${errorMessage}`)
-                        onChange={handleFileUpload}
+      onLog('Mass Update', 'error', 'Mass update failed', {
         entity: selectedEntity,
-                      {csvFil
-                          variant=
+        field: selectedField,
         error: errorMessage,
-        
-               
+      })
+    } finally {
       setIsProcessing(false)
-     
+    }
   }
 
   const successCount = results.filter(r => r.success).length
   const errorCount = results.filter(r => !r.success).length
 
   return (
-                  <div classNam
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -273,9 +271,9 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
           <CardDescription>
             Bulk update a single field across multiple records using the Bullhorn API
           </CardDescription>
-                     
+        </CardHeader>
         <CardContent className="space-y-6">
-                 
+          <Alert>
             <Warning className="h-4 w-4" />
             <AlertDescription>
               This tool updates records directly via the Bullhorn API. Always test with a small batch first.
@@ -297,13 +295,13 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
                 >
                   <SelectTrigger id="entity-select">
                     <SelectValue placeholder="Select entity type" />
-              </>
+                  </SelectTrigger>
                   <SelectContent>
                     {COMMON_ENTITIES.map((entity) => (
                       <SelectItem key={entity.value} value={entity.value}>
-              <Progress value={progres
+                        {entity.label}
                       </SelectItem>
-              </p>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -323,9 +321,9 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
             </div>
 
             {availableFields.length > 0 && (
-                
+              <>
                 <div className="space-y-2">
-                        {result.success ? (
+                  <Label htmlFor="field-select">Field to Update</Label>
                   <Select
                     value={selectedField}
                     onValueChange={setSelectedField}
@@ -333,7 +331,7 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
                   >
                     <SelectTrigger id="field-select">
                       <SelectValue placeholder={
-                    </div>
+                        isLoadingFields
                           ? 'Loading fields...'
                           : availableFields.length === 0
                           ? 'No fields available'
@@ -343,7 +341,7 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
                     <SelectContent>
                       {availableFields.map((field) => (
                         <SelectItem key={field.name} value={field.name}>
-
+                          {field.label} ({field.dataType})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -357,7 +355,7 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
                       <span className="text-xs text-muted-foreground">
                         {availableFields.find(f => f.name === selectedField)?.dataType}
                       </span>
-
+                    </div>
                     <Input
                       id="field-value"
                       value={fieldValue}
@@ -386,7 +384,7 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
                         onChange={handleFileUpload}
                         disabled={isProcessing}
                       />
-
+                      {csvFile && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -398,7 +396,7 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
                           <X size={16} />
                         </Button>
                       )}
-
+                    </div>
                     {csvFile && (
                       <p className="text-xs text-muted-foreground">
                         Loaded: {csvFile.name}
@@ -415,9 +413,9 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
                     </div>
                   </div>
 
-
+                  <div className="space-y-2">
                     <Label htmlFor="ids-input">Paste comma or newline-separated IDs</Label>
-
+                    <Textarea
                       id="ids-input"
                       value={idsInput}
                       onChange={(e) => handleIdsInputChange(e.target.value)}
@@ -442,14 +440,14 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
                 <Button
                   onClick={executeMassUpdate}
                   disabled={
-
+                    !selectedEntity ||
                     !selectedField ||
                     parsedIds.length === 0 ||
                     isProcessing
                   }
                   className="w-full"
                   size="lg"
-
+                >
                   <Upload size={18} />
                   {isProcessing
                     ? 'Processing...'
@@ -459,19 +457,19 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
             )}
           </div>
 
-
+          {isProcessing && (
             <div className="space-y-2">
-
+              <Progress value={progress} />
               <p className="text-xs text-center text-muted-foreground">
                 Processing mass update: {progress}% complete
               </p>
-
+            </div>
           )}
 
           {results.length > 0 && (
             <div className="space-y-4">
               <Separator />
-
+              <div>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold">Results</h3>
                   <div className="flex items-center gap-4">
@@ -489,13 +487,13 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
                 </div>
                 <div className="max-h-96 overflow-y-auto space-y-2">
                   {results.map((result) => (
-
+                    <div
                       key={result.id}
                       className={`flex items-center justify-between p-2 rounded border ${
                         result.success
                           ? 'border-accent/20 bg-accent/5'
                           : 'border-destructive/20 bg-destructive/5'
-
+                      }`}
                     >
                       <div className="flex items-center gap-2">
                         {result.success ? (
@@ -516,8 +514,8 @@ export function MassUpdate({ onLog }: MassUpdateProps) {
               </div>
             </div>
           )}
-
+        </CardContent>
       </Card>
     </div>
   )
-
+}
