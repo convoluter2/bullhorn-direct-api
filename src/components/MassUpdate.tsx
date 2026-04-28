@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Separator } from '@/components/ui/separator'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Switch } from '@/components/ui/switch'
+import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
 import { Database, Warning, CheckCircle, X, Upload, ArrowClockwise, Eye, FileArrowUp } from '@phosphor-icons/react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
@@ -22,18 +23,18 @@ interface FieldInfo {
   required?: boolean
 }
 
+interface UpdateResult {
+  id: number
   success: boolean
+  error?: string
 }
-const COMMON_EN
-  { value: 'Client
-  { value: 'JobOrder
-  required?: boolean
- 
-  required?: boolean
- 
 
 interface PreviewRecord {
-export funct
+  id: number
+  currentValues: Record<string, any>
+  newValues: Record<string, any>
+  status: 'pending' | 'error'
+  error?: string
 }
 
 const COMMON_ENTITIES = [
