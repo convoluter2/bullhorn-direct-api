@@ -11,7 +11,9 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Slider } from '@/components/ui/slider'
-import { FileZip, FileCsv, Download, CheckCircle, XCircle, Info, Upload, Trash, Pause, Play, ArrowClockwise } from '@phosphor-icons/react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { FileZip, FileCsv, Download, CheckCircle, XCircle, Info, Upload, Trash, Pause, Play, ArrowClockwise, Eye, Certificate, FileText } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import Papa from 'papaparse'
@@ -45,6 +47,30 @@ interface CandidateMapping {
   migrateCertificationName?: string
 }
 
+interface PreviewCredential {
+  candidateId: number
+  candidateName: string
+  certificationId: number
+  certificationName: string
+  certificationType: string
+  status: string
+  dateCertified: string
+  dateExpiration: string
+  licenseNumber: string
+  location: string
+  fileCount: number
+  fileNames: string[]
+}
+
+interface PreviewSummary {
+  totalCandidates: number
+  totalCredentials: number
+  totalFiles: number
+  estimatedZipSize: string
+  credentials: PreviewCredential[]
+  candidatesNotFound: string[]
+}
+
 export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProps) {
   const [lookupField, setLookupField] = useState('id')
   const [csvColumn, setCsvColumn] = useState('')
@@ -64,6 +90,9 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
     { value: 'id', label: 'Candidate ID' }
   ])
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(false)
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false)
+  const [previewData, setPreviewData] = useState<PreviewSummary | null>(null)
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pauseRef = useRef(false)
   const cancelledRef = useRef(false)
@@ -616,6 +645,136 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
     }
   }
 
+  const handlePreview = async () => {
+    if (candidateMappings.length === 0) {
+      toast.error('Please provide candidate identifiers')
+      return
+    }
+
+    setIsLoadingPreview(true)
+    setPreviewDialogOpen(true)
+
+    try {
+      const credentials: PreviewCredential[] = []
+      const candidatesNotFound: string[] = []
+      let totalFiles = 0
+      let estimatedSize = 0
+
+      const sampleSize = Math.min(candidateMappings.length, 10)
+      
+      for (let i = 0; i < sampleSize; i++) {
+        const mapping = candidateMappings[i]
+        
+        try {
+          let candidateId: number
+          if (lookupField === 'id') {
+            candidateId = parseInt(mapping.candidateId)
+            if (isNaN(candidateId)) {
+              candidatesNotFound.push(mapping.candidateId)
+              continue
+            }
+          } else {
+            const searchResult = await bullhornAPI.query(
+              'Candidate',
+              ['id', 'firstName', 'lastName'],
+              `${lookupField}:${mapping.candidateId}`
+            )
+            if (!searchResult.data || searchResult.data.length === 0) {
+              candidatesNotFound.push(mapping.candidateId)
+              continue
+            }
+            candidateId = searchResult.data[0].id
+          }
+
+          const certificationsResult = await bullhornAPI.query(
+            'CandidateCertification',
+            [
+              'id',
+              'candidate(id,firstName,lastName)',
+              'certification(id,name,type)',
+              'certificationFileAttachments',
+              'status',
+              'dateCertified',
+              'dateExpiration',
+              'licenseNumber',
+              'location'
+            ],
+            `candidate.id:${candidateId} AND isDeleted:0`
+          )
+
+          if (certificationsResult.data && certificationsResult.data.length > 0) {
+            for (const cert of certificationsResult.data) {
+              const fileNames: string[] = []
+              let fileCount = 0
+
+              if (cert.fileAttachments && cert.fileAttachments.total > 0) {
+                const filesResult = await bullhornAPI.query(
+                  'CertificationFileAttachment',
+                  ['id', 'name', 'fileSize'],
+                  `candidateCertification.id:${cert.id} AND isDeleted:0`
+                )
+
+                if (filesResult.data && filesResult.data.length > 0) {
+                  fileCount = filesResult.data.length
+                  filesResult.data.forEach((file: any) => {
+                    fileNames.push(file.name)
+                    estimatedSize += file.fileSize || 0
+                  })
+                }
+              }
+
+              credentials.push({
+                candidateId,
+                candidateName: cert.candidate 
+                  ? `${cert.candidate.firstName || ''} ${cert.candidate.lastName || ''}`.trim()
+                  : 'Unknown',
+                certificationId: cert.id,
+                certificationName: cert.certification?.name || 'Unknown',
+                certificationType: cert.certification?.type || '-',
+                status: cert.status || '-',
+                dateCertified: cert.dateCertified || '-',
+                dateExpiration: cert.dateExpiration || '-',
+                licenseNumber: cert.licenseNumber || '-',
+                location: cert.location || '-',
+                fileCount,
+                fileNames
+              })
+
+              totalFiles += fileCount
+            }
+          }
+        } catch (error) {
+          console.error(`Preview error for candidate ${mapping.candidateId}:`, error)
+          candidatesNotFound.push(mapping.candidateId)
+        }
+      }
+
+      setPreviewData({
+        totalCandidates: candidateMappings.length,
+        totalCredentials: credentials.length,
+        totalFiles,
+        estimatedZipSize: formatBytes(estimatedSize),
+        credentials,
+        candidatesNotFound
+      })
+
+      onLog('Credential Preview', 'success', `Generated preview for ${sampleSize} candidates`, {
+        sampledCandidates: sampleSize,
+        totalCandidates: candidateMappings.length,
+        credentialsFound: credentials.length,
+        filesFound: totalFiles
+      })
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      toast.error(`Preview failed: ${errorMessage}`)
+      onLog('Credential Preview', 'error', 'Preview failed', { error: errorMessage })
+      setPreviewDialogOpen(false)
+    } finally {
+      setIsLoadingPreview(false)
+    }
+  }
+
   const formatTime = (ms: number): string => {
     const seconds = Math.floor(ms / 1000)
     const minutes = Math.floor(seconds / 60)
@@ -796,6 +955,14 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
         {!isDownloading ? (
           <>
             <Button
+              variant="outline"
+              onClick={handlePreview}
+              disabled={candidateMappings.length === 0 || isLoadingPreview}
+            >
+              <Eye size={18} />
+              Preview Data
+            </Button>
+            <Button
               onClick={handleStartDownload}
               disabled={candidateMappings.length === 0}
               className="flex-1"
@@ -916,6 +1083,185 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye size={24} className="text-primary" />
+              Credential Data Preview
+            </DialogTitle>
+            <DialogDescription>
+              Preview of credential data that will be downloaded
+              {candidateMappings.length > 10 && ` (showing first 10 of ${candidateMappings.length} candidates)`}
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoadingPreview ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center space-y-4">
+                <div className="animate-spin mx-auto">
+                  <Certificate size={48} className="text-primary" />
+                </div>
+                <p className="text-muted-foreground">Loading credential preview...</p>
+              </div>
+            </div>
+          ) : previewData ? (
+            <div className="flex-1 overflow-hidden flex flex-col gap-4">
+              <div className="grid grid-cols-4 gap-4">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardDescription className="text-xs">Total Candidates</CardDescription>
+                    <CardTitle className="text-2xl">{previewData.totalCandidates}</CardTitle>
+                  </CardHeader>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardDescription className="text-xs">Total Credentials</CardDescription>
+                    <CardTitle className="text-2xl">{previewData.totalCredentials}</CardTitle>
+                  </CardHeader>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardDescription className="text-xs">Total Files</CardDescription>
+                    <CardTitle className="text-2xl">{previewData.totalFiles}</CardTitle>
+                  </CardHeader>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardDescription className="text-xs">Est. Size (Sample)</CardDescription>
+                    <CardTitle className="text-2xl">{previewData.estimatedZipSize}</CardTitle>
+                  </CardHeader>
+                </Card>
+              </div>
+
+              {previewData.candidatesNotFound.length > 0 && (
+                <Alert variant="destructive">
+                  <XCircle size={16} />
+                  <AlertTitle>Candidates Not Found</AlertTitle>
+                  <AlertDescription>
+                    {previewData.candidatesNotFound.length} candidate(s) could not be found: {previewData.candidatesNotFound.join(', ')}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <Tabs defaultValue="credentials" className="flex-1 flex flex-col overflow-hidden">
+                <TabsList>
+                  <TabsTrigger value="credentials" className="gap-2">
+                    <Certificate size={16} />
+                    Credentials ({previewData.credentials.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="files" className="gap-2">
+                    <FileText size={16} />
+                    Files ({previewData.totalFiles})
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="credentials" className="flex-1 overflow-hidden mt-4">
+                  <ScrollArea className="h-[400px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Candidate</TableHead>
+                          <TableHead>Credential Name</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Certified</TableHead>
+                          <TableHead>Expires</TableHead>
+                          <TableHead>Files</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {previewData.credentials.map((cred, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <div className="font-medium text-sm">{cred.candidateName}</div>
+                                <div className="text-xs text-muted-foreground font-mono">ID: {cred.candidateId}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="max-w-[200px]">
+                              <div className="truncate font-medium">{cred.certificationName}</div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="text-xs">
+                                {cred.certificationType}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={cred.status === 'Current' ? 'default' : 'outline'}
+                                className="text-xs"
+                              >
+                                {cred.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm">{cred.dateCertified}</TableCell>
+                            <TableCell className="text-sm">{cred.dateExpiration}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{cred.fileCount}</Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="files" className="flex-1 overflow-hidden mt-4">
+                  <ScrollArea className="h-[400px]">
+                    <div className="space-y-4">
+                      {previewData.credentials.map((cred, idx) => (
+                        cred.fileCount > 0 && (
+                          <Card key={idx}>
+                            <CardHeader className="pb-3">
+                              <CardTitle className="text-sm flex items-center gap-2">
+                                <Certificate size={16} className="text-primary" />
+                                {cred.certificationName}
+                              </CardTitle>
+                              <CardDescription className="text-xs">
+                                Candidate: {cred.candidateName} (ID: {cred.candidateId})
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-1">
+                                {cred.fileNames.map((fileName, fileIdx) => (
+                                  <div key={fileIdx} className="flex items-center gap-2 text-sm py-1 px-2 rounded bg-muted">
+                                    <FileText size={14} className="text-muted-foreground" />
+                                    <span className="font-mono text-xs">{fileName}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )
+                      ))}
+                      {previewData.totalFiles === 0 && (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No files found in the sampled credentials
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+              </Tabs>
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => setPreviewDialogOpen(false)}>
+                  Close
+                </Button>
+                <Button onClick={() => {
+                  setPreviewDialogOpen(false)
+                  handleStartDownload()
+                }}>
+                  <Download size={18} />
+                  Start Download
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
