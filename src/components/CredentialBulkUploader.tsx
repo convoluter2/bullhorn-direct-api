@@ -36,8 +36,6 @@ interface CredentialRow {
   CandidateCertificationID?: string
   CertificationName: string
   CertificationStatus?: string
-  DateBegin?: string
-  DateEnd?: string
   DateCertified?: string
   DateExpires?: string
   Comments?: string
@@ -380,8 +378,6 @@ export function CredentialBulkUploader({ onLog }: CredentialBulkUploaderProps) {
         fileAttachments: { add: [fileId] }
       }
 
-      if (row.DateBegin) certData.dateBegin = parseInt(row.DateBegin)
-      if (row.DateEnd) certData.dateEnd = parseInt(row.DateEnd)
       if (row.DateCertified) certData.dateCertified = parseInt(row.DateCertified)
       if (row.DateExpires) certData.dateExpires = parseInt(row.DateExpires)
       if (row.Comments) certData.comments = row.Comments

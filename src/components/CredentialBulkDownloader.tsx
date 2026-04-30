@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -60,20 +60,62 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
   const [startTime, setStartTime] = useState<number | null>(null)
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null)
   const [availableColumns, setAvailableColumns] = useState<string[]>([])
+  const [lookupFieldOptions, setLookupFieldOptions] = useState<Array<{ value: string; label: string }>>([
+    { value: 'id', label: 'Candidate ID' }
+  ])
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pauseRef = useRef(false)
   const cancelledRef = useRef(false)
 
-  const lookupFieldOptions = [
-    { value: 'id', label: 'Candidate ID' },
-    { value: 'externalID', label: 'External ID' },
-    { value: 'email', label: 'Email' },
-    { value: 'customText1', label: 'Custom Text 1' },
-    { value: 'customText2', label: 'Custom Text 2' },
-    { value: 'customText3', label: 'Custom Text 3' },
-    { value: 'customText4', label: 'Custom Text 4' },
-    { value: 'customText5', label: 'Custom Text 5' }
-  ]
+  useEffect(() => {
+    loadCandidateMetadata()
+  }, [])
+
+  const loadCandidateMetadata = async () => {
+    setIsLoadingMetadata(true)
+    try {
+      const metadata = await bullhornAPI.getMetadata('Candidate')
+      
+      if (metadata.fields) {
+        const lookupFields = metadata.fields
+          .filter((field: any) => 
+            field.type === 'SCALAR' && 
+            (field.dataType === 'String' || field.dataType === 'Integer') &&
+            !field.name.includes('password') &&
+            !field.name.toLowerCase().includes('ssn')
+          )
+          .map((field: any) => ({
+            value: field.name,
+            label: field.label ? `${field.label} (${field.name})` : field.name
+          }))
+          .sort((a: any, b: any) => a.label.localeCompare(b.label))
+
+        const priorityFields = [
+          { value: 'id', label: 'Candidate ID' },
+          { value: 'externalID', label: 'External ID' },
+          { value: 'email', label: 'Email' },
+          { value: 'customText1', label: 'Custom Text 1' },
+          { value: 'customText2', label: 'Custom Text 2' },
+          { value: 'customText3', label: 'Custom Text 3' },
+          { value: 'customText4', label: 'Custom Text 4' },
+          { value: 'customText5', label: 'Custom Text 5' }
+        ]
+
+        const remainingFields = lookupFields.filter(
+          (f: any) => !priorityFields.some(pf => pf.value === f.value)
+        )
+
+        setLookupFieldOptions([...priorityFields, ...remainingFields])
+        console.log('✅ Loaded Candidate lookup fields:', lookupFields.length)
+      }
+    } catch (error) {
+      console.error('Failed to load Candidate metadata:', error)
+      toast.error('Failed to load lookup fields from metadata')
+    } finally {
+      setIsLoadingMetadata(false)
+    }
+  }
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -265,7 +307,7 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
 
       const certificationsResult = await bullhornAPI.query(
         'CandidateCertification',
-        ['id', 'certification(id,name)', 'status', 'dateBegin', 'dateEnd', 'dateCertified', 'dateExpires', 'fileAttachments', 'comments', 'customText1', 'customText2'],
+        ['id', 'certification(id,name)', 'status', 'dateCertified', 'dateExpires', 'fileAttachments', 'comments', 'customText1', 'customText2', 'modifyingUser', 'dateAdded', 'dateLastModified'],
         `candidate.id:${candidateId} AND isDeleted:0`
       )
 
@@ -320,8 +362,6 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
                   CandidateCertificationID: mapping.migrateCertificationID || cert.id,
                   CertificationName: mapping.migrateCertificationName || cert.certification?.name || '',
                   CertificationStatus: cert.status || '',
-                  DateBegin: cert.dateBegin || '',
-                  DateEnd: cert.dateEnd || '',
                   DateCertified: cert.dateCertified || '',
                   DateExpires: cert.dateExpires || '',
                   Comments: cert.comments || '',
@@ -350,8 +390,6 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
             CandidateCertificationID: mapping.migrateCertificationID || cert.id,
             CertificationName: mapping.migrateCertificationName || cert.certification?.name || '',
             CertificationStatus: cert.status || '',
-            DateBegin: cert.dateBegin || '',
-            DateEnd: cert.dateEnd || '',
             DateCertified: cert.dateCertified || '',
             DateExpires: cert.dateExpires || '',
             Comments: cert.comments || '',
@@ -447,12 +485,43 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
 
   return (
     <div className="space-y-6">
+      <Alert>
+        <Info size={16} />
+        <AlertTitle>Migration Fields (Optional)</AlertTitle>
+        <AlertDescription className="space-y-2 text-sm">
+          <p>
+            Your CSV can include optional migration fields to customize the download for re-importing to another tenant:
+          </p>
+          <ul className="list-disc list-inside space-y-1 ml-2">
+            <li><strong>MigrateEntityID</strong> - Override the CandidateID in the export</li>
+            <li><strong>MigrateCertificationID</strong> - Override the CandidateCertificationID in the export</li>
+            <li><strong>MigrateCertificationName</strong> - Override the Certification Name in the export</li>
+          </ul>
+          <p className="mt-2">
+            These fields allow you to download credentials from one tenant and prepare them for upload to different candidate/certification IDs in another tenant.
+          </p>
+        </AlertDescription>
+      </Alert>
+
       <Card>
         <CardHeader>
-          <CardTitle>Configuration</CardTitle>
-          <CardDescription>
-            Configure how to identify candidates for credential download
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Configuration</CardTitle>
+              <CardDescription>
+                Configure how to identify candidates for credential download
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadCandidateMetadata}
+              disabled={isLoadingMetadata || isDownloading}
+            >
+              <ArrowClockwise size={16} className={isLoadingMetadata ? 'animate-spin' : ''} />
+              Refresh Metadata
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -470,6 +539,9 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
                   ))}
                 </SelectContent>
               </Select>
+              {isLoadingMetadata && (
+                <p className="text-xs text-muted-foreground">Loading lookup fields from metadata...</p>
+              )}
             </div>
 
             {csvFile && availableColumns.length > 0 && (
