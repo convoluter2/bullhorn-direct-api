@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -9,7 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Slider } from '@/components/ui/slider'
-import { FileCsv, Upload, CheckCircle, XCircle, Info, Trash, Pause, Play, FolderOpen, Warning } from '@phosphor-icons/react'
+import { Separator } from '@/components/ui/separator'
+import { FileCsv, Upload, CheckCircle, XCircle, Info, Trash, Pause, Play, FolderOpen, Warning, ArrowsClockwise, ListBullets } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import Papa from 'papaparse'
@@ -66,10 +67,57 @@ export function CredentialBulkUploader({ onLog }: CredentialBulkUploaderProps) {
   const [startTime, setStartTime] = useState<number | null>(null)
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [certificationFields, setCertificationFields] = useState<Array<{ name: string; label: string; type: string }>>([])
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(false)
   const csvInputRef = useRef<HTMLInputElement>(null)
   const filesInputRef = useRef<HTMLInputElement>(null)
   const pauseRef = useRef(false)
   const cancelledRef = useRef(false)
+
+  const loadCertificationMetadata = async () => {
+    setIsLoadingMetadata(true)
+    try {
+      console.log('📋 Fetching Certification metadata...')
+      const metadata = await bullhornAPI.getMetadata('Certification')
+      
+      if (metadata && metadata.fields) {
+        const lookupFields = metadata.fields
+          .filter((field: any) => 
+            field.type === 'TO_ONE' && 
+            field.name !== 'owner' &&
+            !field.name.startsWith('custom')
+          )
+          .map((field: any) => ({
+            name: field.name,
+            label: field.label || field.name,
+            type: field.associatedEntity?.entity || 'Unknown'
+          }))
+          .sort((a: any, b: any) => a.label.localeCompare(b.label))
+
+        setCertificationFields(lookupFields)
+        console.log(`✅ Loaded ${lookupFields.length} lookup fields for Certification`)
+        toast.success(`Loaded ${lookupFields.length} lookup fields for Certification`)
+        
+        onLog('Certification Metadata', 'success', `Loaded ${lookupFields.length} lookup fields`, {
+          entity: 'Certification',
+          fieldCount: lookupFields.length
+        })
+      } else {
+        toast.warning('No fields returned from metadata')
+      }
+    } catch (error) {
+      console.error('❌ Failed to load Certification metadata:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      toast.error(`Failed to load metadata: ${errorMessage}`)
+      onLog('Certification Metadata', 'error', 'Failed to load metadata', { error: errorMessage })
+    } finally {
+      setIsLoadingMetadata(false)
+    }
+  }
+
+  useEffect(() => {
+    loadCertificationMetadata()
+  }, [])
 
   const handleCsvSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -413,6 +461,99 @@ export function CredentialBulkUploader({ onLog }: CredentialBulkUploaderProps) {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Certification Lookup Fields</CardTitle>
+          <CardDescription>
+            Available TO_ONE lookup fields from Certification entity metadata
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              {certificationFields.length > 0 
+                ? `${certificationFields.length} lookup fields available for use in certification records`
+                : 'Click refresh to load lookup fields'}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadCertificationMetadata}
+              disabled={isLoadingMetadata}
+              className="gap-2"
+            >
+              <ArrowsClockwise 
+                size={16} 
+                weight={isLoadingMetadata ? 'bold' : 'regular'}
+                className={isLoadingMetadata ? 'animate-spin' : ''}
+              />
+              {isLoadingMetadata ? 'Loading...' : 'Refresh Metadata'}
+            </Button>
+          </div>
+
+          {certificationFields.length > 0 && (
+            <ScrollArea className="h-[200px] border rounded-md">
+              <div className="p-4 space-y-2">
+                {certificationFields.map((field) => (
+                  <div key={field.name} className="flex items-center justify-between py-2 border-b last:border-b-0">
+                    <div className="flex items-center gap-2">
+                      <ListBullets size={16} className="text-muted-foreground" />
+                      <div>
+                        <span className="font-mono text-sm font-medium">{field.name}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{field.label}</span>
+                      </div>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">
+                      {field.type}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
+
+      <Alert>
+        <Info size={16} />
+        <AlertTitle>About Migrate Fields (Optional)</AlertTitle>
+        <AlertDescription className="space-y-2 text-sm">
+          <p>
+            The migrate fields are <strong>completely optional</strong> and provide advanced functionality for migration scenarios:
+          </p>
+          <Separator className="my-2" />
+          <div className="space-y-2">
+            <div>
+              <strong className="text-foreground">MigrateEntityID:</strong>
+              <span className="ml-2">
+                Use this to specify a <em>different</em> Candidate ID than the one in CandidateID. 
+                If provided, credentials will be attached to this candidate instead.
+              </span>
+            </div>
+            <div>
+              <strong className="text-foreground">MigrateCertificationID:</strong>
+              <span className="ml-2">
+                Use this to update an <em>existing</em> CandidateCertification record by ID. 
+                If the ID exists, it will be updated; otherwise, a new record will be created.
+              </span>
+            </div>
+            <div>
+              <strong className="text-foreground">MigrateCertificationName:</strong>
+              <span className="ml-2">
+                Use this to specify a <em>different</em> certification name than the one in CertificationName. 
+                If provided, this name will be used for the certification lookup instead.
+              </span>
+            </div>
+          </div>
+          <Separator className="my-2" />
+          <p className="text-xs text-muted-foreground italic">
+            💡 Tip: For most use cases, you only need CandidateID, CertificationName, and FileName. 
+            The migrate fields are designed for data migration projects where you need to preserve IDs or 
+            update existing records.
+          </p>
+        </AlertDescription>
+      </Alert>
+
       <Card>
         <CardHeader>
           <CardTitle>Upload Files</CardTitle>
