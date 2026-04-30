@@ -394,16 +394,19 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
           'results',
           'status'
         ],
-        `candidateId:${candidateId} AND isDeleted:0`
+        `candidate.id:${candidateId} AND isDeleted:0`
       )
 
       if (!certificationsResult.data || certificationsResult.data.length === 0) {
+        const detailedMessage = `No active certifications found for candidate ID ${candidateId}. The candidate exists but has no CandidateCertification records with isDeleted:0.`
+        console.log(`⚠️ ${detailedMessage}`)
         updateResult({
           status: 'success',
-          message: 'No active certifications found',
+          message: detailedMessage,
           credentialCount: 0,
           fileCount: 0
         })
+        toast.info(`Candidate ${candidateId}: No certifications found`, { duration: 3000 })
         return
       }
 
@@ -622,10 +625,23 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      console.error(`❌ Error downloading credentials for candidate ${mapping.candidateId}:`, error)
+      
+      let detailedError = errorMessage
+      if (error && typeof error === 'object' && 'errorCode' in error) {
+        const apiError = error as any
+        detailedError = `API Error ${apiError.errorCode || ''}: ${apiError.errorMessage || errorMessage}`
+        if (apiError.errorMessageKey) {
+          detailedError += ` (${apiError.errorMessageKey})`
+        }
+      }
+      
       updateResult({
         status: 'error',
-        message: errorMessage
+        message: detailedError
       })
+      
+      toast.error(`Candidate ${mapping.candidateId}: ${detailedError}`, { duration: 5000 })
     }
   }
 
@@ -700,7 +716,7 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
               'licenseNumber',
               'location'
             ],
-            `candidateId:${candidateId} AND isDeleted:0`
+            `candidate.id:${candidateId} AND isDeleted:0`
           )
 
           if (certificationsResult.data && certificationsResult.data.length > 0) {
@@ -746,7 +762,14 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
           }
         } catch (error) {
           console.error(`Preview error for candidate ${mapping.candidateId}:`, error)
-          candidatesNotFound.push(mapping.candidateId)
+          
+          let errorDetail = mapping.candidateId
+          if (error && typeof error === 'object' && 'errorCode' in error) {
+            const apiError = error as any
+            errorDetail += ` - ${apiError.errorMessage || 'API Error'}`
+          }
+          
+          candidatesNotFound.push(errorDetail)
         }
       }
 
@@ -1139,9 +1162,16 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
               {previewData.candidatesNotFound.length > 0 && (
                 <Alert variant="destructive">
                   <XCircle size={16} />
-                  <AlertTitle>Candidates Not Found</AlertTitle>
-                  <AlertDescription>
-                    {previewData.candidatesNotFound.length} candidate(s) could not be found: {previewData.candidatesNotFound.join(', ')}
+                  <AlertTitle>Issues Found</AlertTitle>
+                  <AlertDescription className="space-y-2">
+                    <p>{previewData.candidatesNotFound.length} candidate(s) had errors:</p>
+                    <ScrollArea className="h-20 w-full rounded border border-destructive/20 bg-destructive/10 p-2">
+                      <ul className="space-y-1 text-xs font-mono">
+                        {previewData.candidatesNotFound.map((entry, idx) => (
+                          <li key={idx}>{entry}</li>
+                        ))}
+                      </ul>
+                    </ScrollArea>
                   </AlertDescription>
                 </Alert>
               )}
