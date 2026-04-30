@@ -405,9 +405,9 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
           fileCount: 0
         })
         return
-      }
+            `candidateCertification.id:${cert.id} AND isDeleted:0`
+          )
 
-      const certifications = certificationsResult.data
       updateResult({
         message: `Processing ${certifications.length} certifications...`,
         totalCredentials: certifications.length
