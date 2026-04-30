@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Separator } from '@/components/ui/separator'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen, FileZip, CreditCard, ArrowsClockwise, Info, ArrowsCounterClockwise } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen, FileZip, CreditCard, ArrowsClockwise, Info, ArrowsCounterClockwise, Certificate } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -19,6 +19,7 @@ import { FileManager } from '@/components/FileManager'
 import { BulkZipUploader } from '@/components/BulkZipUploader'
 import { RateCardBuilder } from '@/components/RateCardBuilder'
 import { MassUpdate } from '@/components/MassUpdate'
+import { CredentialManager } from '@/components/CredentialManager'
 import { ConnectionManager, type SavedConnection, type SecureCredentials } from '@/components/ConnectionManager'
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { EntityDocumentation } from '@/components/documentation/EntityDocumentation'
@@ -938,7 +939,7 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-10 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-11 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -970,6 +971,10 @@ function App() {
               <TabsTrigger value="file-manager" className="gap-2">
                 <FolderOpen size={18} />
                 <span className="hidden sm:inline">File Manager</span>
+              </TabsTrigger>
+              <TabsTrigger value="credentials" className="gap-2">
+                <Certificate size={18} />
+                <span className="hidden sm:inline">Credentials</span>
               </TabsTrigger>
               <TabsTrigger value="bulk-zip" className="gap-2">
                 <FileZip size={18} />
@@ -1020,6 +1025,10 @@ function App() {
 
             <TabsContent value="file-manager" className="space-y-6">
               <FileManager onLog={addLog} />
+            </TabsContent>
+
+            <TabsContent value="credentials" className="space-y-6">
+              <CredentialManager onLog={addLog} />
             </TabsContent>
 
             <TabsContent value="bulk-zip" className="space-y-6">
