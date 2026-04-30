@@ -919,6 +919,62 @@ export class BullhornAPI {
     return operatorMap[operator] || ':'
   }
 
+  private convertAssociationFieldForQuery(field: string): string {
+    if (field.includes('.id')) {
+      const baseName = field.replace('.id', '')
+      const convertedName = baseName + 'Id'
+      console.log(`🔄 Converting association field "${field}" to "${convertedName}" for query endpoint`)
+      return convertedName
+    }
+    return field
+  }
+
+  private sanitizeWhereClauseForQuery(where: string): string {
+    if (!where || where.trim() === '') return 'id>0'
+    
+    let sanitized = where.trim()
+    
+    const luceneSyntaxPattern = /(\w+(?:\.\w+)*):([^:\s]+)/g
+    const matches = Array.from(sanitized.matchAll(luceneSyntaxPattern))
+    
+    if (matches.length > 0) {
+      console.log('⚠️ Detected Lucene syntax in where clause for query endpoint, converting to SQL syntax')
+      
+      matches.forEach(match => {
+        const fullMatch = match[0]
+        let field = match[1]
+        const value = match[2]
+        
+        field = this.convertAssociationFieldForQuery(field)
+        
+        const isNumeric = /^\d+$/.test(value)
+        const isBoolean = value === 'true' || value === 'false'
+        
+        let sqlCondition
+        if (isNumeric) {
+          sqlCondition = `${field}=${value}`
+        } else if (isBoolean) {
+          sqlCondition = `${field}=${value}`
+        } else {
+          sqlCondition = `${field}='${value.replace(/'/g, "''")}'`
+        }
+        
+        sanitized = sanitized.replace(fullMatch, sqlCondition)
+        console.log(`  Converted: "${fullMatch}" → "${sqlCondition}"`)
+      })
+    }
+    
+    const fieldPattern = /\b(\w+\.\w+)\b/g
+    sanitized = sanitized.replace(fieldPattern, (match) => {
+      if (match.includes('.')) {
+        return this.convertAssociationFieldForQuery(match)
+      }
+      return match
+    })
+    
+    return sanitized
+  }
+
   async query(entity: string, fields: string[] | string, where?: string, params?: Record<string, any>, expectedCorporationId?: number): Promise<QueryResult> {
     if (!this.session) {
       throw new Error('Not authenticated')
@@ -933,7 +989,7 @@ export class BullhornAPI {
     const event = new CustomEvent('entity-usage', { detail: { entityName: entity } })
     window.dispatchEvent(event)
 
-    const normalizedWhere = where && where.trim() !== '' ? where : 'id>0'
+    const sanitizedWhere = this.sanitizeWhereClauseForQuery(where || '')
     const fieldsStr = Array.isArray(fields) ? fields.join(',') : fields
 
     console.log('🔍 Executing query:', {
@@ -941,14 +997,14 @@ export class BullhornAPI {
       encodedEntity,
       corporationId: this.session.corporationId,
       restUrl: this.session.restUrl,
-      where: normalizedWhere,
+      where: sanitizedWhere,
       originalWhere: where || 'none',
       fields: fieldsStr
     })
 
     const queryParams = new URLSearchParams({
       fields: fieldsStr,
-      where: normalizedWhere,
+      where: sanitizedWhere,
       BhRestToken: this.session.BhRestToken
     })
 
@@ -969,11 +1025,19 @@ export class BullhornAPI {
 
     if (!response.ok) {
       const error = await response.text()
+      let errorObj
+      try {
+        errorObj = JSON.parse(error)
+      } catch {
+        errorObj = { errorMessage: error }
+      }
+      
       console.error(`❌ Query failed for ${entity}:`, {
         status: response.status,
         statusText: response.statusText,
-        error,
-        where,
+        error: errorObj,
+        where: sanitizedWhere,
+        originalWhere: where,
         url: fullUrl
       })
       
@@ -982,22 +1046,46 @@ export class BullhornAPI {
         throw new Error(`Authentication failed for ${entity} query. Your session may have expired. Status: ${response.status}`)
       }
       
-      throw new Error(`Query failed for ${entity}: ${error}`)
+      let detailedError = `Query failed for ${entity}`
+      if (errorObj.errorMessage) {
+        detailedError += `: ${errorObj.errorMessage}`
+        
+        if (errorObj.errorMessage.includes('Bad Query') || errorObj.errorMessage.includes('parsing where clause')) {
+          detailedError += `\n\nWhere clause used: ${sanitizedWhere}`
+          if (where && where !== sanitizedWhere) {
+            detailedError += `\nOriginal where clause: ${where}`
+          }
+          detailedError += `\n\nTip: For query endpoint, use SQL syntax (e.g., "candidateId=123" not "candidate.id:123")`
+        }
+      }
+      
+      if (entity === 'CandidateCertification' && errorObj.errorMessage?.includes('candidate')) {
+        detailedError += `\n\nFor CandidateCertification queries, use "candidateId" field, not "candidate.id"`
+      }
+      
+      throw new Error(detailedError)
     }
 
     const result = await response.json()
     
+    const resultCount = result.count || 0
+    const resultTotal = result.total || 0
+    
     console.log('✅ Query complete:', {
       entity,
-      total: result.total,
-      count: result.count,
+      total: resultTotal,
+      count: resultCount,
       corporationId: this.session.corporationId
     })
     
+    if (resultCount === 0 && where) {
+      console.log(`ℹ️ No ${entity} records found matching: ${sanitizedWhere}`)
+    }
+    
     return {
       data: result.data || [],
-      total: result.total || 0,
-      count: result.count || 0,
+      total: resultTotal,
+      count: resultCount,
       start: result.start || 0
     }
   }

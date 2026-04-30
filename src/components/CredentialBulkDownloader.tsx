@@ -321,10 +321,13 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
           throw new Error('Invalid candidate ID')
         }
       } else {
+        const whereClause = /^\d+$/.test(mapping.candidateId) 
+          ? `${lookupField}=${mapping.candidateId}`
+          : `${lookupField}='${mapping.candidateId.replace(/'/g, "''")}'`
         const searchResult = await bullhornAPI.query(
           'Candidate',
           ['id'],
-          `${lookupField}:${mapping.candidateId}`
+          whereClause
         )
         if (!searchResult.data || searchResult.data.length === 0) {
           throw new Error(`Candidate not found with ${lookupField}: ${mapping.candidateId}`)
@@ -334,72 +337,79 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
 
       updateResult({ message: 'Fetching certifications...' })
 
-      const certificationsResult = await bullhornAPI.query(
-        'CandidateCertification',
-        [
-          'id',
-          'boardCertification',
-          'candidate(id,firstName,lastName)',
-          'certification(id,name,type)',
-          'certificationFileAttachments',
-          'comments',
-          'compact',
-          'copyOnFile',
-          'customDate1',
-          'customDate10',
-          'customDate2',
-          'customDate3',
-          'customDate4',
-          'customDate5',
-          'customDate6',
-          'customDate7',
-          'customDate8',
-          'customDate9',
-          'customText1',
-          'customText10',
-          'customText2',
-          'customText3',
-          'customText4',
-          'customText5',
-          'customText6',
-          'customText7',
-          'customText8',
-          'customText9',
-          'customTextBlock1',
-          'customTextBlock10',
-          'customTextBlock2',
-          'customTextBlock3',
-          'customTextBlock4',
-          'customTextBlock5',
-          'customTextBlock6',
-          'customTextBlock7',
-          'customTextBlock8',
-          'customTextBlock9',
-          'dateAdded',
-          'dateCertified',
-          'dateExpiration',
-          'dateLastModified',
-          'displayStatus',
-          'expirationReminderDate',
-          'fileAttachments',
-          'isComplete',
-          'isDeleted',
-          'issuedBy',
-          'licenseNumber',
-          'licenseType',
-          'location',
-          'migrateGUID',
-          'modifyingUser(id,firstName,lastName)',
-          'name',
-          'results',
-          'status'
-        ],
-        `candidate.id:${candidateId} AND isDeleted:0`
-      )
+      let certificationsResult
+      try {
+        certificationsResult = await bullhornAPI.query(
+          'CandidateCertification',
+          [
+            'id',
+            'boardCertification',
+            'candidate(id,firstName,lastName)',
+            'certification(id,name,type)',
+            'certificationFileAttachments',
+            'comments',
+            'compact',
+            'copyOnFile',
+            'customDate1',
+            'customDate10',
+            'customDate2',
+            'customDate3',
+            'customDate4',
+            'customDate5',
+            'customDate6',
+            'customDate7',
+            'customDate8',
+            'customDate9',
+            'customText1',
+            'customText10',
+            'customText2',
+            'customText3',
+            'customText4',
+            'customText5',
+            'customText6',
+            'customText7',
+            'customText8',
+            'customText9',
+            'customTextBlock1',
+            'customTextBlock10',
+            'customTextBlock2',
+            'customTextBlock3',
+            'customTextBlock4',
+            'customTextBlock5',
+            'customTextBlock6',
+            'customTextBlock7',
+            'customTextBlock8',
+            'customTextBlock9',
+            'dateAdded',
+            'dateCertified',
+            'dateExpiration',
+            'dateLastModified',
+            'displayStatus',
+            'expirationReminderDate',
+            'fileAttachments',
+            'isComplete',
+            'isDeleted',
+            'issuedBy',
+            'licenseNumber',
+            'licenseType',
+            'location',
+            'migrateGUID',
+            'modifyingUser(id,firstName,lastName)',
+            'name',
+            'results',
+            'status'
+          ],
+          `candidateId=${candidateId} AND isDeleted=0`
+        )
+      } catch (certError) {
+        const errorMsg = certError instanceof Error ? certError.message : String(certError)
+        console.error(`❌ Failed to query CandidateCertification for candidate ${candidateId}:`, errorMsg)
+        throw new Error(`Failed to query certifications for candidate ${candidateId}: ${errorMsg}`)
+      }
 
       if (!certificationsResult.data || certificationsResult.data.length === 0) {
-        const detailedMessage = `No active certifications found for candidate ID ${candidateId}. The candidate exists but has no CandidateCertification records with isDeleted:0.`
-        console.log(`⚠️ ${detailedMessage}`)
+        const detailedMessage = `No active certifications found for candidate ID ${candidateId}. The candidate exists but has no CandidateCertification records with isDeleted=0.`
+        console.log(`ℹ️ ${detailedMessage}`)
         updateResult({
           status: 'success',
           message: detailedMessage,
@@ -433,95 +443,100 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
           : `${cert.id}_${cert.certification?.name || 'Certification'}`
 
         if (cert.fileAttachments && cert.fileAttachments.total > 0) {
-          const filesResult = await bullhornAPI.query(
-            'CertificationFileAttachment',
-            ['id', 'name', 'type', 'contentType', 'contentSubType', 'fileSize', 'dateAdded', 'description'],
-            `candidateCertification.id:${cert.id} AND isDeleted:0`
-          )
+          try {
+            const filesResult = await bullhornAPI.query(
+              'CertificationFileAttachment',
+              ['id', 'name', 'type', 'contentType', 'contentSubType', 'fileSize', 'dateAdded', 'description'],
+              `candidateCertificationId=${cert.id} AND isDeleted=0`
+            )
 
-          if (filesResult.data && filesResult.data.length > 0) {
-            for (const file of filesResult.data) {
-              try {
-                const blob = await bullhornAPI.downloadFile('CertificationFileAttachment', file.id, file.id)
-                const cleanedFolderName = certFolderName.replace(/[^a-zA-Z0-9_-]/g, '_')
-                zip.file(`${cleanedFolderName}/${file.name}`, blob)
-                totalFilesDownloaded++
+            if (filesResult.data && filesResult.data.length > 0) {
+              for (const file of filesResult.data) {
+                try {
+                  const blob = await bullhornAPI.downloadFile('CertificationFileAttachment', file.id, file.id)
+                  const cleanedFolderName = certFolderName.replace(/[^a-zA-Z0-9_-]/g, '_')
+                  zip.file(`${cleanedFolderName}/${file.name}`, blob)
+                  totalFilesDownloaded++
 
-                csvData.push({
-                  CandidateID: mapping.migrateEntityID || candidateId,
-                  CandidateCertificationID: mapping.migrateCertificationID || cert.id,
-                  CertificationID: cert.certification?.id || '',
-                  CertificationName: mapping.migrateCertificationName || cert.certification?.name || '',
-                  CertificationType: cert.certification?.type || '',
-                  Name: cert.name || '',
-                  Status: cert.status || '',
-                  DateCertified: cert.dateCertified || '',
-                  DateExpiration: cert.dateExpiration || '',
-                  DateAdded: cert.dateAdded || '',
-                  DateLastModified: cert.dateLastModified || '',
-                  BoardCertification: cert.boardCertification || '',
-                  Compact: cert.compact || '',
-                  CopyOnFile: cert.copyOnFile || '',
-                  DisplayStatus: cert.displayStatus || '',
-                  ExpirationReminderDate: cert.expirationReminderDate || '',
-                  IsComplete: cert.isComplete || '',
-                  IsDeleted: cert.isDeleted || '',
-                  IssuedBy: cert.issuedBy || '',
-                  LicenseNumber: cert.licenseNumber || '',
-                  LicenseType: cert.licenseType || '',
-                  Location: cert.location || '',
-                  MigrateGUID: cert.migrateGUID || '',
-                  Results: cert.results || '',
-                  Comments: cert.comments || '',
-                  CustomText1: cert.customText1 || '',
-                  CustomText2: cert.customText2 || '',
-                  CustomText3: cert.customText3 || '',
-                  CustomText4: cert.customText4 || '',
-                  CustomText5: cert.customText5 || '',
-                  CustomText6: cert.customText6 || '',
-                  CustomText7: cert.customText7 || '',
-                  CustomText8: cert.customText8 || '',
-                  CustomText9: cert.customText9 || '',
-                  CustomText10: cert.customText10 || '',
-                  CustomTextBlock1: cert.customTextBlock1 || '',
-                  CustomTextBlock2: cert.customTextBlock2 || '',
-                  CustomTextBlock3: cert.customTextBlock3 || '',
-                  CustomTextBlock4: cert.customTextBlock4 || '',
-                  CustomTextBlock5: cert.customTextBlock5 || '',
-                  CustomTextBlock6: cert.customTextBlock6 || '',
-                  CustomTextBlock7: cert.customTextBlock7 || '',
-                  CustomTextBlock8: cert.customTextBlock8 || '',
-                  CustomTextBlock9: cert.customTextBlock9 || '',
-                  CustomTextBlock10: cert.customTextBlock10 || '',
-                  CustomDate1: cert.customDate1 || '',
-                  CustomDate2: cert.customDate2 || '',
-                  CustomDate3: cert.customDate3 || '',
-                  CustomDate4: cert.customDate4 || '',
-                  CustomDate5: cert.customDate5 || '',
-                  CustomDate6: cert.customDate6 || '',
-                  CustomDate7: cert.customDate7 || '',
-                  CustomDate8: cert.customDate8 || '',
-                  CustomDate9: cert.customDate9 || '',
-                  CustomDate10: cert.customDate10 || '',
-                  ModifyingUserID: cert.modifyingUser?.id || '',
-                  ModifyingUserFirstName: cert.modifyingUser?.firstName || '',
-                  ModifyingUserLastName: cert.modifyingUser?.lastName || '',
-                  FileAttachmentID: file.id,
-                  FileName: file.name,
-                  FileType: file.type || '',
-                  ContentType: file.contentType || '',
-                  ContentSubType: file.contentSubType || '',
-                  FileSize: file.fileSize || 0,
-                  FileDateAdded: file.dateAdded || '',
-                  FileDescription: file.description || '',
-                  MigrateEntityID: mapping.migrateEntityID || '',
-                  MigrateCertificationID: mapping.migrateCertificationID || '',
-                  MigrateCertificationName: mapping.migrateCertificationName || ''
-                })
-              } catch (fileError) {
-                console.error(`Failed to download file ${file.id}:`, fileError)
+                  csvData.push({
+                    CandidateID: mapping.migrateEntityID || candidateId,
+                    CandidateCertificationID: mapping.migrateCertificationID || cert.id,
+                    CertificationID: cert.certification?.id || '',
+                    CertificationName: mapping.migrateCertificationName || cert.certification?.name || '',
+                    CertificationType: cert.certification?.type || '',
+                    Name: cert.name || '',
+                    Status: cert.status || '',
+                    DateCertified: cert.dateCertified || '',
+                    DateExpiration: cert.dateExpiration || '',
+                    DateAdded: cert.dateAdded || '',
+                    DateLastModified: cert.dateLastModified || '',
+                    BoardCertification: cert.boardCertification || '',
+                    Compact: cert.compact || '',
+                    CopyOnFile: cert.copyOnFile || '',
+                    DisplayStatus: cert.displayStatus || '',
+                    ExpirationReminderDate: cert.expirationReminderDate || '',
+                    IsComplete: cert.isComplete || '',
+                    IsDeleted: cert.isDeleted || '',
+                    IssuedBy: cert.issuedBy || '',
+                    LicenseNumber: cert.licenseNumber || '',
+                    LicenseType: cert.licenseType || '',
+                    Location: cert.location || '',
+                    MigrateGUID: cert.migrateGUID || '',
+                    Results: cert.results || '',
+                    Comments: cert.comments || '',
+                    CustomText1: cert.customText1 || '',
+                    CustomText2: cert.customText2 || '',
+                    CustomText3: cert.customText3 || '',
+                    CustomText4: cert.customText4 || '',
+                    CustomText5: cert.customText5 || '',
+                    CustomText6: cert.customText6 || '',
+                    CustomText7: cert.customText7 || '',
+                    CustomText8: cert.customText8 || '',
+                    CustomText9: cert.customText9 || '',
+                    CustomText10: cert.customText10 || '',
+                    CustomTextBlock1: cert.customTextBlock1 || '',
+                    CustomTextBlock2: cert.customTextBlock2 || '',
+                    CustomTextBlock3: cert.customTextBlock3 || '',
+                    CustomTextBlock4: cert.customTextBlock4 || '',
+                    CustomTextBlock5: cert.customTextBlock5 || '',
+                    CustomTextBlock6: cert.customTextBlock6 || '',
+                    CustomTextBlock7: cert.customTextBlock7 || '',
+                    CustomTextBlock8: cert.customTextBlock8 || '',
+                    CustomTextBlock9: cert.customTextBlock9 || '',
+                    CustomTextBlock10: cert.customTextBlock10 || '',
+                    CustomDate1: cert.customDate1 || '',
+                    CustomDate2: cert.customDate2 || '',
+                    CustomDate3: cert.customDate3 || '',
+                    CustomDate4: cert.customDate4 || '',
+                    CustomDate5: cert.customDate5 || '',
+                    CustomDate6: cert.customDate6 || '',
+                    CustomDate7: cert.customDate7 || '',
+                    CustomDate8: cert.customDate8 || '',
+                    CustomDate9: cert.customDate9 || '',
+                    CustomDate10: cert.customDate10 || '',
+                    ModifyingUserID: cert.modifyingUser?.id || '',
+                    ModifyingUserFirstName: cert.modifyingUser?.firstName || '',
+                    ModifyingUserLastName: cert.modifyingUser?.lastName || '',
+                    FileAttachmentID: file.id,
+                    FileName: file.name,
+                    FileType: file.type || '',
+                    ContentType: file.contentType || '',
+                    ContentSubType: file.contentSubType || '',
+                    FileSize: file.fileSize || 0,
+                    FileDateAdded: file.dateAdded || '',
+                    FileDescription: file.description || '',
+                    MigrateEntityID: mapping.migrateEntityID || '',
+                    MigrateCertificationID: mapping.migrateCertificationID || '',
+                    MigrateCertificationName: mapping.migrateCertificationName || ''
+                  })
+                } catch (fileError) {
+                  console.error(`Failed to download file ${file.id}:`, fileError)
+                }
               }
             }
+          } catch (filesQueryError) {
+            const errorMsg = filesQueryError instanceof Error ? filesQueryError.message : String(filesQueryError)
+            console.error(`❌ Failed to query files for CandidateCertification ${cert.id}:`, errorMsg)
           }
         } else {
           csvData.push({

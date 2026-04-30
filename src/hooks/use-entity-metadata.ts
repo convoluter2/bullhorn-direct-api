@@ -183,6 +183,24 @@ export function useEntityMetadata(entity: string | undefined) {
 
           fields.push(fieldInfo)
           fieldsMap[fieldInfo.name] = fieldInfo
+          
+          if (fieldInfo.associationType === 'TO_ONE' && fieldInfo.associatedEntity) {
+            const idFieldName = `${fieldInfo.name}Id`
+            const existingIdField = fields.find(f => f.name === idFieldName)
+            
+            if (!existingIdField) {
+              const idFieldInfo: EntityField = {
+                name: idFieldName,
+                label: `${customLabel} ID`,
+                type: 'Integer',
+                dataType: 'Integer',
+                optional: fieldInfo.optional
+              }
+              fields.push(idFieldInfo)
+              fieldsMap[idFieldName] = idFieldInfo
+              console.log(`✨ Added virtual ID field: ${entity}.${idFieldName} for TO_ONE association ${fieldInfo.name}`)
+            }
+          }
         }
 
         const newMetadata: EntityMetadata = {
