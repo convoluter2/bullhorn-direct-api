@@ -307,7 +307,7 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
 
       const certificationsResult = await bullhornAPI.query(
         'CandidateCertification',
-        ['id', 'certification(id,name)', 'status', 'dateCertified', 'dateExpires', 'fileAttachments', 'comments', 'customText1', 'customText2', 'modifyingUser', 'dateAdded', 'dateLastModified'],
+        ['id', 'certification(id,name)', 'status', 'dateCertified', 'dateExpiration', 'fileAttachments', 'comments', 'customText1', 'customText2', 'modifyingUser', 'dateAdded', 'dateLastModified'],
         `candidate.id:${candidateId} AND isDeleted:0`
       )
 
@@ -363,7 +363,7 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
                   CertificationName: mapping.migrateCertificationName || cert.certification?.name || '',
                   CertificationStatus: cert.status || '',
                   DateCertified: cert.dateCertified || '',
-                  DateExpires: cert.dateExpires || '',
+                  DateExpiration: cert.dateExpiration || '',
                   Comments: cert.comments || '',
                   CustomText1: cert.customText1 || '',
                   CustomText2: cert.customText2 || '',
@@ -391,7 +391,7 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
             CertificationName: mapping.migrateCertificationName || cert.certification?.name || '',
             CertificationStatus: cert.status || '',
             DateCertified: cert.dateCertified || '',
-            DateExpires: cert.dateExpires || '',
+            DateExpiration: cert.dateExpiration || '',
             Comments: cert.comments || '',
             CustomText1: cert.customText1 || '',
             CustomText2: cert.customText2 || '',

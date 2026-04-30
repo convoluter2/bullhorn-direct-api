@@ -37,7 +37,7 @@ interface CredentialRow {
   CertificationName: string
   CertificationStatus?: string
   DateCertified?: string
-  DateExpires?: string
+  DateExpiration?: string
   Comments?: string
   CustomText1?: string
   CustomText2?: string
@@ -379,7 +379,7 @@ export function CredentialBulkUploader({ onLog }: CredentialBulkUploaderProps) {
       }
 
       if (row.DateCertified) certData.dateCertified = parseInt(row.DateCertified)
-      if (row.DateExpires) certData.dateExpires = parseInt(row.DateExpires)
+      if (row.DateExpiration) certData.dateExpiration = parseInt(row.DateExpiration)
       if (row.Comments) certData.comments = row.Comments
       if (row.CustomText1) certData.customText1 = row.CustomText1
       if (row.CustomText2) certData.customText2 = row.CustomText2
