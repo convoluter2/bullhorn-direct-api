@@ -394,7 +394,7 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
           'results',
           'status'
         ],
-        `candidate.id:${candidateId} AND isDeleted:0`
+        `candidateId:${candidateId} AND isDeleted:0`
       )
 
       if (!certificationsResult.data || certificationsResult.data.length === 0) {
@@ -700,7 +700,7 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
               'licenseNumber',
               'location'
             ],
-            `candidate.id:${candidateId} AND isDeleted:0`
+            `candidateId:${candidateId} AND isDeleted:0`
           )
 
           if (certificationsResult.data && certificationsResult.data.length > 0) {
