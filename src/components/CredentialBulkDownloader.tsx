@@ -87,7 +87,7 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null)
   const [availableColumns, setAvailableColumns] = useState<string[]>([])
   const [lookupFieldOptions, setLookupFieldOptions] = useState<Array<{ value: string; label: string }>>([
-    { value: 'id', label: 'Candidate ID' }
+    { value: 'id', label: 'Candidate Certification ID' }
   ])
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(false)
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false)
@@ -104,7 +104,7 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
   const loadCandidateMetadata = async () => {
     setIsLoadingMetadata(true)
     try {
-      const metadata = await bullhornAPI.getMetadata('Candidate')
+      const metadata = await bullhornAPI.getMetadata('CandidateCertification')
       
       if (metadata.fields) {
         const lookupFields = metadata.fields
@@ -121,10 +121,10 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
           .sort((a: any, b: any) => a.label.localeCompare(b.label))
 
         const priorityFields = [
-          { value: 'candidateCertificationId', label: 'Candidate Certification ID (Direct Lookup)' },
-          { value: 'id', label: 'Candidate ID' },
-          { value: 'externalID', label: 'External ID' },
-          { value: 'email', label: 'Email' },
+          { value: 'id', label: 'Candidate Certification ID' },
+          { value: 'candidate.id', label: 'Candidate ID' },
+          { value: 'candidate.externalID', label: 'Candidate External ID' },
+          { value: 'candidate.email', label: 'Candidate Email' },
           { value: 'customText1', label: 'Custom Text 1' },
           { value: 'customText2', label: 'Custom Text 2' },
           { value: 'customText3', label: 'Custom Text 3' },
@@ -137,10 +137,10 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
         )
 
         setLookupFieldOptions([...priorityFields, ...remainingFields])
-        console.log('✅ Loaded Candidate lookup fields:', lookupFields.length)
+        console.log('✅ Loaded CandidateCertification lookup fields:', lookupFields.length)
       }
     } catch (error) {
-      console.error('Failed to load Candidate metadata:', error)
+      console.error('Failed to load CandidateCertification metadata:', error)
       toast.error('Failed to load lookup fields from metadata')
     } finally {
       setIsLoadingMetadata(false)
@@ -313,27 +313,50 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
     }
 
     try {
-      updateResult({ status: 'pending', message: 'Looking up candidate...' })
+      updateResult({ status: 'pending', message: 'Looking up candidate certification...' })
 
       let candidateId: number
       if (lookupField === 'id') {
-        candidateId = parseInt(mapping.candidateId)
-        if (isNaN(candidateId)) {
-          throw new Error('Invalid candidate ID')
+        const certificationId = parseInt(mapping.candidateId)
+        if (isNaN(certificationId)) {
+          throw new Error('Invalid candidate certification ID')
         }
-      } else {
+        const certResult = await bullhornAPI.query(
+          'CandidateCertification',
+          ['id', 'candidate(id)'],
+          `id=${certificationId}`
+        )
+        if (!certResult.data || certResult.data.length === 0) {
+          throw new Error(`CandidateCertification not found with ID: ${certificationId}`)
+        }
+        candidateId = certResult.data[0].candidate.id
+      } else if (lookupField.startsWith('candidate.')) {
+        const candidateField = lookupField.replace('candidate.', '')
         const whereClause = /^\d+$/.test(mapping.candidateId) 
-          ? `${lookupField}=${mapping.candidateId}`
-          : `${lookupField}='${mapping.candidateId.replace(/'/g, "''")}'`
+          ? `${candidateField}=${mapping.candidateId}`
+          : `${candidateField}='${mapping.candidateId.replace(/'/g, "''")}'`
         const searchResult = await bullhornAPI.query(
           'Candidate',
           ['id'],
           whereClause
         )
         if (!searchResult.data || searchResult.data.length === 0) {
-          throw new Error(`Candidate not found with ${lookupField}: ${mapping.candidateId}`)
+          throw new Error(`Candidate not found with ${candidateField}: ${mapping.candidateId}`)
         }
         candidateId = searchResult.data[0].id
+      } else {
+        const whereClause = /^\d+$/.test(mapping.candidateId) 
+          ? `${lookupField}=${mapping.candidateId}`
+          : `${lookupField}='${mapping.candidateId.replace(/'/g, "''")}'`
+        const searchResult = await bullhornAPI.query(
+          'CandidateCertification',
+          ['id', 'candidate(id)'],
+          whereClause
+        )
+        if (!searchResult.data || searchResult.data.length === 0) {
+          throw new Error(`CandidateCertification not found with ${lookupField}: ${mapping.candidateId}`)
+        }
+        candidateId = searchResult.data[0].candidate.id
       }
 
       updateResult({ message: 'Fetching certifications...' })
@@ -701,15 +724,26 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
         try {
           let candidateId: number
           if (lookupField === 'id') {
-            candidateId = parseInt(mapping.candidateId)
-            if (isNaN(candidateId)) {
+            const certificationId = parseInt(mapping.candidateId)
+            if (isNaN(certificationId)) {
               candidatesNotFound.push(mapping.candidateId)
               continue
             }
-          } else {
+            const certResult = await bullhornAPI.query(
+              'CandidateCertification',
+              ['id', 'candidate(id)'],
+              `id=${certificationId}`
+            )
+            if (!certResult.data || certResult.data.length === 0) {
+              candidatesNotFound.push(mapping.candidateId)
+              continue
+            }
+            candidateId = certResult.data[0].candidate.id
+          } else if (lookupField.startsWith('candidate.')) {
+            const candidateField = lookupField.replace('candidate.', '')
             const whereClause = /^\d+$/.test(mapping.candidateId) 
-              ? `${lookupField}=${mapping.candidateId}`
-              : `${lookupField}='${mapping.candidateId.replace(/'/g, "''")}'`
+              ? `${candidateField}=${mapping.candidateId}`
+              : `${candidateField}='${mapping.candidateId.replace(/'/g, "''")}'`
             const searchResult = await bullhornAPI.query(
               'Candidate',
               ['id', 'firstName', 'lastName'],
@@ -720,6 +754,20 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
               continue
             }
             candidateId = searchResult.data[0].id
+          } else {
+            const whereClause = /^\d+$/.test(mapping.candidateId) 
+              ? `${lookupField}=${mapping.candidateId}`
+              : `${lookupField}='${mapping.candidateId.replace(/'/g, "''")}'`
+            const searchResult = await bullhornAPI.query(
+              'CandidateCertification',
+              ['id', 'candidate(id,firstName,lastName)'],
+              whereClause
+            )
+            if (!searchResult.data || searchResult.data.length === 0) {
+              candidatesNotFound.push(mapping.candidateId)
+              continue
+            }
+            candidateId = searchResult.data[0].candidate.id
           }
 
           const certificationsResult = await bullhornAPI.query(
