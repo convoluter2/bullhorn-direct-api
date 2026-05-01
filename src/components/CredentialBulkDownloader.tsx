@@ -399,7 +399,7 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
             'results',
             'status'
           ],
-          `candidate.id:${candidateId} AND isDeleted:0`
+          `candidate.id=${candidateId} AND isDeleted=0`
         )
       } catch (certError) {
         const errorMsg = certError instanceof Error ? certError.message : String(certError)
@@ -447,7 +447,7 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
             const filesResult = await bullhornAPI.query(
               'CertificationFileAttachment',
               ['id', 'name', 'type', 'contentType', 'contentSubType', 'fileSize', 'dateAdded', 'description'],
-              `candidateCertification.id:${cert.id} AND isDeleted:0`
+              `candidateCertification.id=${cert.id} AND isDeleted=0`
             )
 
             if (filesResult.data && filesResult.data.length > 0) {
@@ -706,10 +706,13 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
               continue
             }
           } else {
+            const whereClause = /^\d+$/.test(mapping.candidateId) 
+              ? `${lookupField}=${mapping.candidateId}`
+              : `${lookupField}='${mapping.candidateId.replace(/'/g, "''")}'`
             const searchResult = await bullhornAPI.query(
               'Candidate',
               ['id', 'firstName', 'lastName'],
-              `${lookupField}:${mapping.candidateId}`
+              whereClause
             )
             if (!searchResult.data || searchResult.data.length === 0) {
               candidatesNotFound.push(mapping.candidateId)
@@ -731,7 +734,7 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
               'licenseNumber',
               'location'
             ],
-            `candidate.id:${candidateId} AND isDeleted:0`
+            `candidate.id=${candidateId} AND isDeleted=0`
           )
 
           if (certificationsResult.data && certificationsResult.data.length > 0) {
@@ -743,7 +746,7 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
                 const filesResult = await bullhornAPI.query(
                   'CertificationFileAttachment',
                   ['id', 'name', 'fileSize'],
-                  `candidateCertification.id:${cert.id} AND isDeleted:0`
+                  `candidateCertification.id=${cert.id} AND isDeleted=0`
                 )
 
                 if (filesResult.data && filesResult.data.length > 0) {
