@@ -399,7 +399,7 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
             'results',
             'status'
           ],
-          `candidateId=${candidateId} AND isDeleted=0`
+          `candidate.id:${candidateId} AND isDeleted:0`
         )
       } catch (certError) {
         const errorMsg = certError instanceof Error ? certError.message : String(certError)
@@ -447,7 +447,7 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
             const filesResult = await bullhornAPI.query(
               'CertificationFileAttachment',
               ['id', 'name', 'type', 'contentType', 'contentSubType', 'fileSize', 'dateAdded', 'description'],
-              `candidateCertificationId=${cert.id} AND isDeleted=0`
+              `candidateCertification.id:${cert.id} AND isDeleted:0`
             )
 
             if (filesResult.data && filesResult.data.length > 0) {
