@@ -121,6 +121,7 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
           .sort((a: any, b: any) => a.label.localeCompare(b.label))
 
         const priorityFields = [
+          { value: 'candidateCertificationId', label: 'Candidate Certification ID (Direct Lookup)' },
           { value: 'id', label: 'Candidate ID' },
           { value: 'externalID', label: 'External ID' },
           { value: 'email', label: 'Email' },
