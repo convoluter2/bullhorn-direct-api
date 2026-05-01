@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator'
 import { FileCsv, Upload, CheckCircle, XCircle, Info, Trash, Pause, Play, FolderOpen, Warning, ArrowsClockwise, ListBullets } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import Papa from 'papaparse'
+import * as Papa from 'papaparse'
 
 interface CredentialBulkUploaderProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void

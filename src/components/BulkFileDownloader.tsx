@@ -17,8 +17,8 @@ import { FileZip, FileCsv, Download, CheckCircle, XCircle, Info, Upload, Trash, 
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { useEntities } from '@/hooks/use-entities'
-import Papa from 'papaparse'
-import JSZip from 'jszip'
+import * as Papa from 'papaparse'
+import * as JSZip from 'jszip'
 
 interface BulkFileDownloaderProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -550,7 +550,7 @@ export function BulkFileDownloader({ onLog }: BulkFileDownloaderProps) {
           const mapping = entityIdMappings[i] || { entityId }
           const effectiveEntityId = useMappedEntityRenaming && mapping.mappedEntityId ? mapping.mappedEntityId : entityId
           
-          const zip = new JSZip()
+          const zip = new JSZip.default()
           let downloadedCount = 0
           const totalFiles = filteredFiles.length
           const failedFiles: Array<{ fileName: string; fileId: number; error: string }> = []

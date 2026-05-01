@@ -13,7 +13,7 @@ import { FileArrowUp, FileCsv, FolderOpen, CheckCircle, XCircle, Pause, Play, St
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { useEntities } from '@/hooks/use-entities'
-import Papa from 'papaparse'
+import * as Papa from 'papaparse'
 
 interface CSVFileUploaderProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void

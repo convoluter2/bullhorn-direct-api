@@ -15,7 +15,7 @@ import { FileZip, Upload, CheckCircle, XCircle, Info, Trash, Faders, Pause, Play
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { useEntities } from '@/hooks/use-entities'
-import JSZip from 'jszip'
+import * as JSZip from 'jszip'
 
 interface BulkZipUploaderProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -222,7 +222,7 @@ export function BulkZipUploader({ onLog }: BulkZipUploaderProps) {
         try {
           console.log(`📤 Processing ZIP ${i + 1}/${zipFiles.length}: ${zipFile.fileName} for ${entity} ID ${zipFile.entityId}`)
           
-          const zip = new JSZip()
+          const zip = new JSZip.default()
           const zipContent = await zip.loadAsync(zipFile.file)
           
           console.log(`📦 Extracted ZIP contents for ${zipFile.fileName}`)

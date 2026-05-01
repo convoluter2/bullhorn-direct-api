@@ -19,7 +19,7 @@ import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { CSVFileUploader } from '@/components/CSVFileUploader'
 import { BulkFileDownloader } from '@/components/BulkFileDownloader'
-import JSZip from 'jszip'
+import * as JSZip from 'jszip'
 
 interface FileManagerProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -817,7 +817,7 @@ export function FileManager({ onLog }: FileManagerProps) {
         console.warn('Could not fetch entity name:', nameError)
       }
 
-      const zip = new JSZip()
+      const zip = new JSZip.default()
       let successCount = 0
       let failCount = 0
       const errors: string[] = []
@@ -982,7 +982,7 @@ export function FileManager({ onLog }: FileManagerProps) {
         console.warn('Could not fetch entity name:', nameError)
       }
 
-      const zip = new JSZip()
+      const zip = new JSZip.default()
       let successCount = 0
       let failCount = 0
       const errors: string[] = []
