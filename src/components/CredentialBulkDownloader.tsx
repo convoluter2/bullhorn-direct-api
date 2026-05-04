@@ -321,11 +321,12 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
         if (isNaN(certificationId)) {
           throw new Error('Invalid candidate certification ID')
         }
-        const certResult = await bullhornAPI.query(
-          'CandidateCertification',
-          ['id', 'candidate(id)'],
-          `id=${certificationId}`
-        )
+        const certResult = await bullhornAPI.search({
+          entity: 'CandidateCertification',
+          query: `id:${certificationId}`,
+          fields: ['id', 'candidate(id)'],
+          count: 1
+        })
         if (!certResult.data || certResult.data.length === 0) {
           throw new Error(`CandidateCertification not found with ID: ${certificationId}`)
         }
@@ -346,14 +347,15 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
         }
         candidateId = searchResult.data[0].id
       } else {
-        const whereClause = /^\d+$/.test(mapping.candidateId) 
-          ? `${lookupField}=${mapping.candidateId}`
-          : `${lookupField}='${mapping.candidateId.replace(/'/g, "''")}'`
-        const searchResult = await bullhornAPI.query(
-          'CandidateCertification',
-          ['id', 'candidate(id)'],
-          whereClause
-        )
+        const searchQuery = /^\d+$/.test(mapping.candidateId) 
+          ? `${lookupField}:${mapping.candidateId}`
+          : `${lookupField}:"${mapping.candidateId.replace(/"/g, '\\"')}"`
+        const searchResult = await bullhornAPI.search({
+          entity: 'CandidateCertification',
+          query: searchQuery,
+          fields: ['id', 'candidate(id)'],
+          count: 1
+        })
         if (!searchResult.data || searchResult.data.length === 0) {
           throw new Error(`CandidateCertification not found with ${lookupField}: ${mapping.candidateId}`)
         }
@@ -364,9 +366,10 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
 
       let certificationsResult
       try {
-        certificationsResult = await bullhornAPI.query(
-          'CandidateCertification',
-          [
+        certificationsResult = await bullhornAPI.search({
+          entity: 'CandidateCertification',
+          query: `candidate.id:${candidateId} AND isDeleted:0`,
+          fields: [
             'id',
             'boardCertification',
             'candidate(id,firstName,lastName)',
@@ -424,12 +427,13 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
             'results',
             'status'
           ],
-          `candidate.id=${candidateId} AND isDeleted=0`
-        )
+          count: 500,
+          start: 0
+        })
       } catch (certError) {
         const errorMsg = certError instanceof Error ? certError.message : String(certError)
-        console.error(`❌ Failed to query CandidateCertification for candidate ${candidateId}:`, errorMsg)
-        throw new Error(`Failed to query certifications for candidate ${candidateId}: ${errorMsg}`)
+        console.error(`❌ Failed to search CandidateCertification for candidate ${candidateId}:`, errorMsg)
+        throw new Error(`Failed to search certifications for candidate ${candidateId}: ${errorMsg}`)
       }
 
       if (!certificationsResult.data || certificationsResult.data.length === 0) {
@@ -469,11 +473,13 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
 
         if (cert.fileAttachments && cert.fileAttachments.total > 0) {
           try {
-            const filesResult = await bullhornAPI.query(
-              'CertificationFileAttachment',
-              ['id', 'name', 'type', 'contentType', 'contentSubType', 'fileSize', 'dateAdded', 'description'],
-              `candidateCertification.id=${cert.id} AND isDeleted=0`
-            )
+            const filesResult = await bullhornAPI.search({
+              entity: 'CertificationFileAttachment',
+              query: `candidateCertification.id:${cert.id} AND isDeleted:0`,
+              fields: ['id', 'name', 'type', 'contentType', 'contentSubType', 'fileSize', 'dateAdded', 'description'],
+              count: 500,
+              start: 0
+            })
 
             if (filesResult.data && filesResult.data.length > 0) {
               for (const file of filesResult.data) {
@@ -730,11 +736,12 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
               candidatesNotFound.push(mapping.candidateId)
               continue
             }
-            const certResult = await bullhornAPI.query(
-              'CandidateCertification',
-              ['id', 'candidate(id)'],
-              `id=${certificationId}`
-            )
+            const certResult = await bullhornAPI.search({
+              entity: 'CandidateCertification',
+              query: `id:${certificationId}`,
+              fields: ['id', 'candidate(id)'],
+              count: 1
+            })
             if (!certResult.data || certResult.data.length === 0) {
               candidatesNotFound.push(mapping.candidateId)
               continue
@@ -757,14 +764,15 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
             }
             candidateId = searchResult.data[0].id
           } else {
-            const whereClause = /^\d+$/.test(mapping.candidateId) 
-              ? `${lookupField}=${mapping.candidateId}`
-              : `${lookupField}='${mapping.candidateId.replace(/'/g, "''")}'`
-            const searchResult = await bullhornAPI.query(
-              'CandidateCertification',
-              ['id', 'candidate(id,firstName,lastName)'],
-              whereClause
-            )
+            const searchQuery = /^\d+$/.test(mapping.candidateId) 
+              ? `${lookupField}:${mapping.candidateId}`
+              : `${lookupField}:"${mapping.candidateId.replace(/"/g, '\\"')}"`
+            const searchResult = await bullhornAPI.search({
+              entity: 'CandidateCertification',
+              query: searchQuery,
+              fields: ['id', 'candidate(id,firstName,lastName)'],
+              count: 1
+            })
             if (!searchResult.data || searchResult.data.length === 0) {
               candidatesNotFound.push(mapping.candidateId)
               continue
@@ -772,9 +780,10 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
             candidateId = searchResult.data[0].candidate.id
           }
 
-          const certificationsResult = await bullhornAPI.query(
-            'CandidateCertification',
-            [
+          const certificationsResult = await bullhornAPI.search({
+            entity: 'CandidateCertification',
+            query: `candidate.id:${candidateId} AND isDeleted:0`,
+            fields: [
               'id',
               'candidate(id,firstName,lastName)',
               'certification(id,name,type)',
@@ -785,8 +794,9 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
               'licenseNumber',
               'location'
             ],
-            `candidate.id=${candidateId} AND isDeleted=0`
-          )
+            count: 500,
+            start: 0
+          })
 
           if (certificationsResult.data && certificationsResult.data.length > 0) {
             for (const cert of certificationsResult.data) {
@@ -794,11 +804,13 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
               let fileCount = 0
 
               if (cert.fileAttachments && cert.fileAttachments.total > 0) {
-                const filesResult = await bullhornAPI.query(
-                  'CertificationFileAttachment',
-                  ['id', 'name', 'fileSize'],
-                  `candidateCertification.id=${cert.id} AND isDeleted=0`
-                )
+                const filesResult = await bullhornAPI.search({
+                  entity: 'CertificationFileAttachment',
+                  query: `candidateCertification.id:${cert.id} AND isDeleted:0`,
+                  fields: ['id', 'name', 'fileSize'],
+                  count: 500,
+                  start: 0
+                })
 
                 if (filesResult.data && filesResult.data.length > 0) {
                   fileCount = filesResult.data.length
