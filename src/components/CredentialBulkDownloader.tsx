@@ -332,14 +332,15 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
         candidateId = certResult.data[0].candidate.id
       } else if (lookupField.startsWith('candidate.')) {
         const candidateField = lookupField.replace('candidate.', '')
-        const whereClause = /^\d+$/.test(mapping.candidateId) 
-          ? `${candidateField}=${mapping.candidateId}`
-          : `${candidateField}='${mapping.candidateId.replace(/'/g, "''")}'`
-        const searchResult = await bullhornAPI.query(
-          'Candidate',
-          ['id'],
-          whereClause
-        )
+        const searchQuery = /^\d+$/.test(mapping.candidateId) 
+          ? `${candidateField}:${mapping.candidateId}`
+          : `${candidateField}:"${mapping.candidateId.replace(/"/g, '\\"')}"`
+        const searchResult = await bullhornAPI.search({
+          entity: 'Candidate',
+          query: searchQuery,
+          fields: ['id'],
+          count: 1
+        })
         if (!searchResult.data || searchResult.data.length === 0) {
           throw new Error(`Candidate not found with ${candidateField}: ${mapping.candidateId}`)
         }
@@ -741,14 +742,15 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
             candidateId = certResult.data[0].candidate.id
           } else if (lookupField.startsWith('candidate.')) {
             const candidateField = lookupField.replace('candidate.', '')
-            const whereClause = /^\d+$/.test(mapping.candidateId) 
-              ? `${candidateField}=${mapping.candidateId}`
-              : `${candidateField}='${mapping.candidateId.replace(/'/g, "''")}'`
-            const searchResult = await bullhornAPI.query(
-              'Candidate',
-              ['id', 'firstName', 'lastName'],
-              whereClause
-            )
+            const searchQuery = /^\d+$/.test(mapping.candidateId) 
+              ? `${candidateField}:${mapping.candidateId}`
+              : `${candidateField}:"${mapping.candidateId.replace(/"/g, '\\"')}"`
+            const searchResult = await bullhornAPI.search({
+              entity: 'Candidate',
+              query: searchQuery,
+              fields: ['id', 'firstName', 'lastName'],
+              count: 1
+            })
             if (!searchResult.data || searchResult.data.length === 0) {
               candidatesNotFound.push(mapping.candidateId)
               continue
