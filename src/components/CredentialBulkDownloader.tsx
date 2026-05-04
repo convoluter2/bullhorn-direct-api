@@ -347,7 +347,6 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
         }
         candidateId = searchResult.data[0].id
       } else {
-        const searchQuery = /^\d+$/.test(mapping.candidateId) 
           ? `${lookupField}:${mapping.candidateId}`
           : `${lookupField}:"${mapping.candidateId.replace(/"/g, '\\"')}"`
         const searchResult = await bullhornAPI.search({
@@ -355,10 +354,10 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
           query: searchQuery,
           fields: ['id', 'candidate(id)'],
           count: 1
-        })
+          count: 1
+        if (!searchResult.data || searchResult.data.length === 0) {
         if (!searchResult.data || searchResult.data.length === 0) {
           throw new Error(`CandidateCertification not found with ${lookupField}: ${mapping.candidateId}`)
-        }
         candidateId = searchResult.data[0].candidate.id
       }
 
