@@ -84,6 +84,18 @@ export class BullhornAPI {
     bullhornRateLimiter.resetToDefaults()
   }
 
+  setMaxRetries(maxRetries: number) {
+    bullhornRateLimiter.setMaxRetries(maxRetries)
+  }
+
+  setEnableRetry(enable: boolean) {
+    bullhornRateLimiter.setEnableRetry(enable)
+  }
+
+  getRetrySettings() {
+    return bullhornRateLimiter.getRetrySettings()
+  }
+
   async getLoginInfo(username: string): Promise<LoginInfo> {
     if (this.loginInfoCache.has(username)) {
       console.log('📦 Using cached loginInfo for:', username)

@@ -29,6 +29,8 @@ export class BullhornRateLimiter {
   private readonly HARD_LIMIT_PER_MINUTE = 1500
   private readonly SAFE_LIMIT_PER_MINUTE = 1400
   private backoffUntil = 0
+  private maxRetries = 3
+  private enableRetry = true
 
   constructor() {
     this.updateSpeedSettings()
@@ -214,10 +216,16 @@ export class BullhornRateLimiter {
       })
     }
 
-    return this.executeRequestInternal(requestFn)
+    return this.executeRequestInternal(requestFn, 0, 3)
   }
 
-  private async executeRequestInternal(requestFn: () => Promise<Response>): Promise<Response> {
+  private async executeRequestInternal(
+    requestFn: () => Promise<Response>,
+    retryCount: number = 0,
+    maxRetries: number = 3
+  ): Promise<Response> {
+    const effectiveMaxRetries = this.enableRetry ? maxRetries : 0
+    
     const delay = this.calculateDelay()
     
     if (delay > 0) {
@@ -261,9 +269,47 @@ export class BullhornRateLimiter {
 
         console.warn(`⏳ 429 received - backing off for ${Math.round(backoffDelay / 1000)}s (attempt ${this.consecutiveErrors}, multiplier: ${this.backoffMultiplier}x)`)
         
+        this.requestsInProgress--
+        this.processQueue()
+        
         await new Promise(resolve => setTimeout(resolve, backoffDelay))
         
-        return this.executeRequestInternal(requestFn)
+        this.requestsInProgress++
+        return this.executeRequestInternal(requestFn, retryCount, effectiveMaxRetries)
+      }
+
+      if (response.status === 503 || response.status === 502 || response.status === 504) {
+        if (retryCount < effectiveMaxRetries) {
+          const retryDelay = Math.min(1000 * Math.pow(2, retryCount), 30000)
+          console.warn(`⚠️ Server error ${response.status}, retrying in ${retryDelay}ms (attempt ${retryCount + 1}/${effectiveMaxRetries})`)
+          
+          this.requestsInProgress--
+          this.processQueue()
+          
+          await new Promise(resolve => setTimeout(resolve, retryDelay))
+          
+          this.requestsInProgress++
+          return this.executeRequestInternal(requestFn, retryCount + 1, effectiveMaxRetries)
+        } else {
+          console.error(`❌ Server error ${response.status} after ${effectiveMaxRetries} retries, giving up`)
+        }
+      }
+
+      if (response.status >= 500 && response.status < 600) {
+        if (retryCount < effectiveMaxRetries) {
+          const retryDelay = Math.min(2000 * Math.pow(2, retryCount), 60000)
+          console.warn(`⚠️ Server error ${response.status}, retrying in ${retryDelay}ms (attempt ${retryCount + 1}/${effectiveMaxRetries})`)
+          
+          this.requestsInProgress--
+          this.processQueue()
+          
+          await new Promise(resolve => setTimeout(resolve, retryDelay))
+          
+          this.requestsInProgress++
+          return this.executeRequestInternal(requestFn, retryCount + 1, effectiveMaxRetries)
+        } else {
+          console.error(`❌ Server error ${response.status} after ${effectiveMaxRetries} retries, giving up`)
+        }
       }
 
       if (response.ok) {
@@ -274,6 +320,26 @@ export class BullhornRateLimiter {
 
       return response
     } catch (error) {
+      this.requestsInProgress--
+      this.processQueue()
+
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        if (retryCount < effectiveMaxRetries) {
+          const retryDelay = Math.min(1000 * Math.pow(2, retryCount), 30000)
+          console.warn(`⚠️ Network error, retrying in ${retryDelay}ms (attempt ${retryCount + 1}/${effectiveMaxRetries}):`, error.message)
+          
+          await new Promise(resolve => setTimeout(resolve, retryDelay))
+          
+          this.requestsInProgress++
+          return this.executeRequestInternal(requestFn, retryCount + 1, effectiveMaxRetries)
+        } else {
+          console.error(`❌ Network error after ${effectiveMaxRetries} retries, giving up:`, error)
+          this.consecutiveErrors++
+          this.backoffMultiplier = Math.min(5, 1 + (this.consecutiveErrors * 0.5))
+          throw error
+        }
+      }
+
       this.consecutiveErrors++
       this.backoffMultiplier = Math.min(5, 1 + (this.consecutiveErrors * 0.5))
       throw error
@@ -313,7 +379,7 @@ export class BullhornRateLimiter {
       const queueTime = Date.now() - queuedRequest.addedAt
       console.log(`📤 Processing queued request (waited: ${Math.round(queueTime)}ms, remaining queue: ${this.requestQueue.length})`)
 
-      this.executeRequestInternal(queuedRequest.execute)
+      this.executeRequestInternal(queuedRequest.execute, 0, 3)
         .then(queuedRequest.resolve)
         .catch(queuedRequest.reject)
     }
@@ -415,8 +481,30 @@ export class BullhornRateLimiter {
   resetToDefaults(): void {
     this.targetCallsPerMinute = 1000
     this.speedMultiplier = 1.0
+    this.maxRetries = 3
+    this.enableRetry = true
     this.updateSpeedSettings()
-    console.log(`🔄 Rate limiter reset to defaults (1000 calls/min)`)
+    console.log(`🔄 Rate limiter reset to defaults (1000 calls/min, retry enabled with max 3 attempts)`)
+  }
+
+  setMaxRetries(maxRetries: number): void {
+    this.maxRetries = Math.max(0, Math.min(10, maxRetries))
+    console.log(`⚙️ Max retries set to ${this.maxRetries}`)
+  }
+
+  setEnableRetry(enable: boolean): void {
+    this.enableRetry = enable
+    console.log(`⚙️ Retry ${enable ? 'enabled' : 'disabled'}`)
+  }
+
+  getRetrySettings(): {
+    maxRetries: number
+    enableRetry: boolean
+  } {
+    return {
+      maxRetries: this.maxRetries,
+      enableRetry: this.enableRetry
+    }
   }
 }
 
