@@ -226,7 +226,7 @@ export function MassUpdate({ onLog }: { onLog: (operation: string, status: 'succ
       const fieldsToFetch = validFields.map(uf => uf.field).join(',')
       const preview: PreviewRecord[] = []
 
-      const batchSize = 50
+      const batchSize = 25
       for (let i = 0; i < parsedIds.length; i += batchSize) {
         const batch = parsedIds.slice(i, i + batchSize)
         const batchPromises = batch.map(async (id) => {
@@ -261,6 +261,13 @@ export function MassUpdate({ onLog }: { onLog: (operation: string, status: 'succ
         const batchResults = await Promise.all(batchPromises)
         preview.push(...batchResults)
         setPreviewRecords([...preview])
+
+        const rateLimiterStatus = bullhornAPI.getRateLimiterStatus()
+        if (rateLimiterStatus.requestsInLastMinute > rateLimiterStatus.safeLimit * 0.9) {
+          const delayMs = 1000
+          console.log(`⏸️ Approaching rate limit, adding ${delayMs}ms delay between preview batches`)
+          await new Promise(resolve => setTimeout(resolve, delayMs))
+        }
       }
 
       setShowPreview(true)
@@ -339,7 +346,7 @@ export function MassUpdate({ onLog }: { onLog: (operation: string, status: 'succ
       })
 
       if (useStandardUpdate) {
-        const batchSize = 10
+        const batchSize = 25
         for (let i = 0; i < parsedIds.length; i += batchSize) {
           const batch = parsedIds.slice(i, i + batchSize)
           const batchPromises = batch.map(async (id) => {
@@ -366,11 +373,22 @@ export function MassUpdate({ onLog }: { onLog: (operation: string, status: 'succ
           
           setProgress(Math.round((updateResults.length / parsedIds.length) * 100))
           setResults([...updateResults])
+
+          const rateLimiterStatus = bullhornAPI.getRateLimiterStatus()
+          if (rateLimiterStatus.backoffUntil > Date.now()) {
+            const waitTime = Math.ceil((rateLimiterStatus.backoffUntil - Date.now()) / 1000)
+            console.log(`⏳ Rate limiter in backoff, waiting ${waitTime}s before next batch`)
+            toast.info(`Rate limit cooldown: waiting ${waitTime}s...`)
+          } else if (rateLimiterStatus.requestsInLastMinute > rateLimiterStatus.safeLimit * 0.9) {
+            const delayMs = 2000
+            console.log(`⏸️ Approaching rate limit (${rateLimiterStatus.requestsInLastMinute}/${rateLimiterStatus.safeLimit}), adding ${delayMs}ms delay between batches`)
+            await new Promise(resolve => setTimeout(resolve, delayMs))
+          }
         }
       } else {
         try {
           const fieldsToFetch = validFields.map(uf => uf.field).join(',')
-          const batchSize = 50
+          const batchSize = 25
           for (let i = 0; i < parsedIds.length; i += batchSize) {
             const batch = parsedIds.slice(i, i + batchSize)
             const batchRollbackPromises = batch.map(async (id) => {
@@ -388,6 +406,13 @@ export function MassUpdate({ onLog }: { onLog: (operation: string, status: 'succ
             
             const batchRollback = await Promise.all(batchRollbackPromises)
             rollbackData.push(...batchRollback)
+
+            const rateLimiterStatus = bullhornAPI.getRateLimiterStatus()
+            if (rateLimiterStatus.requestsInLastMinute > rateLimiterStatus.safeLimit * 0.9) {
+              const delayMs = 1000
+              console.log(`⏸️ Approaching rate limit during rollback data fetch, adding ${delayMs}ms delay`)
+              await new Promise(resolve => setTimeout(resolve, delayMs))
+            }
           }
 
           const massUpdatePayload = {

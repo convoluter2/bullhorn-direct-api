@@ -711,7 +711,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     }> = []
 
     const startIndex = isResume ? currentIndex : 0
-    const CONCURRENT_BATCH_SIZE = 100
+    const CONCURRENT_BATCH_SIZE = 25
 
     const processRecord = async (i: number, row: string[]) => {
       let existingRecord: any = null
@@ -1247,8 +1247,19 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           const secondsRemaining = remainingRecords / recordsPerSecond
           setEstimatedTimeRemaining(Math.round(secondsRemaining))
         }
-        
+
         lastProgressUpdateRef.current = { time: now, index: batchEnd }
+      }
+
+      const rateLimiterStatus = bullhornAPI.getRateLimiterStatus()
+      if (rateLimiterStatus.backoffUntil > Date.now()) {
+        const waitTime = Math.ceil((rateLimiterStatus.backoffUntil - Date.now()) / 1000)
+        console.log(`⏳ Rate limiter in backoff, waiting ${waitTime}s before next batch`)
+        toast.info(`Rate limit cooldown: waiting ${waitTime}s...`)
+      } else if (rateLimiterStatus.requestsInLastMinute > rateLimiterStatus.safeLimit * 0.9) {
+        const delayMs = 2000
+        console.log(`⏸️ Approaching rate limit (${rateLimiterStatus.requestsInLastMinute}/${rateLimiterStatus.safeLimit}), adding ${delayMs}ms delay between batches`)
+        await new Promise(resolve => setTimeout(resolve, delayMs))
       }
     }
 

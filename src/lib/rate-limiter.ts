@@ -25,9 +25,28 @@ export class BullhornRateLimiter {
   private backoffMultiplier = 1
   private targetCallsPerMinute = 1000
   private speedMultiplier = 1.0
+  private requestTimestamps: number[] = []
+  private readonly HARD_LIMIT_PER_MINUTE = 1500
+  private readonly SAFE_LIMIT_PER_MINUTE = 1400
+  private backoffUntil = 0
 
   constructor() {
     this.updateSpeedSettings()
+  }
+
+  private cleanupOldRequestTimestamps(): void {
+    const oneMinuteAgo = Date.now() - 60000
+    this.requestTimestamps = this.requestTimestamps.filter(ts => ts > oneMinuteAgo)
+  }
+
+  private getRequestsInLastMinute(): number {
+    this.cleanupOldRequestTimestamps()
+    return this.requestTimestamps.length
+  }
+
+  private isAtHardLimit(): boolean {
+    const requestsInLastMinute = this.getRequestsInLastMinute()
+    return requestsInLastMinute >= this.SAFE_LIMIT_PER_MINUTE
   }
 
   parseRateLimitHeaders(headers: Headers): void {
@@ -52,12 +71,13 @@ export class BullhornRateLimiter {
         limit,
         remaining,
         resetIn: Math.round((reset - Date.now()) / 1000) + 's',
-        percentUsed: Math.round(((limit - remaining) / limit) * 100) + '%'
+        percentUsed: Math.round(((limit - remaining) / limit) * 100) + '%',
+        localTracking: this.getRequestsInLastMinute()
       })
 
-      if (this.targetCallsPerMinute !== limit) {
-        console.log(`🎯 Adjusting target calls/minute from ${this.targetCallsPerMinute} to API limit: ${limit}`)
-        this.targetCallsPerMinute = limit
+      if (this.targetCallsPerMinute > this.SAFE_LIMIT_PER_MINUTE) {
+        console.log(`🎯 Capping target calls/minute to safe limit: ${this.SAFE_LIMIT_PER_MINUTE}`)
+        this.targetCallsPerMinute = this.SAFE_LIMIT_PER_MINUTE
         this.updateSpeedSettings()
       }
 
@@ -83,6 +103,18 @@ export class BullhornRateLimiter {
   }
 
   shouldThrottle(): boolean {
+    if (Date.now() < this.backoffUntil) {
+      const waitSeconds = Math.ceil((this.backoffUntil - Date.now()) / 1000)
+      console.log(`🚫 In backoff period, waiting ${waitSeconds}s more`)
+      return true
+    }
+
+    if (this.isAtHardLimit()) {
+      const requestsInLastMinute = this.getRequestsInLastMinute()
+      console.warn(`🔄 Hard limit reached: ${requestsInLastMinute}/${this.SAFE_LIMIT_PER_MINUTE} requests in last minute`)
+      return true
+    }
+
     if (!this.rateLimitInfo) {
       return false
     }
@@ -112,6 +144,19 @@ export class BullhornRateLimiter {
   }
 
   private calculateDelay(): number {
+    if (Date.now() < this.backoffUntil) {
+      return this.backoffUntil - Date.now() + 1000
+    }
+
+    const requestsInLastMinute = this.getRequestsInLastMinute()
+    if (requestsInLastMinute >= this.SAFE_LIMIT_PER_MINUTE) {
+      const oldestRequest = this.requestTimestamps[0] || Date.now()
+      const timeSinceOldest = Date.now() - oldestRequest
+      const timeUntilOldestExpires = 60000 - timeSinceOldest
+      console.log(`⏳ At safe limit (${requestsInLastMinute}/${this.SAFE_LIMIT_PER_MINUTE}), waiting ${Math.round(timeUntilOldestExpires / 1000)}s`)
+      return Math.max(timeUntilOldestExpires, 1000)
+    }
+
     if (!this.rateLimitInfo) {
       return this.minDelayBetweenRequests * this.backoffMultiplier
     }
@@ -182,6 +227,8 @@ export class BullhornRateLimiter {
 
     this.requestsInProgress++
     this.lastRequestTime = Date.now()
+    this.requestTimestamps.push(Date.now())
+    this.cleanupOldRequestTimestamps()
 
     try {
       const response = await requestFn()
@@ -196,21 +243,25 @@ export class BullhornRateLimiter {
         console.error('🚫 Received 429 Too Many Requests!')
         
         const retryAfter = response.headers?.get('Retry-After')
-        const retryDelay = retryAfter 
+        let backoffDelay = retryAfter 
           ? parseInt(retryAfter, 10) * 1000 
           : 60000
 
         this.consecutiveErrors++
         this.backoffMultiplier = Math.min(5, 1 + (this.consecutiveErrors * 0.5))
 
+        backoffDelay = Math.max(backoffDelay, 60000 * this.backoffMultiplier)
+
+        this.backoffUntil = Date.now() + backoffDelay
+
         if (this.rateLimitInfo) {
           this.rateLimitInfo.remaining = 0
-          this.rateLimitInfo.resetTime = Date.now() + retryDelay
+          this.rateLimitInfo.resetTime = Date.now() + backoffDelay
         }
 
-        console.warn(`⏳ Rate limited - waiting ${Math.round(retryDelay / 1000)}s before retry (backoff: ${this.backoffMultiplier}x)`)
+        console.warn(`⏳ 429 received - backing off for ${Math.round(backoffDelay / 1000)}s (attempt ${this.consecutiveErrors}, multiplier: ${this.backoffMultiplier}x)`)
         
-        await new Promise(resolve => setTimeout(resolve, retryDelay))
+        await new Promise(resolve => setTimeout(resolve, backoffDelay))
         
         return this.executeRequestInternal(requestFn)
       }
@@ -218,6 +269,7 @@ export class BullhornRateLimiter {
       if (response.ok) {
         this.consecutiveErrors = 0
         this.backoffMultiplier = 1
+        this.backoffUntil = 0
       }
 
       return response
@@ -274,12 +326,18 @@ export class BullhornRateLimiter {
     requestsInProgress: number
     rateLimitInfo: RateLimitInfo | null
     backoffMultiplier: number
+    requestsInLastMinute: number
+    backoffUntil: number
+    safeLimit: number
   } {
     return {
       queueLength: this.requestQueue.length,
       requestsInProgress: this.requestsInProgress,
       rateLimitInfo: this.rateLimitInfo,
-      backoffMultiplier: this.backoffMultiplier
+      backoffMultiplier: this.backoffMultiplier,
+      requestsInLastMinute: this.getRequestsInLastMinute(),
+      backoffUntil: this.backoffUntil,
+      safeLimit: this.SAFE_LIMIT_PER_MINUTE
     }
   }
 
@@ -303,9 +361,9 @@ export class BullhornRateLimiter {
   }
 
   setTargetCallsPerMinute(targetCalls: number): void {
-    this.targetCallsPerMinute = Math.max(60, Math.min(30000, targetCalls))
+    this.targetCallsPerMinute = Math.max(60, Math.min(this.SAFE_LIMIT_PER_MINUTE, targetCalls))
     this.updateSpeedSettings()
-    console.log(`🎯 Target calls per minute set to ${this.targetCallsPerMinute}`)
+    console.log(`🎯 Target calls per minute set to ${this.targetCallsPerMinute} (capped at safe limit: ${this.SAFE_LIMIT_PER_MINUTE})`)
   }
 
   setSpeedMultiplier(multiplier: number): void {
