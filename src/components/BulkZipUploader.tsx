@@ -15,7 +15,7 @@ import { FileZip, Upload, CheckCircle, XCircle, Info, Trash, Faders, Pause, Play
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { useEntities } from '@/hooks/use-entities'
-import * as JSZip from 'jszip'
+import JSZip from 'jszip'
 
 interface BulkZipUploaderProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void

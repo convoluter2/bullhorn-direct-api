@@ -14,7 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { CreditCard, MagnifyingGlass, Plus, Upload, Trash, PencilSimple, FloppyDisk, X, DownloadSimple, ListChecks, FolderOpen, CaretDown, CaretRight, ArrowsClockwise } from '@phosphor-icons/react'
 import { toast } from 'sonner'
-import * as Papa from 'papaparse'
+import Papa from 'papaparse'
 import templateCsv from '@/assets/documents/rate-card-template.csv?url'
 import updateTemplateCsv from '@/assets/documents/rate-card-line-update-template.csv?url'
 

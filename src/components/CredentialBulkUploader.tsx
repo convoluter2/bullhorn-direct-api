@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator'
 import { FileCsv, Upload, CheckCircle, XCircle, Info, Trash, Pause, Play, FolderOpen, Warning, ArrowsClockwise, ListBullets } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import * as Papa from 'papaparse'
+import Papa from 'papaparse'
 
 interface CredentialBulkUploaderProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -75,8 +75,8 @@ export function CredentialBulkUploader({ onLog }: CredentialBulkUploaderProps) {
   const loadCertificationMetadata = async () => {
     setIsLoadingMetadata(true)
     try {
-      console.log('📋 Fetching Certification metadata...')
-      const metadata = await bullhornAPI.getMetadata('Certification')
+      console.log('📋 Fetching CandidateCertification metadata...')
+      const metadata = await bullhornAPI.getMetadata('CandidateCertification')
       
       if (metadata && metadata.fields) {
         const lookupFields = metadata.fields
@@ -93,21 +93,21 @@ export function CredentialBulkUploader({ onLog }: CredentialBulkUploaderProps) {
           .sort((a: any, b: any) => a.label.localeCompare(b.label))
 
         setCertificationFields(lookupFields)
-        console.log(`✅ Loaded ${lookupFields.length} lookup fields for Certification`)
-        toast.success(`Loaded ${lookupFields.length} lookup fields for Certification`)
+        console.log(`✅ Loaded ${lookupFields.length} lookup fields for CandidateCertification`)
+        toast.success(`Loaded ${lookupFields.length} lookup fields for CandidateCertification`)
         
-        onLog('Certification Metadata', 'success', `Loaded ${lookupFields.length} lookup fields`, {
-          entity: 'Certification',
+        onLog('CandidateCertification Metadata', 'success', `Loaded ${lookupFields.length} lookup fields`, {
+          entity: 'CandidateCertification',
           fieldCount: lookupFields.length
         })
       } else {
         toast.warning('No fields returned from metadata')
       }
     } catch (error) {
-      console.error('❌ Failed to load Certification metadata:', error)
+      console.error('❌ Failed to load CandidateCertification metadata:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       toast.error(`Failed to load metadata: ${errorMessage}`)
-      onLog('Certification Metadata', 'error', 'Failed to load metadata', { error: errorMessage })
+      onLog('CandidateCertification Metadata', 'error', 'Failed to load metadata', { error: errorMessage })
     } finally {
       setIsLoadingMetadata(false)
     }
@@ -459,9 +459,9 @@ export function CredentialBulkUploader({ onLog }: CredentialBulkUploaderProps) {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Certification Lookup Fields</CardTitle>
+          <CardTitle>CandidateCertification Lookup Fields</CardTitle>
           <CardDescription>
-            Available TO_ONE lookup fields from Certification entity metadata
+            Available TO_ONE lookup fields from CandidateCertification entity metadata
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

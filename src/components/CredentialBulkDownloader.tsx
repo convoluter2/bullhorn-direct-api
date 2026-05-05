@@ -16,8 +16,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FileZip, FileCsv, Download, CheckCircle, XCircle, Info, Upload, Trash, Pause, Play, ArrowClockwise, Eye, Certificate, FileText } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import * as Papa from 'papaparse'
-import * as JSZip from 'jszip'
+import Papa from 'papaparse'
+import JSZip from 'jszip'
 
 interface CredentialBulkDownloaderProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -455,7 +455,7 @@ export function CredentialBulkDownloader({ onLog }: CredentialBulkDownloaderProp
         totalCredentials: certifications.length
       })
 
-      const zip = new JSZip.default()
+      const zip = new JSZip()
       const csvData: any[] = []
       let totalFilesDownloaded = 0
 
