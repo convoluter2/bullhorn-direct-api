@@ -161,9 +161,18 @@ export function QueryStack({ onLog }: QueryStackProps) {
     const startTime = Date.now()
 
     try {
+      const validFieldNames = new Set(availableFields.map(f => f.name))
+      const validSelectedFields = selectedFields.filter(f => validFieldNames.has(f))
+      
+      if (validSelectedFields.length < selectedFields.length) {
+        const invalidFields = selectedFields.filter(f => !validFieldNames.has(f))
+        console.warn('⚠️ Removed invalid fields from query:', invalidFields)
+        toast.warning(`Removed ${invalidFields.length} invalid field(s) from query: ${invalidFields.join(', ')}`)
+      }
+      
       const config: QueryConfig = {
         entity,
-        fields: [...selectedFields, 'id'],
+        fields: [...validSelectedFields, 'id'],
         filters: filterMode === 'simple' ? queryFilters.filter(f => f.field && f.value) : [],
         filterGroups: filterMode === 'grouped' ? queryFilterGroups : undefined,
         groupLogic: filterMode === 'grouped' ? groupLogic : undefined,
@@ -171,6 +180,13 @@ export function QueryStack({ onLog }: QueryStackProps) {
         start: 0,
         orderBy: orderBy && orderBy !== '__none__' ? orderBy : undefined
       }
+      
+      console.log('🔍 Query config with validated fields:', {
+        entity,
+        totalSelectedFields: selectedFields.length,
+        validFields: validSelectedFields.length,
+        invalidFields: selectedFields.length - validSelectedFields.length
+      })
 
       const allData: any[] = []
       let start = 0
@@ -209,7 +225,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
           
           result = await bullhornAPI.query(
             entity,
-            [...selectedFields, 'id'],
+            [...validSelectedFields, 'id'],
             whereClause,
             queryParams
           )
@@ -238,7 +254,7 @@ export function QueryStack({ onLog }: QueryStackProps) {
         'QueryStack - Query',
         'success',
         `Queried ${entity}: ${allData.length} records`,
-        { entity, fields: selectedFields, filterMode, filters: filterMode === 'simple' ? queryFilters : queryFilterGroups, count: allData.length, method: useQueryMethod ? 'query' : 'search' }
+        { entity, fields: validSelectedFields, filterMode, filters: filterMode === 'simple' ? queryFilters : queryFilterGroups, count: allData.length, method: useQueryMethod ? 'query' : 'search' }
       )
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Query failed'
@@ -333,11 +349,23 @@ export function QueryStack({ onLog }: QueryStackProps) {
     }> = []
 
     try {
+      const validFieldNames = new Set(targetAvailableFields.map(f => f.name))
+      
       const fieldsToFetch = Array.from(new Set([
         'id',
-        ...updateFilters.filter(f => f.field).map(f => f.field),
-        ...fieldUpdates.map(u => u.field)
+        ...updateFilters.filter(f => f.field && validFieldNames.has(f.field)).map(f => f.field),
+        ...fieldUpdates.filter(u => u.field && validFieldNames.has(u.field)).map(u => u.field)
       ]))
+      
+      console.log('📋 Fields to fetch for update validation:', {
+        entity: effectiveEntity,
+        fieldsToFetch,
+        totalFieldsInMetadata: targetAvailableFields.length,
+        requestedFields: [
+          ...updateFilters.filter(f => f.field).map(f => f.field),
+          ...fieldUpdates.map(u => u.field)
+        ]
+      })
 
       for (let i = 0; i < queryResults.length; i++) {
         const record = queryResults[i]
