@@ -18,6 +18,7 @@ const QUERY_ONLY_ENTITIES = [
   'CorporateUser',
   'CorporationDepartment',
   'Country',
+  'InvoiceTerm',
   'JobSubmission',
   'Note',
   'NoteEntity',

@@ -913,7 +913,10 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
             } catch (searchError) {
               console.warn(`Search failed for lookup, trying query method: ${searchError}`)
               
-              const whereClause = `${lookupField}=${lookupValue}`
+              const isNumeric = /^\d+$/.test(lookupValue)
+              const whereClause = isNumeric 
+                ? `${lookupField}=${lookupValue}`
+                : `${lookupField}='${lookupValue.replace(/'/g, "''")}'`
               searchResult = await bullhornAPI.query(
                 entity,
                 fieldsToFetch,

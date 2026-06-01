@@ -1,18 +1,17 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, 
-import { Switch } from '@/components/ui/switc
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { bullhornAPI } from '@/lib/bullhorn-api'
-import { useEntities } from '@/hooks/use-entiti
-import { Copy, DownloadSimple, ArrowsClockwise } from
-interface EntityLookupProps {
-}
-const EFFECTIVE_DATE_ENTITIES = [
-  'PlacementRateCardLineGroup'
-]
-export function EntityLookup({ onLog }: EntityLookupProps) {
-  const [entityId, setEntityId] = useState('')
+import { useEntities } from '@/hooks/use-entities'
+import { useEntityMetadata } from '@/hooks/use-entity-metadata'
+import { Copy, DownloadSimple, ArrowsClockwise } from '@phosphor-icons/react'
+import { toast } from 'sonner'
 
 interface EntityLookupProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
@@ -30,104 +29,110 @@ export function EntityLookup({ onLog }: EntityLookupProps) {
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [showEditable, setShowEditable] = useState(false)
+  const [layout, setLayout] = useState<'RecordEdit' | 'RecordView'>('RecordView')
+  const [useEffectiveDate, setUseEffectiveDate] = useState(false)
+  const [effectiveDate, setEffectiveDate] = useState('')
 
-        layout,
-        fields
+  const { entities, loading: entitiesLoading, refresh: refreshEntities } = useEntities()
+  const { metadata, loading: metadataLoading, refresh: refreshMetadata } = useEntityMetadata(entity || undefined)
 
+  const supportsEffectiveDate = EFFECTIVE_DATE_ENTITIES.includes(entity)
 
-
-
-
-      toast.success(`Successfully retrieved ${entity} ${parsedId}`)
-
-        showEditable,
-      })
-      const errorMessage = err instanceof Error ? err.messag
-      toast.
-     
-
-      })
-      setLoading(f
-  }
-
-      nav
+  const handleLookup = async () => {
+    if (!entity || !entityId) {
+      toast.error('Please select an entity and enter an ID')
+      return
     }
 
-    if (result) {
-      c
+    const parsedId = parseInt(entityId, 10)
+    if (isNaN(parsedId)) {
+      toast.error('Entity ID must be a number')
+      return
+    }
 
-      document.body.appendChild(a)
-      document.body.remov
-      toast.success('Downloaded')
+    setLoading(true)
+    setError(null)
+    setResult(null)
+
+    try {
+      const fields = metadata?.fields.map(f => f.name).join(',') || '*'
+      
+      let lookupUrl = `${bullhornAPI.getSession()?.restUrl}entity/${entity}/${parsedId}`
+      const params = new URLSearchParams({
+        fields,
+        showEditable: showEditable.toString(),
+        layout,
+        BhRestToken: bullhornAPI.getSession()?.BhRestToken || ''
+      })
+
+      if (supportsEffectiveDate && useEffectiveDate && effectiveDate) {
+        params.append('effectiveDate', effectiveDate)
+      }
+
+      lookupUrl += `?${params.toString()}`
+
+      const data = await bullhornAPI.getEntity(entity, parsedId, fields)
+      
+      setResult({
+        data,
+        url: lookupUrl,
+        entity,
+        id: parsedId,
+        showEditable,
+        layout,
+        fields
+      })
+
+      toast.success(`Successfully retrieved ${entity} ${parsedId}`)
+      onLog('Entity Lookup', 'success', `Retrieved ${entity} ${parsedId}`, {
+        entity,
+        id: parsedId,
+        showEditable,
+        layout,
+        fields
+      })
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err)
+      setError(errorMessage)
+      toast.error(`Lookup failed: ${errorMessage}`)
+      onLog('Entity Lookup', 'error', `Failed to retrieve ${entity} ${parsedId}`, {
+        error: errorMessage
+      })
+    } finally {
+      setLoading(false)
+    }
   }
+
+  const copyToClipboard = () => {
+    if (result) {
+      const text = JSON.stringify(result.data, null, 2)
+      navigator.clipboard.writeText(text)
+      toast.success('Copied to clipboard')
+    }
+  }
+
+  const downloadJSON = () => {
+    if (result) {
+      const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${result.entity}_${result.id}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success('Downloaded JSON file')
+    }
+  }
+
   return (
+    <div className="space-y-4">
       <Card>
-
-              <CardTitle>Ent
-               
-            </div>
-        </Card
-       
-
-                <Select value={entity} onValueChange={(value) => {
-                  setResult(null)
-       
-
-                  <SelectContent>
-
-                          {e}
-
-                  </S
-              </div>
-                <Button
-               
-                    t
-                    s
-              
-        
-                  <
-              </div>
-
-              <Label>Entity ID</Label>
-                type="text"
-                onChange={(e) => setEntityId(e.target.value)}
-               
-            </div>
-            {supportsEffect
-        
-               
-                      c
-     
-   
-
-                {useEffectiveDat
-                 
-                      value={effectiveDate}
-                      disabled={loading}
-     
-   
-
-              <div>
-                <
-                    id="show-editable"
-                    onCheckedChange={setSho
-                  <Label htmlFor="show-edit
-                  
-              </div>
-              <div>
-               
-                    <SelectValue /
-                  <SelectConte
-                    <SelectItem v
-     
-   
-
-          
-            >
-            
-        </CardConten
-
-        <Alert va
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
               <CardTitle>Entity Lookup</CardTitle>
               <CardDescription>
                 Look up a single entity record by ID
@@ -258,35 +263,42 @@ export function EntityLookup({ onLog }: EntityLookupProps) {
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      {result && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Result: {result.entity} {result.id}</CardTitle>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={copyToClipboard}>
+                  <Copy size={16} />
+                  Copy
+                </Button>
+                <Button variant="outline" size="sm" onClick={downloadJSON}>
+                  <DownloadSimple size={16} />
+                  Download
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div>
+                <Label className="text-xs text-muted-foreground">API URL</Label>
+                <pre className="text-xs bg-muted p-2 rounded overflow-x-auto">{result.url}</pre>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Response Data</Label>
+                <ScrollArea className="h-[400px]">
+                  <pre className="text-xs bg-muted p-4 rounded">{JSON.stringify(result.data, null, 2)}</pre>
+                </ScrollArea>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
