@@ -1,3 +1,28 @@
+/**
+ * OAuth Proxy Server for Bullhorn API Integration
+ * 
+ * Purpose:
+ * This Express server solves cross-origin OAuth redirect challenges by acting as
+ * a legitimate redirect URI for Bullhorn's OAuth flow. When Bullhorn redirects
+ * after authentication, this server captures the authorization code and communicates
+ * it back to the frontend via postMessage.
+ * 
+ * Key Features:
+ * - OAuth callback handling with automatic code decoding
+ * - Cross-origin communication via postMessage
+ * - Temporary code storage with 5-minute expiration
+ * - Optional credentials and connections persistence
+ * - Health monitoring and graceful restart
+ * 
+ * Dependencies:
+ * - express: Web server framework
+ * - cors: Cross-origin resource sharing middleware
+ * 
+ * Default Port: 3001
+ * 
+ * Documentation: See /PROXY_SERVER_DOCUMENTATION.md for detailed information
+ */
+
 import express from 'express';
 import cors from 'cors';
 import { promises as fs } from 'fs';
@@ -10,6 +35,11 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PROXY_PORT || 3001;
 
+/**
+ * CORS Configuration
+ * WARNING: In production, restrict this to specific origins for security
+ * Example: origin: ['https://your-frontend-domain.com']
+ */
 app.use(cors({
   origin: true,
   credentials: true
@@ -17,10 +47,27 @@ app.use(cors({
 
 app.use(express.json());
 
+/**
+ * In-Memory Storage
+ * 
+ * pendingAuths: Stores authorization codes temporarily (5-minute TTL)
+ *   Format: Map<state, { code, timestamp }>
+ * 
+ * credentialsStore: Caches user credentials (persisted to disk)
+ *   Format: Map<"userId-connectionId", credentials>
+ * 
+ * connectionsStore: Caches connection configurations (persisted to disk)
+ *   Format: Map<userId, connection[]>
+ */
 const pendingAuths = new Map();
 const credentialsStore = new Map();
 const connectionsStore = new Map();
 
+/**
+ * File-Based Persistence Configuration
+ * Credentials and connections are stored in JSON files for persistence
+ * across server restarts
+ */
 const DATA_DIR = path.join(__dirname, 'data');
 const CREDENTIALS_FILE = path.join(DATA_DIR, 'credentials.json');
 const CONNECTIONS_FILE = path.join(DATA_DIR, 'connections.json');
@@ -81,6 +128,13 @@ async function saveConnections() {
   }
 }
 
+/**
+ * Automatic Cleanup Job
+ * 
+ * Runs every 60 seconds to remove expired authorization codes.
+ * Codes are considered expired after 5 minutes (300,000ms) to prevent
+ * memory leaks and ensure stale codes aren't reused.
+ */
 setInterval(() => {
   const now = Date.now();
   const fiveMinutesAgo = now - 300000;
@@ -93,6 +147,32 @@ setInterval(() => {
   }
 }, 60000);
 
+/**
+ * ============================================================================
+ * OAUTH ENDPOINTS
+ * ============================================================================
+ */
+
+/**
+ * OAuth Callback Endpoint
+ * 
+ * This is the primary OAuth redirect URI registered with Bullhorn.
+ * When users authenticate with Bullhorn, they are redirected here with
+ * an authorization code that can be exchanged for access tokens.
+ * 
+ * Flow:
+ * 1. Receive redirect from Bullhorn with code and state parameters
+ * 2. Decode URL-encoded characters (e.g., %3A → :)
+ * 3. Store code temporarily with state identifier
+ * 4. Display success page that uses postMessage to send code to frontend
+ * 5. Auto-close popup after brief delay
+ * 
+ * Query Parameters:
+ * - code: Authorization code from Bullhorn (URL-encoded)
+ * - state: Optional state parameter for CSRF protection
+ * - error: Error code if authentication failed
+ * - error_description: Human-readable error message
+ */
 app.get('/oauth/callback', async (req, res) => {
   const { code, state, error, error_description } = req.query;
   
@@ -214,6 +294,13 @@ app.get('/oauth/callback', async (req, res) => {
     `);
   }
 
+  /**
+   * Decode Authorization Code
+   * 
+   * Bullhorn returns codes with URL-encoded special characters.
+   * Most critically, the colon (:) is encoded as %3A.
+   * Example: "25184_8090191_44%3Aead82de4" → "25184_8090191_44:ead82de4"
+   */
   const decodedCode = decodeURIComponent(code);
   
   console.log('✅ Code received and decoded:', { 
@@ -222,6 +309,13 @@ app.get('/oauth/callback', async (req, res) => {
     state 
   });
 
+  /**
+   * Store Code for Fallback Polling
+   * 
+   * The code is stored temporarily with the state identifier.
+   * This allows the frontend to poll /oauth/status/:state as a fallback
+   * if the postMessage communication fails.
+   */
   if (state) {
     pendingAuths.set(state, {
       code: decodedCode,
@@ -231,6 +325,16 @@ app.get('/oauth/callback', async (req, res) => {
     console.log(`💾 Stored auth code for state: ${state} (Total pending: ${pendingAuths.size})`);
   }
 
+  /**
+   * Success Page with postMessage Communication
+   * 
+   * This HTML page serves two purposes:
+   * 1. Shows user-friendly success message
+   * 2. Sends authorization code to opener window via postMessage
+   * 
+   * The page auto-closes after 1 second, but the frontend can also
+   * close it programmatically after receiving the message.
+   */
   res.send(`
     <!DOCTYPE html>
     <html>
@@ -303,6 +407,22 @@ app.get('/oauth/callback', async (req, res) => {
   `);
 });
 
+/**
+ * OAuth Status Polling Endpoint (Fallback)
+ * 
+ * This endpoint provides a fallback mechanism if postMessage fails.
+ * The frontend can poll this endpoint with the state parameter to
+ * retrieve the authorization code.
+ * 
+ * Note: The code is deleted after retrieval for security.
+ * 
+ * URL Parameters:
+ * - state: Unique state identifier
+ * 
+ * Response:
+ * - { success: true, code: "..." } if code is available
+ * - { success: false } if code is not yet available
+ */
 app.get('/oauth/status/:state', (req, res) => {
   const { state } = req.params;
   const auth = pendingAuths.get(state);
@@ -318,6 +438,21 @@ app.get('/oauth/status/:state', (req, res) => {
   }
 });
 
+/**
+ * ============================================================================
+ * SERVICE MANAGEMENT ENDPOINTS
+ * ============================================================================
+ */
+
+/**
+ * Health Check Endpoint
+ * 
+ * Returns the current status of the proxy server including uptime,
+ * pending authentications, and version information.
+ * 
+ * Used by the frontend to verify the proxy is reachable before
+ * attempting OAuth flows.
+ */
 app.get('/health', (req, res) => {
   const uptime = process.uptime();
   const health = { 
@@ -333,6 +468,13 @@ app.get('/health', (req, res) => {
   res.json(health);
 });
 
+/**
+ * Graceful Restart Endpoint
+ * 
+ * Allows the frontend or monitoring systems to request a graceful
+ * restart of the proxy server. Clears all pending authentications
+ * and exits with code 0 (assuming a process manager will restart it).
+ */
 app.post('/restart', (req, res) => {
   console.log('');
   console.log('🔄 ═══════════════════════════════════════════════════');
