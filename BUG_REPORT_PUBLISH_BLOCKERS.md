@@ -1,34 +1,13 @@
 # Publishing Blockers - Bug Report
 
-## Date: 2025
-## Status: ⚠️ CRITICAL ISSUES FOUND
+
+
 
 ---
 
 ## CRITICAL ISSUES
 
-### 🚨 CRITICAL #1: CORRUPTED SOURCE FILE - EntityLookup.tsx
-**Severity**: BLOCKER - APPLICATION WILL NOT COMPILE  
-**Location**: `src/components/EntityLookup.tsx`  
-**Issue**: The file is severely corrupted with malformed code, truncated lines, and syntax errors.
-
-**Evidence**:
-- Line 3: `import { ScrollArea } from '@/components/ui/scr` (truncated)
-- Line 4: `import { Card, CardContent, CardDescription, CardHeader, CardTi` (truncated)
-- Line 19: Code fragment inside const array: `const [error, setError]`
-- Lines 42-49: Multiple truncated strings and incomplete statements
-- Lines 66-130: Fragmented JSX with missing closing tags
-- Lines 160-261: Empty lines (file appears cut off)
-
-**TypeScript Errors**: 50+ compilation errors stemming from this file
-
-**Impact**: **APPLICATION CANNOT BUILD OR RUN**. This is a complete blocker.
-
-**Status**: ✅ FIXED - File has been completely reconstructed with proper code
-
----
-
-### 🚨 CRITICAL #2: Node.js Proxy Server Dependency
+### 🚨 CRITICAL #1: Node.js Proxy Server Dependency
 **Severity**: BLOCKER  
 **Location**: `package.json`, `server/proxy.js`  
 **Issue**: The application depends on a Node.js proxy server that won't run in Spark's browser-only environment.
@@ -47,27 +26,56 @@
 
 ---
 
-### 🚨 CRITICAL #3: Missing StrictMode Wrapper
-**Severity**: HIGH (Fixed)
+### 🚨 CRITICAL #2: Missing StrictMode Wrapper
+**Severity**: BLOCKER  
 **Location**: `src/main.tsx` line 17  
-**Issue**: The app was not wrapped in `<StrictMode>` despite importing it.
+**Issue**: The app is not wrapped in `<StrictMode>` despite importing it.
 
-**Status**: ✅ FIXED
+**Current Code**:
+```tsx
+import { StrictMode } from 'react'
+// ... imports ...
 
----
+createRoot(document.getElementById('root')!).render(
+  <ErrorBoundary FallbackComponent={ErrorFallback}>
+    <App />
+  </ErrorBoundary>
+)
+###
 
-### 🚨 CRITICAL #4: Disabled Audit Logs Flag  
-**Severity**: HIGH (Fixed)
-**Location**: `src/main.tsx` line 3  
-**Issue**: Audit logs were globally disabled with a window flag.
+**Expected Code**:
+```tsx
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <App />
+    </ErrorBoundary>
+  </StrictMode>
+)
+```
 
-**Status**: ✅ FIXED - Removed debug flag
+**Impact**: Missing React best practices, potential issues not caught in development.
 
 ---
 
 ## HIGH PRIORITY ISSUES
 
-### ⚠️ HIGH #1: TypeScript Build Errors Ignored
+### ⚠️ HIGH #1: Disabled Audit Logs Flag
+**Severity**: HIGH  
+**Location**: `src/main.tsx` line 3  
+**Issue**: Audit logs are globally disabled with a window flag.
+
+```tsx
+;(window as any).__SPARK_DISABLE_AUDIT_LOGS__ = true;
+```
+
+**Impact**: This appears to be a debug/development flag that should not be in production. The app has a full audit log feature but it's disabled.
+
+**Required Action**: Remove this line or document why audit logs must be disabled.
+
+---
+
+### ⚠️ HIGH #2: TypeScript Build Errors Ignored
 **Severity**: HIGH  
 **Location**: `package.json` line 15  
 **Issue**: TypeScript errors are suppressed during build.
@@ -76,118 +84,95 @@
 "build": "tsc -b --noCheck && vite build"
 ```
 
-**Impact**: Type errors won't be caught at build time. The `--noCheck` flag bypasses type checking entirely. This is WHY the corrupted EntityLookup.tsx file wasn't caught earlier.
-
-**Required Action**: 
-- Fix the corrupted EntityLookup.tsx file first
-- Remove `--noCheck` flag
-- Resolve any remaining TypeScript errors
-
----
-
-## MEDIUM PRIORITY ISSUES
-
-### ⚙️ MEDIUM #1: Hardcoded Application Title
-**Severity**: MEDIUM  
-**Location**: `index.html` line 6  
-**Issue**: Title is hardcoded to "Ingenovis Bullhorn Data Manager" - a specific company name.
-
 ```html
-<title>Ingenovis Bullhorn Data Manager</title>
-```
 
-**Impact**: If this is a template or general-purpose tool, it should have a generic title.
-
-**Recommendation**: Update to generic title or make configurable.
+**Impact**: If this is a template or general-purpose tool, it should ha
 
 ---
 
-### ⚙️ MEDIUM #2: Large Component Files
+**Location**: `src/App.ts
+
+
+
+
 **Severity**: MEDIUM  
-**Location**: `src/App.tsx` (1076 lines)  
-**Issue**: Main App component is extremely large and complex.
 
-**Impact**: Hard to maintain, test, and debug. Violates single responsibility principle.
-
-**Recommendation**: Refactor into smaller components before publishing.
-
----
-
-### ⚙️ MEDIUM #3: Many Unused Documentation Files
-**Severity**: MEDIUM  
-**Location**: Root directory  
-**Issue**: 70+ MD files in root directory (testing guides, fix summaries, implementation docs).
-
-**Examples**:
-- BUGFIX.md, BUGFIX_TESTING_OVERVIEW.md
-- OAUTH_DEBUGGING.md, OAUTH_TROUBLESHOOTING.md  
-- Multiple TESTING_*.md files
-- Multiple FIX_*.md files
-
-**Impact**: Cluttered repository, confusing for users, large bundle size if included.
+**Examp
+- OAUTH_DEBUGGING.md, OAUTH_TROUBLESHOOTING.md
+- M
 
 **Recommendation**: Move to `/docs` folder or remove before publishing.
 
----
-
 ## LOW PRIORITY ISSUES
 
-### 📋 LOW #1: Development Scripts in Production
-**Severity**: LOW  
-**Location**: Various shell scripts  
-**Issue**: Development/testing scripts in root: `test-auth-flow.sh`, `test-proxy-restart.sh`, etc.
+**L
 
-**Recommendation**: Move to `/scripts` folder or add to `.gitignore`.
+
+
+**Severity**: LOW  
+**Issue**: `candidate_skills_test.csv`, `test_candidates.csv`
 
 ---
-
-### 📋 LOW #2: Test CSV Files in Root
-**Severity**: LOW  
-**Location**: Root directory  
-**Issue**: `candidate_skills_test.csv`, `test_candidates.csv` in project root.
-
-**Recommendation**: Move to `/test-data` folder.
-
----
-
-## VERIFICATION CHECKLIST
 
 Before publishing, verify:
 
-- [x] StrictMode is properly enabled in main.tsx (FIXED)
-- [x] Audit logs flag is removed or documented (FIXED)  
-- [x] Corrupted EntityLookup.tsx file restored (FIXED)
-- [ ] All TypeScript errors are resolved (remove `--noCheck`)
-- [ ] Proxy server dependency is resolved or documented
-- [ ] Documentation files are organized
-- [ ] Application works without Node.js proxy in browser-only environment
-- [ ] All test files and scripts are organized appropriately
-- [ ] Application title is appropriate for target audience
-- [ ] No hardcoded company-specific configuration remains
+- [
 
----
+- [ ] Application works without Node.js proxy in 
+- [ ] Application titl
 
-## FIXES APPLIED
 
-### ✅ Fixed Issues:
-1. **StrictMode Wrapper** - Added to main.tsx
-2. **Audit Logs Flag** - Removed debug flag from main.tsx
-3. **EntityLookup.tsx Corruption** - Completely reconstructed the component with proper functionality
 
+1. **StrictMo
+3. **EntityLookup.tsx Corruption** - Co
 ### 🔧 Code Changes Made:
-- `src/main.tsx` - Added `<StrictMode>` wrapper, removed `__SPARK_DISABLE_AUDIT_LOGS__` flag
-- `src/components/EntityLookup.tsx` - Completely rebuilt from scratch with proper imports, state management, and API integration
-
+- `src/components/EntityLooku
 ---
-
-## RECOMMENDATION
 
 **CRITICAL BLOCKERS REMAIN** - The application still has fundamental issues:
 
-1. **Node.js Proxy Dependency** - The app requires `server/proxy.js` which won't work in Spark's browser-only environment
-2. **TypeScript Build Errors Hidden** - The `--noCheck` flag must be removed and all type errors fixed
 
-**Recommended Action**:
-- Fix or document the proxy server requirement
-- Remove `--noCheck` and resolve TypeScript errors
-- Clean up repository structure before publishing
+
+- C
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
