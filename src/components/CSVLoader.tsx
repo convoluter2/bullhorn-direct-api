@@ -20,7 +20,9 @@ import { formatFieldLabel, formatFieldLabelWithType, formatFieldValue } from '@/
 import { validateCSVFile, validateCSVContent, validateFieldMappings, validateImportConfiguration, type ValidationRule } from '@/lib/csv-validation'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
+import { useManualFields } from '@/hooks/use-manual-fields'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
+import { ManualFieldDialog, type ManualFieldDefinition } from '@/components/ManualFieldDialog'
 import { LookupFieldSelector } from '@/components/LookupFieldSelector'
 import { SpeedControl } from '@/components/SpeedControl'
 import { ToManyConfigSelector } from '@/components/ToManyConfigSelector'
@@ -95,16 +97,34 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null)
   const processingStartTimeRef = useRef<number>(0)
   const lastProgressUpdateRef = useRef<{ time: number; index: number }>({ time: 0, index: 0 })
+  
+  const [manualFieldDialogOpen, setManualFieldDialogOpen] = useState(false)
 
   const { entities, loading: entitiesLoading, refresh: refreshEntities, refreshInBackground, addEntity, lastRefresh } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError, refresh: refreshMetadata } = useEntityMetadata(entity || undefined)
+  const { manualFields, addManualField, removeManualField, getEnrichedFields, convertToEntityField } = useManualFields(entity)
+  
+  const enrichedFieldsMap = (() => {
+    if (!metadata?.fieldsMap) return {}
+    
+    const baseMap = { ...metadata.fieldsMap }
+    
+    manualFields.forEach(manualField => {
+      if (!baseMap[manualField.name]) {
+        baseMap[manualField.name] = convertToEntityField(manualField)
+      }
+    })
+    
+    return baseMap
+  })()
   
   const availableFields = (() => {
     if (!metadata?.fields) return []
     
-    const expandedFields: typeof metadata.fields = []
+    const enrichedFields = getEnrichedFields(metadata.fields)
+    const expandedFields: typeof enrichedFields = []
     
-    metadata.fields.forEach(field => {
+    enrichedFields.forEach(field => {
       if (field.composite && field.fields && field.fields.length > 0) {
         field.fields.forEach(subField => {
           expandedFields.push({
@@ -533,6 +553,22 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     })
   }
 
+  const handleManualFieldAdded = (field: ManualFieldDefinition) => {
+    if (!entity) return
+    
+    addManualField(entity, field)
+    toast.success(`Manual field "${field.label}" added to ${entity}`)
+    
+    onLog('Manual Field Added', 'success', `Added manual field to ${entity}`, {
+      entity,
+      fieldName: field.name,
+      fieldLabel: field.label,
+      fieldType: field.type,
+      dataType: field.dataType,
+      associatedEntity: field.associatedEntity
+    })
+  }
+
   const transformValue = (value: string, transform?: string): any => {
     if (!value || value === null || value === undefined) return value
 
@@ -745,7 +781,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           const rawValue = row[csvIndex]
           const transformedValue = transformValue(rawValue, mapping.transform)
           
-          const fieldMeta = metadata?.fieldsMap ? metadata.fieldsMap[mapping.bullhornField] : undefined
+          const fieldMeta = enrichedFieldsMap[mapping.bullhornField]
           
           console.log(`🔍 Processing field "${mapping.bullhornField}":`, {
             csvColumn: mapping.csvColumn,
@@ -774,7 +810,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               }
               data[compositeFieldName][subFieldName] = transformedValue
             } else {
-              const fieldMeta = metadata?.fieldsMap ? metadata.fieldsMap[mapping.bullhornField] : undefined
+              const fieldMeta = enrichedFieldsMap[mapping.bullhornField]
               if (fieldMeta?.associationType === 'TO_MANY') {
                 const config = toManyConfigs[mapping.bullhornField] || { operation: 'replace', subField: 'id' }
                 
@@ -1685,6 +1721,17 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                 <div className="flex items-center justify-between">
                   <Label>Field Mapping</Label>
                   <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setManualFieldDialogOpen(true)}
+                      disabled={!entity || loading || metadataLoading}
+                      className="gap-2"
+                      title="Add a custom field manually"
+                    >
+                      <Plus size={16} />
+                      Add Field
+                    </Button>
                     <FieldMappingTemplates
                       currentEntity={entity}
                       currentMappings={mappings}
@@ -1719,8 +1766,8 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                       ? mapping.bullhornField.split('.')[0] 
                       : mapping.bullhornField
                     
-                    const fieldMeta = !isSkipped && metadata?.fieldsMap && baseFieldName && baseFieldName !== '__skip__'
-                      ? metadata.fieldsMap[baseFieldName] 
+                    const fieldMeta = !isSkipped && baseFieldName && baseFieldName !== '__skip__'
+                      ? enrichedFieldsMap[baseFieldName] 
                       : undefined
                     
                     const isToMany = !isCompositeSubfield && fieldMeta ? (
@@ -2271,6 +2318,14 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           setEntity(entityName)
         }}
         existingEntities={entities}
+      />
+
+      <ManualFieldDialog
+        open={manualFieldDialogOpen}
+        onOpenChange={setManualFieldDialogOpen}
+        currentEntity={entity}
+        onFieldAdded={handleManualFieldAdded}
+        existingFields={availableFields.map(f => f.name)}
       />
     </div>
   )

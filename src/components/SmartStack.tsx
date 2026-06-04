@@ -21,10 +21,12 @@ import { parseCSV, exportToCSV, exportToJSON, parseExcel } from '@/lib/csv-utils
 import { formatFieldLabel, formatFieldLabelWithType, formatFieldValue } from '@/lib/utils'
 import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
+import { useManualFields } from '@/hooks/use-manual-fields'
 import { ValidatedFieldInput } from '@/components/ValidatedFieldInput'
 import { ToManyFieldInput } from '@/components/ToManyFieldInput'
 import { ToOneFieldInput } from '@/components/ToOneFieldInput'
 import { ManualEntityDialog } from '@/components/ManualEntityDialog'
+import { ManualFieldDialog, type ManualFieldDefinition } from '@/components/ManualFieldDialog'
 import { ConditionalAssociationBuilder, type ConditionalAssociation } from '@/components/ConditionalAssociationBuilder'
 import { getAssociationsForRecord, mergeAssociationActions, describeAssociation } from '@/lib/conditional-logic'
 import { FilterGroupBuilder } from '@/components/FilterGroupBuilder'
@@ -109,16 +111,34 @@ export function SmartStack({ onLog }: SmartStackProps) {
   
   const [persistedState, setPersistedState, deletePersistedState] = useKV<PersistedSmartStackState | null>('smartstack-paused-state', null)
   const [showRestorePrompt, setShowRestorePrompt] = useState(false)
+  
+  const [manualFieldDialogOpen, setManualFieldDialogOpen] = useState(false)
 
   const { entities, loading: entitiesLoading, refresh: refreshEntities, refreshInBackground, addEntity, lastRefresh } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError, refresh: refreshMetadata } = useEntityMetadata(selectedEntity || undefined)
+  const { manualFields, addManualField, removeManualField, getEnrichedFields, convertToEntityField } = useManualFields(selectedEntity)
+  
+  const enrichedFieldsMap = (() => {
+    if (!metadata?.fieldsMap) return {}
+    
+    const baseMap = { ...metadata.fieldsMap }
+    
+    manualFields.forEach(manualField => {
+      if (!baseMap[manualField.name]) {
+        baseMap[manualField.name] = convertToEntityField(manualField)
+      }
+    })
+    
+    return baseMap
+  })()
   
   const availableFields = (() => {
     if (!metadata?.fields) return []
     
-    const expandedFields: typeof metadata.fields = []
+    const enrichedFields = getEnrichedFields(metadata.fields)
+    const expandedFields: typeof enrichedFields = []
     
-    metadata.fields.forEach(field => {
+    enrichedFields.forEach(field => {
       if (field.composite && field.fields && field.fields.length > 0) {
         field.fields.forEach(subField => {
           expandedFields.push({
@@ -137,7 +157,8 @@ export function SmartStack({ onLog }: SmartStackProps) {
     
     return expandedFields
   })()
-  const fieldsMap = metadata?.fieldsMap || {}
+  const fieldsMap = enrichedFieldsMap
+
   
   useEffect(() => {
     if (persistedState && csvIds.length === 0) {
@@ -310,6 +331,22 @@ export function SmartStack({ onLog }: SmartStackProps) {
 
     setCsvIds(ids)
     toast.success(`Loaded ${ids.length} IDs from column ${columnIndex + 1}`)
+  }
+
+  const handleManualFieldAdded = (field: ManualFieldDefinition) => {
+    if (!selectedEntity) return
+    
+    addManualField(selectedEntity, field)
+    toast.success(`Manual field "${field.label}" added to ${selectedEntity}`)
+    
+    onLog('Manual Field Added', 'success', `Added manual field to ${selectedEntity}`, {
+      entity: selectedEntity,
+      fieldName: field.name,
+      fieldLabel: field.label,
+      fieldType: field.type,
+      dataType: field.dataType,
+      associatedEntity: field.associatedEntity
+    })
   }
 
   const handlePause = () => {
@@ -1279,15 +1316,27 @@ export function SmartStack({ onLog }: SmartStackProps) {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label>Step 4: Field Updates</Label>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={addFieldUpdate}
-                  disabled={loading || !selectedEntity || metadataLoading}
-                >
-                  <Plus size={16} />
-                  Add Field
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setManualFieldDialogOpen(true)}
+                    disabled={loading || !selectedEntity || metadataLoading}
+                    className="gap-1"
+                  >
+                    <Plus size={16} />
+                    Add Custom Field
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={addFieldUpdate}
+                    disabled={loading || !selectedEntity || metadataLoading}
+                  >
+                    <Plus size={16} />
+                    Add Field Update
+                  </Button>
+                </div>
               </div>
               {metadataLoading && selectedEntity ? (
                 <Skeleton className="h-20 w-full" />
@@ -1850,6 +1899,14 @@ export function SmartStack({ onLog }: SmartStackProps) {
           setSelectedEntity(entityName)
         }}
         existingEntities={entities}
+      />
+
+      <ManualFieldDialog
+        open={manualFieldDialogOpen}
+        onOpenChange={setManualFieldDialogOpen}
+        currentEntity={selectedEntity}
+        onFieldAdded={handleManualFieldAdded}
+        existingFields={availableFields.map(f => f.name)}
       />
     </div>
   )
