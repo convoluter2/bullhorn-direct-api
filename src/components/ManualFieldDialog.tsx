@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogDescripti
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Plus, Info, Warning } from '@phosphor-icons/react'
-import { toast } from 'sonner'
+import { Plus, Info, Warning } from '@phospho
 import { useEntities } from '@/hooks/use-entities'
-
 interface ManualFieldDialogProps {
-  open: boolean
   onOpenChange: (open: boolean) => void
-  currentEntity: string
+  onFieldAdded: (field: ManualFieldDefinition) => void
+}
+export interface ManualFieldDefinition {
+
+  dataType: string
+  optional: boo
+
+  'String',
   onFieldAdded: (field: ManualFieldDefinition) => void
   existingFields?: string[]
 }
@@ -30,232 +30,232 @@ export interface ManualFieldDefinition {
 const SCALAR_DATA_TYPES = [
   'String',
   'Integer',
-  'Double',
-  'BigDecimal',
-  'Boolean',
-  'Timestamp',
-  'Date'
-]
-
-export function ManualFieldDialog({ 
-  open, 
-  onOpenChange, 
-  currentEntity,
-  onFieldAdded,
-  existingFields = []
-}: ManualFieldDialogProps) {
-  const [fieldName, setFieldName] = useState('')
-  const [fieldLabel, setFieldLabel] = useState('')
-  const [fieldType, setFieldType] = useState<'SCALAR' | 'TO_ONE' | 'TO_MANY'>('SCALAR')
-  const [dataType, setDataType] = useState('String')
-  const [associatedEntity, setAssociatedEntity] = useState('')
-  const [optional, setOptional] = useState(true)
-  const [showValidation, setShowValidation] = useState(false)
-
-  const { entities, loading: entitiesLoading } = useEntities()
-
-  useEffect(() => {
-    if (open) {
-      setFieldName('')
-      setFieldLabel('')
-      setFieldType('SCALAR')
-      setDataType('String')
-      setAssociatedEntity('')
-      setOptional(true)
-      setShowValidation(false)
-    }
+      setSh
   }, [open])
+  const vali
 
-  const validateField = (): { valid: boolean; errors: string[] } => {
-    const errors: string[] = []
+      er
+ 
 
-    if (!fieldName.trim()) {
-      errors.push('Field name is required')
-    } else if (!/^[a-zA-Z][a-zA-Z0-9]*$/.test(fieldName)) {
-      errors.push('Field name must start with a letter and contain only letters and numbers')
-    } else if (existingFields.includes(fieldName)) {
-      errors.push('A field with this name already exists')
-    }
 
-    if (!fieldLabel.trim()) {
-      errors.push('Field label is required')
-    }
+      er
 
-    if ((fieldType === 'TO_ONE' || fieldType === 'TO_MANY') && !associatedEntity) {
-      errors.push('Associated entity is required for TO_ONE and TO_MANY fields')
-    }
+      errors.pus
 
-    return { valid: errors.length === 0, errors }
   }
-
   const handleAdd = () => {
-    setShowValidation(true)
     const validation = validateField()
-
     if (!validation.valid) {
-      toast.error(validation.errors[0])
       return
-    }
 
-    const field: ManualFieldDefinition = {
       name: fieldName,
-      label: fieldLabel,
       type: fieldType,
-      dataType: fieldType === 'SCALAR' ? dataType : 'Integer',
-      associatedEntity: (fieldType === 'TO_ONE' || fieldType === 'TO_MANY') ? associatedEntity : undefined,
-      optional
-    }
+      associatedEntity: (fieldType === 'TO_ONE' || fieldType 
 
     onFieldAdded(field)
-    toast.success(`Field "${fieldLabel}" added successfully`)
-    onOpenChange(false)
-  }
 
-  const validation = showValidation ? validateField() : { valid: true, errors: [] }
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+
+    <Dialog open={open
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Plus size={24} weight="bold" />
-            Add Manual Field to {currentEntity}
+            <Plus size={24} 
           </DialogTitle>
-          <DialogDescription>
-            Define a custom field that will be available for mapping in this entity. 
-            This field will persist for future use.
-          </DialogDescription>
-        </DialogHeader>
+            Define a custom f
+          </DialogDescr
 
-        <div className="space-y-6 py-4">
-          <Alert>
-            <Info size={18} />
-            <AlertDescription>
-              Manual fields are stored locally and will be available whenever you work with this entity. 
-              They represent fields that may not be automatically detected but are valid in the Bullhorn API.
-            </AlertDescription>
+     
+            
+
           </Alert>
+          <div className="grid 
 
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="field-name">
-                Field Name <span className="text-destructive">*</span>
               </Label>
-              <Input
                 id="field-name"
-                value={fieldName}
-                onChange={(e) => setFieldName(e.target.value)}
-                placeholder="e.g., customFloat3, customText1"
-                className={!validation.valid && !fieldName.trim() ? 'border-destructive' : ''}
-              />
-              <p className="text-xs text-muted-foreground">
-                The exact field name as it appears in the Bullhorn API (case-sensitive)
+                onChange={(e) => setFieldName(e.target.valu
+                className={!validation.valid && !fieldName.trim() ? 'border-destructive' : ''
+              <p className="text-xs text-muted-foreg
               </p>
-            </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="field-label">
-                Field Label <span className="text-destructive">*</span>
+
               </Label>
-              <Input
                 id="field-label"
-                value={fieldLabel}
-                onChange={(e) => setFieldLabel(e.target.value)}
-                placeholder="e.g., Custom Float 3, Custom Text 1"
-                className={!validation.valid && !fieldLabel.trim() ? 'border-destructive' : ''}
-              />
+     
+
               <p className="text-xs text-muted-foreground">
-                A human-readable label for this field
               </p>
-            </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="field-type">
-                Field Type <span className="text-destructive">*</span>
+
               </Label>
-              <Select value={fieldType} onValueChange={(value: any) => setFieldType(value)}>
-                <SelectTrigger id="field-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="SCALAR">
-                    <div className="flex items-center gap-2">
-                      <span>SCALAR</span>
-                      <Badge variant="outline" className="text-xs">Simple Value</Badge>
+   
+
+                  <SelectIt
+                      <span
                     </div>
-                  </SelectItem>
-                  <SelectItem value="TO_ONE">
-                    <div className="flex items-center gap-2">
-                      <span>TO_ONE</span>
-                      <Badge variant="outline" className="text-xs">Single Association</Badge>
+
+                      <span>
                     </div>
-                  </SelectItem>
-                  <SelectItem value="TO_MANY">
-                    <div className="flex items-center gap-2">
-                      <span>TO_MANY</span>
-                      <Badge variant="outline" className="text-xs">Multiple Associations</Badge>
-                    </div>
-                  </SelectItem>
+            
+     
+
                 </SelectContent>
-              </Select>
-              <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                <Info size={14} className="mt-0.5 flex-shrink-0" />
+              <div cla
                 <span>
-                  {fieldType === 'SCALAR' && 'A simple scalar value (text, number, date, etc.)'}
-                  {fieldType === 'TO_ONE' && 'A reference to a single record in another entity'}
-                  {fieldType === 'TO_MANY' && 'A reference to multiple records in another entity'}
+                  {fie
                 </span>
-              </div>
+            </div>
+            {f
+     
+
+                  <Sele
+                  </SelectTrigger>
+                    {SC
+   
+
+                </Select>
+
+          
+
+              <div className="grid gap-2">
+                  Asso
+                <Select 
+                  onValueChange={setAssociat
+                >
+                    id="
+                  >
+                  </SelectTrigger>
+                    {entities.map(entity => (
+                        {entit
+                    ))}
+
+                  The entity that this f
+              </d
+
+              <Label>Field Req
+                <Badge variant={optional ? "secondary" : "default"}>
+                </Badge>
+                  variant="ghos
+                  
+
+                </Button>
             </div>
 
-            {fieldType === 'SCALAR' && (
-              <div className="grid gap-2">
-                <Label htmlFor="data-type">
-                  Data Type <span className="text-destructive">*</span>
-                </Label>
-                <Select value={dataType} onValueChange={setDataType}>
-                  <SelectTrigger id="data-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SCALAR_DATA_TYPES.map(type => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  The data type of the scalar value
-                </p>
-              </div>
-            )}
+            <div className="flex items-start gap-2">
+                <Info 
+                <War
+              <div className="s
+                <div className="t
+                  <div><strong>Label:</strong> {fieldLabel || 
+                  {fieldType === 'SCALAR' ? (
+                  ) : (
+                
+                    </>
+                  <div><strong>Is TO_MANY:</strong> {fieldType === 'TO_MANY' ? '✓ YES' 
+                </
+                  
 
-            {(fieldType === 'TO_ONE' || fieldType === 'TO_MANY') && (
-              <div className="grid gap-2">
-                <Label htmlFor="associated-entity">
-                  Associated Entity <span className="text-destructive">*</span>
-                </Label>
-                <Select 
-                  value={associatedEntity} 
-                  onValueChange={setAssociatedEntity}
-                  disabled={entitiesLoading}
-                >
-                  <SelectTrigger 
-                    id="associated-entity"
-                    className={!validation.valid && !associatedEntity ? 'border-destructive' : ''}
-                  >
-                    <SelectValue placeholder="Select entity..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {entities.map(entity => (
-                      <SelectItem key={entity} value={entity}>
-                        {entity}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
+                        <li key={index}>
+                    </ul>
+                )}
+            </div>
+        </div>
+        <DialogFooter>
+            Cancel
+          <Button onClick={handleAdd}>
+            Add Field
+        </DialogFooter>
+    </Dialog>
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                   The entity that this field references
                 </p>
               </div>
