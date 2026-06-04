@@ -238,10 +238,6 @@ export function ManualFieldDialog({ open, onOpenChange, onFieldAdded, existingFi
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  The entity that this field references
-                </p>
-              </div>
-            )}
 
             <div className="grid gap-2">
               <Label>Field Requirements</Label>
@@ -308,7 +304,7 @@ export function ManualFieldDialog({ open, onOpenChange, onFieldAdded, existingFi
             <Plus size={18} />
             Add Field
           </Button>
-        </DialogFooter>
+          <Button onClick={handleAdd} disabled={!validation.valid}>
       </DialogContent>
     </Dialog>
   )
