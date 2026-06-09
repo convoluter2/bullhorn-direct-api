@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Switch } from '@/components/ui/switch'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { Progress } from '@/components/ui/progress'
 import { Database, Warning, CheckCircle, X, Upload, ArrowClockwise, Eye, FileArrowUp } from '@phosphor-icons/react'
@@ -73,20 +75,41 @@ export function MassUpdate({ onLog }: { onLog: (operation: string, status: 'succ
     
     try {
       const response = await bullhornAPI.getEntityMeta(entity, '*')
-      const fields = response.fields as Record<string, any>
+      console.log('📋 Entity metadata response:', response)
       
-      const fieldList = Object.entries(fields)
-        .filter(([_, field]) => {
-          return field.dataType === 'String' ||
-                 field.dataType === 'Integer' ||
-                 field.dataType === 'Double' ||
-                 field.dataType === 'BigDecimal' ||
-                 field.dataType === 'Boolean' ||
-                 field.dataType === 'Timestamp'
+      let fields: any[] = []
+      
+      if (Array.isArray(response.fields)) {
+        fields = response.fields
+      } else if (response.fields && typeof response.fields === 'object') {
+        fields = Object.values(response.fields)
+      } else {
+        throw new Error('Unexpected metadata format')
+      }
+      
+      const fieldList = fields
+        .filter((field: any) => {
+          if (!field || !field.name) return false
+          
+          const isScalarType = field.type === 'SCALAR' && (
+            field.dataType === 'String' ||
+            field.dataType === 'Integer' ||
+            field.dataType === 'Double' ||
+            field.dataType === 'BigDecimal' ||
+            field.dataType === 'Boolean' ||
+            field.dataType === 'Timestamp'
+          )
+          
+          const isIdField = field.type === 'ID'
+          
+          const isReadOnly = field.readOnly === true
+          const isSystemField = field.dataSpecialization === 'SYSTEM'
+          
+          return (isScalarType || isIdField) && !isReadOnly && !isSystemField
         })
-        .map(([name, field]) => ({
-          name,
-          label: field.label || name,
+        .map((field: any) => ({
+          name: field.name,
+          label: field.label || field.name,
           dataType: field.dataType,
           required: field.required
         }))
@@ -100,6 +123,7 @@ export function MassUpdate({ onLog }: { onLog: (operation: string, status: 'succ
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      console.error('❌ Failed to load entity fields:', error)
       toast.error(`Failed to load fields: ${errorMessage}`)
       onLog('Load Fields', 'error', `Failed to load entity fields for ${entity}`, { error: errorMessage })
     } finally {
@@ -324,14 +348,20 @@ export function MassUpdate({ onLog }: { onLog: (operation: string, status: 'succ
       const updatePayload: Record<string, any> = {}
       validFields.forEach(uf => {
         const fieldInfo = availableFields.find(f => f.name === uf.field)
-        if (fieldInfo?.dataType === 'Integer') {
-          updatePayload[uf.field] = uf.value ? parseInt(uf.value, 10) : null
+        const trimmedValue = uf.value?.trim() || ''
+        
+        if (!trimmedValue) {
+          updatePayload[uf.field] = null
+        } else if (fieldInfo?.dataType === 'Integer') {
+          const parsed = parseInt(trimmedValue, 10)
+          updatePayload[uf.field] = isNaN(parsed) ? null : parsed
         } else if (fieldInfo?.dataType === 'Double' || fieldInfo?.dataType === 'BigDecimal') {
-          updatePayload[uf.field] = uf.value ? parseFloat(uf.value) : null
+          const parsed = parseFloat(trimmedValue)
+          updatePayload[uf.field] = isNaN(parsed) ? null : parsed
         } else if (fieldInfo?.dataType === 'Boolean') {
-          updatePayload[uf.field] = uf.value.toLowerCase() === 'true'
+          updatePayload[uf.field] = trimmedValue.toLowerCase() === 'true' || trimmedValue === '1'
         } else {
-          updatePayload[uf.field] = uf.value || null
+          updatePayload[uf.field] = trimmedValue
         }
       })
 
@@ -400,6 +430,7 @@ export function MassUpdate({ onLog }: { onLog: (operation: string, status: 'succ
                 })
                 return { id, originalData: originalValues }
               } catch (error) {
+                console.warn(`⚠️ Failed to fetch rollback data for ${selectedEntity}/${id}:`, error)
                 return { id, originalData: {} }
               }
             })
@@ -415,6 +446,12 @@ export function MassUpdate({ onLog }: { onLog: (operation: string, status: 'succ
             }
           }
 
+          console.log('📤 Executing mass update:', {
+            entity: selectedEntity,
+            recordCount: parsedIds.length,
+            payload: updatePayload
+          })
+
           const massUpdatePayload = {
             ids: parsedIds,
             ...updatePayload
@@ -429,8 +466,12 @@ export function MassUpdate({ onLog }: { onLog: (operation: string, status: 'succ
             BhRestToken: session.BhRestToken
           })
 
+          const massUpdateUrl = `${session.restUrl}massUpdate/${encodeURIComponent(selectedEntity)}?${params.toString()}`
+          console.log('📡 Mass update URL:', massUpdateUrl)
+          console.log('📤 Mass update payload:', JSON.stringify(massUpdatePayload, null, 2))
+
           const response = await fetch(
-            `${session.restUrl}massUpdate/${encodeURIComponent(selectedEntity)}?${params.toString()}`,
+            massUpdateUrl,
             {
               method: 'POST',
               headers: {
@@ -440,13 +481,28 @@ export function MassUpdate({ onLog }: { onLog: (operation: string, status: 'succ
             }
           )
 
+          const responseText = await response.text()
+          console.log('📥 Mass update response:', { status: response.status, text: responseText })
+
           if (!response.ok) {
-            const error = await response.text()
-            throw new Error(`Mass update failed: ${error}`)
+            let errorMessage = responseText
+            try {
+              const errorObj = JSON.parse(responseText)
+              errorMessage = errorObj.errorMessage || errorObj.message || responseText
+            } catch {
+              // responseText is not JSON, use as-is
+            }
+            throw new Error(`Mass update API failed (${response.status}): ${errorMessage}`)
           }
 
-          const result = await response.json()
-          console.log('Mass update result:', result)
+          let result
+          try {
+            result = JSON.parse(responseText)
+          } catch {
+            result = { message: responseText }
+          }
+          
+          console.log('✅ Mass update successful:', result)
 
           parsedIds.forEach(id => {
             updateResults.push({ id, success: true })
@@ -456,6 +512,7 @@ export function MassUpdate({ onLog }: { onLog: (operation: string, status: 'succ
           setResults(updateResults)
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+          console.error('❌ Mass update endpoint failed:', errorMessage)
           toast.error(`Mass update failed, falling back to standard updates: ${errorMessage}`)
           
           const batchSize = 10
@@ -476,6 +533,13 @@ export function MassUpdate({ onLog }: { onLog: (operation: string, status: 'succ
             
             setProgress(Math.round((updateResults.length / parsedIds.length) * 100))
             setResults([...updateResults])
+
+            const rateLimiterStatus = bullhornAPI.getRateLimiterStatus()
+            if (rateLimiterStatus.requestsInLastMinute > rateLimiterStatus.safeLimit * 0.9) {
+              const delayMs = 2000
+              console.log(`⏸️ Approaching rate limit during fallback, adding ${delayMs}ms delay`)
+              await new Promise(resolve => setTimeout(resolve, delayMs))
+            }
           }
         }
       }
