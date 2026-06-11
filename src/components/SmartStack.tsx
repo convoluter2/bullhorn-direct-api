@@ -374,8 +374,15 @@ export function SmartStack({ onLog }: SmartStackProps) {
   const handleManualFieldAdded = (field: ManualFieldDefinition) => {
     if (!selectedEntity) return
     
+    const fieldExists = availableFields.some(f => f.name === field.name)
+    
     addManualField(selectedEntity, field)
-    toast.success(`Manual field "${field.label}" added to ${selectedEntity}`)
+    
+    if (fieldExists) {
+      toast.success(`Manual field "${field.label}" updated/overridden for ${selectedEntity}`)
+    } else {
+      toast.success(`Manual field "${field.label}" added to ${selectedEntity}`)
+    }
     
     onLog('Manual Field Added', 'success', `Added manual field to ${selectedEntity}`, {
       entity: selectedEntity,

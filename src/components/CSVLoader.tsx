@@ -639,8 +639,15 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const handleManualFieldAdded = (field: ManualFieldDefinition) => {
     if (!entity) return
     
+    const fieldExists = availableFields.some(f => f.name === field.name)
+    
     addManualField(entity, field)
-    toast.success(`Manual field "${field.label}" added to ${entity}`)
+    
+    if (fieldExists) {
+      toast.success(`Manual field "${field.label}" updated/overridden for ${entity}`)
+    } else {
+      toast.success(`Manual field "${field.label}" added to ${entity}`)
+    }
     
     onLog('Manual Field Added', 'success', `Added manual field to ${entity}`, {
       entity,

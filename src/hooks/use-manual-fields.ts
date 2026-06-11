@@ -17,9 +17,14 @@ export function useManualFields(entity?: string) {
     setManualFieldsStore((current) => {
       const entityFields = current[entityName] || []
       
-      const exists = entityFields.some(f => f.name === field.name)
-      if (exists) {
-        return current
+      const existingIndex = entityFields.findIndex(f => f.name === field.name)
+      if (existingIndex >= 0) {
+        const updated = [...entityFields]
+        updated[existingIndex] = field
+        return {
+          ...current,
+          [entityName]: updated
+        }
       }
 
       return {

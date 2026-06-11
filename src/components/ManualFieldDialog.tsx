@@ -65,10 +65,6 @@ export function ManualFieldDialog({ open, onOpenChange, onFieldAdded, existingFi
       errors.push('Field name is required')
     }
 
-    if (existingFields.includes(fieldName.trim())) {
-      console.log(`ℹ️ Field "${fieldName.trim()}" already exists in available fields list. This might be a composite field or hidden field. You can still add it manually to override the metadata.`)
-    }
-
     if (!fieldLabel.trim()) {
       errors.push('Field label is required')
     }
@@ -126,6 +122,18 @@ export function ManualFieldDialog({ open, onOpenChange, onFieldAdded, existingFi
               </div>
             </div>
           </Alert>
+
+          {fieldName && existingFields.includes(fieldName.trim()) && (
+            <Alert>
+              <Info size={18} />
+              <div className="ml-2">
+                <div className="font-semibold">Field Already Exists</div>
+                <div className="text-sm text-muted-foreground">
+                  This field name already exists in the available fields list. Adding it manually will override or supplement the existing metadata definition. This is useful for composite fields, hidden fields, or custom field configurations.
+                </div>
+              </div>
+            </Alert>
+          )}
 
           <div className="grid gap-4">
             <div className="grid gap-2">
