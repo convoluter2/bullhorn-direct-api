@@ -66,7 +66,8 @@ export function ManualFieldDialog({ open, onOpenChange, onFieldAdded, existingFi
     }
 
     if (existingFields.includes(fieldName.trim())) {
-      errors.push('A field with this name already exists')
+      errors.push(`A field with this name already exists in the available fields list`)
+      console.log(`⚠️ Field "${fieldName.trim()}" already exists in:`, existingFields)
     }
 
     if (!fieldLabel.trim()) {

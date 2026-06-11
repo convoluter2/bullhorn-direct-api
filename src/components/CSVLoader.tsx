@@ -170,6 +170,14 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       const hasDateBegin = expandedFields.some(f => f.name === 'dateBegin' || f.name.toLowerCase().includes('datebegin'))
       const hasDateEnd = expandedFields.some(f => f.name === 'dateEnd' || f.name.toLowerCase().includes('dateend'))
       
+      console.log('🔍 Placement dateBegin/dateEnd check:', {
+        hasDateBegin,
+        hasDateEnd,
+        metadataFieldsMapKeys: Object.keys(metadata.fieldsMap || {}),
+        dateBeginInMap: 'dateBegin' in (metadata.fieldsMap || {}),
+        dateEndInMap: 'dateEnd' in (metadata.fieldsMap || {})
+      })
+      
       if (!hasDateBegin) {
         console.warn('⚠️ Placement missing dateBegin - checking if it exists in metadata...')
         const dateBeginInMetadata = metadata.fieldsMap?.['dateBegin']
@@ -177,7 +185,14 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           console.log('✅ Found dateBegin in metadata, adding to availableFields:', dateBeginInMetadata)
           expandedFields.push(dateBeginInMetadata)
         } else {
-          console.log('❌ dateBegin not found in metadata fieldsMap')
+          console.log('❌ dateBegin not found in metadata fieldsMap - checking all fields')
+          const allFieldsCheck = enrichedFields.find(f => f.name === 'dateBegin')
+          if (allFieldsCheck) {
+            console.log('✅ Found dateBegin in enrichedFields, adding:', allFieldsCheck)
+            expandedFields.push(allFieldsCheck)
+          } else {
+            console.log('❌ dateBegin not found anywhere in metadata')
+          }
         }
       }
       
@@ -188,7 +203,14 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           console.log('✅ Found dateEnd in metadata, adding to availableFields:', dateEndInMetadata)
           expandedFields.push(dateEndInMetadata)
         } else {
-          console.log('❌ dateEnd not found in metadata fieldsMap')
+          console.log('❌ dateEnd not found in metadata fieldsMap - checking all fields')
+          const allFieldsCheck = enrichedFields.find(f => f.name === 'dateEnd')
+          if (allFieldsCheck) {
+            console.log('✅ Found dateEnd in enrichedFields, adding:', allFieldsCheck)
+            expandedFields.push(allFieldsCheck)
+          } else {
+            console.log('❌ dateEnd not found anywhere in metadata')
+          }
         }
       }
     }
