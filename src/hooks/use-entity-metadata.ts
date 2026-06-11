@@ -203,6 +203,45 @@ export function useEntityMetadata(entity: string | undefined) {
           }
         }
 
+        if (entity === 'Placement') {
+          const hardCodedDateFields = [
+            {
+              name: 'dateBegin',
+              label: 'Start Date',
+              type: 'SCALAR',
+              dataType: 'Timestamp',
+              dataSpecialization: 'DATE',
+              optional: false
+            },
+            {
+              name: 'dateEnd',
+              label: 'End Date',
+              type: 'SCALAR',
+              dataType: 'Timestamp',
+              dataSpecialization: 'DATE',
+              optional: true
+            }
+          ]
+
+          for (const hardCodedField of hardCodedDateFields) {
+            if (!fieldsMap[hardCodedField.name]) {
+              const fieldInfo: EntityField = {
+                name: hardCodedField.name,
+                label: hardCodedField.label,
+                type: hardCodedField.type,
+                dataType: hardCodedField.dataType,
+                dataSpecialization: hardCodedField.dataSpecialization,
+                optional: hardCodedField.optional
+              }
+              fields.push(fieldInfo)
+              fieldsMap[hardCodedField.name] = fieldInfo
+              console.log(`✨ Hard-coded field added: Placement.${hardCodedField.name} (${hardCodedField.label})`)
+            } else {
+              console.log(`⚠️ Hard-coded field ${hardCodedField.name} already exists in metadata, skipping`)
+            }
+          }
+        }
+
         const newMetadata: EntityMetadata = {
           entity,
           label: response.label || entity,
