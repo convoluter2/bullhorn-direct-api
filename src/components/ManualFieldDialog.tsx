@@ -66,8 +66,7 @@ export function ManualFieldDialog({ open, onOpenChange, onFieldAdded, existingFi
     }
 
     if (existingFields.includes(fieldName.trim())) {
-      errors.push(`A field with this name already exists in the available fields list`)
-      console.log(`⚠️ Field "${fieldName.trim()}" already exists in:`, existingFields)
+      console.log(`ℹ️ Field "${fieldName.trim()}" already exists in available fields list. This might be a composite field or hidden field. You can still add it manually to override the metadata.`)
     }
 
     if (!fieldLabel.trim()) {

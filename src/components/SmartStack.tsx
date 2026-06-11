@@ -136,10 +136,41 @@ export function SmartStack({ onLog }: SmartStackProps) {
             optional: !subField.required,
           })
         })
+        
+        expandedFields.push(field)
       } else {
         expandedFields.push(field)
       }
     })
+    
+    if (selectedEntity === 'Placement') {
+      const hasDateBegin = expandedFields.some(f => f.name === 'dateBegin')
+      const hasDateEnd = expandedFields.some(f => f.name === 'dateEnd')
+      
+      console.log('🔍 SmartStack Placement dateBegin/dateEnd check:', {
+        hasDateBegin,
+        hasDateEnd,
+        metadataFieldsMapKeys: Object.keys(metadata.fieldsMap || {}),
+        dateBeginInMap: 'dateBegin' in (metadata.fieldsMap || {}),
+        dateEndInMap: 'dateEnd' in (metadata.fieldsMap || {})
+      })
+      
+      if (!hasDateBegin && metadata.fieldsMap?.['dateBegin']) {
+        console.log('✅ SmartStack: Adding missing dateBegin field from metadata:', metadata.fieldsMap['dateBegin'])
+        expandedFields.push({
+          ...metadata.fieldsMap['dateBegin'],
+          composite: false
+        })
+      }
+      
+      if (!hasDateEnd && metadata.fieldsMap?.['dateEnd']) {
+        console.log('✅ SmartStack: Adding missing dateEnd field from metadata:', metadata.fieldsMap['dateEnd'])
+        expandedFields.push({
+          ...metadata.fieldsMap['dateEnd'],
+          composite: false
+        })
+      }
+    }
     
     return expandedFields
   })()

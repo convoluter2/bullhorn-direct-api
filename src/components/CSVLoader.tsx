@@ -134,52 +134,41 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     })
     
     if (entity === 'Placement') {
-      const hasDateBegin = expandedFields.some(f => f.name === 'dateBegin' || f.name.toLowerCase().includes('datebegin'))
-      const hasDateEnd = expandedFields.some(f => f.name === 'dateEnd' || f.name.toLowerCase().includes('dateend'))
+      const hasDateBegin = expandedFields.some(f => f.name === 'dateBegin')
+      const hasDateEnd = expandedFields.some(f => f.name === 'dateEnd')
       
       console.log('🔍 Placement dateBegin/dateEnd check:', {
         hasDateBegin,
         hasDateEnd,
         metadataFieldsMapKeys: Object.keys(metadata.fieldsMap || {}),
         dateBeginInMap: 'dateBegin' in (metadata.fieldsMap || {}),
-        dateEndInMap: 'dateEnd' in (metadata.fieldsMap || {})
+        dateEndInMap: 'dateEnd' in (metadata.fieldsMap || {}),
+        allDateFields: Object.keys(metadata.fieldsMap || {}).filter(k => k.toLowerCase().includes('date'))
       })
       
-      if (!hasDateBegin) {
-        console.warn('⚠️ Placement missing dateBegin - checking if it exists in metadata...')
-        const dateBeginInMetadata = metadata.fieldsMap?.['dateBegin']
-        if (dateBeginInMetadata) {
-          console.log('✅ Found dateBegin in metadata, adding to availableFields:', dateBeginInMetadata)
-          expandedFields.push(dateBeginInMetadata)
-        } else {
-          console.log('❌ dateBegin not found in metadata fieldsMap - checking all fields')
-          const allFieldsCheck = enrichedFields.find(f => f.name === 'dateBegin')
-          if (allFieldsCheck) {
-            console.log('✅ Found dateBegin in enrichedFields, adding:', allFieldsCheck)
-            expandedFields.push(allFieldsCheck)
-          } else {
-            console.log('❌ dateBegin not found anywhere in metadata')
-          }
-        }
+      if (!hasDateBegin && metadata.fieldsMap?.['dateBegin']) {
+        console.log('✅ Adding missing dateBegin field from metadata:', metadata.fieldsMap['dateBegin'])
+        expandedFields.push({
+          ...metadata.fieldsMap['dateBegin'],
+          composite: false
+        })
       }
       
-      if (!hasDateEnd) {
-        console.warn('⚠️ Placement missing dateEnd - checking if it exists in metadata...')
-        const dateEndInMetadata = metadata.fieldsMap?.['dateEnd']
-        if (dateEndInMetadata) {
-          console.log('✅ Found dateEnd in metadata, adding to availableFields:', dateEndInMetadata)
-          expandedFields.push(dateEndInMetadata)
-        } else {
-          console.log('❌ dateEnd not found in metadata fieldsMap - checking all fields')
-          const allFieldsCheck = enrichedFields.find(f => f.name === 'dateEnd')
-          if (allFieldsCheck) {
-            console.log('✅ Found dateEnd in enrichedFields, adding:', allFieldsCheck)
-            expandedFields.push(allFieldsCheck)
-          } else {
-            console.log('❌ dateEnd not found anywhere in metadata')
-          }
-        }
+      if (!hasDateEnd && metadata.fieldsMap?.['dateEnd']) {
+        console.log('✅ Adding missing dateEnd field from metadata:', metadata.fieldsMap['dateEnd'])
+        expandedFields.push({
+          ...metadata.fieldsMap['dateEnd'],
+          composite: false
+        })
       }
+      
+      console.log('✅ Final Placement fields check:', {
+        totalFields: expandedFields.length,
+        hasDateBegin: expandedFields.some(f => f.name === 'dateBegin'),
+        hasDateEnd: expandedFields.some(f => f.name === 'dateEnd'),
+        dateBeginField: expandedFields.find(f => f.name === 'dateBegin'),
+        dateEndField: expandedFields.find(f => f.name === 'dateEnd')
+      })
     }
     
     return expandedFields
