@@ -104,6 +104,87 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const { metadata, loading: metadataLoading, error: metadataError, refresh: refreshMetadata } = useEntityMetadata(entity || undefined)
   const { manualFields, addManualField, removeManualField, getEnrichedFields, convertToEntityField } = useManualFields(entity)
   
+  const availableFields = (() => {
+    if (!metadata?.fields) return []
+    
+    const enrichedFields = getEnrichedFields(metadata.fields)
+    const expandedFields: typeof enrichedFields = []
+    
+    enrichedFields.forEach(field => {
+      if (field.composite && field.fields && field.fields.length > 0) {
+        console.log(`📦 Expanding composite field: ${field.name} with sub-fields:`, field.fields.map(sf => sf.name))
+        field.fields.forEach(subField => {
+          const expandedFieldName = `${field.name}.${subField.name}`
+          const expandedFieldDef = {
+            name: expandedFieldName,
+            label: `${field.label} - ${subField.label || subField.name}`,
+            type: subField.dataType,
+            dataType: subField.dataType,
+            composite: false,
+            optional: !subField.required,
+          }
+          expandedFields.push(expandedFieldDef)
+          console.log(`  ✅ Added composite sub-field: ${expandedFieldName}`)
+        })
+        
+        expandedFields.push(field)
+      } else {
+        expandedFields.push(field)
+      }
+    })
+    
+    if (entity === 'Placement') {
+      const hasDateBegin = expandedFields.some(f => f.name === 'dateBegin' || f.name.toLowerCase().includes('datebegin'))
+      const hasDateEnd = expandedFields.some(f => f.name === 'dateEnd' || f.name.toLowerCase().includes('dateend'))
+      
+      console.log('🔍 Placement dateBegin/dateEnd check:', {
+        hasDateBegin,
+        hasDateEnd,
+        metadataFieldsMapKeys: Object.keys(metadata.fieldsMap || {}),
+        dateBeginInMap: 'dateBegin' in (metadata.fieldsMap || {}),
+        dateEndInMap: 'dateEnd' in (metadata.fieldsMap || {})
+      })
+      
+      if (!hasDateBegin) {
+        console.warn('⚠️ Placement missing dateBegin - checking if it exists in metadata...')
+        const dateBeginInMetadata = metadata.fieldsMap?.['dateBegin']
+        if (dateBeginInMetadata) {
+          console.log('✅ Found dateBegin in metadata, adding to availableFields:', dateBeginInMetadata)
+          expandedFields.push(dateBeginInMetadata)
+        } else {
+          console.log('❌ dateBegin not found in metadata fieldsMap - checking all fields')
+          const allFieldsCheck = enrichedFields.find(f => f.name === 'dateBegin')
+          if (allFieldsCheck) {
+            console.log('✅ Found dateBegin in enrichedFields, adding:', allFieldsCheck)
+            expandedFields.push(allFieldsCheck)
+          } else {
+            console.log('❌ dateBegin not found anywhere in metadata')
+          }
+        }
+      }
+      
+      if (!hasDateEnd) {
+        console.warn('⚠️ Placement missing dateEnd - checking if it exists in metadata...')
+        const dateEndInMetadata = metadata.fieldsMap?.['dateEnd']
+        if (dateEndInMetadata) {
+          console.log('✅ Found dateEnd in metadata, adding to availableFields:', dateEndInMetadata)
+          expandedFields.push(dateEndInMetadata)
+        } else {
+          console.log('❌ dateEnd not found in metadata fieldsMap - checking all fields')
+          const allFieldsCheck = enrichedFields.find(f => f.name === 'dateEnd')
+          if (allFieldsCheck) {
+            console.log('✅ Found dateEnd in enrichedFields, adding:', allFieldsCheck)
+            expandedFields.push(allFieldsCheck)
+          } else {
+            console.log('❌ dateEnd not found anywhere in metadata')
+          }
+        }
+      }
+    }
+    
+    return expandedFields
+  })()
+
   const enrichedFieldsMap = (() => {
     if (!metadata?.fieldsMap) return {}
     
@@ -112,6 +193,12 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     manualFields.forEach(manualField => {
       if (!baseMap[manualField.name]) {
         baseMap[manualField.name] = convertToEntityField(manualField)
+      }
+    })
+    
+    availableFields.forEach(field => {
+      if (!baseMap[field.name]) {
+        baseMap[field.name] = field
       }
     })
     
@@ -2412,7 +2499,10 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
         onOpenChange={setManualFieldDialogOpen}
         currentEntity={entity}
         onFieldAdded={handleManualFieldAdded}
-        existingFields={availableFields.map(f => f.name)}
+        existingFields={[
+          ...Object.keys(enrichedFieldsMap),
+          ...availableFields.map(f => f.name)
+        ].filter((v, i, arr) => arr.indexOf(v) === i)}
       />
     </div>
   )

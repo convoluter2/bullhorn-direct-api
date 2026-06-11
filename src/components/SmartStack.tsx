@@ -118,20 +118,6 @@ export function SmartStack({ onLog }: SmartStackProps) {
   const { metadata, loading: metadataLoading, error: metadataError, refresh: refreshMetadata } = useEntityMetadata(selectedEntity || undefined)
   const { manualFields, addManualField, removeManualField, getEnrichedFields, convertToEntityField } = useManualFields(selectedEntity)
   
-  const enrichedFieldsMap = (() => {
-    if (!metadata?.fieldsMap) return {}
-    
-    const baseMap = { ...metadata.fieldsMap }
-    
-    manualFields.forEach(manualField => {
-      if (!baseMap[manualField.name]) {
-        baseMap[manualField.name] = convertToEntityField(manualField)
-      }
-    })
-    
-    return baseMap
-  })()
-  
   const availableFields = (() => {
     if (!metadata?.fields) return []
     
@@ -157,6 +143,27 @@ export function SmartStack({ onLog }: SmartStackProps) {
     
     return expandedFields
   })()
+
+  const enrichedFieldsMap = (() => {
+    if (!metadata?.fieldsMap) return {}
+    
+    const baseMap = { ...metadata.fieldsMap }
+    
+    manualFields.forEach(manualField => {
+      if (!baseMap[manualField.name]) {
+        baseMap[manualField.name] = convertToEntityField(manualField)
+      }
+    })
+    
+    availableFields.forEach(field => {
+      if (!baseMap[field.name]) {
+        baseMap[field.name] = field
+      }
+    })
+    
+    return baseMap
+  })()
+  
   const fieldsMap = enrichedFieldsMap
 
   
@@ -1906,7 +1913,10 @@ export function SmartStack({ onLog }: SmartStackProps) {
         onOpenChange={setManualFieldDialogOpen}
         currentEntity={selectedEntity}
         onFieldAdded={handleManualFieldAdded}
-        existingFields={availableFields.map(f => f.name)}
+        existingFields={[
+          ...Object.keys(enrichedFieldsMap),
+          ...availableFields.map(f => f.name)
+        ].filter((v, i, arr) => arr.indexOf(v) === i)}
       />
     </div>
   )
