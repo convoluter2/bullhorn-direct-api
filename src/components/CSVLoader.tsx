@@ -103,7 +103,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
   const { entities, loading: entitiesLoading, refresh: refreshEntities, refreshInBackground, addEntity, lastRefresh } = useEntities()
   const { metadata, loading: metadataLoading, error: metadataError, refresh: refreshMetadata } = useEntityMetadata(entity || undefined)
   const { manualFields, addManualField, removeManualField, getEnrichedFields, convertToEntityField } = useManualFields(entity)
-  
+
   const availableFields = (() => {
     if (!metadata?.fields) return []
     
