@@ -115,6 +115,26 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       }
     })
     
+    if (entity === 'Placement') {
+      const hasDateBegin = 'dateBegin' in baseMap
+      const hasDateEnd = 'dateEnd' in baseMap
+      console.log('🔍 enrichedFieldsMap for Placement:', {
+        totalFields: Object.keys(baseMap).length,
+        hasDateBegin,
+        hasDateEnd,
+        dateBeginInfo: baseMap['dateBegin'] ? {
+          label: baseMap['dateBegin'].label,
+          type: baseMap['dateBegin'].type,
+          dataType: baseMap['dateBegin'].dataType
+        } : 'NOT FOUND',
+        dateEndInfo: baseMap['dateEnd'] ? {
+          label: baseMap['dateEnd'].label,
+          type: baseMap['dateEnd'].type,
+          dataType: baseMap['dateEnd'].dataType
+        } : 'NOT FOUND'
+      })
+    }
+    
     return baseMap
   })()
   
@@ -126,20 +146,52 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
     
     enrichedFields.forEach(field => {
       if (field.composite && field.fields && field.fields.length > 0) {
+        console.log(`📦 Expanding composite field: ${field.name} with sub-fields:`, field.fields.map(sf => sf.name))
         field.fields.forEach(subField => {
+          const expandedFieldName = `${field.name}.${subField.name}`
           expandedFields.push({
-            name: `${field.name}.${subField.name}`,
+            name: expandedFieldName,
             label: `${field.label} - ${subField.label || subField.name}`,
             type: subField.dataType,
             dataType: subField.dataType,
             composite: false,
             optional: !subField.required,
           })
+          console.log(`  ✅ Added composite sub-field: ${expandedFieldName}`)
         })
+        
+        expandedFields.push(field)
       } else {
         expandedFields.push(field)
       }
     })
+    
+    if (entity === 'Placement') {
+      const hasDateBegin = expandedFields.some(f => f.name === 'dateBegin' || f.name.toLowerCase().includes('datebegin'))
+      const hasDateEnd = expandedFields.some(f => f.name === 'dateEnd' || f.name.toLowerCase().includes('dateend'))
+      
+      if (!hasDateBegin) {
+        console.warn('⚠️ Placement missing dateBegin - checking if it exists in metadata...')
+        const dateBeginInMetadata = metadata.fieldsMap?.['dateBegin']
+        if (dateBeginInMetadata) {
+          console.log('✅ Found dateBegin in metadata, adding to availableFields:', dateBeginInMetadata)
+          expandedFields.push(dateBeginInMetadata)
+        } else {
+          console.log('❌ dateBegin not found in metadata fieldsMap')
+        }
+      }
+      
+      if (!hasDateEnd) {
+        console.warn('⚠️ Placement missing dateEnd - checking if it exists in metadata...')
+        const dateEndInMetadata = metadata.fieldsMap?.['dateEnd']
+        if (dateEndInMetadata) {
+          console.log('✅ Found dateEnd in metadata, adding to availableFields:', dateEndInMetadata)
+          expandedFields.push(dateEndInMetadata)
+        } else {
+          console.log('❌ dateEnd not found in metadata fieldsMap')
+        }
+      }
+    }
     
     return expandedFields
   })()
@@ -175,8 +227,21 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
       compositeFields.forEach(field => {
         console.log(`  - ${field.name} (${field.label}): ${field.fields?.length || 0} sub-fields expanded into individual fields`)
       })
+      
+      if (entity === 'Placement') {
+        console.log('🔍 CSV Loader - Checking Placement for dateBegin/dateEnd...')
+        console.log('  Total availableFields:', availableFields.length)
+        console.log('  Fields containing "date":', availableFields.filter(f => f.name.toLowerCase().includes('date')).map(f => f.name))
+        console.log('  dateBegin in availableFields?', availableFields.some(f => f.name === 'dateBegin' || f.name.includes('dateBegin')))
+        console.log('  dateEnd in availableFields?', availableFields.some(f => f.name === 'dateEnd' || f.name.includes('dateEnd')))
+        
+        const dateBeginMatches = availableFields.filter(f => f.name.toLowerCase().includes('datebegin'))
+        const dateEndMatches = availableFields.filter(f => f.name.toLowerCase().includes('dateend'))
+        if (dateBeginMatches.length > 0) console.log('  dateBegin matches:', dateBeginMatches)
+        if (dateEndMatches.length > 0) console.log('  dateEnd matches:', dateEndMatches)
+      }
     }
-  }, [metadata, entity])
+  }, [metadata, entity, availableFields])
   
   useEffect(() => {
     if (lookupField && lookupField !== '__none__') {

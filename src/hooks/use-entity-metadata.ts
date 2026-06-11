@@ -136,7 +136,7 @@ export function useEntityMetadata(entity: string | undefined) {
             optionsUrl: field.optionsUrl
           }
 
-          if (field.type === 'COMPOSITE' || (field.fields && Array.isArray(field.fields))) {
+          if (field.type === 'COMPOSITE' || (field.fields && Array.isArray(field.fields) && field.fields.length > 0)) {
             fieldInfo.composite = true
             fieldInfo.fields = field.fields?.map((subField: any) => ({
               name: subField.name,
@@ -144,7 +144,7 @@ export function useEntityMetadata(entity: string | undefined) {
               dataType: subField.dataType || subField.type || 'String',
               required: !subField.optional
             })) || []
-            console.log(`📦 Composite field detected: ${entity}.${field.name} with ${fieldInfo.fields.length} sub-fields`)
+            console.log(`📦 Composite field detected: ${entity}.${field.name} with ${fieldInfo.fields.length} sub-fields:`, fieldInfo.fields.map(sf => sf.name).join(', '))
           }
 
           if (field.type === 'TO_MANY' || field.dataType === 'TO_MANY') {
@@ -226,6 +226,28 @@ export function useEntityMetadata(entity: string | undefined) {
               console.log(`    • ${subField.name} (${subField.dataType})${subField.required ? ' *required' : ''}`)
             })
           })
+          console.log('=========================================')
+        }
+        
+        if (entity === 'Placement') {
+          console.log('🎯 PLACEMENT METADATA LOADED - CHECKING FOR DATE FIELDS 🎯')
+          const dateBeginField = fieldsMap['dateBegin']
+          const dateEndField = fieldsMap['dateEnd']
+          console.log('dateBegin field:', dateBeginField ? 'FOUND' : 'NOT FOUND', dateBeginField)
+          console.log('dateEnd field:', dateEndField ? 'FOUND' : 'NOT FOUND', dateEndField)
+          
+          console.log('All Placement fields containing "date" (case-insensitive):')
+          Object.entries(fieldsMap)
+            .filter(([name]) => name.toLowerCase().includes('date'))
+            .forEach(([name, field]) => {
+              console.log(`  - ${name}:`, {
+                label: field.label,
+                type: field.type,
+                dataType: field.dataType,
+                composite: field.composite,
+                subFields: field.fields?.length || 0
+              })
+            })
           console.log('=========================================')
         }
         
