@@ -24,6 +24,7 @@ import { ConnectionManager, type SavedConnection, type SecureCredentials } from 
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { EntityDocumentation } from '@/components/documentation/EntityDocumentation'
 import { SessionAwarenessDisplay } from '@/components/SessionAwarenessDisplay'
+import { PlacementPayRulesetErrorAnalyzer } from '@/components/PlacementPayRulesetErrorAnalyzer'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { sessionManager } from '@/lib/session-manager'
@@ -1044,6 +1045,7 @@ function App() {
                 connectionId={currentConnectionId} 
                 isRefreshing={isRefreshingRef.current}
               />
+              <PlacementPayRulesetErrorAnalyzer logs={currentLogs} />
               <AuditLogs logs={currentLogs} onClearLogs={clearLogs} onUpdateLog={updateLog} onLog={addLog} />
             </TabsContent>
           </Tabs>
