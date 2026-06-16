@@ -886,11 +886,17 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
           
           if (transformedValue === '' || transformedValue === null || transformedValue === undefined) {
             if (!mapping.bullhornField.includes('.')) {
-              data[mapping.bullhornField] = null
+              const fieldMeta = enrichedFieldsMap[mapping.bullhornField]
+              if (fieldMeta?.associationType !== 'TO_MANY') {
+                data[mapping.bullhornField] = null
+              }
             }
           } else if (typeof transformedValue === 'string' && transformedValue.toLowerCase() === 'null') {
             if (!mapping.bullhornField.includes('.')) {
-              data[mapping.bullhornField] = null
+              const fieldMeta = enrichedFieldsMap[mapping.bullhornField]
+              if (fieldMeta?.associationType !== 'TO_MANY') {
+                data[mapping.bullhornField] = null
+              }
             }
           } else {
             if (mapping.bullhornField.includes('.')) {
@@ -903,6 +909,17 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               const fieldMeta = enrichedFieldsMap[mapping.bullhornField]
               if (fieldMeta?.associationType === 'TO_MANY') {
                 const config = toManyConfigs[mapping.bullhornField] || { operation: 'replace', subField: 'id' }
+                
+                console.log(`🔍 TO_MANY field "${mapping.bullhornField}" detected:`, {
+                  csvValue: transformedValue,
+                  config,
+                  fieldMeta: {
+                    type: fieldMeta.type,
+                    dataType: fieldMeta.dataType,
+                    associationType: fieldMeta.associationType,
+                    associatedEntity: fieldMeta.associatedEntity
+                  }
+                })
                 
                 const values = transformedValue.split(',').map((v: string) => v.trim()).filter((v: string) => v)
                 
@@ -921,6 +938,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                         ids: ids,
                         subField: 'id'
                       }
+                      console.log(`✅ TO_MANY field "${mapping.bullhornField}" formatted as:`, data[`__tomany_${mapping.bullhornField}`])
                     }
                   } else {
                     console.warn(`⚠️ TO_MANY field ${mapping.bullhornField}: No valid integer IDs found in "${transformedValue}"`)
@@ -932,6 +950,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                       ids: values,
                       subField: config.subField
                     }
+                    console.log(`✅ TO_MANY field "${mapping.bullhornField}" formatted as:`, data[`__tomany_${mapping.bullhornField}`])
                   }
                 }
               } else if (
@@ -1070,6 +1089,7 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
               if (key.startsWith('__tomany_')) {
                 const fieldName = key.replace('__tomany_', '')
                 const toManyValue = data[key]
+                console.log(`🔍 Processing TO_MANY field "${fieldName}":`, toManyValue)
                 if (toManyValue.operation && toManyValue.ids) {
                   if (toManyValue.operation === 'replace' && toManyValue.subField === 'id') {
                     regularData[fieldName] = toManyValue.ids.map((id: number) => ({ id }))
@@ -1081,7 +1101,14 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                       ids: toManyValue.ids,
                       subField: toManyValue.subField || 'id'
                     })
+                    console.log(`✅ TO_MANY field "${fieldName}" added to separate update queue:`, {
+                      operation: toManyValue.operation,
+                      ids: toManyValue.ids,
+                      subField: toManyValue.subField || 'id'
+                    })
                   }
+                } else {
+                  console.warn(`⚠️ TO_MANY field "${fieldName}" missing operation or ids:`, toManyValue)
                 }
               } else {
                 regularData[key] = data[key]
@@ -1100,6 +1127,14 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
             
             for (const toManyUpdate of toManyUpdates) {
               try {
+                console.log(`🔄 Sending TO_MANY update for field "${toManyUpdate.field}":`, {
+                  entity,
+                  entityId: existingRecord.id,
+                  field: toManyUpdate.field,
+                  operation: toManyUpdate.operation,
+                  ids: toManyUpdate.ids,
+                  subField: toManyUpdate.subField
+                })
                 await bullhornAPI.updateToManyAssociation(
                   entity,
                   existingRecord.id,
@@ -1108,8 +1143,10 @@ export function CSVLoader({ onLog }: CSVLoaderProps) {
                   toManyUpdate.operation as 'add' | 'remove' | 'replace',
                   toManyUpdate.subField || 'id'
                 )
+                console.log(`✅ TO_MANY update completed for field "${toManyUpdate.field}"`)
               } catch (toManyError) {
                 const errorMsg = toManyError instanceof Error ? toManyError.message : String(toManyError)
+                console.error(`❌ TO_MANY update failed for field "${toManyUpdate.field}":`, errorMsg)
                 throw new Error(`Failed to update to-many field "${toManyUpdate.field}" for record ID ${existingRecord.id}: ${errorMsg}`)
               }
             }

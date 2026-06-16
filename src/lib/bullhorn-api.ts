@@ -1255,7 +1255,9 @@ export class BullhornAPI {
         status: response.status,
         statusText: response.statusText,
         error,
-        url: fullUrl
+        url: fullUrl,
+        corporationId: this.session.corporationId,
+        restUrl: this.session.restUrl
       })
       
       let errorObj
@@ -1263,6 +1265,10 @@ export class BullhornAPI {
         errorObj = JSON.parse(error)
       } catch {
         errorObj = { errorMessage: error }
+      }
+      
+      if (response.status === 404 || errorObj.errorMessage?.includes('not found') || errorObj.errorMessage?.includes('does not exist')) {
+        throw new Error(`${entity} record ${id} not found. This could mean: 1) The record doesn't exist, 2) You don't have permission to access it, 3) It belongs to a different corporation (current: ${this.session.corporationId}), or 4) The record was recently deleted.`)
       }
       
       if (entity === 'JobOrderRateCardLine' && errorObj.errorMessage?.includes('not found')) {
@@ -1889,9 +1895,16 @@ export class BullhornAPI {
         throw new Error(`Invalid operation: ${operation}`)
     }
 
-    console.log(`🔄 Updating to-many association ${entity}/${entityId}/${association}:`, updatePayload)
+    console.log(`🔄 Updating to-many association ${entity}/${entityId}/${association}:`, {
+      operation,
+      resolvedIds,
+      subField,
+      updatePayload
+    })
 
     const fullUrl = `${this.session.restUrl}entity/${encodedEntity}/${entityId}?${params.toString()}`
+    console.log(`📡 Full TO_MANY UPDATE URL:`, fullUrl)
+    console.log(`📤 TO_MANY Update payload:`, JSON.stringify(updatePayload.data, null, 2))
     
     const response = await this.throttledFetch(
       fullUrl,
