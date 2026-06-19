@@ -19,6 +19,7 @@ import { useEntityMetadata } from '@/hooks/use-entity-metadata'
 import { useEntities } from '@/hooks/use-entities'
 import { CSVFileUploader } from '@/components/CSVFileUploader'
 import { BulkFileDownloader } from '@/components/BulkFileDownloader'
+import { BulkDownloadById } from '@/components/BulkDownloadById'
 import * as JSZip from 'jszip'
 
 interface FileManagerProps {
@@ -49,7 +50,7 @@ interface FileFolder {
 }
 
 export function FileManager({ onLog }: FileManagerProps) {
-  const [activeTab, setActiveTab] = useState<'upload' | 'download' | 'csv-bulk' | 'bulk-download'>('upload')
+  const [activeTab, setActiveTab] = useState<'upload' | 'download' | 'csv-bulk' | 'bulk-download' | 'bulk-download-by-id'>('upload')
   
   const [uploadEntity, setUploadEntity] = useState('')
   const [uploadEntityId, setUploadEntityId] = useState('')
@@ -1146,8 +1147,8 @@ export function FileManager({ onLog }: FileManagerProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'upload' | 'download' | 'csv-bulk' | 'bulk-download')} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'upload' | 'download' | 'csv-bulk' | 'bulk-download' | 'bulk-download-by-id')} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="upload" className="gap-2">
               <FileArrowUp size={18} />
               Upload Files
@@ -1163,6 +1164,10 @@ export function FileManager({ onLog }: FileManagerProps) {
             <TabsTrigger value="bulk-download" className="gap-2">
               <FileZip size={18} />
               Bulk Download
+            </TabsTrigger>
+            <TabsTrigger value="bulk-download-by-id" className="gap-2">
+              <FileZip size={18} />
+              Bulk Download by ID
             </TabsTrigger>
           </TabsList>
 
@@ -1859,6 +1864,10 @@ export function FileManager({ onLog }: FileManagerProps) {
 
           <TabsContent value="bulk-download" className="space-y-6">
             <BulkFileDownloader onLog={onLog} />
+          </TabsContent>
+
+          <TabsContent value="bulk-download-by-id" className="space-y-6">
+            <BulkDownloadById onLog={onLog} />
           </TabsContent>
         </Tabs>
       </CardContent>
