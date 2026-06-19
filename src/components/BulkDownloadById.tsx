@@ -2,35 +2,28 @@ import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { Progress } from '@/components/ui/pro
-import { ScrollArea } from '@/components/ui/scroll-
-import { Table, TableBody, TableCell, TableHe
+import { Progress } from '@/components/ui/progress'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 import { FileZip, FileCsv, Download, CheckCircle, XCircle, Info, Upload, Pause, Play, ArrowClockwise } from '@phosphor-icons/react'
-import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import * as Papa from 'papaparse'
-import * as JSZip from 'jszip'
+import JSZip from 'jszip'
 
+interface BulkDownloadByIdProps {
+  onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
+}
+
+interface AttachmentDownloadResult {
   attachmentId: string
+  status: 'pending' | 'success' | 'error'
+  message: string
   entityType?: string
- 
-
-}
-interface ParsedAttach
-}
-const ENTITY_TYPE_MAP
-  'ClientContact': 'C
-  'Placement': 'Placement',
-  'JobOrder': 'Job
-  'CandidateCertifi
-
- 
-
-  const [downloadResults, se
-  id: string
+  entityId?: number
+  fileName?: string
 }
 
 const ENTITY_TYPE_MAPPING: Record<string, string> = {
@@ -127,23 +120,17 @@ export function BulkDownloadById({ onLog }: BulkDownloadByIdProps) {
         
         setAttachmentIds(ids)
         setDownloadResults([])
-        
-    if (fileInputRef.current) {
-    }
-  }
-  const fetchAttachmentInfo = 
-    entityType?: string
-    fileNa
-  } | nu
-      'PlacementFileAttac
-    for (const fileEntityType of entityFileTypes
-        console.log(`🔍 Trying ${fileEntityType} for attachm
-        const response =
-          parseInt(attachmentId),
-        )
-        i
-       
-      
+        toast.success(`Loaded ${ids.length} attachment IDs from CSV`)
+      },
+      error: (error) => {
+        console.error('❌ CSV parsing error:', error)
+        toast.error('Failed to parse CSV file')
+        setCsvFile(null)
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+      }
+    })
   }
 
   const handleClearCSV = () => {
@@ -404,361 +391,333 @@ export function BulkDownloadById({ onLog }: BulkDownloadByIdProps) {
             fileName: attachmentInfo.fileName || `file_${attachmentId}`,
             blob: attachmentInfo.blob,
             attachmentId
+          })
 
-
-          totalRequested
-        })
-      }
-      console.log('📦 Creating ZIP files for each 
-
-      const entityZipCount = Object.keys(entit
-      for (const [groupKey, gr
-        
-          e
-        
-          type: 'blob',
-          compressionOptions: {
+          results[i] = {
+            attachmentId,
+            status: 'success',
+            message: 'Downloaded successfully',
+            entityType: attachmentInfo.entityType,
+            entityId: attachmentInfo.entityId,
+            fileName: attachmentInfo.fileName
           }
-        
-        const zipFileName = `${group.entityId}-${group.entityType}-${sanitizedEntityNam
-        masterZip.file(z
+          successCount++
+          setDownloadResults([...results])
+          setDownloadProgress(Math.round(((i + 1) / attachmentIds.length) * 100))
+        } catch (error) {
+          console.error(`❌ Error processing attachment ${attachmentId}:`, error)
+          results[i] = {
+            attachmentId,
+            status: 'error',
+            message: error instanceof Error ? error.message : 'Unknown error'
+          }
+          errorCount++
+          failedIds.push(attachmentId)
+          setDownloadResults([...results])
+          setDownloadProgress(Math.round(((i + 1) / attachmentIds.length) * 100))
+        }
+      }
 
-      const masterZipBlob = 
+      if (cancelledRef.current) {
+        toast.info('Download cancelled')
+        onLog('Bulk Download', 'error', 'Download cancelled by user', {
+          totalRequested: attachmentIds.length,
+          successCount,
+          errorCount
+        })
+        return
+      }
+
+      console.log('📦 Creating ZIP files for each entity...')
+      const masterZip = new JSZip()
+      
+      const entityZipCount = Object.keys(entityGroups).length
+      for (const [groupKey, group] of Object.entries(entityGroups)) {
+        const entityZip = new JSZip()
+        
+        for (const file of group.files) {
+          const sanitizedFileName = sanitizeFileName(file.fileName)
+          entityZip.file(sanitizedFileName, file.blob)
+        }
+        
+        const entityZipBlob = await entityZip.generateAsync({
+          type: 'blob',
+          compression: 'DEFLATE',
+          compressionOptions: {
+            level: 6
+          }
+        })
+        
+        const sanitizedEntityName = sanitizeFileName(group.entityName)
+        const zipFileName = `${group.entityType}_${group.entityId}_${sanitizedEntityName}.zip`
+        masterZip.file(zipFileName, entityZipBlob)
+      }
+
+      console.log('📦 Creating master ZIP file...')
+      const masterZipBlob = await masterZip.generateAsync({
+        type: 'blob',
         compression: 'DEFLATE',
-          l
+        compressionOptions: {
+          level: 6
+        }
       })
-      const timestamp = new Date().toI
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
+      const masterZipFileName = `bulk_download_${timestamp}.zip`
 
       const a = document.createElement('a')
-      a.d
-      d
-
-        document.body.removeChild
+      a.href = URL.createObjectURL(masterZipBlob)
+      a.download = masterZipFileName
+      document.body.appendChild(a)
+      a.click()
+      
+      setTimeout(() => {
+        URL.revokeObjectURL(a.href)
+        document.body.removeChild(a)
       }, 100)
+
       if (errorCount === 0) {
+        toast.success(`Successfully downloaded all ${successCount} files!`, {
           id: 'zip-creation',
         })
-        toast.warnin
-          
+      } else {
+        toast.warning(`Downloaded ${successCount} files with ${errorCount} errors`, {
+          id: 'zip-creation',
+        })
       }
-      o
 
+      onLog('Bulk Download', errorCount === 0 ? 'success' : 'error', 
+        `Bulk download completed: ${successCount} successful, ${errorCount} failed`, {
+        totalRequested: attachmentIds.length,
+        successCount,
         errorCount,
         zipFileName: masterZipFileName,
         failedIds: failedIds.length > 0 ? failedIds : undefined
-    } catch (error) {
-      const errorMe
-      onLo
       })
-      s
-
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      toast.error(`Failed to complete bulk download: ${errorMessage}`)
+      onLog('Bulk Download', 'error', 'Bulk download failed', {
+        error: errorMessage,
+        totalRequested: attachmentIds.length
+      })
+    } finally {
+      setIsDownloading(false)
+      setIsPaused(false)
+      pauseRef.current = false
+      setDownloadProgress(0)
+      setStartTime(null)
+      setEstimatedTimeRemaining(null)
     }
+  }
 
-
+  const handleRetryFailed = () => {
+    const failedDownloads = downloadResults.filter(r => r.status === 'error')
     if (failedDownloads.length === 0) {
+      toast.info('No failed downloads to retry')
       return
-
+    }
     
+    const failedIds = failedDownloads.map(r => r.attachmentId)
+    setAttachmentIds(failedIds)
     
-    
+    const nonFailedResults = downloadResults.filter(r => r.status !== 'error')
     setDownloadResults(nonFailedResults)
+    
     setTimeout(() => {
-    }, 50
+      handleBulkDownload()
+    }, 500)
+  }
 
+  return (
     <div className="space-y-6">
-        <Info className
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertTitle>Bulk Download by Attachment ID</AlertTitle>
         <AlertDescription>
+          Upload a CSV file with attachment IDs to bulk download files. Files will be organized by entity and packaged into a ZIP file.
         </AlertDescription>
+      </Alert>
 
-        <Ca
-          
-        
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileCsv className="h-5 w-5" />
+            CSV Upload
+          </CardTitle>
+          <CardDescription>
+            Upload a CSV with an "AttachmentID" column or IDs in the first column
+          </CardDescription>
+        </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
             <Label htmlFor="csv-upload">Select CSV File</Label>
-        
+            <div className="flex gap-2">
+              <input
+                id="csv-upload"
+                type="file"
+                accept=".csv"
+                onChange={handleCSVUpload}
                 ref={fileInputRef}
-       
-
+                className="flex-1"
+                disabled={isDownloading}
               />
+              {csvFile && (
                 <Button
-                  onC
+                  variant="outline"
+                  onClick={handleClearCSV}
+                  disabled={isDownloading}
                 >
+                  Clear
                 </Button>
+              )}
             </div>
+          </div>
 
-        
-
+          {csvFile && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                Loaded {attachmentIds.length} attachment IDs from {csvFile.name}
               </AlertDescription>
+            </Alert>
           )}
 
+          <div className="flex gap-2">
+            <Button
               onClick={handleBulkDownload}
+              disabled={!csvFile || isDownloading || attachmentIds.length === 0}
               className="flex-1 gap-2"
-              <Dow
+            >
+              <Download />
+              Download All ({attachmentIds.length})
             </Button>
-            {isDownloading && 
+            {isDownloading && (
+              <>
                 <Button
-               
-
-                  {isPau
+                  variant="outline"
+                  onClick={handlePauseResume}
+                >
+                  {isPaused ? <Play /> : <Pause />}
+                </Button>
                 <Button
-                  onClick={handleCancel
-             
-
+                  variant="destructive"
+                  onClick={handleCancelDownload}
+                >
+                  Cancel
+                </Button>
+              </>
+            )}
           </div>
+        </CardContent>
       </Card>
-      {isDownloading && (
-          <CardContent cl
-          
-              
-                </span>
-              <Progress value
 
-          
-       
+      {isDownloading && (
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Progress: {currentFileIndex} / {attachmentIds.length}</span>
+                <span>{downloadProgress}%</span>
+              </div>
+              <Progress value={downloadProgress} />
+            </div>
+
+            {estimatedTimeRemaining !== null && (
+              <div className="text-sm text-muted-foreground">
+                Estimated time remaining: {formatTimeRemaining(estimatedTimeRemaining)}
+              </div>
+            )}
 
             {isPaused && (
+              <Alert>
                 <Info className="h-4 w-4 text-yellow-600" />
-                  Download paused. Click Resu
-              </Alert
-          </CardCon
+                <AlertDescription>
+                  Download paused. Click Resume to continue.
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
       )}
+
       {downloadResults.length > 0 && (
+        <Card>
           <CardHeader>
+            <div className="flex items-center justify-between">
               <div>
-        
-                  {' 
+                <CardTitle>Download Results</CardTitle>
+                <CardDescription>
+                  {downloadResults.filter(r => r.status === 'success').length} successful,{' '}
+                  {downloadResults.filter(r => r.status === 'error').length} failed
                 </CardDescription>
+              </div>
               {downloadResults.some(r => r.status === 'error') && !isDownloading && (
+                <Button
                   variant="outline"
                   onClick={handleRetryFailed}
+                  className="gap-2"
                 >
-        
-              )
+                  <ArrowClockwise />
+                  Retry Failed
+                </Button>
+              )}
+            </div>
           </CardHeader>
-            <ScrollArea clas
-                <TableHe
-                    <TableHead classN
-     
-   
-
-                  {downloadResults.
+          <CardContent>
+            <ScrollArea className="h-[400px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[150px]">Attachment ID</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Message</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {downloadResults.map((result) => (
+                    <TableRow key={result.attachmentId}>
+                      <TableCell className="font-mono text-sm">
+                        {result.attachmentId}
+                      </TableCell>
                       <TableCell>
-    
+                        {result.status === 'success' && (
+                          <Badge variant="default" className="gap-1">
+                            <CheckCircle className="h-3 w-3" />
                             Success
+                          </Badge>
                         )}
-            
-     
-
-                          <Badge variant="secondary">Pending</
-    
+                        {result.status === 'error' && (
+                          <Badge variant="destructive" className="gap-1">
+                            <XCircle className="h-3 w-3" />
+                            Error
+                          </Badge>
+                        )}
+                        {result.status === 'pending' && (
+                          <Badge variant="secondary">Pending</Badge>
+                        )}
+                      </TableCell>
                       <TableCell>
-    
-                            <di
-    
+                        {result.fileName && (
+                          <div className="space-y-1">
+                            <div className="font-medium">{result.fileName}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {result.entityType} ID: {result.entityId}
+                            </div>
                           </div>
-                          <span classNam
-    
-                      
+                        )}
+                        {!result.fileName && (
+                          <span className="text-sm text-muted-foreground">{result.message}</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
                   ))}
-           
-   
-
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}
