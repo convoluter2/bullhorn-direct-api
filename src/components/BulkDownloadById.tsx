@@ -2,10 +2,10 @@ import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { Progress } from '@/components/ui/progress'
-import { Badge } from '@/components/ui/badge'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { Progress } from '@/components/ui/pro
+import { ScrollArea } from '@/components/ui/scroll-
+import { Table, TableBody, TableCell, TableHe
+import { toast } from 'sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { FileZip, FileCsv, Download, CheckCircle, XCircle, Info, Upload, Pause, Play, ArrowClockwise } from '@phosphor-icons/react'
@@ -14,22 +14,22 @@ import { bullhornAPI } from '@/lib/bullhorn-api'
 import * as Papa from 'papaparse'
 import * as JSZip from 'jszip'
 
-interface BulkDownloadByIdProps {
-  onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
-}
-
-interface AttachmentDownloadResult {
   attachmentId: string
-  entityId?: number
   entityType?: string
-  entityName?: string
-  status: 'success' | 'error' | 'pending'
-  message?: string
-  fileName?: string
-  retryCount?: number
-}
+ 
 
-interface ParsedAttachment {
+}
+interface ParsedAttach
+}
+const ENTITY_TYPE_MAP
+  'ClientContact': 'C
+  'Placement': 'Placement',
+  'JobOrder': 'Job
+  'CandidateCertifi
+
+ 
+
+  const [downloadResults, se
   id: string
 }
 
@@ -128,22 +128,22 @@ export function BulkDownloadById({ onLog }: BulkDownloadByIdProps) {
         setAttachmentIds(ids)
         setDownloadResults([])
         
-        toast.success(`Loaded ${ids.length} unique attachment ID(s) from CSV`)
-        
-        onLog('CSV Upload', 'success', `Loaded ${ids.length} attachment IDs from CSV`, {
-          fileName: file.name,
-          idCount: ids.length
-        })
-      },
-      error: (error) => {
-        console.error('CSV parse error:', error)
-        toast.error(`Failed to parse CSV: ${error.message}`)
-        setCsvFile(null)
-        if (fileInputRef.current) {
-          fileInputRef.current.value = ''
-        }
-      }
-    })
+    if (fileInputRef.current) {
+    }
+  }
+  const fetchAttachmentInfo = 
+    entityType?: string
+    fileNa
+  } | nu
+      'PlacementFileAttac
+    for (const fileEntityType of entityFileTypes
+        console.log(`🔍 Trying ${fileEntityType} for attachm
+        const response =
+          parseInt(attachmentId),
+        )
+        i
+       
+      
   }
 
   const handleClearCSV = () => {
@@ -404,361 +404,361 @@ export function BulkDownloadById({ onLog }: BulkDownloadByIdProps) {
             fileName: attachmentInfo.fileName || `file_${attachmentId}`,
             blob: attachmentInfo.blob,
             attachmentId
-          })
 
-          results[i] = {
-            attachmentId,
-            entityId: attachmentInfo.entityId,
-            entityType: attachmentInfo.entityType,
-            entityName: attachmentInfo.entityName,
-            fileName: attachmentInfo.fileName,
-            status: 'success',
-            message: 'Downloaded successfully'
-          }
-          successCount++
-          setDownloadResults([...results])
-          setDownloadProgress(Math.round(((i + 1) / attachmentIds.length) * 100))
-        } catch (error) {
-          console.error(`❌ Failed to process attachment ${attachmentId}:`, error)
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-          results[i] = {
-            attachmentId,
-            status: 'error',
-            message: errorMessage
-          }
-          errorCount++
-          failedIds.push(attachmentId)
-          setDownloadResults([...results])
-          setDownloadProgress(Math.round(((i + 1) / attachmentIds.length) * 100))
-        }
-      }
 
-      if (cancelledRef.current) {
-        toast.info('Download cancelled')
-        onLog('Bulk Download by ID', 'error', 'Download cancelled by user', {
-          totalRequested: attachmentIds.length,
-          successCount,
-          errorCount
+          totalRequested
         })
-        return
       }
+      console.log('📦 Creating ZIP files for each 
 
-      if (successCount === 0) {
-        toast.error('Failed to download any files')
-        onLog('Bulk Download by ID', 'error', 'All file downloads failed', {
-          totalRequested: attachmentIds.length,
-          failedIds
-        })
-        return
-      }
-
-      console.log('📦 Creating ZIP files for each entity...')
-      toast.info('Creating ZIP files...', { id: 'zip-creation' })
-
-      const masterZip = new JSZip.default()
-      const entityZipCount = Object.keys(entityGroups).length
-
-      for (const [groupKey, group] of Object.entries(entityGroups)) {
-        const entityZip = new JSZip.default()
+      const entityZipCount = Object.keys(entit
+      for (const [groupKey, gr
         
-        for (const file of group.files) {
-          entityZip.file(file.fileName, file.blob)
-        }
+          e
         
-        const entityZipBlob = await entityZip.generateAsync({
           type: 'blob',
-          compression: 'DEFLATE',
           compressionOptions: {
-            level: 6
           }
-        })
         
-        const sanitizedEntityName = sanitizeFileName(group.entityName)
-        const zipFileName = `${group.entityId}-${group.entityType}-${sanitizedEntityName}.zip`
-        
-        masterZip.file(zipFileName, entityZipBlob)
-      }
+        const zipFileName = `${group.entityId}-${group.entityType}-${sanitizedEntityNam
+        masterZip.file(z
 
-      console.log('📦 Generating master ZIP file...')
-      const masterZipBlob = await masterZip.generateAsync({
-        type: 'blob',
+      const masterZipBlob = 
         compression: 'DEFLATE',
-        compressionOptions: {
-          level: 6
-        }
+          l
       })
+      const timestamp = new Date().toI
 
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0]
-      const masterZipFileName = `BulkDownloadByID_${entityZipCount}Entities_${timestamp}.zip`
-
-      const url = window.URL.createObjectURL(masterZipBlob)
       const a = document.createElement('a')
-      a.href = url
-      a.download = masterZipFileName
-      a.style.display = 'none'
-      document.body.appendChild(a)
-      a.click()
+      a.d
+      d
 
-      setTimeout(() => {
-        document.body.removeChild(a)
-        window.URL.revokeObjectURL(url)
+        document.body.removeChild
       }, 100)
-
       if (errorCount === 0) {
-        toast.success(`Successfully downloaded ${successCount} file(s) across ${entityZipCount} entit${entityZipCount === 1 ? 'y' : 'ies'}`, { 
           id: 'zip-creation',
-          duration: 5000 
         })
-      } else {
-        toast.warning(`Downloaded ${successCount} file(s), ${errorCount} failed. Check results below.`, { 
-          id: 'zip-creation',
-          duration: 5000
-        })
+        toast.warnin
+          
       }
+      o
 
-      onLog('Bulk Download by ID', successCount > 0 ? 'success' : 'error', 
-        `Downloaded ${successCount} files across ${entityZipCount} entities`, {
-        totalRequested: attachmentIds.length,
-        successCount,
         errorCount,
-        entityCount: entityZipCount,
         zipFileName: masterZipFileName,
-        zipSize: masterZipBlob.size,
         failedIds: failedIds.length > 0 ? failedIds : undefined
-      })
     } catch (error) {
-      console.error('Bulk download by ID error:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to download files'
-      toast.error(`Download failed: ${errorMessage}`)
-      onLog('Bulk Download by ID', 'error', errorMessage, {
-        error: errorMessage
+      const errorMe
+      onLo
       })
-    } finally {
-      setIsDownloading(false)
-      setDownloadProgress(0)
-      setStartTime(null)
-      setEstimatedTimeRemaining(null)
-    }
-  }
+      s
 
-  const handleRetryFailed = () => {
-    const failedDownloads = downloadResults.filter(r => r.status === 'error')
-    
+    }
+
+
     if (failedDownloads.length === 0) {
-      toast.info('No failed downloads to retry')
       return
-    }
 
-    const failedIds = failedDownloads.map(r => r.attachmentId)
     
-    toast.info(`Retrying ${failedIds.length} failed download(s)...`)
     
-    setAttachmentIds(failedIds)
     
-    const nonFailedResults = downloadResults.filter(r => r.status !== 'error')
     setDownloadResults(nonFailedResults)
-    
     setTimeout(() => {
-      handleBulkDownload()
-    }, 500)
-  }
+    }, 50
 
-  return (
     <div className="space-y-6">
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertTitle>Download Files by Attachment ID</AlertTitle>
+        <Info className
         <AlertDescription>
-          Upload a CSV containing file attachment IDs. Files will be automatically sorted by their parent entity and downloaded as separate ZIP files per entity, bundled into one master ZIP.
         </AlertDescription>
-      </Alert>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Upload CSV with Attachment IDs</CardTitle>
-          <CardDescription>
-            CSV should contain an "AttachmentID" column (case-insensitive). If no header is found, the first column will be used.
-          </CardDescription>
-        </CardHeader>
+        <Ca
+          
+        
         <CardContent className="space-y-4">
-          <div className="space-y-2">
             <Label htmlFor="csv-upload">Select CSV File</Label>
-            <div className="flex gap-2">
-              <Input
-                id="csv-upload"
+        
                 ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                onChange={handleCSVUpload}
-                disabled={isDownloading}
-                className="cursor-pointer flex-1"
-              />
-              {csvFile && (
-                <Button
-                  variant="outline"
-                  onClick={handleClearCSV}
-                  disabled={isDownloading}
-                >
-                  Clear
-                </Button>
-              )}
-            </div>
-          </div>
+       
 
-          {csvFile && attachmentIds.length > 0 && (
-            <Alert className="bg-green-500/10 border-green-500/20">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-600">
-                <strong>{attachmentIds.length} attachment ID(s)</strong> loaded and de-duplicated from <strong>{csvFile.name}</strong>
+              />
+                <Button
+                  onC
+                >
+                </Button>
+            </div>
+
+        
+
               </AlertDescription>
-            </Alert>
           )}
 
-          <div className="flex gap-2">
-            <Button
               onClick={handleBulkDownload}
-              disabled={attachmentIds.length === 0 || isDownloading}
               className="flex-1 gap-2"
-            >
-              <Download size={18} />
-              {isDownloading ? 'Downloading...' : 'Start Bulk Download'}
+              <Dow
             </Button>
-            
-            {isDownloading && (
-              <>
+            {isDownloading && 
                 <Button
-                  variant="outline"
-                  onClick={handlePauseResume}
-                  className="gap-2"
-                >
-                  {isPaused ? <Play size={18} /> : <Pause size={18} />}
-                  {isPaused ? 'Resume' : 'Pause'}
-                </Button>
+               
+
+                  {isPau
                 <Button
-                  variant="destructive"
-                  onClick={handleCancelDownload}
-                >
-                  Cancel
-                </Button>
-              </>
-            )}
+                  onClick={handleCancel
+             
+
           </div>
-        </CardContent>
       </Card>
-
       {isDownloading && (
-        <Card>
-          <CardContent className="pt-6 space-y-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium">Progress</span>
-                <span className="text-muted-foreground">
-                  {currentFileIndex} / {attachmentIds.length} files
+          <CardContent cl
+          
+              
                 </span>
-              </div>
-              <Progress value={downloadProgress} className="h-2" />
-            </div>
+              <Progress value
 
-            {estimatedTimeRemaining !== null && estimatedTimeRemaining > 0 && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Est. time remaining:</span>
-                <Badge variant="outline">{formatTimeRemaining(estimatedTimeRemaining)}</Badge>
-              </div>
-            )}
+          
+       
 
             {isPaused && (
-              <Alert className="bg-yellow-500/10 border-yellow-500/20">
                 <Info className="h-4 w-4 text-yellow-600" />
-                <AlertDescription className="text-yellow-600">
-                  Download paused. Click Resume to continue.
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
+                  Download paused. Click Resu
+              </Alert
+          </CardCon
       )}
-
       {downloadResults.length > 0 && (
-        <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Download Results</CardTitle>
-                <CardDescription>
-                  {downloadResults.filter(r => r.status === 'success').length} succeeded, 
-                  {' '}{downloadResults.filter(r => r.status === 'error').length} failed, 
-                  {' '}{downloadResults.filter(r => r.status === 'pending').length} pending
+        
+                  {' 
                 </CardDescription>
-              </div>
               {downloadResults.some(r => r.status === 'error') && !isDownloading && (
-                <Button
                   variant="outline"
-                  size="sm"
                   onClick={handleRetryFailed}
-                  className="gap-2"
                 >
-                  <ArrowClockwise size={16} />
-                  Retry Failed
-                </Button>
-              )}
-            </div>
+        
+              )
           </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[400px] w-full">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px]">Status</TableHead>
-                    <TableHead>Attachment ID</TableHead>
-                    <TableHead>Entity</TableHead>
-                    <TableHead>File Name</TableHead>
-                    <TableHead>Message</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {downloadResults.map((result, index) => (
-                    <TableRow key={index}>
+            <ScrollArea clas
+                <TableHe
+                    <TableHead classN
+     
+   
+
+                  {downloadResults.
                       <TableCell>
-                        {result.status === 'success' && (
-                          <Badge variant="default" className="bg-green-600 gap-1">
-                            <CheckCircle size={14} />
+    
                             Success
-                          </Badge>
                         )}
-                        {result.status === 'error' && (
-                          <Badge variant="destructive" className="gap-1">
-                            <XCircle size={14} />
-                            Error
-                          </Badge>
-                        )}
-                        {result.status === 'pending' && (
-                          <Badge variant="secondary">Pending</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">{result.attachmentId}</TableCell>
+            
+     
+
+                          <Badge variant="secondary">Pending</
+    
                       <TableCell>
-                        {result.entityType && result.entityId ? (
-                          <div className="space-y-0.5">
-                            <div className="font-medium">{result.entityType}</div>
-                            <div className="text-xs text-muted-foreground">ID: {result.entityId}</div>
-                            {result.entityName && result.entityName !== 'Unknown' && (
-                              <div className="text-xs text-muted-foreground">{result.entityName}</div>
-                            )}
+    
+                            <di
+    
                           </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm">{result.fileName || '-'}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{result.message}</TableCell>
-                    </TableRow>
+                          <span classNam
+    
+                      
                   ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+           
+   
+
   )
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
