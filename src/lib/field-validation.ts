@@ -266,3 +266,103 @@ export function validateAddressField(
     validatedAddress: Object.keys(validatedAddress).length > 0 ? validatedAddress : addressData
   }
 }
+
+export interface AddressValidationResult {
+  isValid: boolean
+  errors: string[]
+  warnings: string[]
+  validatedAddress: Record<string, any>
+}
+
+export function validateAddressField(
+  addressData: Record<string, any>,
+  fieldName: string = 'address',
+  allowPartial: boolean = false
+): AddressValidationResult {
+  const errors: string[] = []
+  const warnings: string[] = []
+  const validatedAddress: Record<string, any> = {}
+
+  if (!addressData || typeof addressData !== 'object') {
+    return {
+      isValid: false,
+      errors: [`${fieldName} must be an object`],
+      warnings: [],
+      validatedAddress: {}
+    }
+  }
+
+  const hasAnyAddressField = Object.keys(addressData).some(key => 
+    ['address1', 'address2', 'city', 'state', 'zip', 'countryID', 'countryCode', 'countryName'].includes(key)
+  )
+
+  if (!hasAnyAddressField) {
+    if (!allowPartial) {
+      return {
+        isValid: false,
+        errors: [`${fieldName} has no valid address fields`],
+        warnings: [],
+        validatedAddress: {}
+      }
+    }
+    return {
+      isValid: true,
+      errors: [],
+      warnings: [`${fieldName} is empty but allowed`],
+      validatedAddress: {}
+    }
+  }
+
+  for (const [key, value] of Object.entries(addressData)) {
+    if (value === null || value === undefined || value === '') {
+      continue
+    }
+
+    switch (key) {
+      case 'address1':
+      case 'address2':
+      case 'city':
+      case 'state':
+      case 'countryCode':
+      case 'countryName':
+      case 'timezone':
+        validatedAddress[key] = String(value).trim()
+        break
+
+      case 'zip':
+        validatedAddress[key] = String(value).trim()
+        break
+
+      case 'countryID':
+        const countryId = parseInt(String(value), 10)
+        if (isNaN(countryId)) {
+          errors.push(`${fieldName}.countryID must be a valid integer`)
+        } else {
+          validatedAddress[key] = countryId
+        }
+        break
+
+      default:
+        warnings.push(`${fieldName}.${key} is not a standard address field`)
+        validatedAddress[key] = value
+        break
+    }
+  }
+
+  const hasMinimumFields = validatedAddress.address1 || validatedAddress.city || validatedAddress.state
+
+  if (!hasMinimumFields && !allowPartial) {
+    errors.push(`${fieldName} must contain at least one of: address1, city, or state`)
+  }
+
+  if (Object.keys(validatedAddress).length === 0 && !allowPartial) {
+    errors.push(`${fieldName} has no valid data after validation`)
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+    warnings,
+    validatedAddress: Object.keys(validatedAddress).length > 0 ? validatedAddress : addressData
+  }
+}
