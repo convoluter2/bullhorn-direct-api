@@ -30,6 +30,32 @@ export class BullhornAPI {
   private loginInfoCache: Map<string, LoginInfo> = new Map()
   private currentUsername: string | null = null
 
+  private convertCompositeFields(fields: string[] | string): string {
+    const fieldsArray = Array.isArray(fields) ? fields : fields.split(',').map(f => f.trim())
+    
+    const compositeGroups = new Map<string, string[]>()
+    const regularFields: string[] = []
+    
+    for (const field of fieldsArray) {
+      if (field.includes('.')) {
+        const [compositeName, subField] = field.split('.')
+        if (!compositeGroups.has(compositeName)) {
+          compositeGroups.set(compositeName, [])
+        }
+        compositeGroups.get(compositeName)!.push(subField)
+      } else {
+        regularFields.push(field)
+      }
+    }
+    
+    const compositeFields = Array.from(compositeGroups.entries()).map(
+      ([compositeName, subFields]) => `${compositeName}(${subFields.join(',')})`
+    )
+    
+    const allFields = [...regularFields, ...compositeFields]
+    return allFields.join(',')
+  }
+
   private async throttledFetch(
     url: string, 
     options?: RequestInit,
@@ -712,7 +738,7 @@ export class BullhornAPI {
       rawQuery: rawQuery || 'built from config'
     })
 
-    const fields = config.fields.join(',')
+    const fields = this.convertCompositeFields(config.fields)
     const count = config.count || 500
     const start = config.start || 0
 
@@ -1002,7 +1028,7 @@ export class BullhornAPI {
     window.dispatchEvent(event)
 
     const sanitizedWhere = this.sanitizeWhereClauseForQuery(where || '')
-    const fieldsStr = Array.isArray(fields) ? fields.join(',') : fields
+    const fieldsStr = this.convertCompositeFields(fields)
 
     console.log('🔍 Executing query:', {
       entity,
@@ -1110,7 +1136,7 @@ export class BullhornAPI {
     expectedCorporationId?: number
   ): Promise<QueryResult> {
     const fieldsArray = Array.isArray(fields) ? fields : fields.split(',').map(f => f.trim())
-    const fieldsStr = fieldsArray.join(',')
+    const fieldsStr = this.convertCompositeFields(fieldsArray)
 
     if (!supportsSearch(entity)) {
       console.log(`📋 ${entity} doesn't support search, using query instead with name filter`)
@@ -1223,7 +1249,7 @@ export class BullhornAPI {
     const event = new CustomEvent('entity-usage', { detail: { entityName: entity } })
     window.dispatchEvent(event)
 
-    const fieldsStr = Array.isArray(fields) ? fields.join(',') : fields
+    const fieldsStr = this.convertCompositeFields(fields)
 
     console.log(`🔍 Fetching ${entity} entity by ID:`, {
       id,
