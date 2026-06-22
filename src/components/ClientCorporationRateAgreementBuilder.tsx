@@ -2,36 +2,33 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Upload, Download, Play } from '@phos
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Upload, Download, Play } from '@phosphor-icons/react'
 import { toast } from 'sonner'
+import Papa from 'papaparse'
+import { bullhornAPI } from '@/lib/bullhorn-api'
 
-  onLog: (operation: string, status: 'success' | 'err
-
-  clientCorporationId: string
-  employmentTypes?: string
-  customText2?: string
-
-  customText6?: string
-  customFloat1?: string
- 
-
-  customDate2?: string
-  effectiveDate: string
-  earnCodeGroup
-  isBase: string
+interface ClientCorporationRateAgreementBuilderProps {
+  onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
 }
-export function Client
-  const [csvData, setC
-  const [loading, setL
-  const cardFields = [
-    { field: 'name', l
-    { field: 'customTe
-    { field: 'customTex
-    { field: 'customTex
-    { field: 'customTex
-    { field: 'customF
-    { field: 'customI
-    { field: 'customDa
+
+interface CSVRateAgreementRow {
+  clientCorporationId: string
+  name?: string
+  employmentTypes?: string
+  customText1?: string
+  customText2?: string
+  customText3?: string
+  customText4?: string
+  customText5?: string
+  customText6?: string
+  customText7?: string
+  customFloat1?: string
+  customFloat2?: string
+  customFloat3?: string
+  customInt1?: string
+  customInt2?: string
+  customDate1?: string
   customDate2?: string
   customDate3?: string
   effectiveDate: string
@@ -77,35 +74,18 @@ export function ClientCorporationRateAgreementBuilder({ onLog }: ClientCorporati
 
   const downloadTemplate = () => {
     const headers = cardFields.map(f => f.field)
-          const firstRow
-          const cardPayload: any = 
-            effectiveDate: firstRow.e
+    const csvContent = headers.join(',') + '\n'
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'rate_agreement_template.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Template downloaded')
+  }
 
-            const value = firstRow
-              if (fieldDef.type === '
-              } else if (fiel
-              } else 
-              } else if 
-              } else {
-     
-    
-          const lineGroupsMap = new Map<string, any[]>()
-          rows.forEach(row => {
-            if (!lineGroupsMap.has(groupKey)
-            }
-            const lineData: any = {
-            }
-            line
-
-    
-            
-              earnCodeGroup: { id: parseInt(groupId) },
-              clientCorporationR
-
-   
-
-          }
-          cardPayload.clientCorporationR
+  const handleFileUpload = (file: File) => {
     if (!file) return
 
     setCsvFile(file)
@@ -224,17 +204,17 @@ export function ClientCorporationRateAgreementBuilder({ onLog }: ClientCorporati
             errors.push({
               clientCorporationId: firstRow.clientCorporationId,
               error: 'No changedEntityId in response'
-              
+            })
           }
 
         } catch (error: any) {
-            </div>
+          errorCount++
           errors.push({
-      </CardCont
+            clientCorporationId: key,
             error: error.message || String(error)
-}
+          })
           console.error(`❌ Failed to create rate agreement for ${key}:`, error)
-
+        }
       }
 
       const duration = ((Date.now() - startTime) / 1000).toFixed(2)
@@ -242,111 +222,112 @@ export function ClientCorporationRateAgreementBuilder({ onLog }: ClientCorporati
       if (errorCount === 0) {
         toast.success(`Created ${successCount} rate agreement(s) in ${duration}s`, { id: 'bulk-create' })
         onLog('Create Rate Agreements', 'success', `Created ${successCount} rate agreement(s)`, {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+          successCount,
+          duration,
+          totalRecords: csvData.length
+        })
+      } else {
+        toast.error(`Completed with ${errorCount} error(s)`, { id: 'bulk-create' })
+        onLog('Create Rate Agreements', 'error', `Completed with ${errorCount} error(s)`, {
+          successCount,
+          errorCount,
+          duration,
+          errors
+        })
+      }
+
+    } catch (error: any) {
+      toast.error(`Failed: ${error.message}`, { id: 'bulk-create' })
+      onLog('Create Rate Agreements', 'error', 'Failed to create rate agreements', { error: error.message })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Client Corporation Rate Agreement Builder</CardTitle>
+          <CardDescription>
+            Upload a CSV file to create Client Corporation Rate Agreement Cards with line groups and lines
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={downloadTemplate}>
+              <Download />
+              Download Template
+            </Button>
+            <Label htmlFor="csv-upload" className="cursor-pointer">
+              <Button variant="outline" asChild>
+                <span>
+                  <Upload />
+                  Upload CSV
+                </span>
+              </Button>
+              <input
+                id="csv-upload"
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) handleFileUpload(file)
+                }}
+              />
+            </Label>
+          </div>
+
+          {csvFile && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">{csvData.length} rows loaded</Badge>
+                <span className="text-sm text-muted-foreground">{csvFile.name}</span>
+              </div>
+            </div>
+          )}
+
+          {previewData.length > 0 && (
+            <div className="space-y-2">
+              <Label>Preview (first 5 rows)</Label>
+              <div className="border rounded-md overflow-auto max-h-64">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted">
+                    <tr>
+                      {Object.keys(previewData[0]).map((key) => (
+                        <th key={key} className="p-2 text-left font-medium">
+                          {key}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewData.map((row, idx) => (
+                      <tr key={idx} className="border-t">
+                        {Object.values(row).map((val, i) => (
+                          <td key={i} className="p-2">
+                            {String(val)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <Button 
+            onClick={handleCreateRateAgreements} 
+            disabled={csvData.length === 0 || loading}
+            className="w-full"
+          >
+            <Play />
+            {loading ? 'Creating...' : 'Create Rate Agreements'}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
