@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rate Agreement Line - Bullhorn API Documentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      line-height: 1.6;
+      color: #1f2937;
+      background: #ffffff;
+      padding: 40px 20px;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    h1, h2, h3 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+    }
+    
+    h1 {
+      font-size: 36px;
+      margin-bottom: 12px;
+      color: #111827;
+    }
+    
+    h2 {
+      font-size: 28px;
+      margin-top: 48px;
+      margin-bottom: 16px;
+      color: #111827;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 8px;
+    }
+    
+    h3 {
+      font-size: 18px;
+      margin-top: 24px;
+      margin-bottom: 12px;
+      color: #374151;
+    }
+    
+    .entity-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 20px;
+      color: #6b7280;
+      font-weight: 400;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 500;
+      margin-left: 12px;
+    }
+    
+    .alert {
+      background: #fef3c7;
+      border: 1px solid #fbbf24;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 24px 0;
+      color: #78350f;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 24px 0;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    thead {
+      background: #f9fafb;
+    }
+    
+    th {
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 13px;
+      color: #374151;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    
+    tr:last-child td {
+      border-bottom: none;
+    }
+    
+    tr:hover {
+      background: #f9fafb;
+    }
+    
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+    }
+    
+    pre {
+      background: #1f2937;
+      color: #f9fafb;
+      padding: 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 16px 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    
+    .description {
+      font-size: 15px;
+      color: #6b7280;
+      margin-bottom: 24px;
+    }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin: 24px 0;
+    }
+    
+    .card {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+    }
+    
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #6b7280;
+      margin-bottom: 16px;
+    }
+    
+    .type-item {
+      display: flex;
+      align-items: start;
+      gap: 12px;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    
+    .type-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      min-width: 80px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    
+    .footer {
+      margin-top: 60px;
+      padding-top: 24px;
+      border-top: 1px solid #e5e7eb;
+      text-align: center;
+      color: #9ca3af;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Rate Agreement Line</h1>
+      <div>
+        <span class="entity-name">ClientCorporationRateAgreementCardLine</span>
+        <span class="badge">40 fields</span>
+      </div>
+    </header>
+
+    
+
+    <section>
+      <h2>Fields Reference</h2>
+      <p class="description">
+        Complete field definitions for the Rate Agreement Line entity. 
+        Use these field names when constructing queries and updates.
+      </p>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Field Name</th>
+            <th>Label</th>
+            <th>Type</th>
+            <th>Data Type</th>
+            <th>Optional</th>
+            <th>Read-Only</th>
+            <th>Associated Entity</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">id</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          ID
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #3b82f6; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            ID
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">Integer</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">alias</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          Alias
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">String</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">billCurrencyUnit</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          Bill Currency Unit
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #8b5cf6; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            TO_ONE
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">undefined</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          CurrencyUnit
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">billMultiplier</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          Bill Multiplier
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">BigDecimal</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">billRate</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          Bill Rate
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">BigDecimal</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">clientCorporationRateAgreementCardLineGroup</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          Client Corporation Rate Agreement Card Line Group
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #8b5cf6; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            TO_ONE
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">undefined</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          ClientCorporationRateAgreementCardLineGroup
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customFloat1</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customFloat1
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">Double</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customFloat2</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customFloat2
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">Double</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customFloat3</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customFloat3
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">Double</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customFloat4</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customFloat4
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">Double</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customFloat5</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customFloat5
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">Double</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customInt1</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customInt1
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">Integer</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customInt2</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customInt2
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">Integer</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customInt3</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customInt3
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">Integer</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customInt4</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customInt4
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">Integer</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customInt5</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customInt5
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">Integer</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customRate1</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customRate1
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">BigDecimal</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customRate2</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customRate2
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">BigDecimal</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customRate3</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customRate3
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">BigDecimal</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customRate4</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customRate4
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">BigDecimal</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customRate5</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customRate5
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">BigDecimal</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customText1</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customText1
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">String</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customText10</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customText10
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">String</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customText2</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customText2
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">String</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customText3</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customText3
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">String</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customText4</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customText4
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">String</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customText5</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customText5
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">String</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customText6</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customText6
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">String</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customText7</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customText7
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">String</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customText8</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customText8
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">String</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">customText9</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          customText9
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">String</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">dateLastModified</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          Date Last Modified
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">Timestamp</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">earnCode</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          Earn Code
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #8b5cf6; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            TO_ONE
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">AbstractEmbeddedEntity</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          EarnCode
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">externalID</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          External ID
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">String</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">markupPercent</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          Markup Percent
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">BigDecimal</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">markupValue</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          Markup Value
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">BigDecimal</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">migrateGUID</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          Migrate GUID
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">String</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">payCurrencyUnit</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          Pay Currency Unit
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #8b5cf6; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            TO_ONE
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">undefined</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          CurrencyUnit
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">payMultiplier</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          Pay Multiplier
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">BigDecimal</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          ✓
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 13px;">payRate</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          Pay Rate
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <span style="display: inline-block; padding: 2px 8px; background: #10b981; color: white; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace;">
+            SCALAR
+          </span>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <code style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #6b7280;">BigDecimal</code>
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+          
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          -
+        </td>
+      </tr>
+    
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>API Examples</h2>
+      <p class="description">
+        Ready-to-use code examples for common operations.
+      </p>
+
+      <h3>Get Entity by ID</h3>
+      <pre>GET https://rest43.bullhornstaffing.com/rest-services/82iulg//entity/ClientCorporationRateAgreementCardLine/{id}?fields=*&BhRestToken=22090_7294471_73d58cd7-51a5-4bb8-9a24-5378213f4550</pre>
+
+      <h3>Search Entities</h3>
+      <pre>GET https://rest43.bullhornstaffing.com/rest-services/82iulg//search/ClientCorporationRateAgreementCardLine?query=id:1&fields=*&BhRestToken=22090_7294471_73d58cd7-51a5-4bb8-9a24-5378213f4550</pre>
+
+      <h3>Query Entities</h3>
+      <pre>GET https://rest43.bullhornstaffing.com/rest-services/82iulg//query/ClientCorporationRateAgreementCardLine?where=id>0&fields=*&orderBy=id&count=10&BhRestToken=22090_7294471_73d58cd7-51a5-4bb8-9a24-5378213f4550</pre>
+
+      <h3>Create Entity</h3>
+      <pre>POST https://rest43.bullhornstaffing.com/rest-services/82iulg//entity/ClientCorporationRateAgreementCardLine?BhRestToken=22090_7294471_73d58cd7-51a5-4bb8-9a24-5378213f4550
+Content-Type: application/json
+
+{
+  "field1": "value1",
+  "field2": "value2"
+}</pre>
+
+      <h3>Update Entity</h3>
+      <pre>POST https://rest43.bullhornstaffing.com/rest-services/82iulg//entity/ClientCorporationRateAgreementCardLine/{id}?BhRestToken=22090_7294471_73d58cd7-51a5-4bb8-9a24-5378213f4550
+Content-Type: application/json
+
+{
+  "field1": "newValue1"
+}</pre>
+
+      <h3>Delete Entity</h3>
+      <pre>DELETE https://rest43.bullhornstaffing.com/rest-services/82iulg//entity/ClientCorporationRateAgreementCardLine/{id}?BhRestToken=22090_7294471_73d58cd7-51a5-4bb8-9a24-5378213f4550</pre>
+    </section>
+
+    <section>
+      <h2>Field Type Reference</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Field Types</div>
+          <div class="type-item">
+            <span class="type-badge" style="background: #3b82f6; color: white;">ID</span>
+            <span style="color: #6b7280;">Unique identifier field</span>
+          </div>
+          <div class="type-item">
+            <span class="type-badge" style="background: #10b981; color: white;">SCALAR</span>
+            <span style="color: #6b7280;">Simple value (string, number, boolean, date)</span>
+          </div>
+          <div class="type-item">
+            <span class="type-badge" style="background: #8b5cf6; color: white;">TO_ONE</span>
+            <span style="color: #6b7280;">Single reference to another entity</span>
+          </div>
+          <div class="type-item">
+            <span class="type-badge" style="background: #f97316; color: white;">TO_MANY</span>
+            <span style="color: #6b7280;">Multiple references to other entities</span>
+          </div>
+          <div class="type-item">
+            <span class="type-badge" style="background: #06b6d4; color: white;">COMPOSITE</span>
+            <span style="color: #6b7280;">Complex nested object</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Data Types</div>
+          <div class="type-item">
+            <code style="color: #eab308;">String</code>
+            <span style="color: #6b7280;">Text value</span>
+          </div>
+          <div class="type-item">
+            <code style="color: #3b82f6;">Integer</code>
+            <span style="color: #6b7280;">Whole number</span>
+          </div>
+          <div class="type-item">
+            <code style="color: #06b6d4;">BigDecimal</code>
+            <span style="color: #6b7280;">Precise decimal number</span>
+          </div>
+          <div class="type-item">
+            <code style="color: #10b981;">Boolean</code>
+            <span style="color: #6b7280;">True/false value</span>
+          </div>
+          <div class="type-item">
+            <code style="color: #8b5cf6;">Timestamp</code>
+            <span style="color: #6b7280;">Date and time (epoch ms)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      Generated by Bullhorn Data Manager • 6/22/2026 4:22:33 PM
+    </footer>
+  </div>
+</body>
+</html>
