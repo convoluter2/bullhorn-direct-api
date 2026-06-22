@@ -1,37 +1,37 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import { Upload, Download, Play } from '@phosphor-icons/react'
-import { bullhornAPI } from '@/lib/bullhorn-api'
+import { Upload, Download, Play } from '@phos
 import { toast } from 'sonner'
-import Papa from 'papaparse'
 
-interface ClientCorporationRateAgreementBuilderProps {
-  onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
-}
+  onLog: (operation: string, status: 'success' | 'err
 
-interface CSVRateAgreementRow {
   clientCorporationId: string
-  name?: string
   employmentTypes?: string
-  customText1?: string
   customText2?: string
-  customText3?: string
-  customText4?: string
-  customText5?: string
+
   customText6?: string
-  customText7?: string
   customFloat1?: string
-  customFloat2?: string
-  customFloat3?: string
-  customInt1?: string
-  customInt2?: string
-  customDate1?: string
+ 
+
+  customDate2?: string
+  effectiveDate: string
+  earnCodeGroup
+  isBase: string
+}
+export function Client
+  const [csvData, setC
+  const [loading, setL
+  const cardFields = [
+    { field: 'name', l
+    { field: 'customTe
+    { field: 'customTex
+    { field: 'customTex
+    { field: 'customTex
+    { field: 'customF
+    { field: 'customI
+    { field: 'customDa
   customDate2?: string
   customDate3?: string
   effectiveDate: string
@@ -77,35 +77,35 @@ export function ClientCorporationRateAgreementBuilder({ onLog }: ClientCorporati
 
   const downloadTemplate = () => {
     const headers = cardFields.map(f => f.field)
-    const exampleRow = {
-      clientCorporationId: '12345',
-      name: 'Example Rate Agreement',
-      employmentTypes: 'W2',
-      effectiveDate: '2024-01-01',
-      effectiveEndDate: '2024-12-31',
-      earnCodeGroupId: '100',
-      isBase: 'TRUE',
-      earnCodeId: '200',
-      customText1: 'Example text'
-    }
-    
-    const csv = Papa.unparse([exampleRow], { columns: headers })
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const link = document.createElement('a')
-    link.href = URL.createObjectURL(blob)
-    link.setAttribute('download', `client-corp-rate-agreement-template-${new Date().toISOString().split('T')[0]}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    
-    toast.success('Template downloaded successfully')
-    onLog('Download Template', 'success', 'Downloaded rate agreement template', {
-      fieldCount: headers.length
-    })
-  }
+          const firstRow
+          const cardPayload: any = 
+            effectiveDate: firstRow.e
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+            const value = firstRow
+              if (fieldDef.type === '
+              } else if (fiel
+              } else 
+              } else if 
+              } else {
+     
+    
+          const lineGroupsMap = new Map<string, any[]>()
+          rows.forEach(row => {
+            if (!lineGroupsMap.has(groupKey)
+            }
+            const lineData: any = {
+            }
+            line
+
+    
+            
+              earnCodeGroup: { id: parseInt(groupId) },
+              clientCorporationR
+
+   
+
+          }
+          cardPayload.clientCorporationR
     if (!file) return
 
     setCsvFile(file)
@@ -224,17 +224,17 @@ export function ClientCorporationRateAgreementBuilder({ onLog }: ClientCorporati
             errors.push({
               clientCorporationId: firstRow.clientCorporationId,
               error: 'No changedEntityId in response'
-            })
+              
           }
 
         } catch (error: any) {
-          errorCount++
+            </div>
           errors.push({
-            key,
+      </CardCont
             error: error.message || String(error)
-          })
+}
           console.error(`❌ Failed to create rate agreement for ${key}:`, error)
-        }
+
       }
 
       const duration = ((Date.now() - startTime) / 1000).toFixed(2)
@@ -242,111 +242,111 @@ export function ClientCorporationRateAgreementBuilder({ onLog }: ClientCorporati
       if (errorCount === 0) {
         toast.success(`Created ${successCount} rate agreement(s) in ${duration}s`, { id: 'bulk-create' })
         onLog('Create Rate Agreements', 'success', `Created ${successCount} rate agreement(s)`, {
-          successCount,
-          duration,
-          totalGroups: rateAgreementGroups.size
-        })
-      } else {
-        toast.error(`Created ${successCount}, failed ${errorCount} in ${duration}s`, { id: 'bulk-create' })
-        onLog('Create Rate Agreements', 'error', `Completed with errors: ${successCount} success, ${errorCount} failed`, {
-          successCount,
-          errorCount,
-          duration,
-          errors: errors.slice(0, 10)
-        })
-      }
 
-    } catch (error: any) {
-      toast.error(`Bulk create failed: ${error.message}`, { id: 'bulk-create' })
-      onLog('Create Rate Agreements', 'error', 'Bulk create operation failed', {
-        error: error.message
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Client Corporation Rate Agreement Builder</CardTitle>
-        <CardDescription>
-          Build ClientCorporationRateAgreementCards with nested LineGroups and Lines from CSV
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button onClick={downloadTemplate} variant="outline">
-            <Download />
-            Download Template
-          </Button>
 
-          <div className="flex-1">
-            <Label htmlFor="csv-upload" className="cursor-pointer">
-              <div className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-accent hover:text-accent-foreground transition-colors">
-                <Upload size={18} />
-                <span>{csvFile ? csvFile.name : 'Choose CSV File'}</span>
-              </div>
-              <Input
-                id="csv-upload"
-                type="file"
-                accept=".csv"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-            </Label>
-          </div>
 
-          <Button
-            onClick={handleCreateRateAgreements}
-            disabled={csvData.length === 0 || loading}
-          >
-            <Play />
-            {loading ? 'Creating...' : 'Create Rate Agreements'}
-          </Button>
-        </div>
 
-        {csvData.length > 0 && (
-          <>
-            <Separator />
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">Data Preview</h3>
-                <Badge variant="secondary">
-                  {csvData.length} total rows
-                </Badge>
-              </div>
 
-              {previewData.length > 0 && (
-                <div className="border rounded-md overflow-auto max-h-96">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        {Object.keys(previewData[0]).map(key => (
-                          <TableHead key={key} className="whitespace-nowrap">
-                            {key}
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {previewData.map((row, idx) => (
-                        <TableRow key={idx}>
-                          {Object.values(row).map((value, cellIdx) => (
-                            <TableCell key={cellIdx} className="font-mono text-sm">
-                              {String(value)}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
