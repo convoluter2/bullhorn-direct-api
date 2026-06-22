@@ -25,6 +25,7 @@ import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { EntityDocumentation } from '@/components/documentation/EntityDocumentation'
 import { SessionAwarenessDisplay } from '@/components/SessionAwarenessDisplay'
 import { PlacementPayRulesetErrorAnalyzer } from '@/components/PlacementPayRulesetErrorAnalyzer'
+import { ClientCorporationRateAgreementBuilder } from '@/components/ClientCorporationRateAgreementBuilder'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { sessionManager } from '@/lib/session-manager'
@@ -940,7 +941,7 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-11 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-12 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -964,6 +965,10 @@ function App() {
               <TabsTrigger value="ratecard" className="gap-2">
                 <CreditCard size={18} />
                 <span className="hidden sm:inline">RateCard</span>
+              </TabsTrigger>
+              <TabsTrigger value="rate-agreement" className="gap-2">
+                <Certificate size={18} />
+                <span className="hidden sm:inline">Rate Agreement</span>
               </TabsTrigger>
               <TabsTrigger value="wfn-export" className="gap-2">
                 <Export size={18} />
@@ -1018,6 +1023,10 @@ function App() {
 
             <TabsContent value="ratecard" className="space-y-6">
               <RateCardBuilder onLog={addLog} />
+            </TabsContent>
+
+            <TabsContent value="rate-agreement" className="space-y-6">
+              <ClientCorporationRateAgreementBuilder onLog={addLog} />
             </TabsContent>
 
             <TabsContent value="wfn-export" className="space-y-6">
