@@ -24,38 +24,41 @@ interface MassPlacementLoaderProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
 }
 
-interface PlacementRow {
-  rowNumber: number
+interface PlacementData {
   candidate: string
   jobOrder: string
-  clientContact: string
+  clientContact?: string
   salary: string
   salaryUnit: string
   employmentType: string
-  startDate: string
-  endDate?: string
-  status: string
+  dateBegin: string
+  dateEnd?: string
+  status?: string
   matchId?: string
+  rateCardGroups?: RateCardGroupData[]
   [key: string]: any
 }
 
-interface RateCardGroupRow {
-  rowNumber: number
-  placementIdentifier: string
+interface RateCardGroupData {
   groupName: string
   externalID?: string
+  rateCardLines?: RateCardLineData[]
   [key: string]: any
 }
 
-interface RateCardLineRow {
-  rowNumber: number
-  groupIdentifier: string
-  externalID?: string
+interface RateCardLineData {
   title: string
-  earnCode: string
+  earnCode?: string
   rate: string
-  rateType: string
+  rateType?: string
+  externalID?: string
   [key: string]: any
+}
+
+interface ProcessedRow {
+  rowNumber: number
+  placement: PlacementData
+  referenceData: Record<string, any>
 }
 
 interface ProcessingResult {
@@ -67,6 +70,7 @@ interface ProcessingResult {
   success: boolean
   error?: string
   data?: any
+  referenceData?: Record<string, any>
 }
 
 interface ProcessingReport {
@@ -84,14 +88,36 @@ interface ProcessingReport {
 
 type ProcessingStatus = 'idle' | 'validating' | 'dry-run' | 'processing' | 'paused' | 'completed' | 'error'
 
-export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
-  const [placementFile, setPlacementFile] = useState<File | null>(null)
-  const [rateCardGroupFile, setRateCardGroupFile] = useState<File | null>(null)
-  const [rateCardLineFile, setRateCardLineFile] = useState<File | null>(null)
+const formatDateToYYYYMMDD = (dateValue: any): string => {
+  if (!dateValue) return ''
   
-  const [placementData, setPlacementData] = useState<PlacementRow[]>([])
-  const [rateCardGroupData, setRateCardGroupData] = useState<RateCardGroupRow[]>([])
-  const [rateCardLineData, setRateCardLineData] = useState<RateCardLineRow[]>([])
+  let date: Date
+  
+  if (typeof dateValue === 'string') {
+    const cleaned = dateValue.trim()
+    date = new Date(cleaned)
+  } else if (typeof dateValue === 'number') {
+    date = new Date(dateValue)
+  } else if (dateValue instanceof Date) {
+    date = dateValue
+  } else {
+    return ''
+  }
+  
+  if (isNaN(date.getTime())) {
+    return ''
+  }
+  
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  
+  return `${year}-${month}-${day}`
+}
+
+export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [processedData, setProcessedData] = useState<ProcessedRow[]>([])
   
   const [status, setStatus] = useState<ProcessingStatus>('idle')
   const [progress, setProgress] = useState(0)
@@ -104,10 +130,29 @@ export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
   const abortRef = useRef(false)
   const [isPaused, setIsPaused] = useState(false)
 
-  const generatePlacementTemplate = () => {
+  const generateTemplate = () => {
     const template = [
-      ['candidate', 'jobOrder', 'clientContact', 'salary', 'salaryUnit', 'employmentType', 'startDate', 'endDate', 'status', 'matchId', 'customText1', 'customText2'],
-      ['12345', '67890', '11111', '75000', 'Yearly', 'Contract', '2025-02-01', '2025-12-31', 'Placed', '99999', 'Optional Field', 'Another Optional']
+      [
+        'candidate', 'jobOrder', 'clientContact', 'salary', 'salaryUnit', 
+        'employmentType', 'dateBegin', 'dateEnd', 'status', 'matchId',
+        'rateCardGroups', 'referenceField1', 'referenceField2'
+      ],
+      [
+        '12345', '67890', '11111', '75000', 'Yearly', 
+        'Contract', '2025-02-01', '2025-12-31', 'Placed', '99999',
+        JSON.stringify([
+          {
+            groupName: 'Standard Rate Group',
+            externalID: 'GROUP-001',
+            rateCardLines: [
+              { title: 'Regular Hours', earnCode: 'REG', rate: '50.00', rateType: 'Hourly', externalID: 'LINE-001' },
+              { title: 'Overtime Hours', earnCode: 'OT', rate: '75.00', rateType: 'Hourly', externalID: 'LINE-002' }
+            ]
+          }
+        ]),
+        'Optional reference data',
+        'More reference data'
+      ]
     ]
     
     const csv = Papa.unparse(template)
@@ -115,109 +160,66 @@ export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'placement-template.csv'
+    a.download = 'mass-placement-template.csv'
     a.click()
     URL.revokeObjectURL(url)
-    toast.success('Placement template downloaded')
+    toast.success('Template downloaded')
   }
 
-  const generateRateCardGroupTemplate = () => {
-    const template = [
-      ['placementIdentifier', 'groupName', 'externalID'],
-      ['12345', 'Standard Rate Group', 'EXT-001']
-    ]
-    
-    const csv = Papa.unparse(template)
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'rate-card-group-template.csv'
-    a.click()
-    URL.revokeObjectURL(url)
-    toast.success('Rate Card Group template downloaded')
-  }
-
-  const generateRateCardLineTemplate = () => {
-    const template = [
-      ['groupIdentifier', 'title', 'earnCode', 'rate', 'rateType', 'externalID'],
-      ['EXT-001', 'Regular Hours', 'REG', '50.00', 'Hourly', 'LINE-001'],
-      ['EXT-001', 'Overtime Hours', 'OT', '75.00', 'Hourly', 'LINE-002']
-    ]
-    
-    const csv = Papa.unparse(template)
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'rate-card-line-template.csv'
-    a.click()
-    URL.revokeObjectURL(url)
-    toast.success('Rate Card Line template downloaded')
-  }
-
-  const handlePlacementFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    setPlacementFile(file)
+    setCsvFile(file)
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        const rows = results.data.map((row: any, index) => ({
-          rowNumber: index + 2,
-          ...row
-        })) as PlacementRow[]
-        setPlacementData(rows)
+        const rows: ProcessedRow[] = results.data.map((row: any, index) => {
+          const essentialFields = [
+            'candidate', 'jobOrder', 'clientContact', 'salary', 'salaryUnit',
+            'employmentType', 'dateBegin', 'dateEnd', 'status', 'matchId', 'rateCardGroups'
+          ]
+          
+          const referenceData: Record<string, any> = {}
+          const placementData: any = {}
+          
+          Object.keys(row).forEach(key => {
+            if (essentialFields.includes(key)) {
+              placementData[key] = row[key]
+            } else {
+              referenceData[key] = row[key]
+            }
+          })
+          
+          if (placementData.rateCardGroups && typeof placementData.rateCardGroups === 'string') {
+            try {
+              placementData.rateCardGroups = JSON.parse(placementData.rateCardGroups)
+            } catch (error) {
+              console.warn(`Row ${index + 2}: Failed to parse rateCardGroups JSON`, error)
+              placementData.rateCardGroups = []
+            }
+          }
+          
+          if (placementData.dateBegin) {
+            placementData.dateBegin = formatDateToYYYYMMDD(placementData.dateBegin)
+          }
+          if (placementData.dateEnd) {
+            placementData.dateEnd = formatDateToYYYYMMDD(placementData.dateEnd)
+          }
+
+          return {
+            rowNumber: index + 2,
+            placement: placementData,
+            referenceData
+          }
+        })
+        
+        setProcessedData(rows)
         toast.success(`Loaded ${rows.length} placement rows`)
       },
       error: (error) => {
-        toast.error(`Failed to parse placement file: ${error.message}`)
-      }
-    })
-  }
-
-  const handleRateCardGroupFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setRateCardGroupFile(file)
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const rows = results.data.map((row: any, index) => ({
-          rowNumber: index + 2,
-          ...row
-        })) as RateCardGroupRow[]
-        setRateCardGroupData(rows)
-        toast.success(`Loaded ${rows.length} rate card group rows`)
-      },
-      error: (error) => {
-        toast.error(`Failed to parse rate card group file: ${error.message}`)
-      }
-    })
-  }
-
-  const handleRateCardLineFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setRateCardLineFile(file)
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const rows = results.data.map((row: any, index) => ({
-          rowNumber: index + 2,
-          ...row
-        })) as RateCardLineRow[]
-        setRateCardLineData(rows)
-        toast.success(`Loaded ${rows.length} rate card line rows`)
-      },
-      error: (error) => {
-        toast.error(`Failed to parse rate card line file: ${error.message}`)
+        toast.error(`Failed to parse CSV file: ${error.message}`)
       }
     })
   }
@@ -225,45 +227,45 @@ export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
   const validateData = async (): Promise<boolean> => {
     const errors: string[] = []
     
-    if (placementData.length === 0) {
+    if (processedData.length === 0) {
       errors.push('No placement data loaded')
     }
 
-    placementData.forEach((row) => {
-      if (!row.candidate) errors.push(`Row ${row.rowNumber}: Missing candidate ID`)
-      if (!row.jobOrder) errors.push(`Row ${row.rowNumber}: Missing job order ID`)
-      if (!row.salary) errors.push(`Row ${row.rowNumber}: Missing salary`)
-      if (!row.startDate) errors.push(`Row ${row.rowNumber}: Missing start date`)
+    processedData.forEach((row) => {
+      const p = row.placement
       
-      if (row.startDate && isNaN(Date.parse(row.startDate))) {
-        errors.push(`Row ${row.rowNumber}: Invalid start date format`)
+      if (!p.candidate) errors.push(`Row ${row.rowNumber}: Missing candidate ID`)
+      if (!p.jobOrder) errors.push(`Row ${row.rowNumber}: Missing job order ID`)
+      if (!p.salary) errors.push(`Row ${row.rowNumber}: Missing salary`)
+      if (!p.dateBegin) errors.push(`Row ${row.rowNumber}: Missing start date (dateBegin)`)
+      
+      if (p.dateBegin && !/^\d{4}-\d{2}-\d{2}$/.test(p.dateBegin)) {
+        errors.push(`Row ${row.rowNumber}: dateBegin must be in YYYY-MM-DD format, got: ${p.dateBegin}`)
       }
-      if (row.endDate && isNaN(Date.parse(row.endDate))) {
-        errors.push(`Row ${row.rowNumber}: Invalid end date format`)
+      if (p.dateEnd && !/^\d{4}-\d{2}-\d{2}$/.test(p.dateEnd)) {
+        errors.push(`Row ${row.rowNumber}: dateEnd must be in YYYY-MM-DD format, got: ${p.dateEnd}`)
       }
-    })
-
-    rateCardGroupData.forEach((row) => {
-      if (!row.placementIdentifier) {
-        errors.push(`Rate Card Group Row ${row.rowNumber}: Missing placement identifier`)
-      }
-      if (!row.groupName) {
-        errors.push(`Rate Card Group Row ${row.rowNumber}: Missing group name`)
-      }
-    })
-
-    rateCardLineData.forEach((row) => {
-      if (!row.groupIdentifier) {
-        errors.push(`Rate Card Line Row ${row.rowNumber}: Missing group identifier`)
-      }
-      if (!row.title) {
-        errors.push(`Rate Card Line Row ${row.rowNumber}: Missing title`)
-      }
-      if (!row.rate) {
-        errors.push(`Rate Card Line Row ${row.rowNumber}: Missing rate`)
-      }
-      if (row.rate && isNaN(parseFloat(row.rate))) {
-        errors.push(`Rate Card Line Row ${row.rowNumber}: Invalid rate value`)
+      
+      if (p.rateCardGroups && Array.isArray(p.rateCardGroups)) {
+        p.rateCardGroups.forEach((group: RateCardGroupData, gIndex: number) => {
+          if (!group.groupName) {
+            errors.push(`Row ${row.rowNumber}, Group ${gIndex + 1}: Missing groupName`)
+          }
+          
+          if (group.rateCardLines && Array.isArray(group.rateCardLines)) {
+            group.rateCardLines.forEach((line: RateCardLineData, lIndex: number) => {
+              if (!line.title) {
+                errors.push(`Row ${row.rowNumber}, Group ${gIndex + 1}, Line ${lIndex + 1}: Missing title`)
+              }
+              if (!line.rate) {
+                errors.push(`Row ${row.rowNumber}, Group ${gIndex + 1}, Line ${lIndex + 1}: Missing rate`)
+              }
+              if (line.rate && isNaN(parseFloat(line.rate))) {
+                errors.push(`Row ${row.rowNumber}, Group ${gIndex + 1}, Line ${lIndex + 1}: Invalid rate value`)
+              }
+            })
+          }
+        })
       }
     })
 
@@ -287,11 +289,26 @@ export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
 
       const dryRunResults: string[] = []
       
-      dryRunResults.push(`✓ ${placementData.length} placements ready to create`)
-      dryRunResults.push(`✓ ${rateCardGroupData.length} rate card groups ready to create`)
-      dryRunResults.push(`✓ ${rateCardLineData.length} rate card lines ready to create`)
+      dryRunResults.push(`✓ ${processedData.length} placements ready to create`)
       
-      const matchUpdates = placementData.filter(p => p.matchId).length
+      let totalGroups = 0
+      let totalLines = 0
+      
+      processedData.forEach(row => {
+        if (row.placement.rateCardGroups && Array.isArray(row.placement.rateCardGroups)) {
+          totalGroups += row.placement.rateCardGroups.length
+          row.placement.rateCardGroups.forEach(group => {
+            if (group.rateCardLines && Array.isArray(group.rateCardLines)) {
+              totalLines += group.rateCardLines.length
+            }
+          })
+        }
+      })
+      
+      dryRunResults.push(`✓ ${totalGroups} rate card groups ready to create`)
+      dryRunResults.push(`✓ ${totalLines} rate card lines ready to create`)
+      
+      const matchUpdates = processedData.filter(row => row.placement.matchId).length
       if (matchUpdates > 0) {
         dryRunResults.push(`✓ ${matchUpdates} matches will be updated to "Placed"`)
       }
@@ -299,9 +316,9 @@ export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
       setStatus('idle')
       toast.success('Dry run completed successfully')
       onLog('Mass Placement Dry Run', 'success', 'Dry run validation passed', {
-        placementCount: placementData.length,
-        rateCardGroupCount: rateCardGroupData.length,
-        rateCardLineCount: rateCardLineData.length,
+        placementCount: processedData.length,
+        rateCardGroupCount: totalGroups,
+        rateCardLineCount: totalLines,
         matchUpdateCount: matchUpdates,
         results: dryRunResults
       })
@@ -328,7 +345,7 @@ export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
       rateCardLines: [],
       matchUpdates: [],
       summary: {
-        totalRows: placementData.length,
+        totalRows: processedData.length,
         successful: 0,
         failed: 0,
         skipped: 0
@@ -341,13 +358,23 @@ export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
         throw new Error('Validation failed')
       }
 
-      const totalOperations = placementData.length + rateCardGroupData.length + rateCardLineData.length
+      let totalOps = processedData.length
+      processedData.forEach(row => {
+        if (row.placement.rateCardGroups && Array.isArray(row.placement.rateCardGroups)) {
+          totalOps += row.placement.rateCardGroups.length
+          row.placement.rateCardGroups.forEach(group => {
+            if (group.rateCardLines && Array.isArray(group.rateCardLines)) {
+              totalOps += group.rateCardLines.length
+            }
+          })
+        }
+      })
+      
       let completedOperations = 0
 
-      const placementMap = new Map<string, number>()
-
-      setCurrentPhase('Creating placements...')
-      for (const row of placementData) {
+      setCurrentPhase('Creating placements and rate cards...')
+      
+      for (const row of processedData) {
         if (abortRef.current) {
           processingReport.summary.skipped++
           continue
@@ -358,208 +385,187 @@ export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
         }
 
         try {
-          const placementData: any = {
-            candidate: { id: parseInt(row.candidate) },
-            jobOrder: { id: parseInt(row.jobOrder) },
-            salary: parseFloat(row.salary),
-            salaryUnit: row.salaryUnit,
-            employmentType: row.employmentType,
-            dateBegin: new Date(row.startDate).getTime(),
-            status: row.status || 'Placed'
+          const p = row.placement
+          const apiPlacementData: any = {
+            candidate: { id: parseInt(p.candidate) },
+            jobOrder: { id: parseInt(p.jobOrder) },
+            salary: parseFloat(p.salary),
+            salaryUnit: p.salaryUnit,
+            employmentType: p.employmentType,
+            dateBegin: p.dateBegin,
+            status: p.status || 'Placed'
           }
 
-          if (row.clientContact) {
-            placementData.clientContact = { id: parseInt(row.clientContact) }
+          if (p.clientContact) {
+            apiPlacementData.clientContact = { id: parseInt(p.clientContact) }
           }
 
-          if (row.endDate) {
-            placementData.dateEnd = new Date(row.endDate).getTime()
+          if (p.dateEnd) {
+            apiPlacementData.dateEnd = p.dateEnd
           }
 
-          Object.keys(row).forEach(key => {
-            if (!['rowNumber', 'candidate', 'jobOrder', 'clientContact', 'salary', 'salaryUnit', 
-                  'employmentType', 'startDate', 'endDate', 'status', 'matchId'].includes(key)) {
-              placementData[key] = row[key]
-            }
-          })
-
-          const result = await bullhornAPI.createEntity('Placement', placementData)
+          const result = await bullhornAPI.createEntity('Placement', apiPlacementData)
           
           if (result.changedEntityId) {
             const placementId = result.changedEntityId
-            placementMap.set(row.candidate + '-' + row.jobOrder, placementId)
             
             processingReport.placements.push({
               placementId,
               rowNumber: row.rowNumber,
               success: true,
-              data: { ...placementData, id: placementId }
+              data: { ...apiPlacementData, id: placementId },
+              referenceData: row.referenceData
             })
             processingReport.summary.successful++
 
-            if (row.matchId) {
+            if (p.matchId) {
               try {
-                await bullhornAPI.updateEntity('JobSubmission', parseInt(row.matchId), {
+                await bullhornAPI.updateEntity('JobSubmission', parseInt(p.matchId), {
                   status: 'Placed'
                 })
                 processingReport.matchUpdates.push({
-                  matchId: parseInt(row.matchId),
+                  matchId: parseInt(p.matchId),
                   placementId,
                   rowNumber: row.rowNumber,
                   success: true
                 })
               } catch (matchError) {
                 processingReport.matchUpdates.push({
-                  matchId: parseInt(row.matchId),
+                  matchId: parseInt(p.matchId),
                   rowNumber: row.rowNumber,
                   success: false,
                   error: matchError instanceof Error ? matchError.message : 'Unknown error'
                 })
               }
             }
+
+            completedOperations++
+            setProgress((completedOperations / totalOps) * 100)
+            await delay(Math.max(speed, 50))
+
+            if (p.rateCardGroups && Array.isArray(p.rateCardGroups)) {
+              for (const group of p.rateCardGroups) {
+                if (abortRef.current) break
+
+                while (pausedRef.current) {
+                  await delay(100)
+                }
+
+                try {
+                  const groupData: any = {
+                    placement: { id: placementId },
+                    title: group.groupName
+                  }
+
+                  if (group.externalID) {
+                    groupData.externalID = group.externalID
+                  }
+
+                  const groupResult = await bullhornAPI.createEntity('PlacementRateCardLineGroup', groupData)
+                  
+                  if (groupResult.changedEntityId) {
+                    const groupId = groupResult.changedEntityId
+                    
+                    processingReport.rateCardGroups.push({
+                      rateCardGroupId: groupId,
+                      placementId,
+                      rowNumber: row.rowNumber,
+                      success: true,
+                      data: { ...groupData, id: groupId }
+                    })
+
+                    completedOperations++
+                    setProgress((completedOperations / totalOps) * 100)
+                    await delay(Math.max(speed, 50))
+
+                    if (group.rateCardLines && Array.isArray(group.rateCardLines)) {
+                      for (const line of group.rateCardLines) {
+                        if (abortRef.current) break
+
+                        while (pausedRef.current) {
+                          await delay(100)
+                        }
+
+                        try {
+                          const lineData: any = {
+                            placementRateCardLineGroup: { id: groupId },
+                            title: line.title,
+                            rate: parseFloat(line.rate)
+                          }
+
+                          if (line.earnCode) {
+                            lineData.earnCode = line.earnCode
+                          }
+                          if (line.rateType) {
+                            lineData.rateType = line.rateType
+                          }
+                          if (line.externalID) {
+                            lineData.externalID = line.externalID
+                          }
+
+                          const lineResult = await bullhornAPI.createEntity('PlacementRateCardLine', lineData)
+                          
+                          if (lineResult.changedEntityId) {
+                            processingReport.rateCardLines.push({
+                              rateCardLineId: lineResult.changedEntityId,
+                              rateCardGroupId: groupId,
+                              rowNumber: row.rowNumber,
+                              success: true,
+                              data: { ...lineData, id: lineResult.changedEntityId }
+                            })
+                          } else {
+                            throw new Error('No line ID returned')
+                          }
+
+                          completedOperations++
+                          setProgress((completedOperations / totalOps) * 100)
+                          await delay(Math.max(speed, 50))
+                        } catch (lineError) {
+                          const errorMessage = lineError instanceof Error ? lineError.message : 'Unknown error'
+                          processingReport.rateCardLines.push({
+                            rowNumber: row.rowNumber,
+                            success: false,
+                            error: errorMessage,
+                            data: line
+                          })
+                          processingReport.summary.failed++
+                          completedOperations++
+                          setProgress((completedOperations / totalOps) * 100)
+                        }
+                      }
+                    }
+                  } else {
+                    throw new Error('No group ID returned')
+                  }
+                } catch (groupError) {
+                  const errorMessage = groupError instanceof Error ? groupError.message : 'Unknown error'
+                  processingReport.rateCardGroups.push({
+                    rowNumber: row.rowNumber,
+                    success: false,
+                    error: errorMessage,
+                    data: group
+                  })
+                  processingReport.summary.failed++
+                  completedOperations++
+                  setProgress((completedOperations / totalOps) * 100)
+                }
+              }
+            }
           } else {
             throw new Error('No placement ID returned')
           }
-
-          completedOperations++
-          setProgress((completedOperations / totalOperations) * 100)
-
-          await delay(Math.max(speed, 3000 / 60))
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error'
           processingReport.placements.push({
             rowNumber: row.rowNumber,
             success: false,
             error: errorMessage,
-            data: row
+            data: row.placement,
+            referenceData: row.referenceData
           })
           processingReport.summary.failed++
           completedOperations++
-          setProgress((completedOperations / totalOperations) * 100)
-        }
-      }
-
-      setCurrentPhase('Creating rate card groups...')
-      const groupMap = new Map<string, number>()
-      
-      for (const row of rateCardGroupData) {
-        if (abortRef.current) {
-          processingReport.summary.skipped++
-          continue
-        }
-
-        while (pausedRef.current) {
-          await delay(100)
-        }
-
-        try {
-          const placementId = placementMap.get(row.placementIdentifier)
-          if (!placementId) {
-            throw new Error(`Placement not found for identifier: ${row.placementIdentifier}`)
-          }
-
-          const groupData: any = {
-            placement: { id: placementId },
-            title: row.groupName
-          }
-
-          if (row.externalID) {
-            groupData.externalID = row.externalID
-          }
-
-          const result = await bullhornAPI.createEntity('PlacementRateCardLineGroup', groupData)
-          
-          if (result.changedEntityId) {
-            const groupId = result.changedEntityId
-            groupMap.set(row.externalID || row.groupName, groupId)
-            
-            processingReport.rateCardGroups.push({
-              rateCardGroupId: groupId,
-              placementId,
-              rowNumber: row.rowNumber,
-              success: true,
-              data: { ...groupData, id: groupId }
-            })
-          } else {
-            throw new Error('No group ID returned')
-          }
-
-          completedOperations++
-          setProgress((completedOperations / totalOperations) * 100)
-
-          await delay(Math.max(speed, 3000 / 60))
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-          processingReport.rateCardGroups.push({
-            rowNumber: row.rowNumber,
-            success: false,
-            error: errorMessage,
-            data: row
-          })
-          processingReport.summary.failed++
-          completedOperations++
-          setProgress((completedOperations / totalOperations) * 100)
-        }
-      }
-
-      setCurrentPhase('Creating rate card lines...')
-      for (const row of rateCardLineData) {
-        if (abortRef.current) {
-          processingReport.summary.skipped++
-          continue
-        }
-
-        while (pausedRef.current) {
-          await delay(100)
-        }
-
-        try {
-          const groupId = groupMap.get(row.groupIdentifier)
-          if (!groupId) {
-            throw new Error(`Group not found for identifier: ${row.groupIdentifier}`)
-          }
-
-          const lineData: any = {
-            placementRateCardLineGroup: { id: groupId },
-            title: row.title,
-            earnCode: row.earnCode,
-            rate: parseFloat(row.rate),
-            rateType: row.rateType
-          }
-
-          if (row.externalID) {
-            lineData.externalID = row.externalID
-          }
-
-          const result = await bullhornAPI.createEntity('PlacementRateCardLine', lineData)
-          
-          if (result.changedEntityId) {
-            processingReport.rateCardLines.push({
-              rateCardLineId: result.changedEntityId,
-              rateCardGroupId: groupId,
-              rowNumber: row.rowNumber,
-              success: true,
-              data: { ...lineData, id: result.changedEntityId }
-            })
-          } else {
-            throw new Error('No line ID returned')
-          }
-
-          completedOperations++
-          setProgress((completedOperations / totalOperations) * 100)
-
-          await delay(Math.max(speed, 3000 / 60))
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-          processingReport.rateCardLines.push({
-            rowNumber: row.rowNumber,
-            success: false,
-            error: errorMessage,
-            data: row
-          })
-          processingReport.summary.failed++
-          completedOperations++
-          setProgress((completedOperations / totalOperations) * 100)
+          setProgress((completedOperations / totalOps) * 100)
         }
       }
 
@@ -678,7 +684,7 @@ export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
   }
 
   const isProcessing = status === 'processing' || status === 'paused'
-  const canStart = placementData.length > 0 && !isProcessing
+  const canStart = processedData.length > 0 && !isProcessing
 
   return (
     <div className="space-y-6">
@@ -691,80 +697,48 @@ export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
                 Mass Placement Loader
               </CardTitle>
               <CardDescription>
-                Create placements, update matches, and create rate cards in bulk with parallel processing
+                Create placements, update matches, and create rate cards in bulk from a single CSV file with embedded arrays
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={generatePlacementTemplate}>
-                <Download size={16} />
-                Placement Template
-              </Button>
-              <Button variant="outline" size="sm" onClick={generateRateCardGroupTemplate}>
-                <Download size={16} />
-                Group Template
-              </Button>
-              <Button variant="outline" size="sm" onClick={generateRateCardLineTemplate}>
-                <Download size={16} />
-                Line Template
-              </Button>
-            </div>
+            <Button variant="outline" size="sm" onClick={generateTemplate}>
+              <Download size={16} />
+              Download Template
+            </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="placement-file" className="flex items-center gap-2">
-                <Briefcase size={16} />
-                Placement Data
-              </Label>
-              <Input
-                id="placement-file"
-                type="file"
-                accept=".csv"
-                onChange={handlePlacementFileUpload}
-                disabled={isProcessing}
-              />
-              {placementFile && (
-                <Badge variant="secondary" className="mt-2">
-                  {placementData.length} rows loaded
-                </Badge>
-              )}
-            </div>
+          <div className="space-y-4">
+            <Alert>
+              <Info size={16} />
+              <AlertDescription>
+                <div className="space-y-2">
+                  <div className="font-semibold">CSV Format:</div>
+                  <ul className="list-disc list-inside text-sm space-y-1">
+                    <li><strong>Required fields:</strong> candidate, jobOrder, salary, salaryUnit, employmentType, dateBegin (YYYY-MM-DD)</li>
+                    <li><strong>Optional fields:</strong> clientContact, dateEnd (YYYY-MM-DD), status, matchId</li>
+                    <li><strong>rateCardGroups:</strong> JSON array with groupName, externalID, and nested rateCardLines array</li>
+                    <li><strong>All other fields</strong> will be stored as reference data in logs</li>
+                    <li><strong>Dates MUST be YYYY-MM-DD format</strong> or they will be rejected by the API</li>
+                  </ul>
+                </div>
+              </AlertDescription>
+            </Alert>
 
             <div className="space-y-2">
-              <Label htmlFor="group-file" className="flex items-center gap-2">
-                <Tray size={16} />
-                Rate Card Groups
+              <Label htmlFor="csv-file" className="flex items-center gap-2">
+                <Upload size={16} />
+                Upload CSV File
               </Label>
               <Input
-                id="group-file"
+                id="csv-file"
                 type="file"
                 accept=".csv"
-                onChange={handleRateCardGroupFileUpload}
+                onChange={handleFileUpload}
                 disabled={isProcessing}
               />
-              {rateCardGroupFile && (
+              {csvFile && (
                 <Badge variant="secondary" className="mt-2">
-                  {rateCardGroupData.length} rows loaded
-                </Badge>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="line-file" className="flex items-center gap-2">
-                <CreditCard size={16} />
-                Rate Card Lines
-              </Label>
-              <Input
-                id="line-file"
-                type="file"
-                accept=".csv"
-                onChange={handleRateCardLineFileUpload}
-                disabled={isProcessing}
-              />
-              {rateCardLineFile && (
-                <Badge variant="secondary" className="mt-2">
-                  {rateCardLineData.length} rows loaded
+                  {processedData.length} rows loaded
                 </Badge>
               )}
             </div>
