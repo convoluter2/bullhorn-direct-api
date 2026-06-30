@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Upload, Download, Play } from '@phosphor-icons/react'
 
+interface ClientCorporationRateAgreementBuilderProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
 }
 

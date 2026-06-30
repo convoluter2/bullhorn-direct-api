@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Separator } from '@/components/ui/separator'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen, FileZip, CreditCard, ArrowsClockwise, Info, ArrowsCounterClockwise, Certificate } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen, FileZip, CreditCard, ArrowsClockwise, Info, ArrowsCounterClockwise, Certificate, Briefcase } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -19,6 +19,7 @@ import { FileManager } from '@/components/FileManager'
 import { BulkZipUploader } from '@/components/BulkZipUploader'
 import { RateCardBuilder } from '@/components/RateCardBuilder'
 import { MassUpdate } from '@/components/MassUpdate'
+import { MassPlacementLoader } from '@/components/MassPlacementLoader'
 import { CredentialManager } from '@/components/CredentialManager'
 import { ConnectionManager, type SavedConnection, type SecureCredentials } from '@/components/ConnectionManager'
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
@@ -941,7 +942,7 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-12 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-13 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -953,6 +954,10 @@ function App() {
               <TabsTrigger value="massupdate" className="gap-2">
                 <ArrowsCounterClockwise size={18} />
                 <span className="hidden sm:inline">Mass Update</span>
+              </TabsTrigger>
+              <TabsTrigger value="mass-placement" className="gap-2">
+                <Briefcase size={18} />
+                <span className="hidden sm:inline">Mass Placement</span>
               </TabsTrigger>
               <TabsTrigger value="smartstack" className="gap-2">
                 <Stack size={18} />
@@ -1011,6 +1016,10 @@ function App() {
 
             <TabsContent value="massupdate" className="space-y-6">
               <MassUpdate onLog={addLog} />
+            </TabsContent>
+
+            <TabsContent value="mass-placement" className="space-y-6">
+              <MassPlacementLoader onLog={addLog} />
             </TabsContent>
 
             <TabsContent value="smartstack" className="space-y-6">
