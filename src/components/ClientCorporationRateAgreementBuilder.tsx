@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 import { Upload, Download, Play } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import Papa from 'papaparse'
@@ -9,15 +9,13 @@ import { bullhornAPI } from '@/lib/bullhorn-api'
 
 interface ClientCorporationRateAgreementBuilderProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
-}
-
+}nterface CSVRateAgreementRow {
+  clientCorporationId: string
 interface CSVRateAgreementRow {
   clientCorporationId: string
   effectiveDate: string
   effectiveEndDate?: string
   earnCodeGroupId: string
-  earnCodeId: string
-  externalID?: string
   isBase: string
   name?: string
   employmentTypes?: string
