@@ -926,7 +926,7 @@ export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
                           <div className="font-semibold text-sm">Row {m.rowNumber}</div>
                           {m.matchId && (
                             <div className="text-xs text-muted-foreground">
-                              Match ID: {m.matchId} → Placement ID: {m.placementId}
+                              Match ID: {m.matchId} - Placement ID: {m.placementId}
                             </div>
                           )}
                           {m.error && (
@@ -953,7 +953,7 @@ export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
                           <div className="font-semibold text-sm">Row {g.rowNumber}</div>
                           {g.rateCardGroupId && (
                             <div className="text-xs text-muted-foreground">
-                              Group ID: {g.rateCardGroupId} → Placement ID: {g.placementId}
+                              Group ID: {g.rateCardGroupId} - Placement ID: {g.placementId}
                             </div>
                           )}
                           {g.error && (
@@ -980,7 +980,7 @@ export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
                           <div className="font-semibold text-sm">Row {l.rowNumber}</div>
                           {l.rateCardLineId && (
                             <div className="text-xs text-muted-foreground">
-                              Line ID: {l.rateCardLineId} → Group ID: {l.rateCardGroupId}
+                              Line ID: {l.rateCardLineId} - Group ID: {l.rateCardGroupId}
                             </div>
                           )}
                           {l.error && (
@@ -999,3 +999,6 @@ export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
     </div>
   )
 }
+
+
+
