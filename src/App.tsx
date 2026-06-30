@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Separator } from '@/components/ui/separator'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen, FileZip, CreditCard, ArrowsClockwise, Info, ArrowsCounterClockwise, Certificate, Briefcase } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen, FileZip, CreditCard, ArrowsClockwise, Info, ArrowsCounterClockwise, Briefcase } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -26,7 +26,6 @@ import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { EntityDocumentation } from '@/components/documentation/EntityDocumentation'
 import { SessionAwarenessDisplay } from '@/components/SessionAwarenessDisplay'
 import { PlacementPayRulesetErrorAnalyzer } from '@/components/PlacementPayRulesetErrorAnalyzer'
-import { ClientCorporationRateAgreementBuilder } from '@/components/ClientCorporationRateAgreementBuilder'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { sessionManager } from '@/lib/session-manager'
@@ -942,7 +941,7 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-13 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-12 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -971,10 +970,6 @@ function App() {
                 <CreditCard size={18} />
                 <span className="hidden sm:inline">RateCard</span>
               </TabsTrigger>
-              <TabsTrigger value="rate-agreement" className="gap-2">
-                <Certificate size={18} />
-                <span className="hidden sm:inline">Rate Agreement</span>
-              </TabsTrigger>
               <TabsTrigger value="wfn-export" className="gap-2">
                 <Export size={18} />
                 <span className="hidden sm:inline">WFN Export</span>
@@ -984,7 +979,7 @@ function App() {
                 <span className="hidden sm:inline">File Manager</span>
               </TabsTrigger>
               <TabsTrigger value="credentials" className="gap-2">
-                <Certificate size={18} />
+                <CreditCard size={18} />
                 <span className="hidden sm:inline">Credentials</span>
               </TabsTrigger>
               <TabsTrigger value="bulk-zip" className="gap-2">
@@ -1032,10 +1027,6 @@ function App() {
 
             <TabsContent value="ratecard" className="space-y-6">
               <RateCardBuilder onLog={addLog} />
-            </TabsContent>
-
-            <TabsContent value="rate-agreement" className="space-y-6">
-              <ClientCorporationRateAgreementBuilder onLog={addLog} />
             </TabsContent>
 
             <TabsContent value="wfn-export" className="space-y-6">
