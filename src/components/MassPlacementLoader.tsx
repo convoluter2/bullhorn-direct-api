@@ -704,11 +704,11 @@ export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
               <Download size={16} />
               Download Template
             </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-4">
-            <Alert>
+                    <li><strong>Required fields:</strong> candidate, jobOrder, salary, salaryUnit, employmentType, dateBegin (YYYY-MM-DD)</li>
+                    <li><strong>Optional fields:</strong> clientContact, dateEnd (YYYY-MM-DD), status, matchId</li>
+                    <li><strong>rateCardGroups:</strong> JSON array with groupName, externalID, and nested rateCardLines array</li>
+          <div className="space-y-4">>
+            <Alert>ormat</strong> or they will be rejected by the API</li>
               <Info size={16} />
               <AlertDescription>
                 <div className="space-y-2">
@@ -723,57 +723,25 @@ export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
                 </div>
               </AlertDescription>
             </Alert>
-
-            <div className="space-y-2">
+={handleFileUpload}
+                <Badge variant="secondary" className="mt-2">
               <Label htmlFor="csv-file" className="flex items-center gap-2">
                 <Upload size={16} />
                 Upload CSV File
-              </Label>
-              <Input
-                id="csv-file"
-                type="file"
-                accept=".csv"
-                onChange={handleFileUpload}
-                disabled={isProcessing}
-              />
-              {csvFile && (
-                <Badge variant="secondary" className="mt-2">
-                  {processedData.length} rows loaded
-                </Badge>
-              )}
             </div>
           </div>
-
+                id="csv-file"
           <Separator />
 
-          <div className="space-y-2">
+                onChange={handleFileUpload}
             <Label htmlFor="speed">Processing Speed (ms between requests, min 50ms for 3000/min rate limit)</Label>
             <div className="flex items-center gap-4">
-              <Select
+              {csvFile && (
                 value={speed.toString()}
-                onValueChange={(value) => setSpeed(parseInt(value))}
+                  {processedData.length} rows loaded
                 disabled={isProcessing}
               >
                 <SelectTrigger id="speed" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="50">Maximum (50ms - 1200/min)</SelectItem>
-                  <SelectItem value="100">Fast (100ms - 600/min)</SelectItem>
-                  <SelectItem value="200">Normal (200ms - 300/min)</SelectItem>
-                  <SelectItem value="500">Slow (500ms - 120/min)</SelectItem>
-                  <SelectItem value="1000">Very Slow (1000ms - 60/min)</SelectItem>
-                </SelectContent>
-              </Select>
-              <Badge variant="outline">~{Math.floor(60000 / Math.max(speed, 50))} req/min</Badge>
-            </div>
-            <Alert>
-              <Info size={16} />
-              <AlertDescription>
-                Rate limiting enforced at 3000 requests/minute minimum (50ms between requests). 
-                Processing adapts based on API response times.
-              </AlertDescription>
-            </Alert>
           </div>
 
           {validationErrors.length > 0 && (
