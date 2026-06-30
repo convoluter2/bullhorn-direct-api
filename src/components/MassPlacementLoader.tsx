@@ -704,44 +704,62 @@ export function MassPlacementLoader({ onLog }: MassPlacementLoaderProps) {
               <Download size={16} />
               Download Template
             </Button>
-                    <li><strong>Required fields:</strong> candidate, jobOrder, salary, salaryUnit, employmentType, dateBegin (YYYY-MM-DD)</li>
-                    <li><strong>Optional fields:</strong> clientContact, dateEnd (YYYY-MM-DD), status, matchId</li>
-                    <li><strong>rateCardGroups:</strong> JSON array with groupName, externalID, and nested rateCardLines array</li>
-          <div className="space-y-4">>
-            <Alert>ormat</strong> or they will be rejected by the API</li>
-              <Info size={16} />
-              <AlertDescription>
-                <div className="space-y-2">
-                  <div className="font-semibold">CSV Format:</div>
-                  <ul className="list-disc list-inside text-sm space-y-1">
-                    <li><strong>Required fields:</strong> candidate, jobOrder, salary, salaryUnit, employmentType, dateBegin (YYYY-MM-DD)</li>
-                    <li><strong>Optional fields:</strong> clientContact, dateEnd (YYYY-MM-DD), status, matchId</li>
-                    <li><strong>rateCardGroups:</strong> JSON array with groupName, externalID, and nested rateCardLines array</li>
-                    <li><strong>All other fields</strong> will be stored as reference data in logs</li>
-                    <li><strong>Dates MUST be YYYY-MM-DD format</strong> or they will be rejected by the API</li>
-                  </ul>
-                </div>
-              </AlertDescription>
-            </Alert>
-={handleFileUpload}
-                <Badge variant="secondary" className="mt-2">
-              <Label htmlFor="csv-file" className="flex items-center gap-2">
-                <Upload size={16} />
-                Upload CSV File
-            </div>
           </div>
-                id="csv-file"
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Alert>
+            <Info size={16} />
+            <AlertDescription>
+              <div className="space-y-2">
+                <div className="font-semibold">CSV Format:</div>
+                <ul className="list-disc list-inside text-sm space-y-1">
+                  <li><strong>Required fields:</strong> candidate, jobOrder, salary, salaryUnit, employmentType, dateBegin (YYYY-MM-DD)</li>
+                  <li><strong>Optional fields:</strong> clientContact, dateEnd (YYYY-MM-DD), status, matchId</li>
+                  <li><strong>rateCardGroups:</strong> JSON array with groupName, externalID, and nested rateCardLines array</li>
+                  <li><strong>All other fields</strong> will be stored as reference data in logs</li>
+                  <li><strong>Dates MUST be YYYY-MM-DD format</strong> or they will be rejected by the API</li>
+                </ul>
+              </div>
+            </AlertDescription>
+          </Alert>
+
+          <div className="space-y-2">
+            <Label htmlFor="csv-file" className="flex items-center gap-2">
+              <Upload size={16} />
+              Upload CSV File
+            </Label>
+            <Input
+              id="csv-file"
+              type="file"
+              accept=".csv"
+              onChange={handleFileUpload}
+              disabled={isProcessing}
+            />
+            {csvFile && (
+              <Badge variant="secondary" className="mt-2">
+                {processedData.length} rows loaded
+              </Badge>
+            )}
+          </div>
+
           <Separator />
 
-                onChange={handleFileUpload}
+          <div className="space-y-2">
             <Label htmlFor="speed">Processing Speed (ms between requests, min 50ms for 3000/min rate limit)</Label>
             <div className="flex items-center gap-4">
-              {csvFile && (
-                value={speed.toString()}
-                  {processedData.length} rows loaded
-                disabled={isProcessing}
-              >
+              <Select value={speed.toString()} onValueChange={(value) => setSpeed(Number(value))} disabled={isProcessing}>
                 <SelectTrigger id="speed" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="50">50ms (3000 req/min - Rate Limit)</SelectItem>
+                  <SelectItem value="100">100ms (600 req/min)</SelectItem>
+                  <SelectItem value="200">200ms (300 req/min)</SelectItem>
+                  <SelectItem value="500">500ms (120 req/min)</SelectItem>
+                  <SelectItem value="1000">1000ms (60 req/min)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {validationErrors.length > 0 && (
