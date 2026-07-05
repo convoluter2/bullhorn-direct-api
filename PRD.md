@@ -110,3 +110,149 @@ Animations serve functional purposes - communicating state changes and providing
   - Refresh buttons remain visible on mobile
   - Toast notifications stack responsively
   - Icon-only buttons save horizontal space
+
+---
+
+# Certification File Converter
+
+A batch processing tool that downloads CandidateCertificationFileAttachment images, converts them to standardized letter-size PDFs with compression, and replaces the originals in Bullhorn.
+
+**Experience Qualities**: 
+1. **Efficient** - Batch processing with progress tracking and pause/resume capabilities
+2. **Transparent** - Real-time status updates, detailed logging, and comprehensive error reporting  
+3. **Reliable** - Automatic retry logic, file validation, and rollback on failure
+
+**Complexity Level**: Light Application (multiple features with basic state) - Handles file downloads, image-to-PDF conversion with compression, API interactions, and provides detailed progress tracking with error recovery.
+
+## Essential Features
+
+### Bulk File ID Input
+- **Functionality**: Accepts multiple CandidateCertificationFileAttachment IDs via textarea (newline or comma-separated)
+- **Purpose**: Enables batch processing of certification files without manual repetition
+- **Trigger**: User pastes or types file attachment IDs into the textarea
+- **Progression**: User enters IDs → System parses and validates → Displays count → Ready to start
+- **Success criteria**: All valid numeric IDs are parsed and deduplicated, count displayed to user
+
+### Image to PDF Conversion
+- **Functionality**: Downloads image files and converts them to standard 8.5" x 11" PDFs with compression
+- **Purpose**: Standardizes certification documents for consistent packet generation and reduces storage requirements
+- **Trigger**: Automated for each file when "Start Conversion" is clicked
+- **Progression**: Download image blob → Load into canvas → Resize maintaining aspect ratio → Center on letter page → Apply JPEG compression (85%) → Generate PDF with jsPDF → Compress final output
+- **Success criteria**: Image centered on page with 0.5" margins, maximum dimension 2000px, final PDF smaller than original
+
+### File Replacement
+- **Functionality**: Deletes original image attachment and uploads converted PDF in its place
+- **Purpose**: Maintains single source of truth while upgrading file format
+- **Trigger**: Automatically after successful conversion
+- **Progression**: Delete original via DELETE /file endpoint → Upload PDF via PUT /file endpoint → Associate with same CandidateCertification
+- **Success criteria**: Original removed, PDF attached with original filename (changed extension), same certification linkage preserved
+
+### Progress Tracking & Controls
+- **Functionality**: Real-time progress bar, file counter, ETA, pause/resume buttons
+- **Purpose**: Provides visibility into long-running operations and control over processing
+- **Trigger**: Automatically updates during batch processing
+- **Progression**: Start → Processing indicator shows current file → Progress bar updates → ETA calculated → Pause available → Success/error states logged
+- **Success criteria**: User sees current file number, percentage complete, time remaining, and can pause/resume at any time
+
+### Results Table
+- **Functionality**: Detailed table showing all conversion attempts with status, file info, compression ratios, and error messages
+- **Purpose**: Comprehensive reporting for audit and troubleshooting
+- **Trigger**: Populates as each file processes
+- **Progression**: File starts → Status "processing" → Completes → Status "success" or "error" → Details populated
+- **Success criteria**: Every file shows status badge, original/converted sizes, compression ratio, and descriptive messages
+
+## Edge Case Handling
+
+- **Non-Image Files**: Skip with clear error message indicating only image types supported (JPG, PNG, GIF, BMP, WEBP)
+- **Missing Associations**: Log error if CandidateCertification or Candidate ID not found
+- **Download Failures**: Retry up to 2 times with exponential backoff (2s, 4s)
+- **Conversion Errors**: Catch image load failures and canvas rendering issues, log specific error
+- **Upload Failures**: Retry upload, but don't delete original if upload fails
+- **Paused State**: Preserve all results and allow resumption from next file
+
+## Design Direction
+
+The design should feel professional and data-focused, emphasizing clarity and completeness. Visual hierarchy should guide users through the batch process with confidence.
+
+## Color Selection
+
+Using existing application color scheme for consistency:
+
+- **Primary Color**: Deep blue-purple `oklch(0.35 0.12 265)` - Primary action buttons
+- **Success Color**: Green from `CheckCircle` icon - Successful conversions
+- **Error Color**: Red from `XCircle` icon and `destructive` variant - Failed conversions  
+- **Accent Color**: Cyan `oklch(0.70 0.15 210)` - Active processing indicators
+- **Foreground/Background Pairings**: 
+  - Background (Dark) `oklch(0.15 0.01 260)`: Light text `oklch(0.98 0 0)` - Ratio 14.2:1 ✓
+  - Success (Green): White text - Ratio 4.8:1 ✓ (in Badge component)
+  - Error (Red): White text - Ratio 4.5:1 ✓ (in Badge component)
+
+## Font Selection
+
+Consistent with application for cohesive experience:
+
+- **Typographic Hierarchy**:
+  - H1 (Card Title): Space Grotesk Bold/24px/tight spacing
+  - H2 (Section Headers): Space Grotesk Semibold/18px/normal spacing
+  - Labels: Inter Medium/14px/normal spacing  
+  - Body: Inter Regular/14px/relaxed spacing
+  - Table Data: Inter Regular/13px/normal spacing
+  - Monospace (IDs, file sizes): JetBrains Mono Regular/12px
+
+## Animations
+
+Functional animations that communicate state and progress:
+
+- **Processing Indicator**: Pulsing animation on "Processing" badge
+- **Progress Bar**: Smooth width transition as percentage updates
+- **Pause Icon**: Instant swap between Play/Pause icons
+- **Toast Notifications**: Slide-in for each file completion (success or error)
+
+## Component Selection
+
+- **Components**: 
+  - `Card` with `CardHeader` and `CardContent` - Main container
+  - `Textarea` - Multi-line file ID input with monospace font
+  - `Button` (default and outline variants) - Start, Pause/Resume, Reset
+  - `Progress` - Visual progress bar
+  - `Badge` (default, outline, secondary, destructive) - Status indicators and counters
+  - `Table` with `ScrollArea` - Results display
+  - `Alert` - Informational help text and pause notifications
+  - `toast` from sonner - Per-file completion notifications
+
+- **Customizations**: 
+  - Textarea uses `font-mono` class for ID readability
+  - Table cells use `truncate` with `title` attribute for long filenames
+  - Success/error colors applied contextually in table
+  - File sizes formatted with custom utility function (KB/MB)
+  - Compression ratios highlighted in green when >1x
+
+- **States**:
+  - Idle: Input enabled, Start button active
+  - Processing: Progress bar visible, Pause button active, current file highlighted
+  - Paused: Alert shown, Resume button active, state preserved
+  - Complete: Full results table, Reset button to clear
+
+- **Icon Selection**: 
+  - `FilePdf` (32px, duotone) - Card header representing PDF conversion
+  - `Play` (fill) - Start and Resume actions
+  - `Pause` (fill) - Pause action
+  - `ArrowClockwise` - Reset action
+  - `CheckCircle` (fill, green) - Success status
+  - `XCircle` (fill, red) - Error status  
+  - `FileArrowDown` (pulse) - Processing status
+  - `ImageIcon` - Original file type indicator
+  - `Info` - Help alert icon
+
+- **Spacing**: 
+  - `space-y-6` for card sections
+  - `space-y-3` for form groups
+  - `gap-3` for button groups
+  - `gap-2` for inline badge groups
+  - `p-4` for alert content
+
+- **Mobile**: 
+  - Table wraps in ScrollArea for horizontal scroll
+  - Button text remains visible (not icon-only)
+  - Progress bar full width
+  - Results table shows key columns, others truncate

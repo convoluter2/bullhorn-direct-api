@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Separator } from '@/components/ui/separator'
-import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen, FileZip, CreditCard, ArrowsClockwise, Info, ArrowsCounterClockwise, Briefcase } from '@phosphor-icons/react'
+import { Database, MagnifyingGlass, Upload, Stack, ClockCounterClockwise, SignOut, ChartLineUp, Faders, Export, BookOpen, FolderOpen, FileZip, CreditCard, ArrowsClockwise, Info, ArrowsCounterClockwise, Briefcase, FilePdf } from '@phosphor-icons/react'
 import { AuthDialog } from '@/components/AuthDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { QueryBlast } from '@/components/QueryBlast'
@@ -21,6 +21,7 @@ import { RateCardBuilder } from '@/components/RateCardBuilder'
 import { MassUpdate } from '@/components/MassUpdate'
 import { MassPlacementLoader } from '@/components/MassPlacementLoader'
 import { CredentialManager } from '@/components/CredentialManager'
+import { CertificationFileConverter } from '@/components/CertificationFileConverter'
 import { ConnectionManager, type SavedConnection, type SecureCredentials } from '@/components/ConnectionManager'
 import { ConnectionSwitcher } from '@/components/ConnectionSwitcher'
 import { EntityDocumentation } from '@/components/documentation/EntityDocumentation'
@@ -941,7 +942,7 @@ function App() {
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-12 lg:w-auto lg:inline-grid">
+            <TabsList className="grid w-full grid-cols-13 lg:w-auto lg:inline-grid">
               <TabsTrigger value="queryblast" className="gap-2">
                 <MagnifyingGlass size={18} />
                 <span className="hidden sm:inline">QueryBlast</span>
@@ -977,6 +978,10 @@ function App() {
               <TabsTrigger value="file-manager" className="gap-2">
                 <FolderOpen size={18} />
                 <span className="hidden sm:inline">File Manager</span>
+              </TabsTrigger>
+              <TabsTrigger value="cert-converter" className="gap-2">
+                <FilePdf size={18} />
+                <span className="hidden sm:inline">Cert Converter</span>
               </TabsTrigger>
               <TabsTrigger value="credentials" className="gap-2">
                 <CreditCard size={18} />
@@ -1035,6 +1040,10 @@ function App() {
 
             <TabsContent value="file-manager" className="space-y-6">
               <FileManager onLog={addLog} />
+            </TabsContent>
+
+            <TabsContent value="cert-converter" className="space-y-6">
+              <CertificationFileConverter onLog={addLog} />
             </TabsContent>
 
             <TabsContent value="credentials" className="space-y-6">
