@@ -1,23 +1,18 @@
 import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { Progress } from '@/components/ui/progress'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { 
   Play, 
   ArrowClockwise, 
   XCircle, 
-  Image as ImageI
-import { bu
-import jsPDF fr
-interfac
-}
+  CheckCircle,
+  Info,
   Image as ImageIcon
 } from '@phosphor-icons/react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
@@ -26,48 +21,36 @@ import jsPDF from 'jspdf'
 
 interface CertificationFileConverterProps {
   onLog: (operation: string, status: 'success' | 'error', message: string, details?: any) => void
- 
+}
 
 interface ConversionResult {
-      .filter(id => id.len
-      .filter(id => !isNa
-    return [...new Se
+  candidateId: number
+  certificationName: string
+  originalFileId: number
+  originalFileName: string
+  newFileId?: number
+  status: 'success' | 'error'
+  message?: string
+}
 
-    return new Pro
-      const url = URL.creat
-      img.onload = () => {
-          const pdf = new j
-            unit: 'in',
-          })
-          const 
-          const margi
- 
+export function CertificationFileConverter({ onLog }: CertificationFileConverterProps) {
+  const [candidateIds, setCandidateIds] = useState('')
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [results, setResults] = useState<ConversionResult[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-
-          let finalHeight: number
-          if (imgAspectRatio > maxAspectRatio) {
-            finalHeight = maxWidth / imgAspectRat
-            finalHeight = maxHeight
-          }
-          const xPos = (pageWidth - finalWidth) / 2
-
-            img,
-  
-            finalWidth,
-            undefined,
-
-
-
-            blob: pdfBlob
-          })
-        } catch (error) {
+  const parseIds = (input: string): number[] => {
+    const ids = input
+      .split(/[\n,]/)
+      .map(id => id.trim())
+      .filter(id => id.length > 0)
       .map(id => parseInt(id, 10))
-      .filter(id => !isNaN(id) && id > 0)
-    
+      .filter(id => !isNaN(id))
     return [...new Set(ids)]
   }
 
-  const convertImageToPDF = async (imageBlob: Blob): Promise<{ blob: Blob; compressionRatio: number }> => {
+  const convertImageToPDF = async (imageBlob: Blob, fileName: string): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const img = new Image()
       const url = URL.createObjectURL(imageBlob)
@@ -77,539 +60,346 @@ interface ConversionResult {
           const pdf = new jsPDF({
             orientation: 'portrait',
             unit: 'in',
-            format: 'letter'
           })
-
+          
           const pageWidth = 8.5
           const pageHeight = 11
           const margin = 0.5
-          const maxWidth = pageWidth - (margin * 2)
-          const maxHeight = pageHeight - (margin * 2)
-
-          const imgAspectRatio = img.width / img.height
+          const maxWidth = pageWidth - (2 * margin)
+          const maxHeight = pageHeight - (2 * margin)
+          
+          const imgWidth = img.width
+          const imgHeight = img.height
+          const imgAspectRatio = imgWidth / imgHeight
           const maxAspectRatio = maxWidth / maxHeight
 
           let finalWidth: number
           let finalHeight: number
-
+          
           if (imgAspectRatio > maxAspectRatio) {
             finalWidth = maxWidth
             finalHeight = maxWidth / imgAspectRatio
           } else {
-            finalHeight = maxHeight
             finalWidth = maxHeight * imgAspectRatio
+            finalHeight = maxHeight
           }
-
+          
           const xPos = (pageWidth - finalWidth) / 2
           const yPos = (pageHeight - finalHeight) / 2
 
-          pdf.addImage(
-            img,
-            'JPEG',
-          origina
-            yPos,
-            finalWidth,
-            finalHeight,
-        candidateId,
-            'FAST'
-      )
-
-
-          const compressionRatio = imageBlob.size / pdfBlob.size
-
-          resolve({ 
-            blob: pdfBlob, 
-            compressionRatio: parseFloat(compressionRatio.toFixed(2))
-      consol
-        fileAttachmentId,
+          pdf.addImage(url, 'JPEG', xPos, yPos, finalWidth, finalHeight)
+          
+          const pdfBlob = pdf.output('blob')
+          URL.revokeObjectURL(url)
+          resolve(pdfBlob)
         } catch (error) {
           URL.revokeObjectURL(url)
           reject(error)
-        o
+        }
       }
-
+      
       img.onerror = () => {
-    } catch (error) {
-        reject(new Error('Could not load image'))
+        URL.revokeObjectURL(url)
+        reject(new Error('Failed to load image'))
       }
-
-      }
+      
+      img.src = url
     })
-   
-
-  const processFileAttachment = async (
-    fileAttachmentId: number,
-    }
-  ): Promise<ConversionResult> => {
-  const handleStartConver
-    if (i
-      console.log(`📄 Processing file attachment ID: ${fileAttachmentId}`)
-
-      const attachment = await bullhornAPI.getEntity(
-        'CandidateCertificationFileAttachment',
-        fileAttachmentId,
-        ['id', 'name', 'fileType', 'fileSize', 'candidate', 'candidateCertification']
-      )
-
-      const certificationId = attachment.candidateCertification?.id
-      if (!certificationId) {
-        throw new Error('Could not determine certification ID from file attachment')
-      }
-
-    const successful: number[] = []
-      if (!candidateId) {
-        throw new Error('Could not determine candidate ID from file attachment')
-      }
-
-      const fileName = attachment.name || 'file'
-      }
-      const fileType = attachment.fileType || ''
-      console.log(`📋 File info: ${fileName} (${fileType}, ${fileSize} bytes), Candidate ID: ${candidateId}`)
-
-      const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/tiff']
-
-        return {
-      } else {
-          certificationId,
-
-          status: 'error',
-          error: `File type ${fileType} is not supported. Only image files can be converted.`,
-          originalFileName: fileName,
-          originalFileSize: fileSize,
-          originalFileType: fileType
-      }
-      }
-
-      const fileBlob = await bullhornAPI.downloadCandidateCertificationFile(
-        candidateId,
-    const errorCount = e
-    if (successCount > 0
-      )
-      console.log('🔄 Converting image to PDF...')
-
-      const { blob: pdfBlob, compressionRatio } = await convertImageToPDF(fileBlob)
-      console.log(`✅ PDF created: ${pdfBlob.size} bytes (${compressionRatio}x compression)`)
-
-      await bullhornAPI.uploadCandidateCertificationFile(
-        candidateId,
-      onLog(
-        pdfBlob,
-        `${fileName.replace(/\.[^.]+$/, '')}.pdf`,
-        summary
-        fileAttachmentId
-
-      console.log('✅ PDF uploaded successfully')
-
-    }
-        fileAttachmentId,
-        certificationId,
-        candidateId,
-    if (pauseRef.current) 
-        message: 'Successfully converted to PDF',
-        originalFileName: fileName,
-        originalFileSize: fileSize,
-        originalFileType: fileType,
-        convertedFileSize: pdfBlob.size,
-        compressionRatio: compressionRatio
-    set
-    } catch (error) {
-      console.error(`❌ Error processing file ${fileAttachmentId}:`, error)
-      if (retryCount < MAX_RETRIES) {
-        console.log(`🔄 Retrying (attempt ${retryCount + 1}/${MAX_RETRIES})...`)
-        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)))
-        return processFileAttachment(fileAttachmentId, retryCount + 1)
-    con
-    return Mat
-        fileAttachmentId,
-        certificationId: 0,
-        candidateId: 0,
-        status: 'error',
-        error: error instanceof Error ? error.message : 'Unknown error',
-    } else if (min
-      }
-     
   }
 
-  const handleStartConversion = async () => {
-    const ids = parseFileAttachmentIds(fileAttachmentIds)
+  const processCandidate = async (candidateId: number): Promise<ConversionResult[]> => {
+    const candidateResults: ConversionResult[] = []
+    
+    try {
+      const response = await bullhornAPI.query(
+        'Certification',
+        `candidate.id=${candidateId}`,
+        ['id', 'name', 'fileAttachments']
+      )
+
+      if (!response.data || response.data.length === 0) {
+        return [{
+          candidateId,
+          certificationName: 'N/A',
+          originalFileId: 0,
+          originalFileName: 'N/A',
+          status: 'error',
+          message: 'No certifications found'
+        }]
+      }
+
+      for (const cert of response.data) {
+        const fileAttachmentsResponse = await bullhornAPI.query(
+          'CertificationFileAttachment',
+          `certification.id=${cert.id}`,
+          ['id', 'name', 'contentType', 'type']
+        )
+
+        if (!fileAttachmentsResponse.data || fileAttachmentsResponse.data.length === 0) {
+          candidateResults.push({
+            candidateId,
+            certificationName: cert.name || 'Unknown',
+            originalFileId: 0,
+            originalFileName: 'N/A',
+            status: 'error',
+            message: 'No file attachments found'
+          })
+          continue
+        }
+
+        for (const file of fileAttachmentsResponse.data) {
+          if (!file.contentType?.startsWith('image/')) {
+            candidateResults.push({
+              candidateId,
+              certificationName: cert.name || 'Unknown',
+              originalFileId: file.id,
+              originalFileName: file.name,
+              status: 'error',
+              message: 'Not an image file'
+            })
+            continue
+          }
+
+          try {
+            const fileBlob = await bullhornAPI.downloadFile('CertificationFileAttachment', file.id)
+            const pdfBlob = await convertImageToPDF(fileBlob, file.name)
+            const pdfFileName = file.name.replace(/\.[^.]+$/, '.pdf')
+
+            const uploadResponse = await bullhornAPI.uploadFile(
+              'Certification',
+              cert.id,
+              pdfBlob,
+              pdfFileName,
+              'sample'
+            )
+
+            candidateResults.push({
+              candidateId,
+              certificationName: cert.name || 'Unknown',
+              originalFileId: file.id,
+              originalFileName: file.name,
+              newFileId: uploadResponse?.changedEntityId,
+              status: 'success',
+              message: 'Converted and uploaded'
+            })
+          } catch (error) {
+            candidateResults.push({
+              candidateId,
+              certificationName: cert.name || 'Unknown',
+              originalFileId: file.id,
+              originalFileName: file.name,
+              status: 'error',
+              message: error instanceof Error ? error.message : 'Unknown error'
+            })
+          }
+        }
+      }
+    } catch (error) {
+      candidateResults.push({
+        candidateId,
+        certificationName: 'N/A',
+        originalFileId: 0,
+        originalFileName: 'N/A',
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      })
+    }
+
+    return candidateResults
+  }
+
+  const handleProcess = async () => {
+    const ids = parseIds(candidateIds)
+    
     if (ids.length === 0) {
-      toast.error('Please enter at least one valid file attachment ID')
-      <CardH
+      toast.error('Please enter valid candidate IDs')
+      return
     }
 
     setIsProcessing(true)
-            </CardDesc
     setProgress(0)
-      </CardHeader>
-    setStartTime(Date.now())
-    pauseRef.current = false
-    abortRef.current = false
+    setResults([])
 
-    setResults(ids.map(id => ({
-            </p>
-      certificationId: 0,
-              <li>Aut
-      status: 'pending'
-    })))
-
-    const errors: Array<{ id: number; error: string }> = []
-    const successful: number[] = []
+    const allResults: ConversionResult[] = []
 
     for (let i = 0; i < ids.length; i++) {
-      while (pauseRef.current && !abortRef.current) {
-        await new Promise(resolve => setTimeout(resolve, 100))
-      }
-
-          />
-        console.log('🛑 Conversion aborted by user')
-          </p
-      }
-
-      setCurrentIndex(i)
-      setResults(prev => prev.map((r, idx) => 
-        idx === i ? { ...r, status: 'processing' as const } : r
-      ))
-
-      const result = await processFileAttachment(ids[i])
-      setResults(prev => prev.map((r, idx) => 
-                <>
-      ))
-
-      if (result.status === 'success') {
-        successful.push(ids[i])
-      } else {
-            </Button>
-      }
-
-      const progressPercent = ((i + 1) / ids.length) * 100
-      setProgress(progressPercent)
-
-      if (startTime && i > 0) {
-        const elapsed = Date.now() - startTime
-        const avgTimePerFile = elapsed / (i + 1)
-        {isProcessing && (
-        setEstimatedTimeRemaining(remaining)
-       
+      const candidateId = ids[i]
+      const candidateResults = await processCandidate(candidateId)
+      allResults.push(...candidateResults)
+      setResults([...allResults])
+      setProgress(((i + 1) / ids.length) * 100)
     }
 
-              </span
     setIsProcessing(false)
-    setEstimatedTimeRemaining(null)
 
-    const successCount = successful.length
-    const errorCount = errors.length
-    const summary = {
-      total: ids.length,
-      successful: successCount,
-      failed: errorCount,
-      errors: errors
-     
+    const successCount = allResults.filter(r => r.status === 'success').length
+    const errorCount = allResults.filter(r => r.status === 'error').length
 
-    if (successCount > 0) {
-      toast.success(`Converted ${successCount} file(s) successfully`)
-      onLog(
-            
-        'success',
-        `Successfully converted ${successCount} of ${ids.length} files`,
-        summary
-       
-    }
+    onLog(
+      'Certification File Conversion',
+      errorCount === 0 ? 'success' : errorCount < allResults.length ? 'success' : 'error',
+      `Processed ${ids.length} candidates: ${successCount} successful, ${errorCount} failed`,
+      { candidateIds: ids, successCount, errorCount, results: allResults }
+    )
 
-    if (errorCount > 0) {
-      toast.error(`${errorCount} file(s) failed to convert`)
-      onLog(
-                </Badge>
-        'error',
-        `${errorCount} files failed to convert`,
-        summary
-      )
-    }
-
-    if (successCount === 0 && errorCount > 0) {
-      onLog(
-        'Certification File Conversion',
-        'error',
-                  <TableRow>
-        summary
-       
-    }
-   
-
-  const handlePauseResume = () => {
-    pauseRef.current = !pauseRef.current
-    setIsPaused(pauseRef.current)
-    if (pauseRef.current) {
-      toast.info('Conversion paused')
+    if (errorCount === 0) {
+      toast.success(`Successfully converted all certification files`)
+    } else if (successCount > 0) {
+      toast.warning(`Converted ${successCount} files, ${errorCount} failed`)
     } else {
-      toast.info('Conversion resumed')
+      toast.error('All conversions failed')
     }
   }
 
   const handleReset = () => {
-    setIsProcessing(false)
-    setIsPaused(false)
-    setProgress(0)
-    setCurrentIndex(0)
+    setCandidateIds('')
     setResults([])
-    setEstimatedTimeRemaining(null)
-                      
-                          <B
-    abortRef.current = false
-    toast.info('Reset complete')
-  }
-
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
-  }
-
-  const formatTime = (ms: number): string => {
-    const seconds = Math.floor(ms / 1000)
-    const minutes = Math.floor(seconds / 60)
-    const hours = Math.floor(minutes / 60)
-                    
-      return `${hours}h ${minutes % 60}m`
-    } else if (minutes > 0) {
-      return `${minutes}m ${seconds % 60}s`
-    } else {
-      return `${seconds}s`
-    }
+    setProgress(0)
   }
 
   const successCount = results.filter(r => r.status === 'success').length
   const errorCount = results.filter(r => r.status === 'error').length
-  const processingCount = results.filter(r => r.status === 'processing').length
-  const pendingCount = results.filter(r => r.status === 'pending').length
 
-
-    <Card>
-
-        <div className="flex items-center gap-3">
-          <FilePdf size={32} className="text-accent" weight="duotone" />
-          <div>
-            <CardTitle>Certification File Converter</CardTitle>
-            <CardDescription>
-              Convert candidate certification image files to PDF format
-            </CardDescription>
-
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-
-          <Info size={18} />
-
-          <AlertDescription>
-            <p className="mb-2">
-              This tool converts candidate certification image files to
-              standard 8.5" x 11" PDFs with maximum quality and compression.
-
-            <ul className="list-disc list-inside space-y-1 text-sm">
-              <li>Supports: JPG, PNG, GIF, BMP, TIFF</li>
-              <li>Automatically centers and scales images to fit letter-sized pages</li>
-              <li>Full error handling with automatic retries</li>
-              <li>Pause/resume functionality for large batches</li>
-            </ul>
-          </AlertDescription>
-        </Alert>
-
-        <div className="space-y-3">
-
-            File Attachment IDs (one per line, comma, or space-separated)
-
-          <Textarea
-            id="file-attachment-ids"
-            value={fileAttachmentIds}
-            onChange={(e) => setFileAttachmentIds(e.target.value)}
-            disabled={isProcessing}
-            className="font-mono"
-            rows={8}
-            placeholder="12345&#10;67890&#10;13579"
-          />
-          <p className="text-sm text-muted-foreground">
-            Enter CandidateCertificationFileAttachment IDs to convert
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <ImageIcon size={32} weight="duotone" className="text-primary" />
+            <div>
+              <CardTitle>Certification File Converter</CardTitle>
+              <CardDescription>
+                Convert certification image files to PDF format for candidates
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Instructions</AlertTitle>
+            <AlertDescription>
+              <ul className="list-disc list-inside space-y-1 mt-2">
+                <li>Enter candidate IDs (one per line or comma-separated)</li>
+                <li>Image files will be converted to PDF format</li>
+                <li>Converted PDFs will be uploaded back to certifications</li>
+                <li>Only image files (JPEG, PNG, etc.) will be processed</li>
+              </ul>
+            </AlertDescription>
+          </Alert>
+
+          <div className="space-y-2">
+            <Label htmlFor="candidate-ids">Candidate IDs</Label>
+            <textarea
+              id="candidate-ids"
+              className="w-full min-h-[120px] p-3 rounded-md border border-input bg-background text-foreground"
+              placeholder="Enter candidate IDs (one per line or comma-separated)&#10;Example:&#10;12345&#10;67890&#10;11111"
+              value={candidateIds}
+              onChange={(e) => setCandidateIds(e.target.value)}
+              disabled={isProcessing}
+            />
+            <p className="text-sm text-muted-foreground">
+              {parseIds(candidateIds).length} candidate{parseIds(candidateIds).length !== 1 ? 's' : ''} to process
+            </p>
+          </div>
+
+          <div className="flex gap-3">
+            <Button 
+              onClick={handleProcess} 
+              disabled={isProcessing || parseIds(candidateIds).length === 0}
+              className="gap-2"
+            >
+              <Play weight="fill" />
+              {isProcessing ? 'Processing...' : 'Start Conversion'}
+            </Button>
+            <Button 
+              onClick={handleReset} 
+              variant="outline"
+              disabled={isProcessing}
+              className="gap-2"
+            >
+              <ArrowClockwise />
+              Reset
+            </Button>
+          </div>
+
+          {isProcessing && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Processing...</span>
+                <span>{Math.round(progress)}%</span>
+              </div>
+              <Progress value={progress} />
+            </div>
+          )}
+
+          {results.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <h3 className="text-lg font-semibold">Conversion Results</h3>
+                <Badge variant={errorCount === 0 ? 'default' : 'secondary'}>
+                  {successCount} successful
+                </Badge>
+                {errorCount > 0 && (
+                  <Badge variant="destructive">
+                    {errorCount} failed
+                  </Badge>
+                )}
+              </div>
+
+              <ScrollArea className="h-[400px] rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Candidate ID</TableHead>
+                      <TableHead>Certification</TableHead>
+                      <TableHead>Original File</TableHead>
+                      <TableHead>New File ID</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Message</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {results.map((result, index) => (
+                      <TableRow key={index}>
+                        <TableCell className="font-mono">{result.candidateId}</TableCell>
+                        <TableCell>{result.certificationName}</TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {result.originalFileName}
+                          {result.originalFileId > 0 && (
+                            <span className="text-muted-foreground ml-1">
+                              (ID: {result.originalFileId})
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-mono">
+                          {result.newFileId || '-'}
+                        </TableCell>
+                        <TableCell>
+                          {result.status === 'success' ? (
+                            <Badge variant="default" className="gap-1">
+                              <CheckCircle size={14} />
+                              Success
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive" className="gap-1">
+                              <XCircle size={14} />
+                              Error
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {result.message || '-'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
