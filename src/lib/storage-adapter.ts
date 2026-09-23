@@ -6,73 +6,21 @@ interface StorageAdapter {
 }
 
 class FallbackStorageAdapter implements StorageAdapter {
-  private readonly keyPrefix = '__fallback_kv__:'
   private memoryStore = new Map<string, unknown>()
 
-  private canUseLocalStorage(): boolean {
-    try {
-      const testKey = `${this.keyPrefix}__storage_probe__`
-      localStorage.setItem(testKey, '1')
-      localStorage.removeItem(testKey)
-      return true
-    } catch {
-      return false
-    }
-  }
-
-  private toStorageKey(key: string): string {
-    return `${this.keyPrefix}${key}`
-  }
-
   async get<T>(key: string): Promise<T | undefined> {
-    if (this.canUseLocalStorage()) {
-      const raw = localStorage.getItem(this.toStorageKey(key))
-      if (raw === null) {
-        return undefined
-      }
-
-      try {
-        return JSON.parse(raw) as T
-      } catch {
-        return undefined
-      }
-    }
-
     return this.memoryStore.get(key) as T | undefined
   }
 
   async set<T>(key: string, value: T): Promise<void> {
-    if (this.canUseLocalStorage()) {
-      localStorage.setItem(this.toStorageKey(key), JSON.stringify(value))
-      return
-    }
-
     this.memoryStore.set(key, value)
   }
 
   async delete(key: string): Promise<void> {
-    if (this.canUseLocalStorage()) {
-      localStorage.removeItem(this.toStorageKey(key))
-      return
-    }
-
     this.memoryStore.delete(key)
   }
 
   async keys(): Promise<string[]> {
-    if (this.canUseLocalStorage()) {
-      const keys: string[] = []
-
-      for (let index = 0; index < localStorage.length; index++) {
-        const storageKey = localStorage.key(index)
-        if (storageKey?.startsWith(this.keyPrefix)) {
-          keys.push(storageKey.slice(this.keyPrefix.length))
-        }
-      }
-
-      return keys
-    }
-
     return [...this.memoryStore.keys()]
   }
 }
