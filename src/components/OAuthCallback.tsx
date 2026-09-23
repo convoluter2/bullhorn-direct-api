@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { XCircle, Spinner, ArrowLeft, Warning } from '@phosphor-icons/react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
+import { getStorageAdapter } from '@/lib/storage-adapter'
 import { toast } from 'sonner'
 import type { BullhornSession } from '@/lib/types'
 
@@ -187,7 +188,8 @@ export function OAuthCallback({
           hasColon: codeToUse.includes(':')
         })
 
-        const pendingAuth = await window.spark.kv.get<{
+        const storage = await getStorageAdapter()
+        const pendingAuth = await storage.get<{
           clientId: string
           clientSecret: string
           username: string
@@ -218,7 +220,7 @@ export function OAuthCallback({
         }
 
         if (Date.now() - pendingAuth.timestamp > 600000) {
-          await window.spark.kv.delete('pending-oauth-auth')
+          await storage.delete('pending-oauth-auth')
           if (isMounted) {
             setStatus('error')
             setError('OAuth session expired (10 minute timeout). Please restart the authentication process.')
@@ -266,7 +268,7 @@ export function OAuthCallback({
 
         if (isMounted) setProgress(prev => [...prev, 'Session established successfully'])
 
-        await window.spark.kv.delete('pending-oauth-auth')
+        await storage.delete('pending-oauth-auth')
 
         window.history.replaceState({}, document.title, window.location.pathname)
         

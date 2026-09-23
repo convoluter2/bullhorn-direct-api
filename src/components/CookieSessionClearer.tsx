@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Cookie, Trash, Warning, CheckCircle, Broom, Database } from '@phosphor-icons/react'
 import { toast } from 'sonner'
+import { getStorageAdapter } from '@/lib/storage-adapter'
 
 interface CookieSessionClearerProps {
   onClear?: () => void
@@ -35,7 +36,8 @@ export function CookieSessionClearer({ onClear }: CookieSessionClearerProps) {
 
   const getKVStorageKeys = async () => {
     try {
-      const keys = await window.spark.kv.keys()
+      const storage = await getStorageAdapter()
+      const keys = await storage.keys()
       return keys
     } catch (error) {
       console.error('Failed to get KV keys:', error)
@@ -160,8 +162,9 @@ export function CookieSessionClearer({ onClear }: CookieSessionClearerProps) {
       }
 
       const kvKeys = await getKVStorageKeys()
+      const storage = await getStorageAdapter()
       for (const key of kvKeys) {
-        await window.spark.kv.delete(key)
+        await storage.delete(key)
       }
       if (kvKeys.length > 0) {
         cleared.push(`${kvKeys.length} KV storage items`)
@@ -191,8 +194,9 @@ export function CookieSessionClearer({ onClear }: CookieSessionClearerProps) {
 
     try {
       const kvKeys = await getKVStorageKeys()
+      const storage = await getStorageAdapter()
       for (const key of kvKeys) {
-        await window.spark.kv.delete(key)
+        await storage.delete(key)
       }
       
       setClearedItems([`${kvKeys.length} KV storage items (connections, sessions, logs)`])

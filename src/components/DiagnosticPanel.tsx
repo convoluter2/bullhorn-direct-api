@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { MagnifyingGlass, Trash, Warning, Lightning } from '@phosphor-icons/react'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { CacheStatus } from '@/components/CacheStatus'
+import { getStorageAdapter } from '@/lib/storage-adapter'
 
 interface StoredData {
   key: string
@@ -39,7 +40,8 @@ export function DiagnosticPanel() {
   const scanStorage = async () => {
     setLoading(true)
     try {
-      const keys = await window.spark.kv.keys()
+      const storage = await getStorageAdapter()
+      const keys = await storage.keys()
       if (!keys || !Array.isArray(keys)) {
         toast.warning('No storage keys found')
         setStoredData([])
@@ -50,7 +52,7 @@ export function DiagnosticPanel() {
 
       for (const key of keys) {
         try {
-          const value = await window.spark.kv.get(key)
+          const value = await storage.get(key)
           const valueStr = JSON.stringify(value)
           const size = new Blob([valueStr]).size
 
@@ -112,7 +114,8 @@ export function DiagnosticPanel() {
     if (!confirm(`Delete storage key: ${key}?`)) return
 
     try {
-      await window.spark.kv.delete(key)
+      const storage = await getStorageAdapter()
+      await storage.delete(key)
       toast.success(`Deleted: ${key}`)
       await scanStorage()
     } catch (error) {

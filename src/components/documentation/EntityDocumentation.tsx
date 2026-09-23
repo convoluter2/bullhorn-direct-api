@@ -4,6 +4,7 @@ import { EntityDocViewer } from './EntityDocViewer'
 import { entityMetadataService, type EntityMetadata } from '@/lib/entity-metadata'
 import { entityCacheService } from '@/lib/entity-cache-service'
 import { kvRequestManager } from '@/lib/kv-request-manager'
+import { getStorageAdapter } from '@/lib/storage-adapter'
 import type { BullhornSession } from '@/lib/types'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -525,7 +526,8 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
 
   const handleExportAll = async () => {
     try {
-      const allKeys = await window.spark.kv.keys()
+      const storage = await getStorageAdapter()
+      const allKeys = await storage.keys()
       const metadataKeys = allKeys.filter(key => key.startsWith('metadata-cache-'))
       
       if (metadataKeys.length === 0) {
@@ -535,7 +537,7 @@ export function EntityDocumentation({ session }: EntityDocumentationProps) {
 
       const allEntities: EntityMetadata[] = []
       for (const key of metadataKeys) {
-        const cached = await window.spark.kv.get<any>(key)
+        const cached = await storage.get<any>(key)
         if (cached && cached.metadata) {
           allEntities.push(cached.metadata)
         }

@@ -1,5 +1,6 @@
 import { bullhornAPI } from './bullhorn-api'
 import { kvRequestManager } from './kv-request-manager'
+import { getStorageAdapter } from './storage-adapter'
 
 const REFRESH_INTERVAL = 12 * 60 * 60 * 1000
 
@@ -21,14 +22,12 @@ export class EntityCacheService {
 
   async getEntityList(): Promise<CachedEntity[]> {
     try {
-      if (!window.spark || !window.spark.kv) {
-        console.warn('⚠️ Spark KV not available yet')
-        return []
-      }
-      
       const cache = await kvRequestManager.enqueueKVGet<EntityCacheData>(
         'entity-cache-v2',
-        () => window.spark.kv.get<EntityCacheData>('entity-cache-v2')
+        async () => {
+          const storage = await getStorageAdapter()
+          return storage.get<EntityCacheData>('entity-cache-v2')
+        }
       )
       
       if (!cache || !cache.entities) {
@@ -72,7 +71,10 @@ export class EntityCacheService {
 
       const cache = await kvRequestManager.enqueueKVGet<EntityCacheData>(
         'entity-cache-v2',
-        () => window.spark.kv.get<EntityCacheData>('entity-cache-v2')
+        async () => {
+          const storage = await getStorageAdapter()
+          return storage.get<EntityCacheData>('entity-cache-v2')
+        }
       )
       const manualEntities = cache?.entities.filter(e => e.isManual) || []
       
@@ -104,7 +106,10 @@ export class EntityCacheService {
     try {
       const cached = await kvRequestManager.enqueueKVGet<{ metadata: any; cachedAt: number }>(
         `metadata-cache-${entityName}`,
-        () => window.spark.kv.get<{ metadata: any; cachedAt: number }>(`metadata-cache-${entityName}`)
+        async () => {
+          const storage = await getStorageAdapter()
+          return storage.get<{ metadata: any; cachedAt: number }>(`metadata-cache-${entityName}`)
+        }
       )
       if (!cached) {
         console.log(`📭 No metadata cache found for: ${entityName}`)
@@ -145,15 +150,21 @@ export class EntityCacheService {
         const minimalMetadata = this.createMinimalMetadata(metadata)
         await kvRequestManager.enqueueKVSet(
           `metadata-cache-${entityName}`,
-          () => window.spark.kv.set(`metadata-cache-${entityName}`, {
-            metadata: minimalMetadata,
-            cachedAt: Date.now()
-          })
+          async () => {
+            const storage = await getStorageAdapter()
+            return storage.set(`metadata-cache-${entityName}`, {
+              metadata: minimalMetadata,
+              cachedAt: Date.now()
+            })
+          }
         )
       } else {
         await kvRequestManager.enqueueKVSet(
           `metadata-cache-${entityName}`,
-          () => window.spark.kv.set(`metadata-cache-${entityName}`, cacheData)
+          async () => {
+            const storage = await getStorageAdapter()
+            return storage.set(`metadata-cache-${entityName}`, cacheData)
+          }
         )
       }
       console.log(`💾 Saved metadata cache for: ${entityName}`)
@@ -165,10 +176,13 @@ export class EntityCacheService {
           const minimalMetadata = this.createMinimalMetadata(metadata)
           await kvRequestManager.enqueueKVSet(
             `metadata-cache-${entityName}`,
-            () => window.spark.kv.set(`metadata-cache-${entityName}`, {
-              metadata: minimalMetadata,
-              cachedAt: Date.now()
-            })
+            async () => {
+              const storage = await getStorageAdapter()
+              return storage.set(`metadata-cache-${entityName}`, {
+                metadata: minimalMetadata,
+                cachedAt: Date.now()
+              })
+            }
           )
           console.log(`💾 Saved minimal metadata cache for: ${entityName}`)
         } catch (minimalError) {
@@ -236,7 +250,8 @@ export class EntityCacheService {
       kvRequestManager.invalidateMemoryCache(`metadata-cache-${entityName}`)
       
       try {
-        await window.spark.kv.delete(`metadata-cache-${entityName}`)
+        const storage = await getStorageAdapter()
+        await storage.delete(`metadata-cache-${entityName}`)
         console.log(`✅ Deleted KV cache for: ${entityName}`)
       } catch (kvError) {
         console.warn(`⚠️ Could not delete KV cache for ${entityName}, but memory cache was cleared:`, kvError)
@@ -252,7 +267,10 @@ export class EntityCacheService {
     try {
       const cache = await kvRequestManager.enqueueKVGet<EntityCacheData>(
         'entity-cache-v2',
-        () => window.spark.kv.get<EntityCacheData>('entity-cache-v2')
+        async () => {
+          const storage = await getStorageAdapter()
+          return storage.get<EntityCacheData>('entity-cache-v2')
+        }
       )
       
       const existingEntities = cache?.entities || []
@@ -291,7 +309,10 @@ export class EntityCacheService {
     try {
       const cache = await kvRequestManager.enqueueKVGet<EntityCacheData>(
         'entity-cache-v2',
-        () => window.spark.kv.get<EntityCacheData>('entity-cache-v2')
+        async () => {
+          const storage = await getStorageAdapter()
+          return storage.get<EntityCacheData>('entity-cache-v2')
+        }
       )
       const shouldRefreshNow = !cache || (Date.now() - cache.lastFullRefresh > REFRESH_INTERVAL)
       
@@ -307,7 +328,10 @@ export class EntityCacheService {
       try {
         const cache = await kvRequestManager.enqueueKVGet<EntityCacheData>(
           'entity-cache-v2',
-          () => window.spark.kv.get<EntityCacheData>('entity-cache-v2')
+          async () => {
+            const storage = await getStorageAdapter()
+            return storage.get<EntityCacheData>('entity-cache-v2')
+          }
         )
         if (!cache) {
           return
@@ -342,7 +366,10 @@ export class EntityCacheService {
     try {
       const cache = await kvRequestManager.enqueueKVGet<EntityCacheData>(
         'entity-cache-v2',
-        () => window.spark.kv.get<EntityCacheData>('entity-cache-v2')
+        async () => {
+          const storage = await getStorageAdapter()
+          return storage.get<EntityCacheData>('entity-cache-v2')
+        }
       )
       if (!cache) {
         return {
@@ -379,7 +406,10 @@ export class EntityCacheService {
 
   async getUncachedEntities(): Promise<string[]> {
     try {
-      const allKeys = await kvRequestManager.enqueueKVKeys(() => window.spark.kv.keys())
+      const allKeys = await kvRequestManager.enqueueKVKeys(async () => {
+        const storage = await getStorageAdapter()
+        return storage.keys()
+      })
       const cachedMetadataKeys = allKeys
         .filter(key => key.startsWith('metadata-cache-'))
         .map(key => key.replace('metadata-cache-', ''))
@@ -415,7 +445,10 @@ export class EntityCacheService {
   private async saveEntityCache(data: EntityCacheData) {
     await kvRequestManager.enqueueKVSet(
       'entity-cache-v2',
-      () => window.spark.kv.set('entity-cache-v2', data)
+      async () => {
+        const storage = await getStorageAdapter()
+        return storage.set('entity-cache-v2', data)
+      }
     )
   }
 
@@ -425,14 +458,18 @@ export class EntityCacheService {
       
       kvRequestManager.invalidateMemoryCache()
       
-      const allKeys = await kvRequestManager.enqueueKVKeys(() => window.spark.kv.keys())
+      const allKeys = await kvRequestManager.enqueueKVKeys(async () => {
+        const storage = await getStorageAdapter()
+        return storage.keys()
+      })
       const cacheKeys = allKeys.filter(key => 
         key.startsWith('metadata-cache-') || 
         key === 'entity-cache-v2'
       )
       
+      const storage = await getStorageAdapter()
       for (const key of cacheKeys) {
-        await window.spark.kv.delete(key)
+        await storage.delete(key)
       }
       
       console.log(`✅ Cleared ${cacheKeys.length} entity/metadata cache entries`)

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { CheckCircle, XCircle, Warning, Bug, Play, ArrowRight, Copy } from '@phosphor-icons/react'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
 import { bullhornAPI } from '@/lib/bullhorn-api'
+import { getStorageAdapter } from '@/lib/storage-adapter'
 import { toast } from 'sonner'
 
 interface DiagnosticResult {
@@ -177,9 +178,10 @@ export function OAuthDiagnostics() {
 
       addLog('Test 6: Check KV storage')
       try {
-        await window.spark.kv.set('test-key', { test: 'value' })
-        const testValue = await window.spark.kv.get('test-key')
-        await window.spark.kv.delete('test-key')
+        const storage = await getStorageAdapter()
+        await storage.set('test-key', { test: 'value' })
+        const testValue = await storage.get('test-key')
+        await storage.delete('test-key')
         
         if (testValue && typeof testValue === 'object' && 'test' in testValue) {
           addResult({

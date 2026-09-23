@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { bullhornAPI } from '@/lib/bullhorn-api'
 import { secureCredentialsAPI } from '@/lib/secure-credentials'
+import { getStorageAdapter } from '@/lib/storage-adapter'
 import { Copy, Info, CheckCircle, Circle, Warning, Database } from '@phosphor-icons/react'
 import type { SavedConnection } from '@/components/ConnectionManager'
 import type { BullhornSession } from '@/lib/types'
@@ -334,7 +335,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
     const url = getAuthUrl()
     navigator.clipboard.writeText(url)
 
-    await window.spark.kv.set('pending-oauth-auth', {
+    const storage = await getStorageAdapter()
+    await storage.set('pending-oauth-auth', {
       clientId: manualAuth.clientId,
       clientSecret: manualAuth.clientSecret,
       username: manualAuth.username,
@@ -346,7 +348,8 @@ export function AuthDialog({ open, onOpenChange, onAuthenticated, preselectedCon
   }
 
   const handleOpenAuthUrl = async () => {
-    await window.spark.kv.set('pending-oauth-auth', {
+    const storage = await getStorageAdapter()
+    await storage.set('pending-oauth-auth', {
       clientId: manualAuth.clientId,
       clientSecret: manualAuth.clientSecret,
       username: manualAuth.username,
